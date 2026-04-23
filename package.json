@@ -39,12 +39,20 @@
   "scripts": {
     "build": "tsc -p cli/tsconfig.json",
     "dev": "tsc -p cli/tsconfig.json --watch",
-    "test": "echo \"no tests yet\" && exit 0",
+    "typecheck": "tsc -p cli/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "echo \"no linter yet\" && exit 0",
     "clean": "rm -rf cli/dist"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.6.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
   }
 }
