@@ -119,11 +119,19 @@ export function makeCloseAnchor(): string {
   return `<!-- /anamnesis:region -->`;
 }
 
+/**
+ * Normalize inner content so anchors sit on their own lines.
+ * Matches what parseRegions will return for a freshly-rendered region —
+ * callers that hash region bodies should hash this normalized form so that
+ * the stored hash equals sha256 of the content seen when re-parsing the file.
+ */
+export function normalizeRegionContent(content: string): string {
+  const body = content.startsWith("\n") ? content : "\n" + content;
+  return body.endsWith("\n") ? body : body + "\n";
+}
+
 export function renderRegion(input: RegionInput): string {
-  // Ensure inner content has leading/trailing newlines so anchors sit on their own lines.
-  const body = input.content.startsWith("\n") ? input.content : "\n" + input.content;
-  const withTrailing = body.endsWith("\n") ? body : body + "\n";
-  return `${makeOpenAnchor(input)}${withTrailing}${makeCloseAnchor()}`;
+  return `${makeOpenAnchor(input)}${normalizeRegionContent(input.content)}${makeCloseAnchor()}`;
 }
 
 // ---------------------------------------------------------------------------
