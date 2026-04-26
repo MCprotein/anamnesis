@@ -1,0 +1,22 @@
+id: prisma
+version: 1
+description: >
+  Prisma ORM operational guidelines (migrations, schema-as-source-of-truth)
+  + a PostToolUse hook that validates schema.prisma after edits.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: prisma
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+  - type: executable_hook
+    event: PostToolUse:Edit
+    source: adapters/claude-code/hooks/prisma-validate.sh
+    adapters_supported: [claude-code]
+
+owns:
+  - region: prisma in AGENTS.md
+  - file: .anamnesis/ontology/prisma.yaml
+  - file: .claude/hooks/prisma-validate.sh

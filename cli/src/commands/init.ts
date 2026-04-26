@@ -23,6 +23,7 @@ import {
 import { loadRulebook, matchingRules } from "../core/rulebook.js";
 import {
   loadAllFragments,
+  loadBaseFragment,
   topologicalSort,
   detectConflicts,
   type FragmentDefinition,
@@ -77,6 +78,18 @@ const DEFAULT_SETTINGS = {
   claude_md_path: "CLAUDE.md",
 };
 
+/**
+ * Resolve the on-disk directory for a fragment in the library.
+ *
+ * The special `base` fragment lives at `<libraryRoot>/base/` (matching
+ * docs/DESIGN.md §8.1). All other fragments live under
+ * `<libraryRoot>/fragments/<id>/`.
+ */
+function fragmentDirOf(libraryRoot: string, fragmentId: string): string {
+  if (fragmentId === "base") return path.join(libraryRoot, "base");
+  return path.join(libraryRoot, "fragments", fragmentId);
+}
+
 // ---------------------------------------------------------------------------
 // Entrypoint
 // ---------------------------------------------------------------------------
@@ -96,18 +109,30 @@ export function init(opts: InitOptions): InitResult {
   // 2. Load library.
   const rules = loadRulebook(libraryRoot);
   const fragments = loadAllFragments(libraryRoot);
+  const base = loadBaseFragment(libraryRoot);
 
   // 3. Evaluate rules against project.
   const ctx = new ProjectContext(projectRoot);
   const matched = matchingRules(rules, ctx);
 
   // 4. Resolve suggested ids → library fragments.
+  // Base fragment (if present) is always included first regardless of rules.
   const selected: FragmentDefinition[] = [];
+  const seen = new Set<string>();
+  if (base) {
+    selected.push(base);
+    seen.add(base.id);
+  }
   const missing: string[] = [];
   for (const rule of matched) {
+    if (seen.has(rule.suggest)) continue;
     const frag = fragments.get(rule.suggest);
-    if (frag) selected.push(frag);
-    else missing.push(rule.suggest);
+    if (frag) {
+      selected.push(frag);
+      seen.add(frag.id);
+    } else {
+      missing.push(rule.suggest);
+    }
   }
   if (missing.length > 0) {
     throw new InitError(
@@ -138,7 +163,7 @@ export function init(opts: InitOptions): InitResult {
 
   const actions: RenderAction[] = [];
   for (const frag of ordered) {
-    const fragmentDir = path.join(libraryRoot, "fragments", frag.id);
+    const fragmentDir = fragmentDirOf(libraryRoot, frag.id);
     const renderCtx: RenderContext = {
       fragment: frag,
       fragmentDir,

@@ -153,6 +153,22 @@ export function resolveCapabilitySource(
   return path.join(fragmentDir, cap.source);
 }
 
+/**
+ * Load the special `base` fragment from `<libraryRoot>/base/`.
+ *
+ * The base fragment is auto-included by `init` regardless of rulebook
+ * matches — it carries the always-on baseline (load-context skill, ontology
+ * inject hook, etc.). Returns null if the library has no `base/` directory
+ * or no `fragment.yaml` inside it.
+ */
+export function loadBaseFragment(
+  libraryRoot: string,
+): FragmentDefinition | null {
+  const dir = path.join(libraryRoot, "base");
+  if (!fs.existsSync(path.join(dir, "fragment.yaml"))) return null;
+  return loadFragment(dir);
+}
+
 // ---------------------------------------------------------------------------
 // Dependency resolution
 // ---------------------------------------------------------------------------

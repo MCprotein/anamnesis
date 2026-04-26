@@ -1,0 +1,40 @@
+id: base
+version: 1
+description: >
+  Always-installed baseline. Provides ontology injection, uncommitted-changes
+  reminder, the load-context slash command/skill, and the AGENTS.md baseline
+  region. anamnesis init auto-includes this fragment regardless of rulebook
+  matches.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/inject-ontology.sh
+    adapters_supported: [claude-code]
+
+  - type: executable_hook
+    event: PostToolUse:Edit
+    source: adapters/claude-code/hooks/remind-uncommitted.sh
+    adapters_supported: [claude-code]
+
+  - type: slash_command
+    name: load-context
+    source: adapters/claude-code/commands/load-context.md
+
+  - type: skill
+    name: load-context
+    source: adapters/claude-code/skills/load-context
+
+owns:
+  - region: anamnesis-base in AGENTS.md
+  - file: .anamnesis/ontology/base.yaml
+  - file: .claude/hooks/inject-ontology.sh
+  - file: .claude/hooks/remind-uncommitted.sh
+  - file: .claude/commands/load-context.md
+  - file: .claude/skills/load-context/SKILL.md

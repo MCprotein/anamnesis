@@ -102,12 +102,19 @@ export function planChanges(
   let manifest = opts.manifest;
   const changes: PlannedChange[] = [];
 
+  // Track in-flight file text for region actions that target the same file.
+  // Without this, two regions in the same file each plan against the
+  // current disk state and produce conflicting `newFileText` values — the
+  // last applier write would erase the earlier one.
+  const pendingFileTexts = new Map<string, string>();
+
   for (const action of actions) {
     if (action.kind === "region") {
       const { change, nextManifest } = planRegion(
         action,
         opts.projectRoot,
         manifest,
+        pendingFileTexts,
       );
       changes.push(change);
       manifest = nextManifest;
@@ -130,11 +137,14 @@ function planRegion(
   action: RegionAction,
   projectRoot: string,
   manifest: Manifest,
+  pendingFileTexts: Map<string, string>,
 ): { change: RegionChange; nextManifest: Manifest } {
   const fp = path.join(projectRoot, action.file);
-  const currentFileText = fs.existsSync(fp)
-    ? fs.readFileSync(fp, "utf8")
-    : "";
+  const currentFileText = pendingFileTexts.has(action.file)
+    ? pendingFileTexts.get(action.file)!
+    : fs.existsSync(fp)
+      ? fs.readFileSync(fp, "utf8")
+      : "";
   const currentRegion = currentFileText
     ? findRegion(currentFileText, action.regionId)
     : undefined;
@@ -175,6 +185,7 @@ function planRegion(
       last_applied_hash: newContentHash,
       current_user_hash: newContentHash,
     };
+    pendingFileTexts.set(action.file, newFileText);
     return {
       change: {
         ...base,
@@ -189,6 +200,7 @@ function planRegion(
 
   // Case 2: region on disk but manifest doesn't track it — user-authored.
   if (currentRegion && !manifestEntry) {
+    pendingFileTexts.set(action.file, currentFileText);
     return {
       change: {
         ...base,
@@ -204,6 +216,7 @@ function planRegion(
 
   // Case 3: manifest entry without region on disk — user deleted it.
   if (!currentRegion && manifestEntry) {
+    pendingFileTexts.set(action.file, currentFileText);
     return {
       change: {
         ...base,
@@ -220,6 +233,7 @@ function planRegion(
   // Case 4: both exist — compare hashes.
   const currentHash = sha256(currentRegion!.content);
   if (currentHash !== manifestEntry!.last_applied_hash) {
+    pendingFileTexts.set(action.file, currentFileText);
     return {
       change: {
         ...base,
@@ -234,6 +248,7 @@ function planRegion(
   }
 
   if (newContentHash === currentHash) {
+    pendingFileTexts.set(action.file, currentFileText);
     return { change: { ...base, status: "noop" }, nextManifest: manifest };
   }
 
@@ -246,6 +261,7 @@ function planRegion(
     current_user_hash: newContentHash,
     // base_rendered_hash intentionally preserved — it's the original baseline.
   };
+  pendingFileTexts.set(action.file, newFileText);
   return {
     change: {
       ...base,

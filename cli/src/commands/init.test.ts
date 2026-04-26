@@ -14,8 +14,11 @@ function tmpDir(prefix: string): string {
 /**
  * Build a minimal anamnesis library with a `prisma` fragment and a
  * rulebook that suggests it when `prisma/schema.prisma` exists.
+ *
+ * If `withBase` is true, also creates a `base/` fragment that init() will
+ * auto-include.
  */
-function makeLibrary(): string {
+function makeLibrary(opts: { withBase?: boolean } = {}): string {
   const lib = tmpDir("anamnesis-lib-");
 
   // Rulebook with one rule → prisma fragment.
@@ -45,6 +48,25 @@ capabilities:
     path.join(prismaDir, "content", "agents.snippet.md"),
     "## Prisma\n\nrun `prisma migrate deploy` before production rollout.\n",
   );
+
+  if (opts.withBase) {
+    const baseDir = path.join(lib, "base");
+    fs.mkdirSync(path.join(baseDir, "content"), { recursive: true });
+    fs.writeFileSync(
+      path.join(baseDir, "fragment.yaml"),
+      `id: base
+version: 1
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+`,
+    );
+    fs.writeFileSync(
+      path.join(baseDir, "content", "agents.snippet.md"),
+      "## anamnesis baseline\n\nproject managed by anamnesis.\n",
+    );
+  }
 
   return lib;
 }
@@ -274,6 +296,79 @@ capabilities:
     expect(fs.existsSync(fp)).toBe(true);
     const mode = fs.statSync(fp).mode & 0o777;
     expect(mode).toBe(0o755);
+  });
+});
+
+describe("init — base fragment auto-inclusion", () => {
+  let project: string;
+  let library: string;
+
+  beforeEach(() => {
+    project = tmpDir("anamnesis-proj-");
+    library = makeLibrary({ withBase: true });
+  });
+
+  it("includes base fragment even when no rules match", () => {
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    expect(result.selectedFragments.map((f) => f.id)).toEqual(["base"]);
+    const af = readAgentfile(project);
+    expect(af.fragments).toEqual([{ id: "base", version: 1 }]);
+    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("anamnesis baseline");
+  });
+
+  it("includes base + rule-matched fragments together", () => {
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    const ids = result.selectedFragments.map((f) => f.id);
+    expect(ids).toContain("base");
+    expect(ids).toContain("prisma");
+    // base must come first (no requires/conflicts; ordering preserved).
+    expect(ids[0]).toBe("base");
+    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("anamnesis baseline");
+    expect(agentsMd).toContain("prisma migrate deploy");
+  });
+
+  it("does not include base if a rule explicitly suggests it (no double-add)", () => {
+    // Edge: someone adds a `## base` rule. Selection must dedupe.
+    fs.appendFileSync(
+      path.join(library, "rulebook.md"),
+      `\n## base-rule\n- trigger: \`file_exists: package.json\`\n- suggest: fragments/base\n- reason: test.\n`,
+    );
+    fs.writeFileSync(path.join(project, "package.json"), "{}");
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    const baseCount = result.selectedFragments.filter(
+      (f) => f.id === "base",
+    ).length;
+    expect(baseCount).toBe(1);
+  });
+
+  it("works without a base/ directory (back-compat)", () => {
+    const noBaseLib = makeLibrary({ withBase: false });
+    const result = init({
+      projectRoot: project,
+      libraryRoot: noBaseLib,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    expect(result.selectedFragments).toHaveLength(0);
   });
 });
 
