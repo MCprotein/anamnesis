@@ -46,6 +46,11 @@ import {
   backupBeforeApply,
   type PlannedChange,
 } from "../core/applier.js";
+import {
+  syncHookRegistrations,
+  type HookRegistration,
+  type HookSyncResult,
+} from "../core/settings.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,6 +74,8 @@ export interface UpdateResult {
   /** Absolute path of the backup directory created on apply (if any updates occurred). */
   backupDir?: string;
   backedUpFiles?: string[];
+  /** Per-registration outcome of post-apply settings.json sync. */
+  hookRegistrations: HookSyncResult[];
 }
 
 export class UpdateError extends Error {
@@ -211,6 +218,7 @@ export function update(opts: UpdateOptions): UpdateResult {
   // 10. Apply (or dry-run).
   let backupDir: string | undefined;
   let backedUpFiles: string[] | undefined;
+  let hookRegistrations: HookSyncResult[] = [];
   if (opts.apply) {
     backupDir = path.join(
       projectRoot,
@@ -222,6 +230,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     applyChanges(changes, { projectRoot });
     writeManifest(projectRoot, nextManifest);
     writeAgentfile(projectRoot, updatedAgentfile);
+    hookRegistrations = syncWrittenHooks(changes, projectRoot);
   }
 
   return {
@@ -232,5 +241,39 @@ export function update(opts: UpdateOptions): UpdateResult {
     writtenToDisk: opts.apply,
     backupDir: opts.apply ? backupDir : undefined,
     backedUpFiles: opts.apply ? backedUpFiles : undefined,
+    hookRegistrations,
   };
+}
+
+/**
+ * Register every file-change with `settingsHook` metadata that reached
+ * `create` or `update` status into `.claude/settings.json`. Idempotent.
+ * Mirrors the helper in `init.ts` — duplicated rather than extracted to a
+ * shared module to keep command files self-contained.
+ */
+function syncWrittenHooks(
+  changes: PlannedChange[],
+  projectRoot: string,
+): HookSyncResult[] {
+  const regs: HookRegistration[] = [];
+  for (const c of changes) {
+    if (c.target !== "file") continue;
+    // create/update/noop are all "we own this file" — register. Skip
+    // user-modified (caller-owned) and blocked (we didn't write it).
+    if (
+      c.status !== "create" &&
+      c.status !== "update" &&
+      c.status !== "noop"
+    ) {
+      continue;
+    }
+    if (!c.settingsHook) continue;
+    regs.push({
+      event: c.settingsHook.event,
+      matcher: c.settingsHook.matcher,
+      command: c.path,
+    });
+  }
+  if (regs.length === 0) return [];
+  return syncHookRegistrations(projectRoot, regs).results;
 }

@@ -40,6 +40,11 @@ import {
   applyChanges,
   type PlannedChange,
 } from "../core/applier.js";
+import {
+  syncHookRegistrations,
+  type HookRegistration,
+  type HookSyncResult,
+} from "../core/settings.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,6 +64,12 @@ export interface InitResult {
   changes: PlannedChange[];
   nextManifest: Manifest;
   writtenToDisk: boolean;
+  /**
+   * Per-registration outcome of post-apply settings.json sync.
+   * Empty when dryRun or when no executable_hook capabilities reached
+   * `create`/`update` status.
+   */
+  hookRegistrations: HookSyncResult[];
 }
 
 export class InitError extends Error {
@@ -182,10 +193,12 @@ export function init(opts: InitOptions): InitResult {
   });
 
   // 9. Apply (or dry-run).
+  let hookRegistrations: HookSyncResult[] = [];
   if (!opts.dryRun) {
     applyChanges(changes, { projectRoot });
     writeManifest(projectRoot, nextManifest);
     writeAgentfile(projectRoot, agentfile);
+    hookRegistrations = syncWrittenHooks(changes, projectRoot);
   }
 
   return {
@@ -194,7 +207,43 @@ export function init(opts: InitOptions): InitResult {
     changes,
     nextManifest,
     writtenToDisk: !opts.dryRun,
+    hookRegistrations,
   };
+}
+
+/**
+ * Register every file-change with `settingsHook` metadata that reached
+ * `create` or `update` status into `.claude/settings.json`. Idempotent —
+ * pre-existing entries are detected and skipped.
+ */
+function syncWrittenHooks(
+  changes: PlannedChange[],
+  projectRoot: string,
+): HookSyncResult[] {
+  const regs: HookRegistration[] = [];
+  for (const c of changes) {
+    if (c.target !== "file") continue;
+    // Register hooks we own: freshly written (create/update) AND already-
+    // installed-and-unchanged (noop). Noop inclusion is what allows older
+    // installs (with hooks but no settings.json entry) to self-heal on the
+    // next update. We never register `user-modified` (caller-owned) or
+    // `blocked` (we didn't write it).
+    if (
+      c.status !== "create" &&
+      c.status !== "update" &&
+      c.status !== "noop"
+    ) {
+      continue;
+    }
+    if (!c.settingsHook) continue;
+    regs.push({
+      event: c.settingsHook.event,
+      matcher: c.settingsHook.matcher,
+      command: c.path,
+    });
+  }
+  if (regs.length === 0) return [];
+  return syncHookRegistrations(projectRoot, regs).results;
 }
 
 // ---------------------------------------------------------------------------

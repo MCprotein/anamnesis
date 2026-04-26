@@ -76,6 +76,15 @@ export interface FileChange {
   currentContent?: string;
   mode?: number;
   reason?: string;
+  /**
+   * Propagated from the originating FileAction. Post-apply settings sync
+   * uses this to register the hook in `.claude/settings.json` when the
+   * change reaches `create` or `update` status.
+   */
+  settingsHook?: {
+    event: string;
+    matcher?: string;
+  };
 }
 
 export type PlannedChange = RegionChange | FileChange;
@@ -298,6 +307,7 @@ function planFile(
     fragmentVersion: action.fragmentVersion,
     status: "create",
     mode: action.mode,
+    settingsHook: action.settingsHook,
   };
 
   // Compute intended status.

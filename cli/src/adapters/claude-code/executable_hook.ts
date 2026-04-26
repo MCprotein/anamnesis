@@ -27,6 +27,19 @@ export const executableHookRenderer: CapabilityRenderer = {
     }
     const basename = path.basename(capability.source);
     const content = fs.readFileSync(sourcePath, "utf8");
+
+    // Parse `event` into Claude Code settings.json layout:
+    //   "PostToolUse:Edit" → { event: "PostToolUse", matcher: "Edit" }
+    //   "SessionStart"     → { event: "SessionStart" }
+    const colon = capability.event.indexOf(":");
+    const settingsHook =
+      colon >= 0
+        ? {
+            event: capability.event.slice(0, colon),
+            matcher: capability.event.slice(colon + 1),
+          }
+        : { event: capability.event };
+
     return [
       {
         kind: "file",
@@ -35,6 +48,7 @@ export const executableHookRenderer: CapabilityRenderer = {
         fragmentVersion: ctx.fragment.version,
         content,
         mode: 0o755,
+        settingsHook,
       },
     ];
   },

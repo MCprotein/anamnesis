@@ -27,6 +27,19 @@ export interface FileAction {
   fragmentVersion: number;
   content: string;
   mode?: number; // chmod bits (e.g., 0o755 for executable hooks)
+  /**
+   * If set, the applier should also ensure this file is registered as a hook
+   * in `.claude/settings.json`. The applier handles the JSON-structural merge
+   * idempotently — duplicate registrations are detected and skipped.
+   *
+   * `event` examples: "SessionStart", "PostToolUse", "PreToolUse".
+   * `matcher` examples (PostToolUse/PreToolUse only): "Edit", "Write", "Bash".
+   * SessionStart and similar tool-agnostic events have no matcher.
+   */
+  settingsHook?: {
+    event: string;
+    matcher?: string;
+  };
 }
 
 export type RenderAction = RegionAction | FileAction;
