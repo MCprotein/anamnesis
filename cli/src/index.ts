@@ -17,6 +17,12 @@ import {
   UpdateError,
   type UpdateResult,
 } from "./commands/update.js";
+import {
+  promote,
+  PromoteError,
+  type PromoteResult,
+  type PromotableType,
+} from "./commands/promote.js";
 
 const VERSION = "0.1.0-dev";
 
@@ -96,6 +102,7 @@ Usage:
 Commands:
   init                          First-time setup for the current project
   update                        Re-apply library state (dry-run by default)
+  promote <source>              Lift a project file into the library as a fragment
 
 Flags (init):
   --project-root <path>         Target directory (default: cwd)
@@ -109,6 +116,15 @@ Flags (update):
   --library <path>              Library path (default: bundled)
   --apply                       Actually write (default is dry-run)
   --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
+
+Flags (promote):
+  --as <fragment-id>            Target fragment id (required)
+  --type <capability>           Capability type (auto-detected from path if omitted)
+                                  one of: executable_hook | slash_command | skill | ontology
+  --name <name>                 Override skill / slash_command name
+  --description <text>          Set/override fragment description
+  --project-root <path>         Source directory (default: cwd)
+  --library <path>              Library path (default: bundled)
 
 Global:
   --help, -h                    Show this help
@@ -138,6 +154,21 @@ function reportInit(result: InitResult): void {
       "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
     );
   }
+}
+
+function reportPromote(result: PromoteResult): void {
+  console.log(
+    `anamnesis promote — ${result.isNewFragment ? "created" : "extended"} fragment '${result.fragmentId}'`,
+  );
+  console.log(`  capability: ${result.capability.type}`);
+  console.log(`  files written:`);
+  for (const f of result.filesWritten) {
+    console.log(`    + ${f}`);
+  }
+  console.log(`  fragment dir: ${result.fragmentDir}`);
+  console.log(
+    `\nNext: review the fragment, optionally add a rule to rulebook.md, commit.`,
+  );
 }
 
 function reportUpdate(result: UpdateResult): void {
@@ -177,7 +208,7 @@ function reportUpdate(result: UpdateResult): void {
 // ---------------------------------------------------------------------------
 
 async function main(argv: string[]): Promise<number> {
-  const { command, flags } = parseArgs(argv);
+  const { command, positional, flags } = parseArgs(argv);
 
   if (flags.help || flags.h) {
     printHelp();
@@ -232,6 +263,43 @@ async function main(argv: string[]): Promise<number> {
         }
         throw e;
       }
+
+    case "promote": {
+      const source = (positional[0] as string | undefined) ?? "";
+      const fragmentId = flags["as"] as string | undefined;
+      if (!source) {
+        console.error("error: promote requires a source path positional argument.");
+        console.error(
+          "usage: anamnesis promote <source> --as=<fragment-id> [--type=<capability>]",
+        );
+        return 1;
+      }
+      if (!fragmentId) {
+        console.error("error: promote requires --as=<fragment-id>");
+        return 1;
+      }
+      try {
+        const result = promote({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          source,
+          fragmentId,
+          capabilityType: flags["type"] as PromotableType | undefined,
+          name: flags["name"] as string | undefined,
+          description: flags["description"] as string | undefined,
+        });
+        reportPromote(result);
+        return 0;
+      } catch (e) {
+        if (e instanceof PromoteError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
 
     default:
       console.error(`unknown command: ${command}`);
