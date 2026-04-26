@@ -12,6 +12,11 @@ import {
   summarizeChanges,
   type InitResult,
 } from "./commands/init.js";
+import {
+  update,
+  UpdateError,
+  type UpdateResult,
+} from "./commands/update.js";
 
 const VERSION = "0.1.0-dev";
 
@@ -90,6 +95,7 @@ Usage:
 
 Commands:
   init                          First-time setup for the current project
+  update                        Re-apply library state (dry-run by default)
 
 Flags (init):
   --project-root <path>         Target directory (default: cwd)
@@ -97,6 +103,12 @@ Flags (init):
   --dry-run                     Show plan without writing
   --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
   --project-name <name>         Override project name (default: dir basename)
+
+Flags (update):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --apply                       Actually write (default is dry-run)
+  --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
 
 Global:
   --help, -h                    Show this help
@@ -125,6 +137,38 @@ function reportInit(result: InitResult): void {
     console.log(
       "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
     );
+  }
+}
+
+function reportUpdate(result: UpdateResult): void {
+  const s = summarizeChanges(result.changes);
+  const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
+  console.log(`anamnesis update — ${result.agentfile.project.name}`);
+  console.log(`  fragments: ${fragIds}`);
+  console.log(
+    `  changes: create=${s.create} update=${s.update} noop=${s.noop} blocked=${s.blocked} user-modified=${s.userModified}`,
+  );
+  if (result.suggested.length > 0) {
+    const ids = result.suggested.map((r) => r.suggest).join(", ");
+    console.log(`  suggested (not installed): ${ids}`);
+    console.log(`    → add to Agentfile.fragments[] and re-run, or list under 'declined' to silence.`);
+  }
+  if (s.userModified > 0) {
+    console.log(
+      `  (${s.userModified} user-modified — your edits are preserved; library updates skipped for those.)`,
+    );
+  }
+  if (s.blocked > 0) {
+    console.log(
+      "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
+    );
+  }
+  if (result.writtenToDisk) {
+    if (result.backedUpFiles && result.backedUpFiles.length > 0) {
+      console.log(`  backup: ${result.backupDir}`);
+    }
+  } else {
+    console.log("  (dry-run — re-run with --apply to actually write)");
   }
 }
 
@@ -164,6 +208,25 @@ async function main(argv: string[]): Promise<number> {
         return 0;
       } catch (e) {
         if (e instanceof InitError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+
+    case "update":
+      try {
+        const result = update({
+          projectRoot: (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          apply: flags["apply"] === true,
+          allowExecAdapters: flags["allow-exec-adapters"] === true,
+        });
+        reportUpdate(result);
+        return 0;
+      } catch (e) {
+        if (e instanceof UpdateError) {
           console.error(`error: ${e.message}`);
           return 1;
         }
