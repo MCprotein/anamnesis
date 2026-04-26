@@ -70,17 +70,22 @@ plus 3 user projects across infra / ML / NestJS stacks).
 
 ### Known gaps (v0.2 targets)
 
-- `.claude/settings.json` is not auto-updated when hooks are installed.
-  Hooks land in `.claude/hooks/` but the user must manually register
-  them in settings.json to wire the events. This is benign in repos
-  where hooks already exist as `user-modified` (the existing
-  registration is preserved).
 - Fragment `pinned: true` preserves Agentfile entries across `update`
   but rendering still uses library-current versions. Full pinning
   requires a fragment version cache.
 - `nextjs` and `docker-compose` fragments are stubs (rules exist; no
   fragment dirs).
 - Codex / Cursor adapters not yet implemented.
+- `settings.json` formatting (indent style) is normalized to 2-space
+  on first auto-write — user's prior indent choice is overwritten.
+  Detect-and-preserve is a v0.2 polish item.
+
+### Resolved (post-initial v0.1.0 cut)
+
+- ~~`.claude/settings.json` not auto-updated when hooks are installed~~
+  — fixed by post-apply hook registration sync. CC executable_hook
+  capability now also updates `settings.json` idempotently. Older
+  installs without registrations self-heal on the next `update --apply`.
 
 ### Repository policy
 
