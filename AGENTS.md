@@ -1,3 +1,40 @@
+# anamnesis (this repo)
+
+This repository **is** anamnesis — the AI coding agent config lifecycle manager. It is also dogfooded on itself (see the auto-managed region below).
+
+## Repo layout
+
+- `cli/src/` — TypeScript CLI source (commands, core primitives, adapters)
+- `cli/src/core/` — engine: `agentfile`, `manifest`, `regions`, `fragments`, `triggers`, `rulebook`, `applier`, `render`
+- `cli/src/adapters/claude-code/` — five capability renderers (project_memory, ontology, executable_hook, skill, slash_command)
+- `cli/src/commands/` — `init`, `update`, `promote`
+- `base/` — always-installed fragment (5 capabilities)
+- `fragments/` — stack-specific fragments (prisma, k8s, nestjs, fastapi, python-uv)
+- `rulebook.md` — auto-detection rules → fragment suggestions
+- `docs/DESIGN.md` — full architecture
+- `specs/agentfile.md` — Agentfile v1 schema
+
+## Working on this repo
+
+- Run tests: `npm test` (vitest, ~1s, 229 tests)
+- Type-check: `npm run typecheck`
+- Local CLI: `npx tsx cli/src/index.ts <cmd>` (skips build)
+- Build for distribution: `npm run build` → `cli/dist/`
+
+## Conventions
+
+- Tests are co-located (`*.test.ts` next to the implementation).
+- New core changes need tests + a CHANGELOG entry.
+- New fragments need a rulebook rule and (ideally) a sanitized-fixture dry-run.
+- Korean or English commit messages both fine; commits stay focused.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for fragment authoring details.
+
+## Status
+
+v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break before v1.0.
+
+---
+
 <!-- anamnesis:region id=anamnesis-base fragment=base@1 -->
 ## anamnesis baseline
 
