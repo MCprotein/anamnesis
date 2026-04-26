@@ -1,0 +1,23 @@
+# FastAPI slice — written by the fastapi fragment.
+
+fastapi:
+  schema_layer: pydantic v2 BaseModel (no raw dict for request/response)
+  response_model: required on all path operations for OpenAPI fidelity
+  dependency_injection:
+    primitive: Depends
+    override_for_tests: app.dependency_overrides
+  async_first:
+    handler_kind:
+      io_bound: async def
+      cpu_or_sync_only: def
+    db_driver_async: required when handler is async def
+  error_mapping:
+    business_failure: HTTPException(status_code, detail)
+    domain_exception: "@app.exception_handler"
+  routing:
+    domain_split: APIRouter + prefix + tags
+  forbidden:
+    - dict_for_request_body
+    - sync_db_driver_in_async_handler
+    - module_global_db_object
+    - BackgroundTasks_for_heavy_work

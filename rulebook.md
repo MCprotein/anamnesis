@@ -45,9 +45,9 @@ Supported trigger expressions (v0.1):
 - reason: Prisma schema drift is a frequent source of deploy failures; dedicated validation hook recommended.
 
 ## k8s
-- trigger: `any: [dir_exists: k8s, any_yaml_contains: "apiVersion"]`
+- trigger: `dir_exists: k8s`
 - suggest: fragments/k8s
-- reason: Kubernetes manifests benefit from YAML linting and post-apply verification hooks.
+- reason: Kubernetes manifests benefit from YAML linting and post-apply verification hooks. Trigger limited to projects with a `k8s/` directory — `apiVersion:` alone is too loose (Grafana provisioning, etc. also use it).
 
 ## nestjs
 - trigger: `package_json_has: "@nestjs/core"`

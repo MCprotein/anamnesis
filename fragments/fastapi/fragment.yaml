@@ -1,0 +1,17 @@
+id: fastapi
+version: 1
+description: >
+  FastAPI application conventions — Pydantic schemas, dependency injection
+  via Depends, async-first I/O, error mapping. No executable hook in v0.1
+  (uvicorn / app's own startup handles validation).
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: fastapi
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: fastapi in AGENTS.md
+  - file: .anamnesis/ontology/fastapi.yaml
