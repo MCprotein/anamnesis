@@ -1,0 +1,17 @@
+id: python-uv
+version: 1
+description: >
+  Python projects managed with `uv` (https://docs.astral.sh/uv/) — pyproject.toml
+  is source of truth; never use `pip install` directly. Strong preference for
+  `uv run` over activating venvs manually.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: python-uv
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: python-uv in AGENTS.md
+  - file: .anamnesis/ontology/python-uv.yaml

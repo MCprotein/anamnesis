@@ -1,0 +1,17 @@
+id: nestjs
+version: 1
+description: >
+  NestJS application conventions — module/service/controller layering, DI,
+  DTO validation, guards/interceptors/pipes. No executable hook in v0.1; the
+  framework's own `nest build` is the canonical validator.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: nestjs
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: nestjs in AGENTS.md
+  - file: .anamnesis/ontology/nestjs.yaml

@@ -1,0 +1,24 @@
+# NestJS slice — written by the nestjs fragment.
+
+nestjs:
+  layering:
+    controller: HTTP/WS entrypoints, no business logic
+    service: business logic single location
+    module: dependency graph unit
+    repository: data access only
+  forbidden:
+    - business_logic_in_controller
+    - controller_call_from_service
+    - direct_repository_call_from_controller
+    - process_env_outside_ConfigService
+  validation:
+    dto_with_class_validator: required for all HTTP inputs
+    global_pipe: ValidationPipe { whitelist: true, transform: true }
+  pipeline_order:
+    - middleware
+    - guard
+    - interceptor_pre
+    - pipe
+    - handler
+    - interceptor_post
+    - exception_filter

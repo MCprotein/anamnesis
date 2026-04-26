@@ -1,0 +1,18 @@
+# python-uv slice — written by the python-uv fragment.
+
+python_uv:
+  source_of_truth: pyproject.toml
+  lock_file: uv.lock                # commit, never edit by hand
+  preferred:
+    add_dep: "uv add <pkg>"
+    remove_dep: "uv remove <pkg>"
+    run: "uv run <command>"
+    sync: "uv sync"
+    sync_ci: "uv sync --frozen"
+  forbidden:
+    - "pip install <pkg>"           # bypasses pyproject + lock
+    - "pip freeze > requirements"   # uv is the SoT
+    - "system python script.py"     # bypasses venv
+    - "uv pip install (in production)"  # not lock-tracked
+  python_version_pin:
+    options: [pyproject.requires-python, ".python-version"]
