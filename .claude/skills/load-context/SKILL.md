@@ -1,0 +1,33 @@
+---
+name: load-context
+description: |
+  Re-orient on the project's structure by reading anamnesis-managed ontology
+  files. Use at session start, after a long context-clearing pause, or when
+  the agent appears to have lost track of project conventions.
+---
+
+# load-context
+
+When invoked, do the following — and only the following.
+
+## Steps
+
+1. List `.anamnesis/ontology/`. For each `*.yaml` file inside, read its contents. These are anamnesis-managed slices written by installed fragments.
+2. If `system_graph.yaml` exists at the project root, read it. This is user-managed and represents the authoritative top-level ontology.
+3. Summarize what you read:
+   - **Entities**: namespaces, services, hosts, identifiers, paths
+   - **Relationships**: dependencies, call paths, ownership
+   - **Invariants & rules**: anything stated as "must" / "never" / "always"
+4. Stop. Do not run other tools, edit files, or take action. The user invoked this skill to orient — not to do work.
+
+## When the project has no ontology
+
+If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists:
+
+- Say so plainly.
+- Suggest `anamnesis init` to install the baseline.
+- Do not invent ontology content from filesystem inspection — that's `init`'s job, not yours.
+
+## Why this skill exists
+
+Without it, every fresh session starts from zero project context. The agent re-derives the structure from filenames, package.json, etc. — slow, error-prone, and inconsistent across sessions. The ontology files are the single source of truth; this skill ensures the agent reads them first.

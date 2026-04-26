@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "regions": [
+    {
+      "file": "AGENTS.md",
+      "region_id": "anamnesis-base",
+      "fragment_id": "base",
+      "fragment_version": 1,
+      "template_version": 1,
+      "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
+      "last_applied_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
+      "current_user_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca"
+    }
+  ],
+  "files": [
+    {
+      "path": ".anamnesis/ontology/base.yaml",
+      "fragment_id": "base",
+      "fragment_version": 1,
+      "last_applied_hash": "sha256:d624b4afb78d389c904de1f1783f1f7146daf3ef56ae4501521610ada19b25ef",
+      "current_user_hash": "sha256:d624b4afb78d389c904de1f1783f1f7146daf3ef56ae4501521610ada19b25ef"
+    },
+    {
+      "path": ".claude/hooks/inject-ontology.sh",
+      "fragment_id": "base",
+      "fragment_version": 1,
+      "last_applied_hash": "sha256:6cf36468baecb226041571bf2f0c018de5e92230aba26b584adfb45e658f9ae6",
+      "current_user_hash": "sha256:6cf36468baecb226041571bf2f0c018de5e92230aba26b584adfb45e658f9ae6"
+    },
+    {
+      "path": ".claude/hooks/remind-uncommitted.sh",
+      "fragment_id": "base",
+      "fragment_version": 1,
+      "last_applied_hash": "sha256:4985edb6597504a6f47a2f8759a4d8c738023b14b3a53f7a2305246a16b748dc",
+      "current_user_hash": "sha256:4985edb6597504a6f47a2f8759a4d8c738023b14b3a53f7a2305246a16b748dc"
+    },
+    {
+      "path": ".claude/commands/load-context.md",
+      "fragment_id": "base",
+      "fragment_version": 1,
+      "last_applied_hash": "sha256:f952ffef2d19c113984cec49457a16382d54213505690c29cd49c1a259abd1d4",
+      "current_user_hash": "sha256:f952ffef2d19c113984cec49457a16382d54213505690c29cd49c1a259abd1d4"
+    },
+    {
+      "path": ".claude/skills/load-context/SKILL.md",
+      "fragment_id": "base",
+      "fragment_version": 1,
+      "last_applied_hash": "sha256:296f7cdde4d7bc9ed49c853317a7955102f8676372159217939a801a816957c2",
+      "current_user_hash": "sha256:296f7cdde4d7bc9ed49c853317a7955102f8676372159217939a801a816957c2"
+    }
+  ]
+}
