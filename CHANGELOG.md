@@ -65,7 +65,11 @@ and rounds out the fragment catalog.
   Reports empty workspaces (no rule match) separately. Interactive
   prompt + pnpm-workspace.yaml / lerna / nx / conventional-dir detection
   remain follow-up.
-- **`status` per-scope grouping** — drift output organized by scope.
+- ~~**`status` per-scope grouping**~~ — *shipped* — multi-scope projects
+  group fragments and drift entries under each scope. Single-scope output
+  unchanged. Each entry is bucketed to its longest-matching scope path
+  (exec-adapter files always belong to root since CC `settings.json`
+  is read only at root).
 - ~~**Agent handoff MVP**~~ — *partial: shipped in base v3* —
   `/handoff-prepare` slash command + `inject-handoff.sh` SessionStart hook
   + base v3 capability bundling. Claude Code side fully wired

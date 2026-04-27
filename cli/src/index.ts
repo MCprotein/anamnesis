@@ -185,40 +185,56 @@ function reportInit(result: InitResult): void {
 }
 
 function reportStatus(result: StatusResult): void {
-  const { agentfile, fragments, entries, suggested, declined, summary } =
-    result;
+  const { agentfile, scopes, suggested, declined, summary } = result;
   console.log(`anamnesis status — ${agentfile.project.name}`);
   console.log(`  tools: ${agentfile.tools.join(", ")}`);
 
-  console.log(`  fragments (${summary.fragmentTotal}):`);
-  for (const f of fragments) {
-    let tag: string;
-    switch (f.status) {
-      case "in-sync":
-        tag = "in-sync";
-        break;
-      case "update-available":
-        tag = `update available → ${f.libraryVersion}`;
-        break;
-      case "pinned":
-        tag = `pinned (lib has ${f.libraryVersion})`;
-        break;
-      case "library-missing":
-        tag = "library-missing";
-        break;
-    }
-    console.log(`    ${f.id}@${f.installedVersion}  [${tag}]`);
-  }
+  const isMonorepo = scopes.length > 1;
 
-  const drifted = entries.filter((e) => e.drift !== "clean");
-  if (drifted.length === 0) {
-    console.log(`  drift: none (${summary.entriesClean} entries clean)`);
+  if (isMonorepo) {
+    console.log(`  scopes (${scopes.length}):`);
+    for (const scope of scopes) {
+      const driftCount = scope.entries.filter(
+        (e) => e.drift !== "clean",
+      ).length;
+      const cleanCount = scope.entries.length - driftCount;
+      const driftSummary =
+        driftCount === 0
+          ? `${cleanCount} clean`
+          : `${driftCount} drift / ${cleanCount} clean`;
+      console.log(
+        `    [${scope.path}]  ${scope.fragments.length} fragment(s), ${driftSummary}`,
+      );
+      for (const f of scope.fragments) {
+        console.log(`      ${formatFragmentLine(f)}`);
+      }
+      const drifted = scope.entries.filter((e) => e.drift !== "clean");
+      for (const e of drifted) {
+        const tgt =
+          e.target === "region"
+            ? `${e.file} [region:${e.regionId}]`
+            : e.path;
+        console.log(`      ${e.drift.padEnd(15)} ${tgt}`);
+      }
+    }
   } else {
-    console.log(`  drift:`);
-    for (const e of drifted) {
-      const tgt =
-        e.target === "region" ? `${e.file} [region:${e.regionId}]` : e.path;
-      console.log(`    ${e.drift.padEnd(15)} ${tgt}`);
+    // Single-scope: flat list (back-compat with v0.2 format).
+    console.log(`  fragments (${summary.fragmentTotal}):`);
+    for (const f of result.fragments) {
+      console.log(`    ${formatFragmentLine(f)}`);
+    }
+    const drifted = result.entries.filter((e) => e.drift !== "clean");
+    if (drifted.length === 0) {
+      console.log(`  drift: none (${summary.entriesClean} entries clean)`);
+    } else {
+      console.log(`  drift:`);
+      for (const e of drifted) {
+        const tgt =
+          e.target === "region"
+            ? `${e.file} [region:${e.regionId}]`
+            : e.path;
+        console.log(`    ${e.drift.padEnd(15)} ${tgt}`);
+      }
     }
   }
 
@@ -237,6 +253,29 @@ function reportStatus(result: StatusResult): void {
       console.log(`    ${d.id}${when}${why}`);
     }
   }
+}
+
+function formatFragmentLine(
+  f: { id: string; installedVersion: number; libraryVersion: number | null; pinned: boolean; status: string },
+): string {
+  let tag: string;
+  switch (f.status) {
+    case "in-sync":
+      tag = "in-sync";
+      break;
+    case "update-available":
+      tag = `update available → ${f.libraryVersion}`;
+      break;
+    case "pinned":
+      tag = `pinned (lib has ${f.libraryVersion})`;
+      break;
+    case "library-missing":
+      tag = "library-missing";
+      break;
+    default:
+      tag = f.status;
+  }
+  return `${f.id}@${f.installedVersion}  [${tag}]`;
 }
 
 function reportPromote(result: PromoteResult): void {

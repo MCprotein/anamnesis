@@ -28,6 +28,7 @@ import {
   loadBaseFragment,
   type FragmentDefinition,
 } from "../core/fragments.js";
+import { effectiveScopes, type EffectiveScope } from "../core/scope.js";
 import {
   loadRulebook,
   matchingRules,
@@ -82,10 +83,27 @@ export interface DeclinedEntry {
   declinedAt?: string;
 }
 
+export interface ScopeStatus {
+  /** Scope path (`.` for root, `apps/api` for sub-scope, etc.). */
+  path: string;
+  /** Effective fragment list for this scope (root + inherited + overrides). */
+  fragments: FragmentStatus[];
+  /** Manifest entries (regions + files) belonging to this scope. */
+  entries: EntryStatus[];
+}
+
 export interface StatusResult {
   agentfile: Agentfile;
+  /** Flat union across all scopes — preserved for back-compat and quick overview. */
   fragments: FragmentStatus[];
+  /** Flat union of manifest entries — preserved for back-compat. */
   entries: EntryStatus[];
+  /**
+   * Per-scope grouping. Single-scope projects have one entry (`.`)
+   * containing the same data as the flat lists. Multi-scope projects
+   * have one entry per declared scope.
+   */
+  scopes: ScopeStatus[];
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -252,6 +270,15 @@ export function status(opts: StatusOptions): StatusResult {
     declinedAt: d.declined_at,
   }));
 
+  // Per-scope grouping: assign each fragment + entry to the longest-matching
+  // scope path. Single-scope projects collapse to a single ScopeStatus("." ).
+  const effectiveScopeList = effectiveScopes(agentfile);
+  const scopes: ScopeStatus[] = computeScopeStatus(
+    effectiveScopeList,
+    library,
+    entries,
+  );
+
   // Summary counts.
   const summary = {
     fragmentTotal: fragments.length,
@@ -274,10 +301,57 @@ export function status(opts: StatusOptions): StatusResult {
     agentfile,
     fragments,
     entries,
+    scopes,
     suggested,
     declined,
     summary,
   };
+}
+
+/**
+ * Distribute fragment statuses + manifest entries into per-scope buckets.
+ *
+ * - Fragment status is computed against each scope's effective fragment list
+ *   (so a sub-scope that adds `nestjs` shows it; root doesn't).
+ * - Each entry is assigned to the longest-matching scope path. Exec-adapter
+ *   files (`.claude/*`) always belong to root since CC settings.json is
+ *   read only at root.
+ */
+function computeScopeStatus(
+  effectiveScopeList: EffectiveScope[],
+  library: Map<string, FragmentDefinition>,
+  allEntries: EntryStatus[],
+): ScopeStatus[] {
+  const scopes: ScopeStatus[] = [];
+  for (const scope of effectiveScopeList) {
+    const fragments: FragmentStatus[] = scope.fragments.map((f) =>
+      classifyFragment(f, library),
+    );
+    scopes.push({ path: scope.path, fragments, entries: [] });
+  }
+
+  // Bucket entries: longest-matching non-root scope wins; otherwise root.
+  for (const entry of allEntries) {
+    const entryPath =
+      entry.target === "region" ? entry.file : entry.path;
+    let bestScope = scopes.find((s) => s.path === ".");
+    let bestLen = 0;
+    for (const scope of scopes) {
+      if (scope.path === ".") continue;
+      if (
+        entryPath === scope.path ||
+        entryPath.startsWith(scope.path + "/")
+      ) {
+        if (scope.path.length > bestLen) {
+          bestLen = scope.path.length;
+          bestScope = scope;
+        }
+      }
+    }
+    if (bestScope) bestScope.entries.push(entry);
+  }
+
+  return scopes;
 }
 
 // ---------------------------------------------------------------------------
