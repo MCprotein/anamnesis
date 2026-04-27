@@ -1,23 +1,30 @@
 // Codex adapter — registration entrypoint.
 //
-// v0.2 minimum scope: project_memory + ontology only. These are tool-agnostic
-// outputs (AGENTS.md region, ontology slice files) — Codex reads them
-// natively. Other capabilities (executable_hook, skill, slash_command) have
-// no native Codex equivalent in v0.2; deferred to v0.3 where AGENTS.md
-// instructions + git pre-commit hooks will provide best-effort fallbacks.
+// As of v0.3, all 5 capabilities have a Codex rendering:
+//   - project_memory / ontology: same output as CC (Codex reads AGENTS.md
+//     and ontology slice files natively)
+//   - executable_hook / skill / slash_command: AGENTS.md region fallback
+//     that documents the intent so the agent can honor it manually
 //
-// When Codex is added to `tools` alongside `claude-code`, both adapters emit
-// the same project_memory / ontology actions. Init/update dedupes by
-// (target, path, regionId) before planChanges so the duplication produces
-// no extra writes.
+// When `codex` shares `tools` with `claude-code`, both adapters render
+// in parallel. Init/update dedupe identical actions (project_memory,
+// ontology) by target identity; the divergent fallback regions
+// (`codex-hook-*`, `codex-skill-*`, `codex-cmd-*`) coexist with the
+// CC-native files.
 
 import type { RendererRegistry } from "../../core/render.js";
 import { projectMemoryRenderer } from "./project_memory.js";
 import { ontologyRenderer } from "./ontology.js";
+import { executableHookRenderer } from "./executable_hook.js";
+import { skillRenderer } from "./skill.js";
+import { slashCommandRenderer } from "./slash_command.js";
 
 export const codexRenderers = [
   projectMemoryRenderer,
   ontologyRenderer,
+  executableHookRenderer,
+  skillRenderer,
+  slashCommandRenderer,
 ] as const;
 
 export function registerCodex(registry: RendererRegistry): void {
@@ -26,16 +33,17 @@ export function registerCodex(registry: RendererRegistry): void {
   }
 }
 
-export { projectMemoryRenderer, ontologyRenderer };
+export {
+  projectMemoryRenderer,
+  ontologyRenderer,
+  executableHookRenderer,
+  skillRenderer,
+  slashCommandRenderer,
+};
 
 /**
- * Capabilities NOT supported by the Codex adapter in v0.2.
- * Surfaced by `init` / `update` reporters when these capabilities are
- * present in selected fragments and `codex` is in `tools`, so users
- * understand which features are silently best-effort.
+ * Capabilities not yet covered on Codex. Empty as of v0.3 #2 — all 5
+ * capability types now have at least a Codex rendering. Kept for
+ * symmetry with potential future capability types.
  */
-export const CODEX_UNSUPPORTED = [
-  "executable_hook",
-  "skill",
-  "slash_command",
-] as const;
+export const CODEX_UNSUPPORTED: readonly string[] = [];

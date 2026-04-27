@@ -53,9 +53,14 @@ and rounds out the fragment catalog.
 ### Targeted for v0.3
 
 - **Cursor adapter** (`.cursor/rules/*.mdc`) with `scoped_rule` capability.
-- **Codex adapter completion** — `executable_hook` / `skill` /
-  `slash_command` fallbacks (AGENTS.md instructions + git pre-commit).
-  Currently silently skipped on Codex.
+- ~~**Codex adapter completion**~~ — *shipped (AGENTS.md region path)* —
+  `executable_hook`, `skill`, `slash_command` now have Codex
+  renderers that emit region-based fallbacks (script body / skill body /
+  command body) into AGENTS.md so Codex agents can honor the intent
+  manually. CC + Codex co-existence: CC installs native files; Codex
+  reads region instructions from AGENTS.md. Git pre-commit auto-wiring
+  for hooks remains v0.4 polish (low value compared to the AGENTS.md
+  path).
 - **Full `pinned` semantics** — fragment version cache so `pinned: true`
   renders the pinned version, not library-current.
 - ~~**Monorepo init UX**~~ — *partial: `init --monorepo` shipped* —

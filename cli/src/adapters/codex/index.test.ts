@@ -14,12 +14,12 @@ describe("registerCodex", () => {
     expect(registry.get("codex", "ontology")).toBeDefined();
   });
 
-  it("does NOT register exec / skill / slash_command renderers (v0.2 limitation)", () => {
+  it("registers exec / skill / slash_command renderers (v0.3+ — fallback regions)", () => {
     const registry = new RendererRegistry();
     registerCodex(registry);
-    expect(registry.get("codex", "executable_hook")).toBeUndefined();
-    expect(registry.get("codex", "skill")).toBeUndefined();
-    expect(registry.get("codex", "slash_command")).toBeUndefined();
+    expect(registry.get("codex", "executable_hook")).toBeDefined();
+    expect(registry.get("codex", "skill")).toBeDefined();
+    expect(registry.get("codex", "slash_command")).toBeDefined();
   });
 
   it("co-exists with claude-code adapter on the same registry", async () => {
@@ -30,7 +30,7 @@ describe("registerCodex", () => {
     registerClaudeCode(registry);
     registerCodex(registry);
 
-    // CC has all five
+    // Both adapters expose all five capabilities (Codex via region fallbacks).
     for (const t of [
       "project_memory",
       "ontology",
@@ -39,23 +39,18 @@ describe("registerCodex", () => {
       "slash_command",
     ] as const) {
       expect(registry.get("claude-code", t)).toBeDefined();
+      expect(registry.get("codex", t)).toBeDefined();
     }
-    // Codex has only project_memory + ontology
-    expect(registry.get("codex", "project_memory")).toBeDefined();
-    expect(registry.get("codex", "ontology")).toBeDefined();
-    expect(registry.get("codex", "executable_hook")).toBeUndefined();
   });
 
-  it("exposes the adapter renderer set length 2", () => {
-    expect(codexRenderers).toHaveLength(2);
+  it("exposes the adapter renderer set length 5 (full coverage)", () => {
+    expect(codexRenderers).toHaveLength(5);
     for (const r of codexRenderers) {
       expect(r.adapter).toBe("codex");
     }
   });
 
-  it("CODEX_UNSUPPORTED lists the v0.2 gaps", () => {
-    expect(CODEX_UNSUPPORTED).toContain("executable_hook");
-    expect(CODEX_UNSUPPORTED).toContain("skill");
-    expect(CODEX_UNSUPPORTED).toContain("slash_command");
+  it("CODEX_UNSUPPORTED is empty (v0.3+ full coverage)", () => {
+    expect(CODEX_UNSUPPORTED).toEqual([]);
   });
 });
