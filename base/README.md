@@ -8,16 +8,18 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 5 capabilities (one of each type)
+├── fragment.yaml                # 7 capabilities (covers all 5 types; v3+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
 └── adapters/claude-code/
     ├── hooks/
-    │   ├── inject-ontology.sh   # SessionStart: cats ontology slices into context
+    │   ├── inject-ontology.sh   # SessionStart: cats ontology slices recursively
+    │   ├── inject-handoff.sh    # SessionStart: cats most recent .anamnesis/handoff/*.md
     │   └── remind-uncommitted.sh # PostToolUse:Edit: nags on dirty git tree
     ├── commands/
-    │   └── load-context.md      # /load-context slash command
+    │   ├── load-context.md      # /load-context slash command
+    │   └── handoff-prepare.md   # /handoff-prepare — prepare cross-session/agent handoff
     └── skills/
         └── load-context/
             └── SKILL.md         # load-context skill

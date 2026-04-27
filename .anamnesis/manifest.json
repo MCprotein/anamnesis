@@ -5,11 +5,11 @@
       "file": "AGENTS.md",
       "region_id": "anamnesis-base",
       "fragment_id": "base",
-      "fragment_version": 1,
-      "template_version": 1,
+      "fragment_version": 3,
+      "template_version": 3,
       "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "last_applied_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "current_user_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca"
+      "last_applied_hash": "sha256:64f6b3f90254b30b02ee5bc09b17a78b4323789d6ce0e858b51a3f3d14fc2fc2",
+      "current_user_hash": "sha256:64f6b3f90254b30b02ee5bc09b17a78b4323789d6ce0e858b51a3f3d14fc2fc2"
     }
   ],
   "files": [
@@ -47,6 +47,20 @@
       "fragment_version": 2,
       "last_applied_hash": "sha256:498d95d6a032eeb630d0ad09fb6f27055fa480abb08a8d703ede72f85c40374b",
       "current_user_hash": "sha256:498d95d6a032eeb630d0ad09fb6f27055fa480abb08a8d703ede72f85c40374b"
+    },
+    {
+      "path": ".claude/hooks/inject-handoff.sh",
+      "fragment_id": "base",
+      "fragment_version": 3,
+      "last_applied_hash": "sha256:69e7bbbde298f38e4ec1cf998836a48ab0301b5bf0f82772910ab28ee44eefe6",
+      "current_user_hash": "sha256:69e7bbbde298f38e4ec1cf998836a48ab0301b5bf0f82772910ab28ee44eefe6"
+    },
+    {
+      "path": ".claude/commands/handoff-prepare.md",
+      "fragment_id": "base",
+      "fragment_version": 3,
+      "last_applied_hash": "sha256:00ec0e6ad19acf59d90fa29f0b93165e88638fdedf2120da02c8d88ec3825cf3",
+      "current_user_hash": "sha256:00ec0e6ad19acf59d90fa29f0b93165e88638fdedf2120da02c8d88ec3825cf3"
     }
   ]
 }

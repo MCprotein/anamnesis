@@ -6,6 +6,10 @@
           {
             "type": "command",
             "command": ".claude/hooks/inject-ontology.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/inject-handoff.sh"
           }
         ]
       }

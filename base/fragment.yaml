@@ -1,5 +1,5 @@
 id: base
-version: 2
+version: 3
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, the load-context slash command/skill, and the AGENTS.md baseline
@@ -23,9 +23,18 @@ capabilities:
     source: adapters/claude-code/hooks/remind-uncommitted.sh
     adapters_supported: [claude-code]
 
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/inject-handoff.sh
+    adapters_supported: [claude-code]
+
   - type: slash_command
     name: load-context
     source: adapters/claude-code/commands/load-context.md
+
+  - type: slash_command
+    name: handoff-prepare
+    source: adapters/claude-code/commands/handoff-prepare.md
 
   - type: skill
     name: load-context
@@ -36,5 +45,7 @@ owns:
   - file: .anamnesis/ontology/base.yaml
   - file: .claude/hooks/inject-ontology.sh
   - file: .claude/hooks/remind-uncommitted.sh
+  - file: .claude/hooks/inject-handoff.sh
   - file: .claude/commands/load-context.md
+  - file: .claude/commands/handoff-prepare.md
   - file: .claude/skills/load-context/SKILL.md

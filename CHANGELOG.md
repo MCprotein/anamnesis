@@ -62,9 +62,12 @@ and rounds out the fragment catalog.
   `packages/*` patterns and proposes a multi-scope Agentfile. Lifts the
   hand-edit step described in [`docs/MONOREPO.md`](../docs/MONOREPO.md).
 - **`status` per-scope grouping** — drift output organized by scope.
-- **Agent handoff MVP** — `/handoff prepare` slash command + SessionStart
-  injection. Cross-tool task continuity (Claude → Codex → Cursor) without
-  context loss.
+- ~~**Agent handoff MVP**~~ — *partial: shipped in base v3* —
+  `/handoff-prepare` slash command + `inject-handoff.sh` SessionStart hook
+  + base v3 capability bundling. Claude Code side fully wired
+  (settings.json auto-registered). Codex/Cursor parity (AGENTS.md
+  instruction to read `.anamnesis/handoff/<ts>.md` on session start)
+  remains v0.3 work.
 
 ### Targeted for v0.4
 
