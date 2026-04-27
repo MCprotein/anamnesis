@@ -6,9 +6,9 @@ Show the current project context — entities, relationships, invariants — by 
 
 Steps:
 
-1. Read every file under `.anamnesis/ontology/` (these are anamnesis-managed slices, one per installed fragment).
+1. Read every `*.yaml` under any `.anamnesis/ontology/` directory in the project — including nested ones for monorepo sub-scopes (e.g. `apps/api/.anamnesis/ontology/`). Use `find . -path '*/.anamnesis/ontology/*.yaml' -type f` (or equivalent) to locate them.
 2. If `system_graph.yaml` exists at the project root, read it (user-managed; takes precedence over slices).
-3. Summarize concisely:
+3. Summarize concisely, grouping by scope when nested ontology dirs are present:
    - Main entities (services, hosts, identifiers, paths)
    - Relationships (who calls whom, who depends on what)
    - Stated invariants ("never do X", "always Y")

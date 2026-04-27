@@ -26,10 +26,20 @@ export const ontologyRenderer: CapabilityRenderer = {
       );
     }
     const content = fs.readFileSync(sourcePath, "utf8");
+    // Scope into the .anamnesis/ontology/ directory belonging to this scope.
+    // Root scope writes to <project>/.anamnesis/ontology/; sub-scopes write
+    // to <scope>/.anamnesis/ontology/ (e.g. apps/api/.anamnesis/ontology/).
+    // The base SessionStart hook walks recursively to inject all slices.
+    const scopePath = ctx.scopePath ?? ".";
+    const ontologyRel = `.anamnesis/ontology/${ctx.fragment.id}.yaml`;
+    const scopedPath =
+      scopePath === "." || scopePath === ""
+        ? ontologyRel
+        : path.posix.join(scopePath, ontologyRel);
     return [
       {
         kind: "file",
-        path: `.anamnesis/ontology/${ctx.fragment.id}.yaml`,
+        path: scopedPath,
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
         content,

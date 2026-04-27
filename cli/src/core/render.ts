@@ -58,6 +58,19 @@ export interface RenderContext {
   fragment: FragmentDefinition;
   fragmentDir: string; // absolute path to the fragment dir in the library
   projectRoot: string;
+  /**
+   * Scope-relative directory within the project. `"."` means the project
+   * root (single-scope or root scope of a monorepo). For monorepo sub-scopes
+   * like `apps/api`, the value is `"apps/api"`.
+   *
+   * Optional with default `"."` — single-scope projects (the v0.1 behavior)
+   * never need to set it. Multi-scope `init`/`update` set it per scope.
+   *
+   * Renderers use this to scope per-scope artifacts (AGENTS.md regions,
+   * ontology slices). Exec adapters (hooks/commands/skills) are project-
+   * root only — Claude Code's `settings.json` is read only at root.
+   */
+  scopePath?: string;
   settings: AgentfileSettings;
   params: Record<string, unknown>;
 }

@@ -350,6 +350,196 @@ describe("update — new rulebook suggestions", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("update — multi-scope monorepo", () => {
+  function makeMonorepoLibrary(): string {
+    const lib = tmpDir("anamnesis-lib-");
+
+    // base
+    const baseDir = path.join(lib, "base");
+    fs.mkdirSync(path.join(baseDir, "content"), { recursive: true });
+    fs.writeFileSync(
+      path.join(baseDir, "fragment.yaml"),
+      `id: base
+version: 1
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+`,
+    );
+    fs.writeFileSync(
+      path.join(baseDir, "content", "agents.snippet.md"),
+      "## anamnesis baseline\n",
+    );
+
+    // nextjs (uses ontology + project_memory)
+    const nextDir = path.join(lib, "fragments", "nextjs");
+    fs.mkdirSync(path.join(nextDir, "content"), { recursive: true });
+    fs.writeFileSync(
+      path.join(nextDir, "fragment.yaml"),
+      `id: nextjs
+version: 1
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: nextjs
+  - type: ontology
+    source: content/ontology.snippet.yaml
+`,
+    );
+    fs.writeFileSync(
+      path.join(nextDir, "content", "agents.snippet.md"),
+      "## Next.js\nuse next/image.\n",
+    );
+    fs.writeFileSync(
+      path.join(nextDir, "content", "ontology.snippet.yaml"),
+      "nextjs: { router: app }\n",
+    );
+
+    // fastapi
+    const fastDir = path.join(lib, "fragments", "fastapi");
+    fs.mkdirSync(path.join(fastDir, "content"), { recursive: true });
+    fs.writeFileSync(
+      path.join(fastDir, "fragment.yaml"),
+      `id: fastapi
+version: 1
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: fastapi
+  - type: ontology
+    source: content/ontology.snippet.yaml
+`,
+    );
+    fs.writeFileSync(
+      path.join(fastDir, "content", "agents.snippet.md"),
+      "## FastAPI\nuse Depends.\n",
+    );
+    fs.writeFileSync(
+      path.join(fastDir, "content", "ontology.snippet.yaml"),
+      "fastapi: { di: Depends }\n",
+    );
+
+    // empty rulebook (we manually construct Agentfile, no auto-detect needed)
+    fs.writeFileSync(path.join(lib, "rulebook.md"), "");
+    return lib;
+  }
+
+  function setupMonorepo(library: string): string {
+    const project = tmpDir("anamnesis-proj-");
+    fs.mkdirSync(path.join(project, "apps/api"), { recursive: true });
+    fs.mkdirSync(path.join(project, "apps/web"), { recursive: true });
+    // Multi-scope Agentfile written by hand.
+    fs.writeFileSync(
+      path.join(project, "Agentfile"),
+      `version: 1
+project:
+  name: monorepo
+  scopes:
+    - path: .
+    - path: apps/api
+      extends: .
+      overrides:
+        fragments_add:
+          - { id: fastapi, version: 1 }
+    - path: apps/web
+      extends: .
+      overrides:
+        fragments_add:
+          - { id: nextjs, version: 1 }
+tools:
+  - claude-code
+fragments: []
+`,
+    );
+    return project;
+  }
+
+  it("renders per-scope: base in root, fastapi in apps/api, nextjs in apps/web", () => {
+    const library = makeMonorepoLibrary();
+    const project = setupMonorepo(library);
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    expect(result.writtenToDisk).toBe(true);
+
+    // Root AGENTS.md has anamnesis-base
+    expect(
+      fs.readFileSync(path.join(project, "AGENTS.md"), "utf8"),
+    ).toContain("anamnesis-base");
+
+    // apps/api/AGENTS.md has fastapi region; apps/api/.anamnesis/ontology/fastapi.yaml exists
+    expect(
+      fs.readFileSync(path.join(project, "apps/api/AGENTS.md"), "utf8"),
+    ).toContain("fastapi");
+    expect(
+      fs.existsSync(
+        path.join(project, "apps/api/.anamnesis/ontology/fastapi.yaml"),
+      ),
+    ).toBe(true);
+
+    // apps/web/AGENTS.md has nextjs region; apps/web/.anamnesis/ontology/nextjs.yaml exists
+    expect(
+      fs.readFileSync(path.join(project, "apps/web/AGENTS.md"), "utf8"),
+    ).toContain("nextjs");
+    expect(
+      fs.existsSync(
+        path.join(project, "apps/web/.anamnesis/ontology/nextjs.yaml"),
+      ),
+    ).toBe(true);
+  });
+
+  it("re-running update is idempotent across all scopes", () => {
+    const library = makeMonorepoLibrary();
+    const project = setupMonorepo(library);
+
+    update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    const second = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: false,
+      allowExecAdapters: false,
+    });
+
+    // All changes (regions + ontology files in 3 scopes) should be noop on re-run.
+    expect(second.changes.every((c) => c.status === "noop")).toBe(true);
+  });
+
+  it("inheritance + add: child sees inherited base AND its own fragment", () => {
+    const library = makeMonorepoLibrary();
+    const project = setupMonorepo(library);
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    // apps/api inherits base from root, adds fastapi.
+    // → apps/api/AGENTS.md has both `anamnesis-base` AND `fastapi` regions.
+    const apiAgents = fs.readFileSync(
+      path.join(project, "apps/api/AGENTS.md"),
+      "utf8",
+    );
+    expect(apiAgents).toContain("anamnesis-base");
+    expect(apiAgents).toContain("fastapi");
+    // No nextjs leak.
+    expect(apiAgents).not.toContain("region id=nextjs");
+  });
+});
+
 describe("update — exec-adapter gate", () => {
   it("blocks new exec-adapter writes during update without the flag", () => {
     // Library v1 has only project_memory. Library v2 adds an executable_hook.

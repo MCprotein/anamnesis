@@ -25,10 +25,18 @@ export const projectMemoryRenderer: CapabilityRenderer = {
       );
     }
     const content = fs.readFileSync(sourcePath, "utf8");
+    // Scope into the AGENTS.md belonging to this scope. Root scope (".")
+    // or unset writes to the project-root AGENTS.md; sub-scopes write to
+    // their own AGENTS.md (e.g. apps/api/AGENTS.md).
+    const scopePath = ctx.scopePath ?? ".";
+    const scopedFile =
+      scopePath === "." || scopePath === ""
+        ? ctx.settings.agents_md_path
+        : path.posix.join(scopePath, ctx.settings.agents_md_path);
     return [
       {
         kind: "region",
-        file: ctx.settings.agents_md_path,
+        file: scopedFile,
         regionId: capability.region,
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,

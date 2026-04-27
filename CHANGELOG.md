@@ -74,7 +74,6 @@ plus 3 user projects across infra / ML / NestJS stacks).
   but rendering still uses library-current versions. Full pinning
   requires a fragment version cache.
 - Codex / Cursor adapters not yet implemented.
-- Monorepo `scopes` rejected by Agentfile validator in v0.1; deferred to v0.2.
 - `promote` does not yet support `project_memory` (region extraction
   from AGENTS.md). v0.2 target.
 
@@ -95,6 +94,16 @@ plus 3 user projects across infra / ML / NestJS stacks).
   — fixed via `detectIndent()` in `core/settings.ts`. `writeSettings`
   now reads the existing file (if any), detects 2-space / 4-space / tab
   indent, and preserves it on rewrite. New files default to 2-space.
+- ~~Monorepo `scopes` rejected by Agentfile validator~~ — multi-scope
+  layouts now supported. Each scope can `extends` a parent and
+  `overrides.{tools, fragments_add, fragments_remove}`. project_memory
+  + ontology render to scope-relative paths (`apps/api/AGENTS.md`,
+  `apps/api/.anamnesis/ontology/`); exec adapters (hooks/commands/skills)
+  remain at project root because Claude Code's `settings.json` is read
+  only at root. Base SessionStart hook walks `.anamnesis/ontology/`
+  recursively so all sub-scope ontologies are injected. base fragment
+  bumped to v2 to ship the recursive walk + scope-aware load-context
+  skill/command.
 
 ### Repository policy
 

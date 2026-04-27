@@ -1,5 +1,5 @@
 id: base
-version: 1
+version: 2
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, the load-context slash command/skill, and the AGENTS.md baseline

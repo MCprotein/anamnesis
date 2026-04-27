@@ -12,12 +12,25 @@ import { z } from "zod";
 
 const toolNameSchema = z.enum(["claude-code", "codex", "cursor"]);
 
+const fragmentEntrySchema = z.object({
+  id: z.string().min(1),
+  version: z.number().int().positive(),
+  params: z.record(z.string(), z.unknown()).optional(),
+  adapters: z.record(toolNameSchema, z.boolean()).optional(),
+  pinned: z.boolean().optional(),
+});
+
 const scopeSchema = z.object({
   path: z.string(),
   extends: z.string().optional(),
   overrides: z
     .object({
       tools: z.array(toolNameSchema).optional(),
+      // Add these fragment entries to the inherited list.
+      fragments_add: z.array(fragmentEntrySchema).optional(),
+      // Drop these fragment ids from the inherited list (for trimming
+      // a child scope down from its parent).
+      fragments_remove: z.array(z.string()).optional(),
     })
     .optional(),
 });
@@ -116,14 +129,24 @@ function semanticErrors(af: Agentfile): string[] {
     declinedIds.add(d.id);
   }
 
-  // v0.1: monorepo scopes deferred — only allow single root or omitted
+  // Scope validation (v0.2+): multi-scope monorepo layout is allowed.
   const scopes = af.project.scopes;
   if (scopes && scopes.length > 0) {
-    const onlyRoot = scopes.length === 1 && scopes[0]?.path === ".";
-    if (!onlyRoot) {
-      errors.push(
-        "project.scopes: multi-scope monorepo layout is deferred to v0.2 (use single '.' or omit)",
-      );
+    const seenPaths = new Set<string>();
+    const knownPaths = new Set(scopes.map((s) => s.path));
+    for (const s of scopes) {
+      if (seenPaths.has(s.path)) {
+        errors.push(`project.scopes: duplicate path '${s.path}'`);
+      }
+      seenPaths.add(s.path);
+      if (s.extends !== undefined && !knownPaths.has(s.extends)) {
+        errors.push(
+          `project.scopes: scope '${s.path}' extends unknown scope '${s.extends}'`,
+        );
+      }
+      if (s.extends === s.path) {
+        errors.push(`project.scopes: scope '${s.path}' cannot extend itself`);
+      }
     }
   }
 

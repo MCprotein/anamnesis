@@ -12,13 +12,18 @@ When invoked, do the following — and only the following.
 
 ## Steps
 
-1. List `.anamnesis/ontology/`. For each `*.yaml` file inside, read its contents. These are anamnesis-managed slices written by installed fragments.
-2. If `system_graph.yaml` exists at the project root, read it. This is user-managed and represents the authoritative top-level ontology.
-3. Summarize what you read:
+1. Locate every `.anamnesis/ontology/*.yaml` in the project — including nested directories under monorepo sub-scopes (e.g. `apps/api/.anamnesis/ontology/`). The recommended discovery pattern:
+   ```bash
+   find . -path '*/.anamnesis/ontology/*.yaml' -type f \
+     -not -path '*/node_modules/*' -not -path '*/.git/*'
+   ```
+2. Read each found file. These are anamnesis-managed slices written by installed fragments.
+3. If `system_graph.yaml` exists at the project root, read it. This is user-managed and represents the authoritative top-level ontology.
+4. Summarize what you read, grouping by scope when nested ontology dirs are present:
    - **Entities**: namespaces, services, hosts, identifiers, paths
    - **Relationships**: dependencies, call paths, ownership
    - **Invariants & rules**: anything stated as "must" / "never" / "always"
-4. Stop. Do not run other tools, edit files, or take action. The user invoked this skill to orient — not to do work.
+5. Stop. Do not run other tools, edit files, or take action. The user invoked this skill to orient — not to do work.
 
 ## When the project has no ontology
 

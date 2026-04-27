@@ -33,6 +33,7 @@ import {
   detectConflicts,
   type FragmentDefinition,
 } from "../core/fragments.js";
+import { effectiveScopes } from "../core/scope.js";
 import { ProjectContext } from "../core/triggers.js";
 import {
   RendererRegistry,
@@ -125,32 +126,66 @@ export function update(opts: UpdateOptions): UpdateResult {
   const base = loadBaseFragment(libraryRoot);
   const rules = loadRulebook(libraryRoot);
 
-  // 4. Resolve selection from Agentfile.fragments (declarative source of truth).
-  const selected: FragmentDefinition[] = [];
-  const seen = new Set<string>();
+  // 4. Resolve scopes. Auto-inject base into top-level fragments BEFORE
+  // computing effective scopes, so sub-scopes that `extends: .` inherit it.
+  const agentfileForResolution: Agentfile =
+    base && !agentfile.fragments.some((f) => f.id === base.id)
+      ? {
+          ...agentfile,
+          fragments: [
+            { id: base.id, version: base.version },
+            ...agentfile.fragments,
+          ],
+        }
+      : agentfile;
+
+  const scopes = effectiveScopes(agentfileForResolution);
+  const allInstalledIds = new Set<string>();
   const missing: string[] = [];
 
-  for (const entry of agentfile.fragments) {
-    if (seen.has(entry.id)) continue;
-    let frag: FragmentDefinition | undefined;
-    if (entry.id === "base") {
-      frag = base ?? undefined;
-    } else {
-      frag = fragments.get(entry.id);
-    }
-    if (!frag) {
-      missing.push(entry.id);
-      continue;
-    }
-    selected.push(frag);
-    seen.add(frag.id);
-  }
+  // Per-scope rendering plan.
+  const perScope: Array<{
+    scopePath: string;
+    ordered: FragmentDefinition[];
+    rootOrdered: boolean;
+  }> = [];
 
-  // base is always-on — include even if Agentfile didn't list it (older
-  // Agentfile from before base existed in the library).
-  if (base && !seen.has(base.id)) {
-    selected.unshift(base);
-    seen.add(base.id);
+  for (const scope of scopes) {
+    const resolved: FragmentDefinition[] = [];
+    const seenInScope = new Set<string>();
+
+    for (const entry of scope.fragments) {
+      if (seenInScope.has(entry.id)) continue;
+      let frag: FragmentDefinition | undefined;
+      if (entry.id === "base") {
+        frag = base ?? undefined;
+      } else {
+        frag = fragments.get(entry.id);
+      }
+      if (!frag) {
+        missing.push(`${scope.path}/${entry.id}`);
+        continue;
+      }
+      resolved.push(frag);
+      seenInScope.add(frag.id);
+      allInstalledIds.add(frag.id);
+    }
+
+    perScope.push({
+      scopePath: scope.path,
+      ordered: [],
+      rootOrdered: scope.path === ".",
+    });
+    // Topo + conflict per scope (different scopes may share fragment ids).
+    const ordered = topologicalSort(resolved);
+    const conflicts = detectConflicts(ordered);
+    if (conflicts.length > 0) {
+      const pairs = conflicts.map(([a, b]) => `${a}↔${b}`).join(", ");
+      throw new UpdateError(
+        `scope '${scope.path}': conflicting fragments: ${pairs}`,
+      );
+    }
+    perScope[perScope.length - 1]!.ordered = ordered;
   }
 
   if (missing.length > 0) {
@@ -160,40 +195,40 @@ export function update(opts: UpdateOptions): UpdateResult {
     );
   }
 
-  // 5. Order + conflict check.
-  const ordered = topologicalSort(selected);
-  const conflicts = detectConflicts(ordered);
-  if (conflicts.length > 0) {
-    const pairs = conflicts.map(([a, b]) => `${a}↔${b}`).join(", ");
-    throw new UpdateError(`conflicting fragments selected: ${pairs}`);
-  }
-
-  // 6. Detect new rulebook suggestions (not in Agentfile and not declined).
+  // 5. Detect new rulebook suggestions (not installed in any scope and not declined).
   const ctx = new ProjectContext(projectRoot);
   const matched = matchingRules(rules, ctx);
   const declinedIds = new Set(
     (agentfile.declined ?? []).map((d) => d.id),
   );
   const suggested = matched.filter(
-    (r) => !seen.has(r.suggest) && !declinedIds.has(r.suggest),
+    (r) => !allInstalledIds.has(r.suggest) && !declinedIds.has(r.suggest),
   );
 
-  // 7. Plan rendering.
+  // 6. Determine the "ordered" list used for Agentfile version-bump (only
+  // the root scope's fragments are bumped; sub-scope overrides preserved).
+  const rootOrdered =
+    perScope.find((s) => s.rootOrdered)?.ordered ?? [];
+  const ordered = rootOrdered;
+
+  // 7. Plan rendering across all scopes.
   const registry = new RendererRegistry();
   registerClaudeCode(registry);
   const actions: RenderAction[] = [];
-  for (const frag of ordered) {
-    const fragmentDir = fragmentDirOf(libraryRoot, frag.id);
-    const renderCtx: RenderContext = {
-      fragment: frag,
-      fragmentDir,
-      projectRoot,
-      settings: DEFAULT_SETTINGS,
-      params: {},
-    };
-    actions.push(...registry.planFragment(renderCtx, "claude-code"));
+  for (const { scopePath, ordered: scopeOrdered } of perScope) {
+    for (const frag of scopeOrdered) {
+      const fragmentDir = fragmentDirOf(libraryRoot, frag.id);
+      const renderCtx: RenderContext = {
+        fragment: frag,
+        fragmentDir,
+        projectRoot,
+        scopePath,
+        settings: DEFAULT_SETTINGS,
+        params: {},
+      };
+      actions.push(...registry.planFragment(renderCtx, "claude-code"));
+    }
   }
-
   // 8. Plan changes vs existing manifest.
   const { changes, nextManifest } = planChanges(actions, {
     projectRoot,

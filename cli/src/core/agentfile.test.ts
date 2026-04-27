@@ -118,7 +118,7 @@ fragments: []
     expect(() => parseAgentfile(yaml)).toThrow(/YAML parse error/);
   });
 
-  it("rejects multi-scope monorepo in v0.1", () => {
+  it("accepts multi-scope monorepo (v0.2+)", () => {
     const yaml = `
 version: 1
 project:
@@ -126,10 +126,11 @@ project:
   scopes:
     - path: .
     - path: packages/api
+      extends: .
 tools: [claude-code]
 fragments: []
 `;
-    expect(() => parseAgentfile(yaml)).toThrow(/multi-scope/);
+    expect(() => parseAgentfile(yaml)).not.toThrow();
   });
 
   it("accepts single '.' scope", () => {
