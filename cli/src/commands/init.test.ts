@@ -372,6 +372,179 @@ describe("init — base fragment auto-inclusion", () => {
   });
 });
 
+describe("init — monorepo detection (--monorepo)", () => {
+  let library: string;
+  let project: string;
+
+  beforeEach(() => {
+    library = makeLibrary({ withBase: true });
+    project = tmpDir("anamnesis-monorepo-");
+  });
+
+  function writePackageJson(
+    dir: string,
+    body: Record<string, unknown>,
+  ): void {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "package.json"),
+      JSON.stringify(body, null, 2),
+    );
+  }
+
+  it("falls back to single-scope when no monorepo declaration present", () => {
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      monorepo: true, // requested but not present
+    });
+    expect(result.monorepoDetection?.isMonorepo).toBe(false);
+    expect(result.agentfile.project.scopes).toBeUndefined();
+  });
+
+  it("builds multi-scope Agentfile from package.json workspaces", () => {
+    writePackageJson(project, {
+      name: "monorepo",
+      workspaces: ["apps/*"],
+    });
+    // sub-project that triggers prisma rule (the test fixture's only rule)
+    writePackageJson(path.join(project, "apps/api"), {
+      name: "api",
+      dependencies: { "@prisma/client": "^5" },
+    });
+    fs.mkdirSync(path.join(project, "apps/api/prisma"));
+    fs.writeFileSync(
+      path.join(project, "apps/api/prisma/schema.prisma"),
+      "",
+    );
+
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      monorepo: true,
+    });
+
+    expect(result.monorepoDetection?.isMonorepo).toBe(true);
+    expect(result.agentfile.project.scopes).toBeDefined();
+    expect(result.agentfile.project.scopes!.map((s) => s.path)).toEqual([
+      ".",
+      "apps/api",
+    ]);
+
+    // apps/api scope has fragments_add: prisma
+    const apiScope = result.agentfile.project.scopes!.find(
+      (s) => s.path === "apps/api",
+    )!;
+    expect(apiScope.extends).toBe(".");
+    expect(apiScope.overrides?.fragments_add).toEqual([
+      { id: "prisma", version: 1 },
+    ]);
+  });
+
+  it("renders per-scope project_memory regions on disk", () => {
+    writePackageJson(project, {
+      name: "monorepo",
+      workspaces: ["apps/*"],
+    });
+    writePackageJson(path.join(project, "apps/api"), {
+      name: "api",
+      dependencies: { "@prisma/client": "^5" },
+    });
+    fs.mkdirSync(path.join(project, "apps/api/prisma"));
+    fs.writeFileSync(
+      path.join(project, "apps/api/prisma/schema.prisma"),
+      "",
+    );
+
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      monorepo: true,
+    });
+
+    // Root AGENTS.md has anamnesis-base region (and not prisma).
+    const rootAgents = fs.readFileSync(
+      path.join(project, "AGENTS.md"),
+      "utf8",
+    );
+    expect(rootAgents).toContain("anamnesis-base");
+
+    // apps/api/AGENTS.md has prisma region (per-scope).
+    const apiAgents = fs.readFileSync(
+      path.join(project, "apps/api/AGENTS.md"),
+      "utf8",
+    );
+    expect(apiAgents).toContain("prisma");
+  });
+
+  it("reports empty workspace dirs (no rule match) without installing", () => {
+    writePackageJson(project, {
+      name: "monorepo",
+      workspaces: ["libs/*"],
+    });
+    writePackageJson(path.join(project, "libs/shared"), {
+      name: "shared",
+      dependencies: { lodash: "^4" }, // no fixture rule matches
+    });
+
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      monorepo: true,
+    });
+
+    expect(result.monorepoDetection?.scopes).toEqual([]);
+    expect(result.monorepoDetection?.emptyScopes).toEqual(["libs/shared"]);
+    // Agentfile has NO scopes section (since no scope had matches).
+    expect(result.agentfile.project.scopes).toBeUndefined();
+  });
+
+  it("avoids double-installing fragments already at root", () => {
+    // Root has prisma trigger AND a sub-app also has it.
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+
+    writePackageJson(project, {
+      name: "monorepo",
+      workspaces: ["apps/*"],
+    });
+    writePackageJson(path.join(project, "apps/api"), {
+      name: "api",
+      dependencies: { "@prisma/client": "^5" },
+    });
+    fs.mkdirSync(path.join(project, "apps/api/prisma"));
+    fs.writeFileSync(
+      path.join(project, "apps/api/prisma/schema.prisma"),
+      "",
+    );
+
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      monorepo: true,
+    });
+
+    // Root scope has prisma. Sub-scope inherits it via extends — no need
+    // for fragments_add on the sub-scope (de-dup logic).
+    const apiScope = result.agentfile.project.scopes!.find(
+      (s) => s.path === "apps/api",
+    )!;
+    expect(apiScope.overrides?.fragments_add ?? []).toEqual([]);
+  });
+});
+
 describe("summarizeChanges", () => {
   it("counts each status bucket", () => {
     const changes = [

@@ -29,6 +29,10 @@ import {
   type FragmentDefinition,
 } from "../core/fragments.js";
 import { effectiveScopes } from "../core/scope.js";
+import {
+  detectMonorepo,
+  type MonorepoDetection,
+} from "../core/monorepo.js";
 import { ProjectContext } from "../core/triggers.js";
 import {
   RendererRegistry,
@@ -57,6 +61,15 @@ export interface InitOptions {
   dryRun: boolean;
   allowExecAdapters: boolean;
   projectName?: string;
+  /**
+   * If true, detect monorepo layout (package.json `workspaces`) and
+   * generate a multi-scope Agentfile with one scope per workspace
+   * sub-project (each gets its own `extends: '.'` + `fragments_add`
+   * derived from rulebook matches in that scope's directory).
+   *
+   * If no monorepo is detected, falls back to single-scope init silently.
+   */
+  monorepo?: boolean;
 }
 
 export interface InitResult {
@@ -71,6 +84,13 @@ export interface InitResult {
    * `create`/`update` status.
    */
   hookRegistrations: HookSyncResult[];
+  /**
+   * Set when `opts.monorepo` was true and the project actually had
+   * package.json workspaces. Includes the detected sub-scopes (with
+   * matched rules per scope) and any "empty" workspace dirs that didn't
+   * trigger any rulebook matches.
+   */
+  monorepoDetection?: MonorepoDetection;
 }
 
 export class InitError extends Error {
@@ -127,21 +147,20 @@ export function init(opts: InitOptions): InitResult {
   const ctx = new ProjectContext(projectRoot);
   const matched = matchingRules(rules, ctx);
 
-  // 4. Resolve suggested ids → library fragments.
-  // Base fragment (if present) is always included first regardless of rules.
-  const selected: FragmentDefinition[] = [];
-  const seen = new Set<string>();
+  // 4. Resolve ROOT-scope fragments from matched rules + auto-include base.
+  const rootSelected: FragmentDefinition[] = [];
+  const rootSeen = new Set<string>();
   if (base) {
-    selected.push(base);
-    seen.add(base.id);
+    rootSelected.push(base);
+    rootSeen.add(base.id);
   }
   const missing: string[] = [];
   for (const rule of matched) {
-    if (seen.has(rule.suggest)) continue;
+    if (rootSeen.has(rule.suggest)) continue;
     const frag = fragments.get(rule.suggest);
     if (frag) {
-      selected.push(frag);
-      seen.add(frag.id);
+      rootSelected.push(frag);
+      rootSeen.add(frag.id);
     } else {
       missing.push(rule.suggest);
     }
@@ -152,48 +171,133 @@ export function init(opts: InitOptions): InitResult {
     );
   }
 
-  // 5. Order by dependency; detect conflicts.
-  const ordered = topologicalSort(selected);
-  const conflicts = detectConflicts(ordered);
-  if (conflicts.length > 0) {
-    const pairs = conflicts.map(([a, b]) => `${a}↔${b}`).join(", ");
+  // 5. Order root + conflict check.
+  const rootOrdered = topologicalSort(rootSelected);
+  const rootConflicts = detectConflicts(rootOrdered);
+  if (rootConflicts.length > 0) {
+    const pairs = rootConflicts.map(([a, b]) => `${a}↔${b}`).join(", ");
     throw new InitError(`conflicting fragments selected: ${pairs}`);
   }
 
-  // 6. Build Agentfile.
+  // 6. Optional monorepo detection — adds extra scopes with their own fragments.
+  let monorepoDetection: MonorepoDetection | undefined;
+  type SubScopeResolved = {
+    scopePath: string;
+    ordered: FragmentDefinition[];
+    fragmentsAddEntries: Array<{ id: string; version: number }>;
+  };
+  const subScopes: SubScopeResolved[] = [];
+
+  if (opts.monorepo) {
+    monorepoDetection = detectMonorepo(projectRoot, rules);
+    for (const candidate of monorepoDetection.scopes) {
+      const subSelected: FragmentDefinition[] = [];
+      const seenInSub = new Set<string>();
+      for (const rule of candidate.matchedRules) {
+        if (seenInSub.has(rule.suggest)) continue;
+        // Skip if already inherited from root (avoid double-install).
+        if (rootSeen.has(rule.suggest)) continue;
+        const frag = fragments.get(rule.suggest);
+        if (frag) {
+          subSelected.push(frag);
+          seenInSub.add(frag.id);
+        } else {
+          missing.push(`${candidate.path}/${rule.suggest}`);
+        }
+      }
+      const subOrdered = topologicalSort(subSelected);
+      const subConflicts = detectConflicts(subOrdered);
+      if (subConflicts.length > 0) {
+        const pairs = subConflicts.map(([a, b]) => `${a}↔${b}`).join(", ");
+        throw new InitError(
+          `scope '${candidate.path}': conflicting fragments: ${pairs}`,
+        );
+      }
+      subScopes.push({
+        scopePath: candidate.path,
+        ordered: subOrdered,
+        fragmentsAddEntries: subOrdered.map((f) => ({
+          id: f.id,
+          version: f.version,
+        })),
+      });
+    }
+    if (missing.length > 0) {
+      throw new InitError(
+        `monorepo scope rules suggest fragments not found in library: ${missing.join(", ")}`,
+      );
+    }
+  }
+
+  // 7. Build Agentfile.
   const projectName = opts.projectName ?? path.basename(projectRoot);
   const agentfile: Agentfile = {
     version: 1,
-    project: { name: projectName },
+    project: subScopes.length > 0
+      ? {
+          name: projectName,
+          scopes: [
+            { path: "." },
+            ...subScopes.map((s) => ({
+              path: s.scopePath,
+              extends: ".",
+              overrides: { fragments_add: s.fragmentsAddEntries },
+            })),
+          ],
+        }
+      : { name: projectName },
     tools: ["claude-code"],
-    fragments: ordered.map((f) => ({ id: f.id, version: f.version })),
+    fragments: rootOrdered.map((f) => ({ id: f.id, version: f.version })),
   };
 
-  // 7. Plan rendering.
+  // 8. Plan rendering — per-scope loop (root + each sub-scope).
   const registry = new RendererRegistry();
   registerClaudeCode(registry);
 
+  const renderTargets: Array<{
+    scopePath: string;
+    ordered: FragmentDefinition[];
+  }> = [
+    { scopePath: ".", ordered: rootOrdered },
+    ...subScopes.map((s) => ({
+      scopePath: s.scopePath,
+      // Sub-scope receives root fragments via inheritance (extends: '.')
+      // PLUS its own additions. Render both so AGENTS.md gets all
+      // applicable regions.
+      ordered: [...rootOrdered, ...s.ordered],
+    })),
+  ];
+
   const actions: RenderAction[] = [];
-  for (const frag of ordered) {
-    const fragmentDir = fragmentDirOf(libraryRoot, frag.id);
-    const renderCtx: RenderContext = {
-      fragment: frag,
-      fragmentDir,
-      projectRoot,
-      settings: DEFAULT_SETTINGS,
-      params: {},
-    };
-    actions.push(...registry.planFragment(renderCtx, "claude-code"));
+  for (const { scopePath, ordered } of renderTargets) {
+    for (const frag of ordered) {
+      const fragmentDir = fragmentDirOf(libraryRoot, frag.id);
+      const renderCtx: RenderContext = {
+        fragment: frag,
+        fragmentDir,
+        projectRoot,
+        scopePath,
+        settings: DEFAULT_SETTINGS,
+        params: {},
+      };
+      actions.push(...registry.planFragment(renderCtx, "claude-code"));
+    }
   }
 
-  // 8. Plan changes vs blank manifest (init always starts fresh).
-  const { changes, nextManifest } = planChanges(actions, {
+  // 9. Dedupe identical actions before planChanges.
+  // Multi-scope rendering with inherited base produces duplicate exec-
+  // adapter writes (every scope renders base's hooks → same .claude/hooks
+  // path). Region/file dedup by target identity collapses these.
+  const dedupedActions = dedupeActions(actions);
+
+  // 10. Plan changes vs blank manifest (init always starts fresh).
+  const { changes, nextManifest } = planChanges(dedupedActions, {
     projectRoot,
     manifest: emptyManifest(),
     allowExecAdapters: opts.allowExecAdapters,
   });
 
-  // 9. Apply (or dry-run).
+  // 11. Apply (or dry-run).
   let hookRegistrations: HookSyncResult[] = [];
   if (!opts.dryRun) {
     applyChanges(changes, { projectRoot });
@@ -204,12 +308,34 @@ export function init(opts: InitOptions): InitResult {
 
   return {
     agentfile,
-    selectedFragments: ordered,
+    selectedFragments: rootOrdered,
     changes,
     nextManifest,
     writtenToDisk: !opts.dryRun,
     hookRegistrations,
+    monorepoDetection,
   };
+}
+
+/**
+ * Dedupe RenderActions by target identity. Multi-scope rendering with
+ * inherited fragments produces duplicate exec-adapter writes
+ * (`.claude/hooks/...` is project-root regardless of scope), and
+ * dedupe collapses these to a single action.
+ */
+function dedupeActions(actions: RenderAction[]): RenderAction[] {
+  const seen = new Set<string>();
+  const out: RenderAction[] = [];
+  for (const a of actions) {
+    const key =
+      a.kind === "region"
+        ? `region|${a.file}|${a.regionId}`
+        : `file|${a.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(a);
+  }
+  return out;
 }
 
 /**

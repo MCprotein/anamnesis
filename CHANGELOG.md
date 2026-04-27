@@ -58,9 +58,13 @@ and rounds out the fragment catalog.
   Currently silently skipped on Codex.
 - **Full `pinned` semantics** — fragment version cache so `pinned: true`
   renders the pinned version, not library-current.
-- **Monorepo init UX** — `init --interactive` detects `apps/*` /
-  `packages/*` patterns and proposes a multi-scope Agentfile. Lifts the
-  hand-edit step described in [`docs/MONOREPO.md`](../docs/MONOREPO.md).
+- ~~**Monorepo init UX**~~ — *partial: `init --monorepo` shipped* —
+  detects `package.json` `workspaces` field, expands `<dir>/*` patterns,
+  runs the rulebook in each sub-project, and generates a multi-scope
+  Agentfile with one `extends: '.'` scope per matched workspace.
+  Reports empty workspaces (no rule match) separately. Interactive
+  prompt + pnpm-workspace.yaml / lerna / nx / conventional-dir detection
+  remain follow-up.
 - **`status` per-scope grouping** — drift output organized by scope.
 - ~~**Agent handoff MVP**~~ — *partial: shipped in base v3* —
   `/handoff-prepare` slash command + `inject-handoff.sh` SessionStart hook

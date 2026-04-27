@@ -116,6 +116,10 @@ Flags (init):
   --dry-run                     Show plan without writing
   --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
   --project-name <name>         Override project name (default: dir basename)
+  --monorepo                    Detect package.json workspaces and generate
+                                  a multi-scope Agentfile with one scope per
+                                  workspace sub-project (silent fall-back to
+                                  single-scope if no monorepo detected)
 
 Flags (update):
   --project-root <path>         Target directory (default: cwd)
@@ -151,7 +155,22 @@ function reportInit(result: InitResult): void {
   const s = summarizeChanges(result.changes);
   const fragIds = result.selectedFragments.map((f) => f.id).join(", ") || "(none)";
   console.log(`anamnesis init — ${result.agentfile.project.name}`);
-  console.log(`  fragments: ${fragIds}`);
+  console.log(`  fragments (root): ${fragIds}`);
+  if (result.monorepoDetection?.isMonorepo) {
+    const det = result.monorepoDetection;
+    console.log(
+      `  monorepo: detected via ${det.declaredVia} — ${det.scopes.length} scope(s)`,
+    );
+    for (const scope of det.scopes) {
+      const ids = scope.matchedRules.map((r) => r.suggest).join(", ") || "(none)";
+      console.log(`    ${scope.path.padEnd(20)} ${ids}`);
+    }
+    if (det.emptyScopes.length > 0) {
+      console.log(
+        `  empty workspace dirs (no rule match): ${det.emptyScopes.join(", ")}`,
+      );
+    }
+  }
   console.log(
     `  changes: create=${s.create} update=${s.update} noop=${s.noop} blocked=${s.blocked} user-modified=${s.userModified}`,
   );
@@ -298,6 +317,7 @@ async function main(argv: string[]): Promise<number> {
           dryRun: flags["dry-run"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
           projectName: flags["project-name"] as string | undefined,
+          monorepo: flags["monorepo"] === true,
         });
         reportInit(result);
         return 0;
