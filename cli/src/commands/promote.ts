@@ -13,15 +13,13 @@ import {
   type Capability,
   type FragmentDefinition,
 } from "../core/fragments.js";
+import { findRegion } from "../core/regions.js";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type PromotableType = Extract<
-  Capability["type"],
-  "executable_hook" | "slash_command" | "skill" | "ontology"
->;
+export type PromotableType = Capability["type"];
 
 export interface PromoteOptions {
   projectRoot: string;
@@ -31,6 +29,13 @@ export interface PromoteOptions {
   capabilityType?: PromotableType;
   /** Override name for skill / slash_command. Defaults: skill→dir basename, slash→file basename without ext */
   name?: string;
+  /**
+   * For `project_memory` only. The AGENTS.md / CLAUDE.md region id to
+   * extract content from when the source file contains anamnesis region
+   * anchors. Also used as the destination region id in the new fragment.
+   * Defaults to `fragmentId`.
+   */
+  region?: string;
   /** Optional description; replaces existing on the fragment if provided. */
   description?: string;
 }
@@ -55,6 +60,7 @@ export class PromoteError extends Error {
 // ---------------------------------------------------------------------------
 
 const SUPPORTED_TYPES: PromotableType[] = [
+  "project_memory",
   "executable_hook",
   "slash_command",
   "skill",
@@ -214,6 +220,50 @@ export function promote(opts: PromoteOptions): PromoteResult {
   let newCapability: Capability;
 
   switch (capabilityType) {
+    case "project_memory": {
+      if (fs.statSync(sourceAbs).isDirectory()) {
+        throw new PromoteError(
+          `project_memory source must be a file, got directory: ${sourceAbs}`,
+        );
+      }
+      const region = opts.region ?? opts.fragmentId;
+
+      // If the source file contains an anamnesis region with the named id,
+      // extract just that region's inner content. Otherwise treat the whole
+      // file as the snippet body.
+      const rawText = fs.readFileSync(sourceAbs, "utf8");
+      let content: string;
+      try {
+        const found = findRegion(rawText, region);
+        content = found ? found.content.replace(/^\n+|\n+$/g, "") + "\n" : rawText;
+      } catch {
+        // Source has malformed regions — fall back to whole-file content.
+        content = rawText;
+      }
+
+      const targetRel = "content/agents.snippet.md";
+      const targetAbs = path.join(fragmentDir, targetRel);
+      fs.mkdirSync(path.dirname(targetAbs), { recursive: true });
+      fs.writeFileSync(targetAbs, content, "utf8");
+      filesWritten.push(targetRel);
+
+      // A fragment can have at most one project_memory capability.
+      const dup = definition.capabilities.find(
+        (c) => c.type === "project_memory",
+      );
+      if (dup) {
+        throw new PromoteError(
+          `project_memory already declared in fragment '${opts.fragmentId}'.`,
+        );
+      }
+      newCapability = {
+        type: "project_memory",
+        source: targetRel,
+        region,
+      };
+      break;
+    }
+
     case "executable_hook": {
       if (fs.statSync(sourceAbs).isDirectory()) {
         throw new PromoteError(

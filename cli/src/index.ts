@@ -126,8 +126,11 @@ Flags (update):
 Flags (promote):
   --as <fragment-id>            Target fragment id (required)
   --type <capability>           Capability type (auto-detected from path if omitted)
-                                  one of: executable_hook | slash_command | skill | ontology
+                                  one of: project_memory | executable_hook |
+                                          slash_command | skill | ontology
   --name <name>                 Override skill / slash_command name
+  --region <id>                 For project_memory: region id to extract from
+                                  source AGENTS.md (defaults to fragment id)
   --description <text>          Set/override fragment description
   --project-root <path>         Source directory (default: cwd)
   --library <path>              Library path (default: bundled)
@@ -367,6 +370,7 @@ async function main(argv: string[]): Promise<number> {
           fragmentId,
           capabilityType: flags["type"] as PromotableType | undefined,
           name: flags["name"] as string | undefined,
+          region: flags["region"] as string | undefined,
           description: flags["description"] as string | undefined,
         });
         reportPromote(result);

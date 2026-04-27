@@ -323,17 +323,23 @@ describe("promote — error cases", () => {
     ).toThrow(/cannot infer capability type/);
   });
 
-  it("rejects project_memory promotion (v0.1 unsupported)", () => {
-    fs.writeFileSync(path.join(project, "snippet.md"), "x");
-    expect(() =>
-      promote({
-        projectRoot: project,
-        libraryRoot: library,
-        source: "snippet.md",
-        fragmentId: "x",
-        capabilityType: "project_memory" as never,
-      }),
-    ).toThrow(/not supported/);
+  it("accepts project_memory promotion (v0.2+)", () => {
+    fs.writeFileSync(
+      path.join(project, "snippet.md"),
+      "## My Stack\n\nuse semantic versioning.\n",
+    );
+    const result = promote({
+      projectRoot: project,
+      libraryRoot: library,
+      source: "snippet.md",
+      fragmentId: "my-stack",
+      capabilityType: "project_memory",
+    });
+    expect(result.capability.type).toBe("project_memory");
+    if (result.capability.type === "project_memory") {
+      expect(result.capability.region).toBe("my-stack");
+      expect(result.capability.source).toBe("content/agents.snippet.md");
+    }
   });
 
   it("rejects skill source missing SKILL.md", () => {
@@ -380,6 +386,114 @@ describe("promote — error cases", () => {
 });
 
 // ---------------------------------------------------------------------------
+
+describe("promote — project_memory region extraction", () => {
+  let project: string;
+  let library: string;
+
+  beforeEach(() => {
+    project = seededProject();
+    library = emptyLibrary();
+  });
+
+  it("extracts a named region from AGENTS.md when --region is given", () => {
+    const agentsMd = `# Project doc
+
+## Random user prose
+Stuff here.
+
+<!-- anamnesis:region id=my-stack fragment=my-stack@1 -->
+## My Stack
+This region's content goes into the fragment.
+<!-- /anamnesis:region -->
+
+More user prose after the region.
+`;
+    fs.writeFileSync(path.join(project, "AGENTS.md"), agentsMd);
+
+    const result = promote({
+      projectRoot: project,
+      libraryRoot: library,
+      source: "AGENTS.md",
+      fragmentId: "my-stack",
+      capabilityType: "project_memory",
+      region: "my-stack",
+    });
+
+    const written = fs.readFileSync(
+      path.join(library, "fragments/my-stack/content/agents.snippet.md"),
+      "utf8",
+    );
+    expect(written).toContain("## My Stack");
+    expect(written).toContain("This region's content");
+    // User prose outside the region MUST NOT be copied.
+    expect(written).not.toContain("Random user prose");
+    expect(written).not.toContain("More user prose");
+    if (result.capability.type === "project_memory") {
+      expect(result.capability.region).toBe("my-stack");
+    }
+  });
+
+  it("uses whole file content when no matching region found", () => {
+    fs.writeFileSync(
+      path.join(project, "snippet.md"),
+      "## Plain content\nno regions here.\n",
+    );
+    promote({
+      projectRoot: project,
+      libraryRoot: library,
+      source: "snippet.md",
+      fragmentId: "plain",
+      capabilityType: "project_memory",
+    });
+    const written = fs.readFileSync(
+      path.join(library, "fragments/plain/content/agents.snippet.md"),
+      "utf8",
+    );
+    expect(written).toBe("## Plain content\nno regions here.\n");
+  });
+
+  it("rejects duplicate project_memory in the same fragment", () => {
+    fs.writeFileSync(
+      path.join(project, "first.md"),
+      "first content",
+    );
+    fs.writeFileSync(
+      path.join(project, "second.md"),
+      "second content",
+    );
+    promote({
+      projectRoot: project,
+      libraryRoot: library,
+      source: "first.md",
+      fragmentId: "x",
+      capabilityType: "project_memory",
+    });
+    expect(() =>
+      promote({
+        projectRoot: project,
+        libraryRoot: library,
+        source: "second.md",
+        fragmentId: "x",
+        capabilityType: "project_memory",
+      }),
+    ).toThrow(/already declared/);
+  });
+
+  it("default region id is the fragment id when --region omitted", () => {
+    fs.writeFileSync(path.join(project, "snippet.md"), "x");
+    const result = promote({
+      projectRoot: project,
+      libraryRoot: library,
+      source: "snippet.md",
+      fragmentId: "my-frag",
+      capabilityType: "project_memory",
+    });
+    if (result.capability.type === "project_memory") {
+      expect(result.capability.region).toBe("my-frag");
+    }
+  });
+});
 
 describe("promote — fragment.yaml output cleanliness", () => {
   it("omits empty default arrays from fragment.yaml", () => {

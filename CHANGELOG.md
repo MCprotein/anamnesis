@@ -74,8 +74,6 @@ plus 3 user projects across infra / ML / NestJS stacks).
   but rendering still uses library-current versions. Full pinning
   requires a fragment version cache.
 - Codex / Cursor adapters not yet implemented.
-- `promote` does not yet support `project_memory` (region extraction
-  from AGENTS.md). v0.2 target.
 
 ### Resolved (post-initial v0.1.0 cut)
 
@@ -94,6 +92,12 @@ plus 3 user projects across infra / ML / NestJS stacks).
   — fixed via `detectIndent()` in `core/settings.ts`. `writeSettings`
   now reads the existing file (if any), detects 2-space / 4-space / tab
   indent, and preserves it on rewrite. New files default to 2-space.
+- ~~`promote` does not support project_memory~~ — added in v0.2.
+  `anamnesis promote <source.md> --as=<id> --type=project_memory
+  [--region=<id>]`. When the source contains an anamnesis region with
+  the named id (e.g. promoting from an existing AGENTS.md), the region's
+  inner content is extracted and the surrounding user prose is left
+  behind. Otherwise the whole file becomes the snippet.
 - ~~Monorepo `scopes` rejected by Agentfile validator~~ — multi-scope
   layouts now supported. Each scope can `extends` a parent and
   `overrides.{tools, fragments_add, fragments_remove}`. project_memory
