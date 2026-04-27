@@ -43,6 +43,7 @@ import {
 } from "../core/render.js";
 import { registerClaudeCode } from "../adapters/claude-code/index.js";
 import { registerCodex } from "../adapters/codex/index.js";
+import { registerCursor } from "../adapters/cursor/index.js";
 import {
   planChanges,
   applyChanges,
@@ -225,6 +226,7 @@ export function update(opts: UpdateOptions): UpdateResult {
   const registry = new RendererRegistry();
   if (allTools.has("claude-code")) registerClaudeCode(registry);
   if (allTools.has("codex")) registerCodex(registry);
+  if (allTools.has("cursor")) registerCursor(registry);
 
   const actions: RenderAction[] = [];
   for (const { scopePath, ordered: scopeOrdered, tools } of perScope) {

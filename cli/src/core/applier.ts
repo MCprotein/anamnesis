@@ -33,6 +33,9 @@ export const EXEC_ADAPTER_PREFIXES = [
   ".claude/hooks/",
   ".claude/commands/",
   ".claude/skills/",
+  // Cursor adapter — .mdc files modify agent behavior the same way
+  // CC commands/skills do. Treat as exec-gated for supply-chain consistency.
+  ".cursor/rules/",
 ] as const;
 
 export function isExecAdapterPath(projectRelative: string): boolean {

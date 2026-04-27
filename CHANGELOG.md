@@ -52,7 +52,19 @@ and rounds out the fragment catalog.
 
 ### Targeted for v0.3
 
-- **Cursor adapter** (`.cursor/rules/*.mdc`) with `scoped_rule` capability.
+- ~~**Cursor adapter**~~ — *shipped (5/5 capabilities)* —
+  · project_memory + ontology: same outputs as CC (Cursor reads
+    AGENTS.md natively).
+  · executable_hook / skill / slash_command: emit `.cursor/rules/<id>.mdc`
+    with `agentRequested: true` so Cursor's agent applies the rule when
+    the situation matches `description`.
+  · `.cursor/rules/` added to `EXEC_ADAPTER_PREFIXES` (gated behind
+    `--allow-exec-adapters` for supply-chain consistency).
+  · CC + Codex + Cursor co-existence: each adapter targets its own files;
+    region/file dedup applies for shared targets (AGENTS.md region,
+    ontology slice).
+  · `scoped_rule` capability (Cursor-native glob scoping) deferred to
+    a follow-up patch — current MDC output uses `agentRequested` only.
 - ~~**Codex adapter completion**~~ — *shipped (AGENTS.md region path)* —
   `executable_hook`, `skill`, `slash_command` now have Codex
   renderers that emit region-based fallbacks (script body / skill body /
