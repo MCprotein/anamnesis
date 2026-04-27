@@ -29,7 +29,7 @@ import {
   type StatusResult,
 } from "./commands/status.js";
 
-const VERSION = "0.1.0-dev";
+const VERSION = "0.2.0";
 
 // ---------------------------------------------------------------------------
 // Arg parsing — tiny, deliberate, no dependency.

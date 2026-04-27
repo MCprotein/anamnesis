@@ -1,5 +1,5 @@
 {
-  "name": "anamnesis",
+  "name": "@mcprotein/anamnesis",
   "version": "0.2.0",
   "description": "AI coding agent config lifecycle manager — keeps your agents from forgetting your project",
   "keywords": [
@@ -21,6 +21,9 @@
   "license": "MIT",
   "author": "MCProtein",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "anamnesis": "./cli/dist/index.js"
   },

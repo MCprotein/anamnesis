@@ -31,15 +31,30 @@ It is **not** a project scaffolder (no `package.json`, no source code generation
 
 ## Quickstart
 
-> v0.1 isn't on npm yet. Install from source:
->
-> ```bash
-> git clone https://github.com/MCprotein/anamnesis ~/code/anamnesis
-> cd ~/code/anamnesis
-> npm install
-> npm run build      # produces cli/dist/
-> npm link           # makes `anamnesis` available globally
-> ```
+Install (npm — scoped package, the unscoped `anamnesis` name is taken
+by an unrelated project):
+
+```bash
+npm install -g @mcprotein/anamnesis
+```
+
+…or run on demand without global install:
+
+```bash
+npx @mcprotein/anamnesis init --dry-run
+```
+
+Either way, the CLI is invoked as `anamnesis`.
+
+Building from source instead (during development or for forks):
+
+```bash
+git clone https://github.com/MCprotein/anamnesis ~/code/anamnesis
+cd ~/code/anamnesis
+npm install
+npm run build       # produces cli/dist/
+npm link            # makes `anamnesis` available globally
+```
 
 Then in any project:
 
