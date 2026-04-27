@@ -1,6 +1,6 @@
 {
   "name": "anamnesis",
-  "version": "0.1.0-dev",
+  "version": "0.2.0",
   "description": "AI coding agent config lifecycle manager — keeps your agents from forgetting your project",
   "keywords": [
     "claude-code",
@@ -31,7 +31,8 @@
     "capabilities",
     "rulebook.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20"
@@ -43,7 +44,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "echo \"no linter yet\" && exit 0",
-    "clean": "rm -rf cli/dist"
+    "clean": "rm -rf cli/dist",
+    "prepublishOnly": "npm run clean && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-229%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.1%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-299%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.2.0-orange)]()
 
 ---
 
@@ -141,10 +141,10 @@ In all four cases, the user-modified protection correctly preserved hand-authore
 
 | Version | Scope |
 |---|---|
-| **v0.1** *(current)* | Claude Code adapter, 6 starter fragments, init/update/promote, idempotency model. |
-| **v0.2** | Codex adapter (AGENTS.md + git hook fallback), `.claude/settings.json` registration, full version pinning, more fragments. |
-| **v0.3** | Cursor adapter (`.cursor/rules/*.mdc`), `scoped_rule` capability, monorepo `scopes` support. |
-| **v1.0** | Stable Agentfile schema, npm publish, community fragment registry. |
+| **v0.1** *(shipped 2026-04-26)* | Claude Code adapter, 6 starter fragments, init/update/promote, idempotency model. |
+| **v0.2** *(shipped 2026-04-27)* | `status` command, `.claude/settings.json` auto-registration with indent preservation, Codex adapter (project_memory + ontology), monorepo `scopes`, `promote` for project_memory, nextjs / docker-compose fragments, npm publish. |
+| **v0.3** *(planned)* | Cursor adapter (`.cursor/rules/*.mdc`), Codex adapter for executable_hook / skill / slash_command (AGENTS.md instructions + git pre-commit fallback), full version pinning. |
+| **v1.0** *(stable)* | Frozen Agentfile schema, community fragment registry, fragment signing. |
 
 ---
 
