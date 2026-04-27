@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { update, UpdateError } from "./update.js";
 import { init } from "./init.js";
-import { readAgentfile } from "../core/agentfile.js";
+import { readAgentfile, writeAgentfile } from "../core/agentfile.js";
 import { readManifest } from "../core/manifest.js";
 import { findRegion, upsertRegion } from "../core/regions.js";
 
@@ -349,6 +349,78 @@ describe("update — new rulebook suggestions", () => {
 });
 
 // ---------------------------------------------------------------------------
+
+describe("update — Codex adapter co-existence", () => {
+  it("dedupes identical region actions when both claude-code and codex active", () => {
+    const library = makeLibrary();
+    const project = tmpDir("anamnesis-proj-");
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+
+    // Add codex to tools manually (init only writes claude-code).
+    const af = readAgentfile(project);
+    af.tools = ["claude-code", "codex"];
+    writeAgentfile(project, af);
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: false,
+      allowExecAdapters: false,
+    });
+
+    // Each tracked region should appear exactly once in changes — both
+    // adapters emit the same project_memory action; dedupe collapses them.
+    const regionKeys = result.changes
+      .filter((c) => c.target === "region")
+      .map((c) => `${c.file}|${c.regionId}`);
+    const uniqueKeys = new Set(regionKeys);
+    expect(regionKeys.length).toBe(uniqueKeys.size);
+
+    // All file changes are similarly unique by path.
+    const fileKeys = result.changes
+      .filter((c) => c.target === "file")
+      .map((c) => c.path);
+    expect(fileKeys.length).toBe(new Set(fileKeys).size);
+  });
+
+  it("works with only codex in tools (no claude-code)", () => {
+    const library = makeLibrary();
+    const project = tmpDir("anamnesis-proj-");
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    const af = readAgentfile(project);
+    af.tools = ["codex"];
+    writeAgentfile(project, af);
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: false,
+      allowExecAdapters: false,
+    });
+    // Codex still produces project_memory + ontology actions; everything
+    // else is silently skipped because Codex doesn't register those
+    // capabilities.
+    expect(
+      result.changes.some(
+        (c) => c.target === "region" && c.regionId === "prisma",
+      ),
+    ).toBe(true);
+  });
+});
 
 describe("update — multi-scope monorepo", () => {
   function makeMonorepoLibrary(): string {

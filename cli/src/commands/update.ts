@@ -15,6 +15,7 @@ import {
   writeAgentfile,
   findAgentfile,
   type Agentfile,
+  type ToolName,
 } from "../core/agentfile.js";
 import {
   readManifest,
@@ -41,6 +42,7 @@ import {
   type RenderContext,
 } from "../core/render.js";
 import { registerClaudeCode } from "../adapters/claude-code/index.js";
+import { registerCodex } from "../adapters/codex/index.js";
 import {
   planChanges,
   applyChanges,
@@ -146,6 +148,7 @@ export function update(opts: UpdateOptions): UpdateResult {
   // Per-scope rendering plan.
   const perScope: Array<{
     scopePath: string;
+    tools: ToolName[];
     ordered: FragmentDefinition[];
     rootOrdered: boolean;
   }> = [];
@@ -173,6 +176,7 @@ export function update(opts: UpdateOptions): UpdateResult {
 
     perScope.push({
       scopePath: scope.path,
+      tools: scope.tools,
       ordered: [],
       rootOrdered: scope.path === ".",
     });
@@ -212,10 +216,18 @@ export function update(opts: UpdateOptions): UpdateResult {
   const ordered = rootOrdered;
 
   // 7. Plan rendering across all scopes.
+  // Register every adapter that any scope's `tools` declares. Adapters
+  // not in any scope's tools are not registered (their rendering paths
+  // don't run).
+  const allTools = new Set<ToolName>();
+  for (const s of perScope) for (const t of s.tools) allTools.add(t);
+
   const registry = new RendererRegistry();
-  registerClaudeCode(registry);
+  if (allTools.has("claude-code")) registerClaudeCode(registry);
+  if (allTools.has("codex")) registerCodex(registry);
+
   const actions: RenderAction[] = [];
-  for (const { scopePath, ordered: scopeOrdered } of perScope) {
+  for (const { scopePath, ordered: scopeOrdered, tools } of perScope) {
     for (const frag of scopeOrdered) {
       const fragmentDir = fragmentDirOf(libraryRoot, frag.id);
       const renderCtx: RenderContext = {
@@ -226,11 +238,17 @@ export function update(opts: UpdateOptions): UpdateResult {
         settings: DEFAULT_SETTINGS,
         params: {},
       };
-      actions.push(...registry.planFragment(renderCtx, "claude-code"));
+      for (const tool of tools) {
+        actions.push(...registry.planFragment(renderCtx, tool));
+      }
     }
   }
+
+  // Dedupe identical actions (e.g., when both `claude-code` and `codex`
+  // emit the same project_memory region action). Key by target identity.
+  const dedupedActions = dedupeActions(actions);
   // 8. Plan changes vs existing manifest.
-  const { changes, nextManifest } = planChanges(actions, {
+  const { changes, nextManifest } = planChanges(dedupedActions, {
     projectRoot,
     manifest,
     allowExecAdapters: opts.allowExecAdapters,
@@ -278,6 +296,34 @@ export function update(opts: UpdateOptions): UpdateResult {
     backedUpFiles: opts.apply ? backedUpFiles : undefined,
     hookRegistrations,
   };
+}
+
+/**
+ * Dedupe a list of RenderActions by target identity.
+ *
+ * Two adapters (e.g., `claude-code` and `codex`) may emit the same
+ * tool-agnostic action (a region in AGENTS.md, an ontology slice file).
+ * Identical actions are equivalent; we keep the first emission and drop
+ * subsequent duplicates so that planChanges/applyChanges don't traverse
+ * the same target twice.
+ *
+ * Identity:
+ *   * region action: `region|<file>|<regionId>`
+ *   * file action:   `file|<path>`
+ */
+function dedupeActions(actions: RenderAction[]): RenderAction[] {
+  const seen = new Set<string>();
+  const out: RenderAction[] = [];
+  for (const a of actions) {
+    const key =
+      a.kind === "region"
+        ? `region|${a.file}|${a.regionId}`
+        : `file|${a.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(a);
+  }
+  return out;
 }
 
 /**

@@ -73,7 +73,10 @@ plus 3 user projects across infra / ML / NestJS stacks).
 - Fragment `pinned: true` preserves Agentfile entries across `update`
   but rendering still uses library-current versions. Full pinning
   requires a fragment version cache.
-- Codex / Cursor adapters not yet implemented.
+- Codex adapter v0.2 minimum: `project_memory` and `ontology` only.
+  `executable_hook`, `skill`, `slash_command` deferred to v0.3 (planned
+  AGENTS.md instruction text + git pre-commit fallback).
+- Cursor adapter not yet implemented (v0.3 target).
 
 ### Resolved (post-initial v0.1.0 cut)
 
@@ -92,6 +95,14 @@ plus 3 user projects across infra / ML / NestJS stacks).
   — fixed via `detectIndent()` in `core/settings.ts`. `writeSettings`
   now reads the existing file (if any), detects 2-space / 4-space / tab
   indent, and preserves it on rewrite. New files default to 2-space.
+- ~~Codex adapter missing (v0.2 minimum scope)~~ — `project_memory` +
+  `ontology` shipped. Codex reads AGENTS.md natively; the same regions
+  and ontology slice files written for Claude Code are now also produced
+  when `codex` is in `tools` (deduped by target identity so duplicate
+  emissions from concurrent CC + Codex adapters collapse to a single
+  write). Hooks/skills/slash-commands fallbacks remain v0.3 work — they
+  are silently skipped on Codex with no error, matching the documented
+  capability matrix.
 - ~~`promote` does not support project_memory~~ — added in v0.2.
   `anamnesis promote <source.md> --as=<id> --type=project_memory
   [--region=<id>]`. When the source contains an anamnesis region with
