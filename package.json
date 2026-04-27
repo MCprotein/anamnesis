@@ -22,7 +22,8 @@
   "author": "MCProtein",
   "type": "module",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "bin": {
     "anamnesis": "./cli/dist/index.js"

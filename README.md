@@ -154,18 +154,24 @@ In all four cases, the user-modified protection correctly preserved hand-authore
 
 ## Roadmap
 
-| Version | Scope |
-|---|---|
-| **v0.1** *(shipped 2026-04-26)* | Claude Code adapter, 6 starter fragments, init/update/promote, idempotency model. |
-| **v0.2** *(shipped 2026-04-27)* | `status` command, `.claude/settings.json` auto-registration with indent preservation, Codex adapter (project_memory + ontology), monorepo `scopes`, `promote` for project_memory, nextjs / docker-compose fragments, npm publish. |
-| **v0.3** *(planned)* | Cursor adapter (`.cursor/rules/*.mdc`), Codex adapter for executable_hook / skill / slash_command (AGENTS.md instructions + git pre-commit fallback), full version pinning. |
-| **v1.0** *(stable)* | Frozen Agentfile schema, community fragment registry, fragment signing. |
+| Version | Theme | Status |
+|---|---|---|
+| **v0.1** | Claude Code adapter + idempotency model | shipped 2026-04-26 |
+| **v0.2** | Multi-tool (Codex), monorepo `scopes`, `status`, npm publish | shipped 2026-04-27 |
+| **v0.3** | Cursor adapter, Codex hook/skill/slash fallback, full pinning, monorepo init UX, **agent handoff MVP** | planned |
+| **v0.4** | Handoff auto-trigger, `anamnesis doctor`, fragment catalog expansion | planned |
+| **v1.0** | Stable schema, public fragment registry, signing | stable target |
+
+Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 
 ---
 
 ## Documentation
 
-- [`docs/DESIGN.md`](docs/DESIGN.md) — full architecture, capability model, idempotency, roadmap rationale
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan (v0.3 / v0.4 / v1.0)
+- [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
+- [`docs/DESIGN.md`](docs/DESIGN.md) — architecture, capability model, idempotency
 - [`specs/agentfile.md`](specs/agentfile.md) — `Agentfile` v1 schema
 - [`rulebook.md`](rulebook.md) — auto-detection rules and trigger DSL
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — adding fragments, writing capabilities

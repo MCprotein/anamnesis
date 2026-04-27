@@ -50,16 +50,31 @@ and rounds out the fragment catalog.
 
 299 passing across 22 test files (was 229 in v0.1).
 
-### Known gaps (v0.3 targets)
+### Targeted for v0.3
 
-- Codex adapter for `executable_hook`, `skill`, `slash_command` —
-  silently skipped on Codex today. v0.3 plan: AGENTS.md instruction
-  text + git pre-commit hook fallback.
-- Cursor adapter (`.cursor/rules/*.mdc`) — not yet started.
-- Full `pinned` semantics — currently `pinned: true` preserves the
-  Agentfile entry across `update` but rendering still uses
-  library-current content. Real pinning needs a versioned fragment
-  cache.
+- **Cursor adapter** (`.cursor/rules/*.mdc`) with `scoped_rule` capability.
+- **Codex adapter completion** — `executable_hook` / `skill` /
+  `slash_command` fallbacks (AGENTS.md instructions + git pre-commit).
+  Currently silently skipped on Codex.
+- **Full `pinned` semantics** — fragment version cache so `pinned: true`
+  renders the pinned version, not library-current.
+- **Monorepo init UX** — `init --interactive` detects `apps/*` /
+  `packages/*` patterns and proposes a multi-scope Agentfile. Lifts the
+  hand-edit step described in [`docs/MONOREPO.md`](../docs/MONOREPO.md).
+- **`status` per-scope grouping** — drift output organized by scope.
+- **Agent handoff MVP** — `/handoff prepare` slash command + SessionStart
+  injection. Cross-tool task continuity (Claude → Codex → Cursor) without
+  context loss.
+
+### Targeted for v0.4
+
+- **Handoff auto-trigger** + multi-task tracking + recovery.
+- **`anamnesis doctor`** — installation integrity check.
+- **Trusted Publishing** — GitHub Actions + OIDC for npm releases.
+- **Fragment catalog expansion** — Rails, Django, Go, Rust, sveltekit, etc.
+- **`anamnesis status --json`** — structured output for CI.
+
+Full breakdown in [`docs/ROADMAP.md`](../docs/ROADMAP.md).
 
 ---
 
