@@ -73,12 +73,13 @@ plus 3 user projects across infra / ML / NestJS stacks).
 - Fragment `pinned: true` preserves Agentfile entries across `update`
   but rendering still uses library-current versions. Full pinning
   requires a fragment version cache.
-- `nextjs` and `docker-compose` fragments are stubs (rules exist; no
-  fragment dirs).
 - Codex / Cursor adapters not yet implemented.
 - `settings.json` formatting (indent style) is normalized to 2-space
   on first auto-write — user's prior indent choice is overwritten.
   Detect-and-preserve is a v0.2 polish item.
+- Monorepo `scopes` rejected by Agentfile validator in v0.1; deferred to v0.2.
+- `promote` does not yet support `project_memory` (region extraction
+  from AGENTS.md). v0.2 target.
 
 ### Resolved (post-initial v0.1.0 cut)
 
@@ -86,6 +87,13 @@ plus 3 user projects across infra / ML / NestJS stacks).
   — fixed by post-apply hook registration sync. CC executable_hook
   capability now also updates `settings.json` idempotently. Older
   installs without registrations self-heal on the next `update --apply`.
+- ~~`status` command~~ — added; reads Agentfile + manifest + library,
+  reports installed fragments (in-sync / update-available / pinned /
+  library-missing), per-region and per-file drift (clean / user-modified
+  / missing), suggested rulebook matches, and declined entries.
+- ~~`nextjs` and `docker-compose` fragments are stubs~~ — both now
+  shipped (project_memory + ontology). All 8 rulebook rules now have
+  fragment implementations.
 
 ### Repository policy
 

@@ -1,0 +1,49 @@
+# docker-compose slice — written by the docker-compose fragment.
+
+docker_compose:
+  cli: "docker compose"   # v2 plugin; v1 (docker-compose hyphen) is deprecated
+  preferred_filename: compose.yaml
+  override_file: compose.override.yaml  # auto-merged for local dev variations
+  version_field: omit   # v2 ignores it; legacy artefact
+
+  long_lived_services:
+    healthcheck: required
+    depends_on_form: condition-aware
+    correct_pattern: |
+      depends_on:
+        db:
+          condition: service_healthy
+    incorrect_pattern: "depends_on: [db]   # only waits for container start, not readiness"
+
+  restart_policy:
+    prod_like: unless-stopped
+    dev: "no"
+    avoid: always   # restart loop on persistent failure
+
+  port_binding:
+    default: 127.0.0.1   # explicit loopback
+    public_only_when: documented_external_exposure
+    risk: "bare 5432:5432 binds 0.0.0.0:5432 — all interfaces"
+
+  env_layering:
+    committed: .env (non-secret defaults)
+    local: .env.local (gitignored, per-machine)
+    secrets: docker_secrets or external_vault
+    auto_load: ".env only; .env.local needs --env-file or env_file:"
+
+  profiles:
+    purpose: opt-in services (monitoring, mail catcher, debug tools)
+    invocation: "docker compose --profile <name> up"
+    default_up: no profile active
+
+  volume_naming:
+    auto_prefix: "<projectname>_<volumename>"
+    avoid_collision: rely_on_prefix_or_set_purpose_only
+
+  forbidden:
+    - secrets_in_committed_env
+    - bare_depends_on_for_long_lived_services
+    - bare_host_port_binding   # 0.0.0.0
+    - restart_always_in_dev
+    - docker_compose_v1_cli
+    - committing_dot_env_local

@@ -1,0 +1,41 @@
+# Next.js slice — written by the nextjs fragment.
+
+nextjs:
+  router_default: app
+  legacy_router: pages   # only when migrating
+  component_kind_default: server
+  client_directive_required_when:
+    - react_state_or_effect_hooks
+    - browser_api_usage
+    - dom_event_handlers
+    - third_party_client_only_lib
+  data_fetching:
+    server_component: "fetch(url, { next: { revalidate: N } })"
+    client_component: SWR or TanStack Query
+    mutation: server_action or route_handler
+  routing_files:
+    page: "app/<route>/page.tsx"
+    layout: "app/<route>/layout.tsx"          # persists across nav
+    template: "app/<route>/template.tsx"      # remounts each nav
+    loading: "app/<route>/loading.tsx"
+    error: "app/<route>/error.tsx"            # MUST be 'use client'
+    api: "app/<route>/route.ts"
+  optimizers:
+    image: next/image
+    font: next/font
+    script: next/script
+    metadata: metadata-export
+  middleware:
+    file: middleware.ts (project root)
+    runtime_default: edge
+    require_matcher: true
+  env_exposure:
+    server_only: default
+    client_exposed_prefix: NEXT_PUBLIC_
+    note: "NEXT_PUBLIC_* is inlined at build — not changeable at runtime"
+  forbidden:
+    - "'use client' on root or shared layouts"
+    - "<img> tag (use next/image)"
+    - manual_head_tag_edits (use metadata API)
+    - getServerSideProps_in_app_router
+    - node_modules_in_edge_middleware

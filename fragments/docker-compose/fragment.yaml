@@ -1,0 +1,17 @@
+id: docker-compose
+version: 1
+description: >
+  Docker Compose conventions — healthchecks, depends_on conditions,
+  .env layering, profile-based composition, port binding hygiene,
+  v2 plugin CLI (not the deprecated v1).
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: docker-compose
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: docker-compose in AGENTS.md
+  - file: .anamnesis/ontology/docker-compose.yaml

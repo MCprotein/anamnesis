@@ -88,10 +88,10 @@ Re-running `update` on an unchanged project produces only `noop` results. User e
 | `prisma` | `@prisma/client` in `package.json` or `prisma/schema.prisma` | project_memory, ontology, executable_hook |
 | `k8s` | `k8s/` directory | project_memory, ontology, executable_hook (yaml-lint) |
 | `nestjs` | `@nestjs/core` in `package.json` | project_memory, ontology |
-| `nextjs` | `next` in `package.json` | *(stub — v0.2)* |
+| `nextjs` | `next` in `package.json` | project_memory, ontology |
 | `fastapi` | `fastapi` in `pyproject.toml` | project_memory, ontology |
 | `python-uv` | `uv.lock` exists | project_memory, ontology |
-| `docker-compose` | `docker-compose.yml` / `compose.yaml` | *(stub — v0.2)* |
+| `docker-compose` | `docker-compose.yml` / `compose.yaml` | project_memory, ontology |
 
 Triggers are evaluated by [`rulebook.md`](rulebook.md). Add your own fragment with `anamnesis promote` or by adding a directory under `fragments/`.
 
