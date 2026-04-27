@@ -74,9 +74,6 @@ plus 3 user projects across infra / ML / NestJS stacks).
   but rendering still uses library-current versions. Full pinning
   requires a fragment version cache.
 - Codex / Cursor adapters not yet implemented.
-- `settings.json` formatting (indent style) is normalized to 2-space
-  on first auto-write — user's prior indent choice is overwritten.
-  Detect-and-preserve is a v0.2 polish item.
 - Monorepo `scopes` rejected by Agentfile validator in v0.1; deferred to v0.2.
 - `promote` does not yet support `project_memory` (region extraction
   from AGENTS.md). v0.2 target.
@@ -94,6 +91,10 @@ plus 3 user projects across infra / ML / NestJS stacks).
 - ~~`nextjs` and `docker-compose` fragments are stubs~~ — both now
   shipped (project_memory + ontology). All 8 rulebook rules now have
   fragment implementations.
+- ~~`settings.json` indent style normalized to 2-space on auto-write~~
+  — fixed via `detectIndent()` in `core/settings.ts`. `writeSettings`
+  now reads the existing file (if any), detects 2-space / 4-space / tab
+  indent, and preserves it on rewrite. New files default to 2-space.
 
 ### Repository policy
 

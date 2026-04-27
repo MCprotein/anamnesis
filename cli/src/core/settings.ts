@@ -68,14 +68,46 @@ export function readSettings(projectRoot: string): Record<string, unknown> {
   return JSON.parse(fs.readFileSync(fp, "utf8")) as Record<string, unknown>;
 }
 
+/**
+ * Detect indent style of an existing JSON document.
+ *
+ * Returns:
+ *   * `'\t'` if the first indented line starts with a tab.
+ *   * a positive integer (count of leading spaces) for space-indented files.
+ *   * `fallback` if no indented line is found (e.g. `{}` on one line).
+ *
+ * Mixed-indent files report whatever the first indented line uses; we don't
+ * try to second-guess inconsistent input.
+ */
+export function detectIndent(
+  text: string,
+  fallback: number | string = 2,
+): number | string {
+  const match = text.match(/^([ \t]+)/m);
+  if (!match) return fallback;
+  const lead = match[1]!;
+  if (lead.startsWith("\t")) return "\t";
+  return lead.length;
+}
+
 export function writeSettings(
   projectRoot: string,
   settings: Record<string, unknown>,
 ): void {
   const fp = settingsPath(projectRoot);
+  // Preserve the user's existing indent style if present; default to 2 for
+  // brand-new files. Avoids the v0.1 bug where `JSON.stringify(.., null, 2)`
+  // silently rewrote 4-space user files to 2-space.
+  let indent: number | string = 2;
+  if (fs.existsSync(fp)) {
+    indent = detectIndent(fs.readFileSync(fp, "utf8"));
+  }
   fs.mkdirSync(path.dirname(fp), { recursive: true });
-  // 2-space indent + trailing newline matches CC convention and is diff-friendly.
-  fs.writeFileSync(fp, JSON.stringify(settings, null, 2) + "\n", "utf8");
+  fs.writeFileSync(
+    fp,
+    JSON.stringify(settings, null, indent) + "\n",
+    "utf8",
+  );
 }
 
 // ---------------------------------------------------------------------------

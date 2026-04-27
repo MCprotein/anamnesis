@@ -9,6 +9,7 @@ import {
   hookRegistrationPresent,
   syncHookRegistrations,
   settingsPath,
+  detectIndent,
   type HookRegistration,
 } from "./settings.js";
 
@@ -282,5 +283,97 @@ describe("syncHookRegistrations", () => {
     expect(changed).toBe(false);
     expect(results).toEqual([]);
     expect(fs.existsSync(settingsPath(root))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("detectIndent", () => {
+  it("detects 2-space indent", () => {
+    expect(detectIndent('{\n  "a": 1\n}')).toBe(2);
+  });
+
+  it("detects 4-space indent", () => {
+    expect(detectIndent('{\n    "a": 1\n}')).toBe(4);
+  });
+
+  it("detects tab indent", () => {
+    expect(detectIndent('{\n\t"a": 1\n}')).toBe("\t");
+  });
+
+  it("returns fallback when no indented line", () => {
+    expect(detectIndent("{}")).toBe(2);
+    expect(detectIndent('{"a":1}')).toBe(2);
+  });
+
+  it("respects custom fallback", () => {
+    expect(detectIndent("{}", 4)).toBe(4);
+  });
+
+  it("returns first detected indent on mixed input", () => {
+    // Tab on first indented line wins, even if later lines use spaces.
+    expect(detectIndent('{\n\t"a": 1,\n  "b": 2\n}')).toBe("\t");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("writeSettings — indent preservation", () => {
+  function tmp(): string {
+    return fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-indent-"));
+  }
+
+  it("preserves 4-space indent across rewrites", () => {
+    const root = tmp();
+    fs.mkdirSync(path.join(root, ".claude"), { recursive: true });
+    const fp = settingsPath(root);
+    fs.writeFileSync(
+      fp,
+      '{\n    "permissions": {\n        "allow": [\n            "Bash:*"\n        ]\n    }\n}\n',
+    );
+    const data = readSettings(root);
+    writeSettings(root, data);
+    const text = fs.readFileSync(fp, "utf8");
+    // 4-space line at depth 1: exactly 4 leading spaces, then key.
+    expect(text).toMatch(/^    "permissions"/m);
+    // 2-space line would be exactly 2 leading spaces — must NOT appear.
+    expect(text).not.toMatch(/^  "permissions"/m);
+  });
+
+  it("preserves tab indent", () => {
+    const root = tmp();
+    fs.mkdirSync(path.join(root, ".claude"), { recursive: true });
+    const fp = settingsPath(root);
+    fs.writeFileSync(fp, '{\n\t"permissions": {\n\t\t"allow": []\n\t}\n}\n');
+    const data = readSettings(root);
+    writeSettings(root, data);
+    const text = fs.readFileSync(fp, "utf8");
+    expect(text).toMatch(/^\t"permissions"/m);
+  });
+
+  it("defaults to 2-space for new files", () => {
+    const root = tmp();
+    writeSettings(root, { hooks: {} });
+    const text = fs.readFileSync(settingsPath(root), "utf8");
+    expect(text).toMatch(/^  "hooks"/m);
+  });
+
+  it("syncHookRegistrations preserves user's 4-space indent", () => {
+    const root = tmp();
+    fs.mkdirSync(path.join(root, ".claude"), { recursive: true });
+    const fp = settingsPath(root);
+    fs.writeFileSync(
+      fp,
+      '{\n    "permissions": {\n        "allow": [\n            "Bash:*"\n        ]\n    }\n}\n',
+    );
+    syncHookRegistrations(root, [
+      {
+        event: "SessionStart",
+        command: ".claude/hooks/inject-ontology.sh",
+      },
+    ]);
+    const text = fs.readFileSync(fp, "utf8");
+    expect(text).toMatch(/^    "hooks"/m);
+    expect(text).toMatch(/^        "SessionStart"/m);
   });
 });
