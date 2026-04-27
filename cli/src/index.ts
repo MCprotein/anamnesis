@@ -23,6 +23,11 @@ import {
   type PromoteResult,
   type PromotableType,
 } from "./commands/promote.js";
+import {
+  status,
+  StatusError,
+  type StatusResult,
+} from "./commands/status.js";
 
 const VERSION = "0.1.0-dev";
 
@@ -102,6 +107,7 @@ Usage:
 Commands:
   init                          First-time setup for the current project
   update                        Re-apply library state (dry-run by default)
+  status                        Show installed fragments + drift + suggestions
   promote <source>              Lift a project file into the library as a fragment
 
 Flags (init):
@@ -153,6 +159,61 @@ function reportInit(result: InitResult): void {
     console.log(
       "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
     );
+  }
+}
+
+function reportStatus(result: StatusResult): void {
+  const { agentfile, fragments, entries, suggested, declined, summary } =
+    result;
+  console.log(`anamnesis status — ${agentfile.project.name}`);
+  console.log(`  tools: ${agentfile.tools.join(", ")}`);
+
+  console.log(`  fragments (${summary.fragmentTotal}):`);
+  for (const f of fragments) {
+    let tag: string;
+    switch (f.status) {
+      case "in-sync":
+        tag = "in-sync";
+        break;
+      case "update-available":
+        tag = `update available → ${f.libraryVersion}`;
+        break;
+      case "pinned":
+        tag = `pinned (lib has ${f.libraryVersion})`;
+        break;
+      case "library-missing":
+        tag = "library-missing";
+        break;
+    }
+    console.log(`    ${f.id}@${f.installedVersion}  [${tag}]`);
+  }
+
+  const drifted = entries.filter((e) => e.drift !== "clean");
+  if (drifted.length === 0) {
+    console.log(`  drift: none (${summary.entriesClean} entries clean)`);
+  } else {
+    console.log(`  drift:`);
+    for (const e of drifted) {
+      const tgt =
+        e.target === "region" ? `${e.file} [region:${e.regionId}]` : e.path;
+      console.log(`    ${e.drift.padEnd(15)} ${tgt}`);
+    }
+  }
+
+  if (suggested.length > 0) {
+    console.log(`  suggested (rulebook matches not yet installed):`);
+    for (const s of suggested) {
+      console.log(`    ${s.suggest.padEnd(20)} ${s.reason}`);
+    }
+  }
+
+  if (declined.length > 0) {
+    console.log(`  declined:`);
+    for (const d of declined) {
+      const when = d.declinedAt ? ` (${d.declinedAt})` : "";
+      const why = d.reason ? `: ${d.reason}` : "";
+      console.log(`    ${d.id}${when}${why}`);
+    }
   }
 }
 
@@ -258,6 +319,24 @@ async function main(argv: string[]): Promise<number> {
         return 0;
       } catch (e) {
         if (e instanceof UpdateError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+
+    case "status":
+      try {
+        const result = status({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+        });
+        reportStatus(result);
+        return 0;
+      } catch (e) {
+        if (e instanceof StatusError) {
           console.error(`error: ${e.message}`);
           return 1;
         }
