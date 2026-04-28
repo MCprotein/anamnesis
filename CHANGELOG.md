@@ -73,8 +73,6 @@ and rounds out the fragment catalog.
   reads region instructions from AGENTS.md. Git pre-commit auto-wiring
   for hooks remains v0.4 polish (low value compared to the AGENTS.md
   path).
-- **Full `pinned` semantics** — fragment version cache so `pinned: true`
-  renders the pinned version, not library-current.
 - ~~**Monorepo init UX**~~ — *partial: `init --monorepo` shipped* —
   detects `package.json` `workspaces` field, expands `<dir>/*` patterns,
   runs the rulebook in each sub-project, and generates a multi-scope
@@ -87,17 +85,34 @@ and rounds out the fragment catalog.
   unchanged. Each entry is bucketed to its longest-matching scope path
   (exec-adapter files always belong to root since CC `settings.json`
   is read only at root).
-- ~~**Agent handoff MVP**~~ — *partial: shipped in base v3* —
+- ~~**Agent handoff MVP**~~ — *shipped in base v3 + v4* —
   `/handoff-prepare` slash command + `inject-handoff.sh` SessionStart hook
-  + base v3 capability bundling. Claude Code side fully wired
-  (settings.json auto-registered). Codex/Cursor parity (AGENTS.md
-  instruction to read `.anamnesis/handoff/<ts>.md` on session start)
-  remains v0.3 work.
+  + base v3 capability bundling for Claude Code (settings.json
+  auto-registered). Base v4 added a tool-agnostic "session start: handoff
+  자동 확인" instruction in AGENTS.md so Codex/Cursor agents read
+  `.anamnesis/handoff/<ts>.md` manually at session start.
 
 ### Targeted for v0.4
 
+- **Hybrid ontology bootstrap** — two-layer auto-generation of
+  `.anamnesis/ontology/<id>.yaml`. Layer A: `anamnesis ontology bootstrap`
+  runs deterministic per-fragment introspectors (k8s manifests, prisma
+  schema, nextjs routes, fastapi/nestjs routers) to extract namespace,
+  port, model, route facts without an LLM. Layer B: `/ontology-enrich`
+  skill instructs the active agent (any tool) to fill in semantic
+  relationships, flows, and operational notes parsers can't extract.
+  Fragment-author SDK exposes an `Introspector` interface so community
+  fragments can ship their own parsers.
+- **Full version pinning** — fragment version cache so `pinned: true`
+  renders the pinned version, not library-current. Library stores past
+  versions under `fragments/<id>/.versions/`. (Moved from v0.3 — low
+  value while user base is small.)
+- **`anamnesis update --bump-pinned`** — companion to full pinning.
 - **Handoff auto-trigger** + multi-task tracking + recovery.
 - **`anamnesis doctor`** — installation integrity check.
+- **Codex hook auto-wiring** — git pre-commit installer for
+  `executable_hook` (deferred from v0.3). Currently Codex agents read
+  region instructions manually.
 - **Trusted Publishing** — GitHub Actions + OIDC for npm releases.
 - **Fragment catalog expansion** — Rails, Django, Go, Rust, sveltekit, etc.
 - **`anamnesis status --json`** — structured output for CI.

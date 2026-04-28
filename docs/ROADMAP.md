@@ -41,42 +41,43 @@ verified feedback arrives.
 
 ---
 
-## v0.3 — *planned*
+## v0.3 — *in progress*
 
 > **Theme: complete the multi-tool promise + monorepo UX polish**
 
-| # | Item | Description |
-|---|---|---|
-| 1 | **Cursor adapter** | `.cursor/rules/*.mdc` output. Use `alwaysApply`/glob `description` metadata. New `scoped_rule` capability for Cursor's nested rules. |
-| 2 | **Codex adapter completion** | Fallbacks for `executable_hook` (git pre-commit + AGENTS.md instruction), `skill` (AGENTS.md section), `slash_command` (AGENTS.md instruction). Lets Codex-only users get hook-equivalent behavior. |
-| 3 | **Full version pinning** | Fragment version cache so `pinned: true` actually renders the pinned version, not library-current. Library stores past versions under `fragments/<id>/.versions/`. |
-| 4 | **Init multi-scope detect** | `init --interactive` (or default for monorepos) detects `apps/*`, `packages/*`, `services/*` patterns and proposes a multi-scope Agentfile structure. Lifts the v0.2 hand-edit burden. |
-| 5 | **`status` per-scope** | When monorepo, group drift output by scope (`apps/api: 2 user-modified`, etc.) instead of flat list. |
-| 6 | **`anamnesis update --bump-pinned`** | Explicitly bump pinned fragments after manual review. Companion to #3. |
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Cursor adapter** | shipped | `.cursor/rules/*.mdc` output with `agentRequested: true`. Covers all 5 capabilities. `scoped_rule` (Cursor-native glob scoping) deferred. |
+| 2 | **Codex adapter completion** | shipped (AGENTS.md path) | `executable_hook` / `skill` / `slash_command` emit AGENTS.md region fallbacks (script body / skill body / command body). Git pre-commit auto-wiring deferred to v0.4 polish. |
+| 3 | **Init multi-scope detect** | partial | `init --monorepo` detects `package.json` `workspaces`, expands `<dir>/*`, runs rulebook per sub-project, generates multi-scope Agentfile. pnpm-workspace.yaml / lerna / nx / interactive prompt deferred. |
+| 4 | **`status` per-scope** | shipped | Multi-scope projects group fragments and drift entries under each scope. Single-scope output unchanged. |
+| 5 | **`/handoff-prepare` slash command** | shipped | Departing agent writes structured markdown to `.anamnesis/handoff/<ISO-ts>.md` capturing goal/done/in-flight/decisions/open questions/next steps. |
+| 6 | **SessionStart handoff injection** | shipped | CC uses native SessionStart hook (`inject-handoff.sh`, settings.json auto-registered). Codex/Cursor parity via AGENTS.md "session start: handoff 자동 확인" instruction (base v4). |
+| 7 | **Cross-adapter handoff parity** | shipped | Same handoff file format consumed by all three adapters via tool-agnostic AGENTS.md instruction. |
 
-### v0.3 *handoff MVP* (late v0.3, can split into 0.3.x patch)
-
-| # | Item | Description |
-|---|---|---|
-| 7 | **`/handoff prepare` slash command** | Departing agent writes a structured markdown to `.anamnesis/handoff/<ISO-ts>.md` capturing: current task, completed steps (with commit refs), in-flight files + intent, decisions, open blockers. |
-| 8 | **SessionStart handoff injection** | New session reads the most recent handoff file and injects into context. CC uses native SessionStart hook; Codex/Cursor read via AGENTS.md instruction. |
-| 9 | **Cross-adapter parity** | Same handoff file format consumed by all three adapters. Tool-agnostic handoff content. |
+**Moved to v0.4** (low value while user base is small):
+- ~~Full version pinning~~ — fragment version cache + `.versions/` storage. Without external user pressure, current "library-current always" is fine.
+- ~~`update --bump-pinned`~~ — companion to full pinning. Moves with it.
 
 ---
 
 ## v0.4 — *planned*
 
-> **Theme: agent continuity at scale + operational polish**
+> **Theme: agent continuity at scale + operational polish + project introspection**
 
 | # | Item | Description |
 |---|---|---|
-| 1 | **Handoff auto-trigger** | Detect token usage approaching limit, automatically suggest `/handoff prepare`. Or run on session-end hook. |
-| 2 | **Multi-task handoff tracking** | `.anamnesis/handoff/active.md` + archive. Multiple in-flight tasks distinguishable. |
-| 3 | **`anamnesis doctor`** | Installation integrity check: hash mismatches, missing files, adapter coverage gaps, settings.json drift. |
-| 4 | **Trusted Publishing setup** | GitHub Actions workflow + npm trust config so future releases don't need manual tokens. |
-| 5 | **Fragment catalog expansion** | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
-| 6 | **Aider/Windsurf adapters (optional)** | If community demand justifies. Same content+capabilities IR, different render targets. |
-| 7 | **`anamnesis status --json`** | Structured output for CI integration. |
+| 1 | **Hybrid ontology bootstrap** | Two-layer auto-generation of `.anamnesis/ontology/<id>.yaml`. **Layer A** (deterministic, CLI): `anamnesis ontology bootstrap` runs fragment-specific introspectors — k8s parses `k8s/**/*.yaml` for namespace/service/port, prisma parses `schema.prisma` for model/relation, nextjs walks `app/` for routes, fastapi/nestjs reflect routers. Output: facts auto-populated, no LLM, no agent. **Layer B** (agent-driven, skill): `/ontology-enrich` skill (rendered per adapter) instructs the active agent to read the bootstrap output + project manifests and fill in semantic relationships, flows, and operational notes that parsers can't extract. Result: fragment-shipped static template + project-specific facts + LLM-inferred semantics, all in one ontology slice. Companion: fragment-author SDK for `Introspector` interface so community fragments can ship their own parsers. |
+| 2 | **Handoff auto-trigger** | Detect token usage approaching limit, automatically suggest `/handoff prepare`. Or run on session-end hook. |
+| 3 | **Multi-task handoff tracking** | `.anamnesis/handoff/active.md` + archive. Multiple in-flight tasks distinguishable. |
+| 4 | **`anamnesis doctor`** | Installation integrity check: hash mismatches, missing files, adapter coverage gaps, settings.json drift. |
+| 5 | **Full version pinning** | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `fragments/<id>/.versions/`. (Moved from v0.3 — low value while user base is small.) |
+| 6 | **`anamnesis update --bump-pinned`** | Explicitly bump pinned fragments after manual review. Companion to #5. |
+| 7 | **Trusted Publishing setup** | GitHub Actions workflow + npm trust config so future releases don't need manual tokens. |
+| 8 | **Fragment catalog expansion** | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
+| 9 | **Codex hook auto-wiring** | Git pre-commit installer for executable_hook in Codex adapter (deferred from v0.3). Currently Codex agents read region instructions manually. |
+| 10 | **Aider/Windsurf adapters (optional)** | If community demand justifies. Same content+capabilities IR, different render targets. |
+| 11 | **`anamnesis status --json`** | Structured output for CI integration. |
 
 ---
 
