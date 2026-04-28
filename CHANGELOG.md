@@ -5,16 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project uses pre-1.0 semantics — minor version bumps may include
 breaking changes until v1.0.
 
-## [Unreleased] — v0.4.x in progress
+## [0.4.0] — 2026-04-29
 
-Hybrid ontology bootstrap (v0.4 main theme). New `ontology bootstrap`
-CLI command runs deterministic introspectors against the project and
-auto-generates `.anamnesis/ontology/<id>.bootstrap.yaml` files so new
-projects don't start with an empty ontology slice. See
+Hybrid ontology bootstrap. New projects no longer start with an empty
+ontology slice — `anamnesis init` now auto-populates
+`.anamnesis/ontology/<id>.bootstrap.yaml` from project files via
+fragment-specific introspectors (Layer A), and the new
+`ontology-enrich` skill instructs the active agent (any tool) to add
+the semantic layer parsers can't infer (Layer B). See
 [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) for the
 two-layer design.
 
-### Added (so far)
+### Added
 
 - **`Introspector` interface + `IntrospectorRegistry`**
   (`cli/src/core/introspector.ts`). Each fragment that wants bootstrap
@@ -42,16 +44,26 @@ two-layer design.
   values). Multi-file schema layouts supported. Verified on
   sanitized-nest-prisma: postgresql datasource + prisma-client generator +
   2 enums + multiple models, attributes preserved.
+- **`ontology-enrich` skill** — Layer B. Shipped as a new `skill`
+  capability of the base fragment (v4 → v5). Tool-agnostic via the
+  existing skill renderer pipeline: CC gets a native SKILL.md, Codex
+  gets an AGENTS.md `codex-skill-ontology-enrich` region, Cursor gets
+  a `.cursor/rules/ontology-enrich.mdc` with `agentRequested: true`.
+  Instructs the active agent to read the bootstrap output + project
+  manifests and write `<id>.enriched.yaml` files containing
+  relationships / flows / operational_notes that parsers cannot
+  extract.
+- **`anamnesis init` auto-bootstrap** — after fragment install, init
+  runs `ontology bootstrap` automatically. Fragments without a
+  registered introspector are silently skipped. Bootstrap failures do
+  not fail init; the message is surfaced in the CLI report. Opt out
+  with `--no-bootstrap`.
 
-### In progress
+### Coverage
 
-- **`ontology-enrich` skill** — Layer B. Bundled in base fragment
-  (v4 → v5 on ship). Tool-agnostic via existing skill renderer
-  pipeline (CC native SKILL.md, Codex AGENTS.md region, Cursor MDC).
-- **`anamnesis init` auto-bootstrap** — after fragment install, run
-  `ontology bootstrap` automatically (silently skip fragments without
-  a registered introspector). `--no-bootstrap` to opt out.
-- **0.4.0 publish** — pending Layer B + init integration.
+356 tests across 29 files (was 329 at 0.3.0 ship). New: 5 k8s
+introspector, 8 prisma introspector, 8 bootstrap command, 3 init
+auto-bootstrap.
 
 ### Targeted for 0.4.x patches
 
@@ -59,10 +71,7 @@ two-layer design.
 - nestjs introspector (`@Controller` / `@Get` / `@Post` regex first cut)
 - fastapi introspector (`@app.get/post` + `@router.*`)
 - introspector author SDK docs (community fragments ship parsers)
-
-### Coverage
-
-353 tests across 29 files (was 329 at 0.3.0 ship).
+- multi-scope bootstrap (currently root-only; per-scope is a follow-up)
 
 ---
 
