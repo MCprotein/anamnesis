@@ -1,5 +1,5 @@
 id: base
-version: 4
+version: 5
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, the load-context slash command/skill, and the AGENTS.md baseline
@@ -40,6 +40,10 @@ capabilities:
     name: load-context
     source: adapters/claude-code/skills/load-context
 
+  - type: skill
+    name: ontology-enrich
+    source: adapters/claude-code/skills/ontology-enrich
+
 owns:
   - region: anamnesis-base in AGENTS.md
   - file: .anamnesis/ontology/base.yaml
@@ -49,3 +53,4 @@ owns:
   - file: .claude/commands/load-context.md
   - file: .claude/commands/handoff-prepare.md
   - file: .claude/skills/load-context/SKILL.md
+  - file: .claude/skills/ontology-enrich/SKILL.md

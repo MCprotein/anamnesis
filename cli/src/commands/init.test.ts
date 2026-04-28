@@ -564,3 +564,79 @@ describe("summarizeChanges", () => {
     });
   });
 });
+
+describe("init — auto-bootstrap (Layer A)", () => {
+  let project: string;
+  let library: string;
+
+  beforeEach(() => {
+    project = tmpDir("anamnesis-proj-bootstrap-");
+    library = makeLibrary();
+    // Trigger prisma rule + give the prisma introspector something to parse.
+    fs.mkdirSync(path.join(project, "prisma"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, "prisma", "schema.prisma"),
+      `datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id Int @id
+}
+`,
+      "utf8",
+    );
+  });
+
+  it("runs ontology bootstrap by default and writes <id>.bootstrap.yaml", () => {
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    expect(result.bootstrapError).toBeUndefined();
+    expect(result.bootstrapResult).toBeDefined();
+    const prismaEntry = result.bootstrapResult!.entries.find(
+      (e) => e.fragmentId === "prisma",
+    );
+    expect(prismaEntry?.outcome).toBe("written");
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis", "ontology", "prisma.bootstrap.yaml"),
+      ),
+    ).toBe(true);
+  });
+
+  it("skips bootstrap when noBootstrap=true", () => {
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      noBootstrap: true,
+    });
+    expect(result.bootstrapResult).toBeUndefined();
+    expect(result.bootstrapError).toBeUndefined();
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis", "ontology", "prisma.bootstrap.yaml"),
+      ),
+    ).toBe(false);
+  });
+
+  it("skips bootstrap on dry-run even without noBootstrap", () => {
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: true,
+      allowExecAdapters: false,
+    });
+    expect(result.bootstrapResult).toBeUndefined();
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis", "ontology", "prisma.bootstrap.yaml"),
+      ),
+    ).toBe(false);
+  });
+});

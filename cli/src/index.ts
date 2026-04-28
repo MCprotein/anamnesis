@@ -127,6 +127,9 @@ Flags (init):
                                   a multi-scope Agentfile with one scope per
                                   workspace sub-project (silent fall-back to
                                   single-scope if no monorepo detected)
+  --no-bootstrap                Skip the post-install 'ontology bootstrap'
+                                  pass (fragments with introspectors auto-
+                                  populate .anamnesis/ontology/<id>.bootstrap.yaml)
 
 Flags (update):
   --project-root <path>         Target directory (default: cwd)
@@ -193,6 +196,19 @@ function reportInit(result: InitResult): void {
   if (s.blocked > 0) {
     console.log(
       "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
+    );
+  }
+  if (result.bootstrapError) {
+    console.log(`  ontology bootstrap: failed — ${result.bootstrapError}`);
+  } else if (result.bootstrapResult) {
+    const wrote = result.bootstrapResult.entries.filter(
+      (e) => e.outcome === "written",
+    ).length;
+    const skipped = result.bootstrapResult.entries.filter((e) =>
+      e.outcome.startsWith("skipped"),
+    ).length;
+    console.log(
+      `  ontology bootstrap: ${wrote} fragment(s) populated, ${skipped} skipped`,
     );
   }
 }
@@ -384,6 +400,7 @@ async function main(argv: string[]): Promise<number> {
           allowExecAdapters: flags["allow-exec-adapters"] === true,
           projectName: flags["project-name"] as string | undefined,
           monorepo: flags["monorepo"] === true,
+          noBootstrap: flags["no-bootstrap"] === true,
         });
         reportInit(result);
         return 0;

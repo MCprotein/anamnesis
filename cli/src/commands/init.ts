@@ -50,6 +50,11 @@ import {
   type HookRegistration,
   type HookSyncResult,
 } from "../core/settings.js";
+import {
+  bootstrap,
+  OntologyBootstrapError,
+  type BootstrapResult,
+} from "./ontology.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,6 +75,14 @@ export interface InitOptions {
    * If no monorepo is detected, falls back to single-scope init silently.
    */
   monorepo?: boolean;
+  /**
+   * Skip the post-install `ontology bootstrap` pass. By default, init
+   * runs bootstrap after writing files so that `.anamnesis/ontology/
+   * <id>.bootstrap.yaml` files are populated for any installed fragment
+   * that has a registered introspector. Disable when bootstrap output
+   * would be noisy or incorrect for a specific project.
+   */
+  noBootstrap?: boolean;
 }
 
 export interface InitResult {
@@ -91,6 +104,15 @@ export interface InitResult {
    * trigger any rulebook matches.
    */
   monorepoDetection?: MonorepoDetection;
+  /**
+   * Result of the post-install `ontology bootstrap` pass. Set when init
+   * actually ran bootstrap (i.e. files were written and `noBootstrap`
+   * was not set). On bootstrap failure, `bootstrapError` carries the
+   * message and `bootstrapResult` is undefined; init itself does not
+   * fail because of bootstrap errors.
+   */
+  bootstrapResult?: BootstrapResult;
+  bootstrapError?: string;
 }
 
 export class InitError extends Error {
@@ -306,6 +328,21 @@ export function init(opts: InitOptions): InitResult {
     hookRegistrations = syncWrittenHooks(changes, projectRoot);
   }
 
+  // 12. Post-install ontology bootstrap (Layer A). Failure does not
+  // fail init — surface the message and let the user re-run explicitly.
+  let bootstrapResult: BootstrapResult | undefined;
+  let bootstrapError: string | undefined;
+  if (!opts.dryRun && !opts.noBootstrap) {
+    try {
+      bootstrapResult = bootstrap({ projectRoot });
+    } catch (e) {
+      bootstrapError =
+        e instanceof OntologyBootstrapError
+          ? e.message
+          : `unexpected: ${(e as Error).message}`;
+    }
+  }
+
   return {
     agentfile,
     selectedFragments: rootOrdered,
@@ -314,6 +351,8 @@ export function init(opts: InitOptions): InitResult {
     writtenToDisk: !opts.dryRun,
     hookRegistrations,
     monorepoDetection,
+    bootstrapResult,
+    bootstrapError,
   };
 }
 
