@@ -28,8 +28,13 @@ import {
   StatusError,
   type StatusResult,
 } from "./commands/status.js";
+import {
+  bootstrap,
+  OntologyBootstrapError,
+  type BootstrapResult,
+} from "./commands/ontology.js";
 
-const VERSION = "0.2.0";
+const VERSION = "0.4.0";
 
 // ---------------------------------------------------------------------------
 // Arg parsing — tiny, deliberate, no dependency.
@@ -109,6 +114,8 @@ Commands:
   update                        Re-apply library state (dry-run by default)
   status                        Show installed fragments + drift + suggestions
   promote <source>              Lift a project file into the library as a fragment
+  ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
+                                  from project files (Layer A — deterministic)
 
 Flags (init):
   --project-root <path>         Target directory (default: cwd)
@@ -126,6 +133,12 @@ Flags (update):
   --library <path>              Library path (default: bundled)
   --apply                       Actually write (default is dry-run)
   --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
+
+Flags (ontology bootstrap):
+  --project-root <path>         Target directory (default: cwd)
+  --fragment <id>               Run only this fragment's introspector
+                                  (default: all installed fragments)
+  --dry-run                     Print plan without writing
 
 Flags (promote):
   --as <fragment-id>            Target fragment id (required)
@@ -293,6 +306,20 @@ function reportPromote(result: PromoteResult): void {
   );
 }
 
+function reportBootstrap(result: BootstrapResult): void {
+  console.log(`anamnesis ontology bootstrap`);
+  for (const e of result.entries) {
+    let suffix = "";
+    if (e.outcome === "written" || e.outcome === "unchanged") {
+      suffix = ` → ${e.path}`;
+    }
+    console.log(`  ${e.fragmentId.padEnd(20)} ${e.outcome}${suffix}`);
+  }
+  if (!result.writtenToDisk) {
+    console.log("  (dry-run or nothing changed — no files written)");
+  }
+}
+
 function reportUpdate(result: UpdateResult): void {
   const s = summarizeChanges(result.changes);
   const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
@@ -436,6 +463,33 @@ async function main(argv: string[]): Promise<number> {
         return 0;
       } catch (e) {
         if (e instanceof PromoteError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
+
+    case "ontology": {
+      const sub = positional[0];
+      if (sub !== "bootstrap") {
+        console.error(
+          `error: unknown 'ontology' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(`usage: anamnesis ontology bootstrap [--fragment=<id>] [--dry-run]`);
+        return 1;
+      }
+      try {
+        const result = bootstrap({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          fragment: flags["fragment"] as string | undefined,
+          dryRun: flags["dry-run"] === true,
+        });
+        reportBootstrap(result);
+        return 0;
+      } catch (e) {
+        if (e instanceof OntologyBootstrapError) {
           console.error(`error: ${e.message}`);
           return 1;
         }
