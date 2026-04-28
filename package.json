@@ -1,6 +1,6 @@
 {
   "name": "@mcprotein/anamnesis",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AI coding agent config lifecycle manager — keeps your agents from forgetting your project",
   "keywords": [
     "claude-code",

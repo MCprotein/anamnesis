@@ -5,6 +5,82 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project uses pre-1.0 semantics — minor version bumps may include
 breaking changes until v1.0.
 
+## [0.3.0] — 2026-04-28
+
+Three-tool parity + agent handoff. anamnesis now renders all 5
+capabilities for Claude Code, Codex, and Cursor; ships a tool-agnostic
+agent-handoff workflow; auto-detects monorepo workspaces; and groups
+`status` output by scope.
+
+### Added
+
+- **Cursor adapter** — full 5/5 capability coverage. `executable_hook`,
+  `skill`, `slash_command` emit `.cursor/rules/<id>.mdc` files with
+  `agentRequested: true` so Cursor's agent applies the rule when the
+  situation matches `description`. `project_memory` and `ontology` reuse
+  the Claude Code outputs (Cursor reads AGENTS.md natively). New prefix
+  `.cursor/rules/` added to `EXEC_ADAPTER_PREFIXES` so Cursor exec-adapter
+  files are gated behind `--allow-exec-adapters` for supply-chain
+  consistency. `scoped_rule` (Cursor-native glob scoping) deferred.
+- **Codex adapter completion** — `executable_hook`, `skill`,
+  `slash_command` now have Codex renderers that emit AGENTS.md region
+  fallbacks (`codex-hook-<basename>` / `codex-skill-<name>` /
+  `codex-cmd-<name>`) carrying the script body / skill body / command
+  body inline. Codex agents honor the intent manually since Codex has
+  no native hook system. Git pre-commit auto-wiring deferred to v0.4.
+- **`init --monorepo`** — detects `package.json` `workspaces` field,
+  expands `<dir>/*` patterns and exact paths, runs the rulebook in each
+  sub-project, and generates a multi-scope Agentfile with one
+  `extends: '.'` scope per matched workspace. Sub-scopes skip fragments
+  already at root to avoid duplicate installs. Empty workspaces (no rule
+  match) reported separately. pnpm-workspace.yaml / lerna / nx /
+  conventional-dir detection + interactive prompt remain follow-up.
+- **`status` per-scope grouping** — multi-scope projects group fragments
+  and drift entries under each scope. Single-scope output unchanged.
+  Each entry is bucketed to its longest-matching scope path; exec-adapter
+  files always belong to root (CC `settings.json` is read only at root).
+- **Agent handoff MVP** — base fragment v3 + v4 ship `/handoff-prepare`
+  slash command + `inject-handoff.sh` SessionStart hook + tool-agnostic
+  AGENTS.md "session start: handoff 자동 확인" instruction. Departing
+  agents write `.anamnesis/handoff/<ISO-ts>.md` capturing goal / done /
+  in-flight / decisions / open questions / next steps; arriving agents
+  (Claude Code via hook, Codex/Cursor via AGENTS.md instruction) read
+  the latest handoff and resume from where the previous session stopped.
+- **Multi-scope rendering** — `init` and `update` iterate over
+  `effectiveScopes(agentfile)` and emit per-scope render targets.
+  `dedupeActions` collapses duplicate AGENTS.md region writes when CC +
+  Codex + Cursor all emit the same project_memory or ontology slice.
+
+### Tests
+
+329 passing across 27 test files (was 299 in v0.2). New coverage:
+Cursor MDC rendering, Codex region fallbacks, monorepo detection,
+multi-scope status grouping.
+
+### Targeted for v0.4
+
+- **Hybrid ontology bootstrap** — two-layer auto-generation. Layer A
+  (deterministic CLI introspectors): `anamnesis ontology bootstrap` runs
+  per-fragment parsers (k8s manifests → namespace/service/port, prisma
+  schema → model/relation, nextjs → routes, fastapi/nestjs → routers).
+  Layer B (agent-driven): `/ontology-enrich` skill fills in semantic
+  relationships, flows, and operational notes parsers can't extract.
+  Companion `Introspector` SDK so community fragments ship their own
+  parsers.
+- **Full version pinning** — fragment version cache + `.versions/`
+  storage. Moved from v0.3 (low value while user base is small).
+- **`anamnesis update --bump-pinned`** — companion to full pinning.
+- **Handoff auto-trigger** + multi-task tracking + recovery.
+- **`anamnesis doctor`** — installation integrity check.
+- **Codex hook auto-wiring** — git pre-commit installer.
+- **Trusted Publishing** — GitHub Actions + OIDC for npm releases.
+- **Fragment catalog expansion** — Rails, Django, Go, Rust, sveltekit, etc.
+- **`anamnesis status --json`** — structured output for CI.
+
+Full breakdown in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+---
+
 ## [0.2.0] — 2026-04-27
 
 Multi-tool, multi-scope. anamnesis now produces context for both Claude
