@@ -223,12 +223,12 @@ rendering pipeline handles this for free.
 
 ## 10. Phased rollout
 
-| Phase | Deliverable | Tests | Ship in |
+| Phase | Deliverable | Tests | Status |
 |---|---|---|---|
-| 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill | +30 | minor |
-| 0.4.1 | nextjs + nestjs introspectors | +15 | patch |
-| 0.4.2 | fastapi introspector + introspector author SDK docs | +10 | patch |
-| 0.5.0 | introspector author SDK frozen + community fragment guide | — | minor |
+| 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +30 | partial: Layer A shipped (k8s + prisma + bootstrap command). Layer B skill + init integration in progress. |
+| 0.4.1 | nextjs + nestjs introspectors | +15 | planned |
+| 0.4.2 | fastapi introspector + introspector author SDK docs | +10 | planned |
+| 0.5.0 | introspector author SDK frozen + community fragment guide | — | planned |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
 (sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later

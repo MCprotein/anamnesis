@@ -5,6 +5,67 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project uses pre-1.0 semantics — minor version bumps may include
 breaking changes until v1.0.
 
+## [Unreleased] — v0.4.x in progress
+
+Hybrid ontology bootstrap (v0.4 main theme). New `ontology bootstrap`
+CLI command runs deterministic introspectors against the project and
+auto-generates `.anamnesis/ontology/<id>.bootstrap.yaml` files so new
+projects don't start with an empty ontology slice. See
+[`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) for the
+two-layer design.
+
+### Added (so far)
+
+- **`Introspector` interface + `IntrospectorRegistry`**
+  (`cli/src/core/introspector.ts`). Each fragment that wants bootstrap
+  support registers an Introspector keyed by its fragment id with two
+  hooks: `appliesTo(ctx)` (cheap pre-flight) and `introspect(ctx)`
+  (returns plain JS object → YAML).
+- **`anamnesis ontology bootstrap`** command
+  (`cli/src/commands/ontology.ts`) — Layer A entrypoint. Walks the
+  Agentfile, looks up an introspector for each installed fragment,
+  runs it, writes `.anamnesis/ontology/<id>.bootstrap.yaml` with a
+  deterministic header. Flags: `--fragment <id>`, `--dry-run`,
+  `--project-root`. Outcomes: `written` / `unchanged` /
+  `skipped-no-introspector` / `skipped-not-applicable`.
+- **k8s introspector** (`cli/src/introspectors/k8s.ts`) — walks
+  project YAML files, multi-doc aware, extracts `namespaces`,
+  `services` (name/ns/type/ports/selector), `ingresses` (host/paths/
+  backend), `workloads` (Deployment / StatefulSet / DaemonSet / Job /
+  CronJob with images + replicas). Stable sort by (namespace, name).
+  Verified on sanitized-k8s: 7 namespaces + ingresses + services +
+  workloads from real manifests, 276 lines of structured output.
+- **prisma introspector** (`cli/src/introspectors/prisma.ts`) —
+  finds `**/schema.prisma`, regex-based block parser, extracts
+  `datasources`, `generators`, `models` (with field-level type +
+  attributes like `@id` / `@default` / `@relation`), `enums` (with
+  values). Multi-file schema layouts supported. Verified on
+  sanitized-nest-prisma: postgresql datasource + prisma-client generator +
+  2 enums + multiple models, attributes preserved.
+
+### In progress
+
+- **`ontology-enrich` skill** — Layer B. Bundled in base fragment
+  (v4 → v5 on ship). Tool-agnostic via existing skill renderer
+  pipeline (CC native SKILL.md, Codex AGENTS.md region, Cursor MDC).
+- **`anamnesis init` auto-bootstrap** — after fragment install, run
+  `ontology bootstrap` automatically (silently skip fragments without
+  a registered introspector). `--no-bootstrap` to opt out.
+- **0.4.0 publish** — pending Layer B + init integration.
+
+### Targeted for 0.4.x patches
+
+- nextjs introspector (App Router + Pages Router → routes)
+- nestjs introspector (`@Controller` / `@Get` / `@Post` regex first cut)
+- fastapi introspector (`@app.get/post` + `@router.*`)
+- introspector author SDK docs (community fragments ship parsers)
+
+### Coverage
+
+353 tests across 29 files (was 329 at 0.3.0 ship).
+
+---
+
 ## [0.3.0] — 2026-04-28
 
 Three-tool parity + agent handoff. anamnesis now renders all 5

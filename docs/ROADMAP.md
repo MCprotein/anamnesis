@@ -61,13 +61,15 @@ verified feedback arrives.
 
 ---
 
-## v0.4 — *planned*
+## v0.4 — *in progress*
 
 > **Theme: agent continuity at scale + operational polish + project introspection**
 
-| # | Item | Description |
-|---|---|---|
-| 1 | **Hybrid ontology bootstrap** | Two-layer auto-generation of `.anamnesis/ontology/<id>.yaml`. **Layer A** (deterministic, CLI): `anamnesis ontology bootstrap` runs fragment-specific introspectors — k8s parses `k8s/**/*.yaml` for namespace/service/port, prisma parses `schema.prisma` for model/relation, nextjs walks `app/` for routes, fastapi/nestjs reflect routers. Output: facts auto-populated, no LLM, no agent. **Layer B** (agent-driven, skill): `/ontology-enrich` skill (rendered per adapter) instructs the active agent to read the bootstrap output + project manifests and fill in semantic relationships, flows, and operational notes that parsers can't extract. Result: fragment-shipped static template + project-specific facts + LLM-inferred semantics, all in one ontology slice. Companion: fragment-author SDK for `Introspector` interface so community fragments can ship their own parsers. |
+Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Hybrid ontology bootstrap** | partial — Layer A k8s+prisma shipped | **Layer A** (deterministic CLI introspectors): `anamnesis ontology bootstrap` writes `.anamnesis/ontology/<id>.bootstrap.yaml`. ✓ k8s (namespaces/services/ingresses/workloads). ✓ prisma (datasources/generators/models/enums). ⏳ nextjs/nestjs/fastapi (0.4.x patch). **Layer B** (agent-driven `/ontology-enrich` skill, base v5): ⏳ tool-agnostic semantic enrichment via existing skill pipeline. **`init` auto-bootstrap**: ⏳ `init` runs bootstrap after fragment install (`--no-bootstrap` opt-out). **`Introspector` SDK docs**: 0.5.0 freeze. |
 | 2 | **Handoff auto-trigger** | Detect token usage approaching limit, automatically suggest `/handoff prepare`. Or run on session-end hook. |
 | 3 | **Multi-task handoff tracking** | `.anamnesis/handoff/active.md` + archive. Multiple in-flight tasks distinguishable. |
 | 4 | **`anamnesis doctor`** | Installation integrity check: hash mismatches, missing files, adapter coverage gaps, settings.json drift. |
