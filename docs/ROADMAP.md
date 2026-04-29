@@ -84,7 +84,8 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 **Targeted for 0.4.x patches:**
 - nextjs introspector (App Router + Pages Router routes) — implemented,
   pending patch release
-- nestjs introspector (`@Controller` / route method decorators)
+- nestjs introspector (`@Controller` / route method decorators) —
+  implemented, pending patch release
 - fastapi introspector (`@app.*` + `@router.*`)
 - multi-scope bootstrap (per-scope ontology output; 0.4.0 is root-only)
 

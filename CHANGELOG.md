@@ -14,6 +14,11 @@ breaking changes until v1.0.
   `pages/api` routes, exported HTTP methods on route handlers, and
   middleware files. Output is stable-sorted and intended as the first
   0.4.x patch in the ontology bootstrap expansion.
+- **nestjs introspector** (`cli/src/introspectors/nestjs.ts`) —
+  scans source files for `@Controller()` classes and HTTP method
+  decorators (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`,
+  etc.), producing controller prefixes plus stable-sorted route facts
+  without adding TypeScript parser dependencies.
 
 ## [0.4.0] — 2026-04-29
 
