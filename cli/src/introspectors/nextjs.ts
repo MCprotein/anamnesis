@@ -185,7 +185,16 @@ function scanMiddleware(absPath: string, projectRoot: string): MiddlewareFact | 
   const filename = parts[parts.length - 1] ?? "";
   const base = stripRouteExt(filename);
   if (base !== "middleware") return null;
-  return { file: toPosix(path.relative(projectRoot, absPath)) };
+  const rel = toPosix(path.relative(projectRoot, absPath));
+  if (
+    rel !== "middleware.ts" &&
+    rel !== "middleware.js" &&
+    rel !== "src/middleware.ts" &&
+    rel !== "src/middleware.js"
+  ) {
+    return null;
+  }
+  return { file: rel };
 }
 
 // ---------------------------------------------------------------------------

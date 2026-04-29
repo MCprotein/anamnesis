@@ -143,6 +143,7 @@ describe("nextjs introspector — introspect", () => {
   it("reports middleware files", () => {
     write(root, "middleware.ts", "export function middleware() {}\n");
     write(root, "src/middleware.ts", "export function middleware() {}\n");
+    write(root, "src/server/middleware.ts", "export function middleware() {}\n");
 
     const facts = nextjsIntrospector.introspect(new ProjectContext(root)) as {
       middleware: Array<{ file: string }>;
