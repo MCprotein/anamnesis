@@ -5,11 +5,11 @@
       "file": "AGENTS.md",
       "region_id": "anamnesis-base",
       "fragment_id": "base",
-      "fragment_version": 3,
-      "template_version": 3,
+      "fragment_version": 5,
+      "template_version": 5,
       "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "last_applied_hash": "sha256:64f6b3f90254b30b02ee5bc09b17a78b4323789d6ce0e858b51a3f3d14fc2fc2",
-      "current_user_hash": "sha256:64f6b3f90254b30b02ee5bc09b17a78b4323789d6ce0e858b51a3f3d14fc2fc2"
+      "last_applied_hash": "sha256:e7afc3493a7c05b0945498e12ef9faeeb889aa77f92d5acbd670312aa9cd5d05",
+      "current_user_hash": "sha256:e7afc3493a7c05b0945498e12ef9faeeb889aa77f92d5acbd670312aa9cd5d05"
     }
   ],
   "files": [
@@ -61,6 +61,13 @@
       "fragment_version": 3,
       "last_applied_hash": "sha256:00ec0e6ad19acf59d90fa29f0b93165e88638fdedf2120da02c8d88ec3825cf3",
       "current_user_hash": "sha256:00ec0e6ad19acf59d90fa29f0b93165e88638fdedf2120da02c8d88ec3825cf3"
+    },
+    {
+      "path": ".claude/skills/ontology-enrich/SKILL.md",
+      "fragment_id": "base",
+      "fragment_version": 5,
+      "last_applied_hash": "sha256:81f67a5baf6935f7f84578faecd53df03dca44e6e8598f4794569fedd82be6eb",
+      "current_user_hash": "sha256:81f67a5baf6935f7f84578faecd53df03dca44e6e8598f4794569fedd82be6eb"
     }
   ]
 }
