@@ -5,12 +5,14 @@
 
 import { IntrospectorRegistry } from "../core/introspector.js";
 import { k8sIntrospector } from "./k8s.js";
+import { nextjsIntrospector } from "./nextjs.js";
 import { prismaIntrospector } from "./prisma.js";
 
 export function registerBuiltinIntrospectors(
   registry: IntrospectorRegistry,
 ): void {
   registry.register(k8sIntrospector);
+  registry.register(nextjsIntrospector);
   registry.register(prismaIntrospector);
 }
 

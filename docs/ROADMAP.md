@@ -82,7 +82,8 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 11 | **`anamnesis status --json`** | Structured output for CI integration. |
 
 **Targeted for 0.4.x patches:**
-- nextjs introspector (App Router + Pages Router routes)
+- nextjs introspector (App Router + Pages Router routes) — implemented,
+  pending patch release
 - nestjs introspector (`@Controller` / route method decorators)
 - fastapi introspector (`@app.*` + `@router.*`)
 - multi-scope bootstrap (per-scope ontology output; 0.4.0 is root-only)

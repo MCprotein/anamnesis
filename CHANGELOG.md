@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project uses pre-1.0 semantics — minor version bumps may include
 breaking changes until v1.0.
 
+## [Unreleased]
+
+### Added
+
+- **nextjs introspector** (`cli/src/introspectors/nextjs.ts`) —
+  finds App Router `page` / `route` files, Pages Router pages and
+  `pages/api` routes, exported HTTP methods on route handlers, and
+  middleware files. Output is stable-sorted and intended as the first
+  0.4.x patch in the ontology bootstrap expansion.
+
 ## [0.4.0] — 2026-04-29
 
 Hybrid ontology bootstrap. New projects no longer start with an empty
