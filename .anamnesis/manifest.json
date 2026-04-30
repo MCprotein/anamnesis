@@ -5,11 +5,11 @@
       "file": "AGENTS.md",
       "region_id": "anamnesis-base",
       "fragment_id": "base",
-      "fragment_version": 5,
-      "template_version": 5,
+      "fragment_version": 6,
+      "template_version": 6,
       "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "last_applied_hash": "sha256:e7afc3493a7c05b0945498e12ef9faeeb889aa77f92d5acbd670312aa9cd5d05",
-      "current_user_hash": "sha256:e7afc3493a7c05b0945498e12ef9faeeb889aa77f92d5acbd670312aa9cd5d05"
+      "last_applied_hash": "sha256:94086df3cf6ea5c2e7a1b9bd9330b4482abf249bc5df2c402a5b1741d3a571d4",
+      "current_user_hash": "sha256:94086df3cf6ea5c2e7a1b9bd9330b4482abf249bc5df2c402a5b1741d3a571d4"
     }
   ],
   "files": [
@@ -51,16 +51,16 @@
     {
       "path": ".claude/hooks/inject-handoff.sh",
       "fragment_id": "base",
-      "fragment_version": 3,
-      "last_applied_hash": "sha256:69e7bbbde298f38e4ec1cf998836a48ab0301b5bf0f82772910ab28ee44eefe6",
-      "current_user_hash": "sha256:69e7bbbde298f38e4ec1cf998836a48ab0301b5bf0f82772910ab28ee44eefe6"
+      "fragment_version": 6,
+      "last_applied_hash": "sha256:dbb49f7474b213f8f706ae91709f789fd4bf471694550bdd56e0db0be86818a2",
+      "current_user_hash": "sha256:dbb49f7474b213f8f706ae91709f789fd4bf471694550bdd56e0db0be86818a2"
     },
     {
       "path": ".claude/commands/handoff-prepare.md",
       "fragment_id": "base",
-      "fragment_version": 3,
-      "last_applied_hash": "sha256:00ec0e6ad19acf59d90fa29f0b93165e88638fdedf2120da02c8d88ec3825cf3",
-      "current_user_hash": "sha256:00ec0e6ad19acf59d90fa29f0b93165e88638fdedf2120da02c8d88ec3825cf3"
+      "fragment_version": 6,
+      "last_applied_hash": "sha256:5e62a16ec96693f86bbe12f6d096416aaf73c37c02dd5ac271439ffe0bb6de9b",
+      "current_user_hash": "sha256:5e62a16ec96693f86bbe12f6d096416aaf73c37c02dd5ac271439ffe0bb6de9b"
     },
     {
       "path": ".claude/skills/ontology-enrich/SKILL.md",
@@ -68,6 +68,13 @@
       "fragment_version": 5,
       "last_applied_hash": "sha256:81f67a5baf6935f7f84578faecd53df03dca44e6e8598f4794569fedd82be6eb",
       "current_user_hash": "sha256:81f67a5baf6935f7f84578faecd53df03dca44e6e8598f4794569fedd82be6eb"
+    },
+    {
+      "path": ".claude/hooks/handoff-reminder.sh",
+      "fragment_id": "base",
+      "fragment_version": 6,
+      "last_applied_hash": "sha256:0b730af8d5fbc6b3dfca3fcff459a31184dc5a006cb968ab17cc851f772b8760",
+      "current_user_hash": "sha256:0b730af8d5fbc6b3dfca3fcff459a31184dc5a006cb968ab17cc851f772b8760"
     }
   ]
 }

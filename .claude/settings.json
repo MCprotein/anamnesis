@@ -24,6 +24,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/handoff-reminder.sh"
+          }
+        ]
+      }
     ]
   }
 }

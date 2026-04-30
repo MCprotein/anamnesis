@@ -5,4 +5,4 @@ tools:
   - claude-code
 fragments:
   - id: base
-    version: 5
+    version: 6

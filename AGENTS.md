@@ -35,7 +35,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@5 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@6 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -53,7 +53,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 - `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.
 - `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.
-  결과는 `.anamnesis/handoff/<ts>.md` 로 저장되고, 다음 세션 시작 시 자동 주입됨.
+  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 자동 주입됨.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
 
@@ -62,9 +62,11 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:
 
 1. `.anamnesis/handoff/` 디렉토리 존재 확인.
-2. 있다면 가장 최근 mtime 의 `*.md` 파일 1개 읽기 (`ls -t` / `find -printf` 등 사용).
-3. 그 파일의 frontmatter (created / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
-4. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
+2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.
+3. active.md 가 가리키는 archive 또는 가장 최근 mtime 의 timestamp `*.md` 파일 1개를 추가로 읽기 (`active.md` 제외).
+4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
+5. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
 
 Claude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 자동 stdout 주입되지만, Codex / Cursor 는 자동 hook 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
+Claude Code 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림.
 <!-- /anamnesis:region -->
