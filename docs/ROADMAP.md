@@ -70,22 +70,25 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Hybrid ontology bootstrap** | shipped in 0.4.0; expanded in 0.4.1 | **Layer A** (deterministic CLI introspectors): `anamnesis ontology bootstrap` writes `.anamnesis/ontology/<id>.bootstrap.yaml`. ✓ k8s (namespaces/services/ingresses/workloads). ✓ prisma (datasources/generators/models/enums). 0.4.1 adds ✓ nextjs, ✓ nestjs, ✓ fastapi, plus multi-scope scope-local output and `--scope`. **Layer B** (agent-driven `/ontology-enrich` skill, base v5): shipped via the existing skill pipeline for Claude Code, Codex, and Cursor. **`init` auto-bootstrap**: shipped; `init` runs bootstrap after fragment install (`--no-bootstrap` opt-out). |
-| 2 | **Handoff auto-trigger** | Detect token usage approaching limit, automatically suggest `/handoff prepare`. Or run on session-end hook. |
-| 3 | **Multi-task handoff tracking** | `.anamnesis/handoff/active.md` + archive. Multiple in-flight tasks distinguishable. |
-| 4 | **`anamnesis doctor`** | Installation integrity check: hash mismatches, missing files, adapter coverage gaps, settings.json drift. |
-| 5 | **Full version pinning** | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `fragments/<id>/.versions/`. (Moved from v0.3 — low value while user base is small.) |
-| 6 | **`anamnesis update --bump-pinned`** | Explicitly bump pinned fragments after manual review. Companion to #5. |
-| 7 | **Trusted Publishing setup** | GitHub Actions workflow + npm trust config so future releases don't need manual tokens. |
-| 8 | **Fragment catalog expansion** | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
-| 9 | **Codex hook auto-wiring** | Git pre-commit installer for executable_hook in Codex adapter (deferred from v0.3). Currently Codex agents read region instructions manually. |
-| 10 | **Aider/Windsurf adapters (optional)** | If community demand justifies. Same content+capabilities IR, different render targets. |
-| 11 | **`anamnesis status --json`** | Structured output for CI integration. |
+| 2 | **Handoff auto-trigger** | planned | Detect token usage approaching limit, automatically suggest `/handoff prepare`. Or run on session-end hook. |
+| 3 | **Multi-task handoff tracking** | planned | `.anamnesis/handoff/active.md` + archive. Multiple in-flight tasks distinguishable. |
+| 4 | **`anamnesis doctor`** | implemented, pending patch release | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
+| 5 | **Full version pinning** | planned | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `fragments/<id>/.versions/`. (Moved from v0.3 — low value while user base is small.) |
+| 6 | **`anamnesis update --bump-pinned`** | planned | Explicitly bump pinned fragments after manual review. Companion to #5. |
+| 7 | **Trusted Publishing setup** | planned | GitHub Actions workflow + npm trust config so future releases don't need manual tokens. |
+| 8 | **Fragment catalog expansion** | planned | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
+| 9 | **Codex hook auto-wiring** | planned | Git pre-commit installer for executable_hook in Codex adapter (deferred from v0.3). Currently Codex agents read region instructions manually. |
+| 10 | **Aider/Windsurf adapters (optional)** | optional | If community demand justifies. Same content+capabilities IR, different render targets. |
+| 11 | **`anamnesis status --json`** | planned | Structured output for CI integration. |
 
 **Shipped in 0.4.1 patch:**
 - nextjs introspector (App Router + Pages Router routes)
 - nestjs introspector (`@Controller` / route method decorators)
 - fastapi introspector (`@app.*` + `@router.*`)
 - multi-scope bootstrap (per-scope ontology output + `--scope`)
+
+**Targeted for next 0.4.x patch:**
+- `anamnesis doctor` — implemented, pending patch release
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more

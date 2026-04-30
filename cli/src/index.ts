@@ -29,6 +29,11 @@ import {
   type StatusResult,
 } from "./commands/status.js";
 import {
+  doctor,
+  DoctorError,
+  type DoctorResult,
+} from "./commands/doctor.js";
+import {
   bootstrap,
   OntologyBootstrapError,
   type BootstrapResult,
@@ -113,6 +118,7 @@ Commands:
   init                          First-time setup for the current project
   update                        Re-apply library state (dry-run by default)
   status                        Show installed fragments + drift + suggestions
+  doctor                        Diagnose install integrity and adapter wiring
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
                                   from project files (Layer A — deterministic)
@@ -136,6 +142,10 @@ Flags (update):
   --library <path>              Library path (default: bundled)
   --apply                       Actually write (default is dry-run)
   --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
+
+Flags (status / doctor):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
 
 Flags (ontology bootstrap):
   --project-root <path>         Target directory (default: cwd)
@@ -283,6 +293,26 @@ function reportStatus(result: StatusResult): void {
       const why = d.reason ? `: ${d.reason}` : "";
       console.log(`    ${d.id}${when}${why}`);
     }
+  }
+}
+
+function reportDoctor(result: DoctorResult): void {
+  const verdict = result.ok ? "ok" : "issues found";
+  console.log(`anamnesis doctor — ${verdict}`);
+  console.log(
+    `  issues: ${result.summary.errors} error(s), ${result.summary.warnings} warning(s)`,
+  );
+  if (result.issues.length === 0) {
+    console.log("  installation integrity checks passed");
+    return;
+  }
+  for (const issue of result.issues) {
+    const scope = issue.scopePath ? ` [${issue.scopePath}]` : "";
+    const target = issue.target ? ` ${issue.target}` : "";
+    console.log(
+      `  ${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`,
+    );
+    console.log(`    ${issue.message}`);
   }
 }
 
@@ -449,6 +479,24 @@ async function main(argv: string[]): Promise<number> {
         return 0;
       } catch (e) {
         if (e instanceof StatusError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+
+    case "doctor":
+      try {
+        const result = doctor({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+        });
+        reportDoctor(result);
+        return result.ok ? 0 : 1;
+      } catch (e) {
+        if (e instanceof DoctorError) {
           console.error(`error: ${e.message}`);
           return 1;
         }

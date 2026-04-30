@@ -7,6 +7,14 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+### Added
+
+- **`anamnesis doctor`** — read-only installation integrity diagnostics.
+  Reports manifest parse/missing errors, tracked file or region drift,
+  missing library fragments, fragment updates, adapter renderer gaps,
+  invalid `.claude/settings.json`, and installed Claude hooks missing
+  from settings registration.
+
 ## [0.4.1] — 2026-04-30
 
 Ontology bootstrap expansion for common web/backend stacks and monorepo
