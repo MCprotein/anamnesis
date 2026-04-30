@@ -7,6 +7,20 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+## [0.4.4] — 2026-04-30
+
+Release automation verification after npm Trusted Publishing was enabled
+for the GitHub Actions workflow.
+
+### Changed
+
+- Bumped the package to validate that the tag-triggered publish workflow
+  can publish via npm OIDC without a local owner-token fallback.
+
+### Coverage
+
+405 tests across 33 files.
+
 ## [0.4.3] — 2026-04-30
 
 Packaging recovery for npm publish after the `v0.4.2` tag workflow
