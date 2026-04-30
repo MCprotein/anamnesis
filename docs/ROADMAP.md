@@ -61,7 +61,7 @@ verified feedback arrives.
 
 ---
 
-## v0.4 — *shipped 2026-04-29; 0.4.1 shipped 2026-04-30*
+## v0.4 — *shipped 2026-04-29; patches through 0.4.4 on 2026-04-30*
 
 > **Theme: agent continuity at scale + operational polish + project introspection**
 
@@ -75,7 +75,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 4 | **`anamnesis doctor`** | shipped in 0.4.2 | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
 | 5 | **Full version pinning** | shipped in 0.4.2 | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `base/.versions/<version>/` or `fragments/<id>/.versions/<version>/`. |
 | 6 | **`anamnesis update --bump-pinned`** | shipped in 0.4.2 | Explicitly bump pinned fragments after manual review while keeping them pinned. Companion to #5. |
-| 7 | **Trusted Publishing setup** | workflow shipped in 0.4.2; npm publisher registration pending | GitHub Actions workflow + documented npm Trusted Publisher config so future releases don't need manual tokens. npmjs.com package settings still need the one-time trusted publisher registration. |
+| 7 | **Trusted Publishing setup** | workflow shipped in 0.4.2; OIDC unresolved | GitHub Actions workflow + documented npm Trusted Publisher config shipped. `0.4.3` was published with local npm owner credentials. `v0.4.4` proved the tag workflow reaches `npm publish`, but npm OIDC still returns E404 despite apparently correct trusted-publisher settings. Manual npmjs.org publish remains the supported fallback until npm/GitHub OIDC matching is resolved. |
 | 8 | **Fragment catalog expansion** | shipped in 0.4.2 | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (SvelteKit, Remix, Nuxt). |
 | 9 | **Codex hook auto-wiring** | shipped in 0.4.2 | Git pre-commit bridge for `executable_hook` in the Codex adapter. Codex still gets AGENTS.md fallback instructions; Git repos also get `.anamnesis/codex-hooks/` plus `.git/hooks/pre-commit` when exec adapters are allowed. |
 | 10 | **Aider/Windsurf adapters (optional)** | optional | If community demand justifies. Same content+capabilities IR, different render targets. |
@@ -92,17 +92,79 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 - `anamnesis doctor`
 - `anamnesis status --json`
 - full version pinning + `update --bump-pinned`
-- Trusted Publishing workflow + release docs (npmjs.com publisher registration still pending)
+- Trusted Publishing workflow + release docs
 - Fragment catalog expansion (Rails, Django, Go, Rust, SvelteKit, Remix, Nuxt)
 - Codex hook auto-wiring
 
-**Remaining 0.4.x operational task:**
-- Register npm Trusted Publisher on npmjs.com for `@mcprotein/anamnesis`
-  using `.github/workflows/publish.yml`.
+**Shipped in 0.4.3 patch:**
+- npm publish recovery to npmjs.org using local package-owner credentials
+- normalized CLI `bin` metadata so npm 11 does not auto-correct the package at publish time
+- publish workflow skip guard for versions that already exist on npmjs.org
 
-**Moved to v0.5:**
-- Introspector author SDK docs and API freeze, after at least one more
-  framework introspector validates the extension surface.
+**Shipped in 0.4.4 patch:**
+- tag-triggered Trusted Publishing verification release
+- GitHub Actions reached `npm publish`, but npm OIDC exchange/publish still failed with E404
+
+**Remaining 0.4.x operational task:**
+- Keep the manual npmjs.org owner-token publish fallback documented and available.
+- Revisit npm Trusted Publishing only when new evidence or npm/GitHub behavior changes; do not block feature work on OIDC.
+
+---
+
+## v0.5 — *planned*
+
+> **Theme: freeze the extension surface for ontology generation and adapter parity**
+
+v0.5 is not the "all frameworks are deeply understood" release. It is the
+release that makes future framework support cheap and consistent.
+
+| # | Item | Description |
+|---|---|---|
+| 1 | **Introspector author SDK docs** | Document the `Introspector` contract, stable output expectations, filesystem constraints, fixture shape, and how fragment authors add deterministic Layer A facts. |
+| 2 | **Introspector API freeze candidate** | Review current k8s/prisma/nextjs/nestjs/fastapi introspectors and remove accidental coupling before external fragments rely on the interface. |
+| 3 | **One more framework introspector** | Add at least one non-JS or convention-heavy introspector (candidate: Rails, Django, Go, or Rust) to validate the extension surface before freezing it. |
+| 4 | **Cross-agent parity fixtures** | Add fixture/snapshot coverage proving that the same capability IR produces equivalent user-facing behavior across Claude Code, Codex, and Cursor renderers. |
+| 5 | **Parity vocabulary** | Document that anamnesis targets user-facing parity, not impossible 1:1 native UI parity. Claude slash commands/hooks, Codex AGENTS.md/git-hook bridges, and Cursor rules can differ internally as long as the same project memory, ontology, handoff, and safety intent are available. |
+| 6 | **Ontology output stability** | Stabilize bootstrap YAML conventions enough for agents and future docs to rely on them without treating every field as provisional. |
+
+Exit criteria:
+- New fragment authors can implement a deterministic ontology bootstrap without reading internal code first.
+- Existing adapters have parity snapshots for the core capabilities.
+- The next framework introspector does not require changing the public `Introspector` shape.
+
+---
+
+## v0.6 — *planned*
+
+> **Theme: expand deterministic ontology coverage**
+
+| # | Item | Description |
+|---|---|---|
+| 1 | **Framework introspector catalog** | Add deterministic Layer A introspectors for high-signal fragments beyond the current set. Priority candidates: Rails, Django, Go services, Rust, SvelteKit, Remix, and Nuxt. |
+| 2 | **Fixture corpus** | Maintain small sanitized-fixture-like fixtures per introspector so route/model/service extraction stays stable. |
+| 3 | **Layer A / Layer B boundary docs** | Clarify which facts are parser-derived and which semantic relationships should remain agent-enriched. |
+| 4 | **Monorepo ontology hardening** | Stress-test mixed-stack multi-scope projects so generated ontology remains scope-local, stable-sorted, and non-duplicative. |
+
+Exit criteria:
+- New framework support is mostly additive: fragment + introspector + fixtures + rulebook.
+- Common full-stack monorepos produce useful bootstrap ontology before any LLM enrichment.
+
+---
+
+## v0.7 — *planned*
+
+> **Theme: cross-agent UX hardening**
+
+| # | Item | Description |
+|---|---|---|
+| 1 | **Adapter parity matrix** | Publish and test a matrix for each capability (`project_memory`, `ontology`, `executable_hook`, `skill`, `slash_command`) across Claude Code, Codex, and Cursor. |
+| 2 | **Dogfood parity scenarios** | Run the same project through all supported adapters and compare installed files, instructions, handoff behavior, and update drift reports. |
+| 3 | **Native-surface improvements** | Where a tool offers a better native surface, use it; where it does not, keep fallback instructions explicit and testable. |
+| 4 | **UX acceptance criteria** | Define "same user experience" as equivalent project recall, safety reminders, ontology access, and handoff continuity, not byte-for-byte identical UI controls. |
+
+Exit criteria:
+- Switching agents preserves project memory, ontology access, handoff continuity, and operational reminders in normal workflows.
+- Known adapter gaps are documented as tool-surface limitations, not hidden behavior.
 
 ---
 

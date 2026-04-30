@@ -7,15 +7,25 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+### Documentation
+
+- Clarified the roadmap after v0.4: v0.5 freezes the introspector/parity
+  extension surface, v0.6 expands deterministic ontology coverage, and
+  v0.7 hardens cross-agent user-facing parity.
+- Documented the current npm Trusted Publishing/OIDC status and the
+  manual npmjs.org publish fallback.
+
 ## [0.4.4] — 2026-04-30
 
-Release automation verification after npm Trusted Publishing was enabled
+Release automation verification after npm Trusted Publishing was configured
 for the GitHub Actions workflow.
 
 ### Changed
 
-- Bumped the package to validate that the tag-triggered publish workflow
-  can publish via npm OIDC without a local owner-token fallback.
+- Bumped the package to validate whether the tag-triggered publish workflow
+  can publish via npm OIDC without a local owner-token fallback. The
+  workflow reached `npm publish`, but npmjs.org rejected the OIDC publish
+  with E404; `0.4.4` was not published to npmjs.org.
 
 ### Coverage
 

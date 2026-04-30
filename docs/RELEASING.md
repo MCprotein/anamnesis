@@ -54,6 +54,12 @@ case-sensitive Trusted Publishing fields above in npmjs.com. npm does not
 validate those fields when they are saved, so a repository owner, workflow
 filename, or environment mismatch only appears at publish time.
 
+As of the `v0.4.4` verification tag, the workflow reaches `npm publish`
+but npmjs.org still returns E404 during the publish step even when the
+trusted publisher appears to be configured as `MCprotein/anamnesis` +
+`publish.yml` with no environment. Treat that as an unresolved npm/GitHub
+OIDC matching issue, not a release blocker.
+
 Local developer machines may also have a scoped registry override such as
 `@mcprotein:registry=https://npm.pkg.github.com`, which can make `npm view`
 read GitHub Packages instead of npmjs.org. Force npmjs.org when checking or
@@ -68,6 +74,17 @@ Use the manual `npm publish` fallback only from a committed release state
 with local package-owner authentication. Do not add long-lived npm publish
 tokens to GitHub Actions; the workflow remains OIDC-first and skips publish
 when the exact package version already exists on npmjs.org.
+
+If OIDC continues to fail after the settings above are checked, prefer the
+manual fallback over further release blocking:
+
+```bash
+npm whoami --registry https://registry.npmjs.org/
+npm publish --access public --@mcprotein:registry=https://registry.npmjs.org/
+```
+
+After a manual publish, push the matching tag. The workflow will run and
+skip `npm publish` when the exact version already exists on npmjs.org.
 
 ## Notes
 
