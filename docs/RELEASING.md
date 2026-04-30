@@ -26,17 +26,31 @@ exchange the GitHub OIDC token during `npm publish`.
 
 ## Release Steps
 
+Every version bump must end in one of two explicit states:
+
+- published to npmjs.org, or
+- documented as intentionally unpublished / blocked with the reason in
+  `CHANGELOG.md` and this release doc if the failure changes procedure.
+
 1. Update `package.json` and `CHANGELOG.md`.
-2. Run local verification:
+2. Record the dogfood self-check:
 
    ```bash
-   npm run typecheck
-   npm test
-   npm run build
+   npm run dogfood
    ```
 
-3. Commit the release changes.
-4. Tag the commit:
+   Commit the appended `docs/DOGFOOD.md` entry with the release prep
+   changes. The score should not regress unless the release notes explain
+   the tradeoff.
+
+3. Run local publish readiness verification:
+
+   ```bash
+   npm run release:check
+   ```
+
+4. Commit the release changes.
+5. Tag the commit:
 
    ```bash
    git tag vX.Y.Z

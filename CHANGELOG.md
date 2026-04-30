@@ -33,6 +33,9 @@ breaking changes until v1.0.
 - Added [`docs/DOGFOOD.md`](docs/DOGFOOD.md), a recurring self-check log
   for tracking whether new versions improve context continuity, ontology
   availability, adapter parity, diagnostics, and verification strength.
+- Added `anamnesis dogfood check --append` plus npm `dogfood` /
+  `release:check` scripts so version bumps can record the self-check before
+  publish.
 
 ## [0.4.4] — 2026-04-30
 

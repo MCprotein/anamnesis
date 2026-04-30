@@ -158,6 +158,8 @@ Progress:
 - 2026-04-30: Enabled Claude Code, Codex, and Cursor outputs on this repo
   itself and recorded the first dogfood self-check in
   [`docs/DOGFOOD.md`](DOGFOOD.md).
+- 2026-04-30: Added `anamnesis dogfood check --append` so future version
+  bumps can record continuity score/trend automatically.
 
 Exit criteria:
 - A fresh agent can enter a managed project through each supported adapter

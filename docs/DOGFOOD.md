@@ -10,8 +10,17 @@ speed benchmark.
 
 ## Release Gate
 
-Run this checklist before each release candidate and whenever the base
+Run this command before each release candidate and whenever the base
 fragment or adapter fallbacks change:
+
+```bash
+npm run dogfood
+```
+
+That command runs `anamnesis dogfood check --append`, scores the current
+continuity state, and appends an automated record to this file.
+
+The underlying checklist is:
 
 1. `anamnesis status`
 2. `anamnesis doctor`
@@ -99,3 +108,28 @@ Next checks to improve:
 - Add a simulated agent-switch scenario with an active handoff file.
 - Use dogfood evidence from sanitized managed fixtures to choose the next
   ontology automation work.
+
+
+## Automated Self-Check — 2026-04-30T08:30:21.884Z
+
+Continuity readiness score: 5/5 (new baseline)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@6:in-sync
+Drift: 18 clean, 0 modified, 0 missing
+Doctor: ok (0 errors, 0 warnings)
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | all supported tools enabled and AGENTS.md baseline is clean |
+| Ontology availability | pass | 1 clean ontology file(s) |
+| Adapter parity surface | pass | Claude native surfaces, Codex AGENTS fallbacks, and Cursor rules checked |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); drift clean=true |
+| Verification strength | pass | npm run typecheck: pass (1359ms); npm test: pass (2574ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `npm run typecheck` | pass | 1359 | passed |
+| `npm test` | pass | 2574 | passed |

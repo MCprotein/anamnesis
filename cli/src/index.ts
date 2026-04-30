@@ -38,6 +38,11 @@ import {
   OntologyBootstrapError,
   type BootstrapResult,
 } from "./commands/ontology.js";
+import {
+  dogfoodCheck,
+  DogfoodError,
+  type DogfoodResult,
+} from "./commands/dogfood.js";
 
 const VERSION = "0.4.1";
 
@@ -119,6 +124,8 @@ Commands:
   update                        Re-apply library state (dry-run by default)
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
+  dogfood check                 Run continuity self-check and optionally append
+                                  a record to docs/DOGFOOD.md
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
                                   from project files (Layer A — deterministic)
@@ -150,6 +157,12 @@ Flags (status / doctor):
 
 Flags (status):
   --json                        Print structured JSON for CI/tools
+
+Flags (dogfood check):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --append                      Append markdown result to docs/DOGFOOD.md
+  --output <path>               Override self-check log path
 
 Flags (ontology bootstrap):
   --project-root <path>         Target directory (default: cwd)
@@ -376,6 +389,35 @@ function reportBootstrap(result: BootstrapResult): void {
   }
 }
 
+function reportDogfood(result: DogfoodResult): void {
+  console.log(
+    `anamnesis dogfood check — ${result.status.agentfile.project.name}`,
+  );
+  const previous =
+    result.score.previous === null ? "no previous score" : `${result.score.previous}/5`;
+  console.log(
+    `  continuity readiness: ${result.score.passed}/${result.score.total} (${result.score.trend}; ${previous})`,
+  );
+  console.log(`  tools: ${result.status.agentfile.tools.join(", ")}`);
+  console.log(
+    `  status: ${result.status.summary.entriesClean} clean, ${result.status.summary.entriesUserModified} modified, ${result.status.summary.entriesMissing} missing`,
+  );
+  console.log(
+    `  doctor: ${result.doctor.ok ? "ok" : "issues"} (${result.doctor.summary.errors} errors, ${result.doctor.summary.warnings} warnings)`,
+  );
+  for (const criterion of result.criteria) {
+    console.log(`  ${criterion.status.padEnd(4)} ${criterion.label}`);
+  }
+  for (const check of result.checks) {
+    console.log(
+      `  ${check.outcome.padEnd(7)} ${check.command.join(" ")} (${check.durationMs}ms)`,
+    );
+  }
+  if (result.appendedPath) {
+    console.log(`  appended: ${result.appendedPath}`);
+  }
+}
+
 function reportUpdate(result: UpdateResult): void {
   const s = summarizeChanges(result.changes);
   const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
@@ -511,6 +553,37 @@ async function main(argv: string[]): Promise<number> {
         }
         throw e;
       }
+
+    case "dogfood": {
+      const sub = positional[0];
+      if (sub !== "check") {
+        console.error(
+          `error: unknown 'dogfood' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(
+          `usage: anamnesis dogfood check [--append] [--output=<path>]`,
+        );
+        return 1;
+      }
+      try {
+        const result = dogfoodCheck({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          append: flags["append"] === true,
+          outputPath: flags["output"] as string | undefined,
+        });
+        reportDogfood(result);
+        return result.ok ? 0 : 1;
+      } catch (e) {
+        if (e instanceof DogfoodError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
 
     case "promote": {
       const source = (positional[0] as string | undefined) ?? "";

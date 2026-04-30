@@ -44,6 +44,9 @@
   "scripts": {
     "build": "tsc -p cli/tsconfig.json",
     "dev": "tsc -p cli/tsconfig.json --watch",
+    "dogfood": "tsx cli/src/index.ts dogfood check --append",
+    "dogfood:check": "tsx cli/src/index.ts dogfood check",
+    "release:check": "npm run dogfood:check && npm run build",
     "typecheck": "tsc -p cli/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
