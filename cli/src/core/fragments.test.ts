@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
   loadFragment,
+  loadFragmentAtVersion,
   loadAllFragments,
   topologicalSort,
   detectConflicts,
@@ -90,7 +91,7 @@ capabilities:
   it("rejects mismatched id vs directory name", () => {
     const lib = tmpLib();
     const dir = writeFragment(lib, "prisma", MIN_YAML.replace("id: prisma", "id: other"));
-    expect(() => loadFragment(dir)).toThrow(/must match directory name/);
+    expect(() => loadFragment(dir)).toThrow(/must match expected id/);
   });
 
   it("rejects unknown capability type", () => {
@@ -140,6 +141,46 @@ describe("loadAllFragments", () => {
     writeFragment(lib, "prisma", MIN_YAML);
     const map = loadAllFragments(lib);
     expect(map.size).toBe(1);
+  });
+});
+
+describe("loadFragmentAtVersion", () => {
+  it("returns the current fragment when the requested version is current", () => {
+    const lib = tmpLib();
+    writeFragment(lib, "prisma", MIN_YAML);
+
+    const fragment = loadFragmentAtVersion(lib, "prisma", 1);
+
+    expect(fragment?.id).toBe("prisma");
+    expect(fragment?.version).toBe(1);
+  });
+
+  it("loads archived historical fragment versions", () => {
+    const lib = tmpLib();
+    writeFragment(
+      lib,
+      "prisma",
+      MIN_YAML.replace("version: 1", "version: 2"),
+    );
+    const archiveDir = path.join(lib, "fragments", "prisma", ".versions", "1");
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(archiveDir, "fragment.yaml"), MIN_YAML);
+
+    const fragment = loadFragmentAtVersion(lib, "prisma", 1);
+
+    expect(fragment?.id).toBe("prisma");
+    expect(fragment?.version).toBe(1);
+  });
+
+  it("returns null when the requested historical version is absent", () => {
+    const lib = tmpLib();
+    writeFragment(
+      lib,
+      "prisma",
+      MIN_YAML.replace("version: 1", "version: 2"),
+    );
+
+    expect(loadFragmentAtVersion(lib, "prisma", 1)).toBeNull();
   });
 });
 

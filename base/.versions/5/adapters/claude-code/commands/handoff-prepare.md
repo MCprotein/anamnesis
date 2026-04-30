@@ -1,0 +1,78 @@
+---
+description: Prepare a handoff document so the next agent (or session) can resume without context loss
+---
+
+Capture the current task state in a structured handoff file. The next agent — could be a fresh Claude session, Codex, Cursor, or anything else reading AGENTS.md and `.anamnesis/handoff/` — will load it on session start and pick up where you left off.
+
+## When to invoke
+
+- Token usage approaching the limit and you might lose conversation memory
+- About to switch tools (Claude → Codex, etc.) for cost or capability reasons
+- Stopping work mid-task and resuming later
+- User explicitly asks for a handoff
+
+## Steps
+
+1. **Determine current task context.** What was the user trying to accomplish overall? What's the immediate sub-step?
+
+2. **Identify completed work.**
+   - `git log --oneline -10` to see recent commits
+   - Note which commits belong to this task vs unrelated chores
+
+3. **Identify in-flight work.**
+   - `git status` for uncommitted changes
+   - For each modified/added file: what change, why
+
+4. **Capture significant decisions made in this session.**
+   - Choices the next agent needs to know (X over Y, rationale, constraints discovered)
+
+5. **List open questions or blockers.**
+   - Items waiting on user input, external systems, or earlier dependencies
+
+6. **Write the handoff file** to `.anamnesis/handoff/<ISO-timestamp>.md` (filesystem-safe timestamp, colons replaced by `-`, e.g., `.anamnesis/handoff/2026-04-27T12-34-56Z.md`). Create the directory if missing.
+
+   Use exactly this structure:
+
+   ```markdown
+   ---
+   created: <ISO-8601 UTC timestamp>
+   agent: <claude-code | codex | cursor | unknown>
+   git_ref: <git rev-parse HEAD output>
+   ---
+
+   # Handoff — <one-line task summary>
+
+   ## Goal
+   <2–3 sentences on the overall objective>
+
+   ## Done so far
+   - <bullet> (commit <sha>)
+   - <bullet> (uncommitted, in <file>)
+
+   ## In flight
+   - <file>: <intent — what change, why>
+   - <decision being deliberated>: <options under consideration>
+
+   ## Decisions
+   - <decision>: <rationale>
+
+   ## Open questions / blockers
+   - <item>
+
+   ## Next steps
+   1. <action>
+   2. <action>
+   ```
+
+7. **Confirm to the user**: print the relative path of the file written and a 1-line summary of what it captured.
+
+8. **Stop.** Do not continue the task. Handoff completion IS the goal of this command.
+
+## Quality bar
+
+- **Specific over generic** — "edit `cli/src/core/applier.ts:planRegion` to handle Y" beats "fix the applier".
+- **Cite file paths and commit shas** — the next agent shouldn't have to grep to find context.
+- **Mention rejected alternatives** — saves the next agent re-exploring dead ends.
+- **Don't over-explain** — the next agent has the codebase. They need *intent*, not full re-derivation.
+
+If the session is too short or trivial for a useful handoff (e.g., just a one-line fix already committed), say so plainly and skip writing — empty handoffs pollute future sessions.

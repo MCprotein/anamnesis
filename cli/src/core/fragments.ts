@@ -86,7 +86,10 @@ export class FragmentParseError extends Error {
 // Loading
 // ---------------------------------------------------------------------------
 
-export function loadFragment(fragmentDir: string): FragmentDefinition {
+export function loadFragment(
+  fragmentDir: string,
+  opts: { expectedId?: string } = {},
+): FragmentDefinition {
   const yamlPath = path.join(fragmentDir, "fragment.yaml");
   if (!fs.existsSync(yamlPath)) {
     throw new FragmentParseError(`fragment.yaml not found at ${yamlPath}`);
@@ -109,14 +112,49 @@ export function loadFragment(fragmentDir: string): FragmentDefinition {
     throw new FragmentParseError(`${yamlPath}:\n${lines.join("\n")}`);
   }
 
-  const dirName = path.basename(fragmentDir);
-  if (result.data.id !== dirName) {
+  const expectedId = opts.expectedId ?? path.basename(fragmentDir);
+  if (result.data.id !== expectedId) {
     throw new FragmentParseError(
-      `${yamlPath}: id '${result.data.id}' must match directory name '${dirName}'`,
+      `${yamlPath}: id '${result.data.id}' must match expected id '${expectedId}'`,
     );
   }
 
   return result.data;
+}
+
+export function fragmentDirOf(libraryRoot: string, fragmentId: string): string {
+  if (fragmentId === "base") return path.join(libraryRoot, "base");
+  return path.join(libraryRoot, "fragments", fragmentId);
+}
+
+export function archivedFragmentDirOf(
+  libraryRoot: string,
+  fragmentId: string,
+  version: number,
+): string {
+  return path.join(fragmentDirOf(libraryRoot, fragmentId), ".versions", String(version));
+}
+
+export function loadFragmentAtVersion(
+  libraryRoot: string,
+  fragmentId: string,
+  version: number,
+): FragmentDefinition | null {
+  const currentDir = fragmentDirOf(libraryRoot, fragmentId);
+  if (fs.existsSync(path.join(currentDir, "fragment.yaml"))) {
+    const current = loadFragment(currentDir);
+    if (current.version === version) return current;
+  }
+
+  const archivedDir = archivedFragmentDirOf(libraryRoot, fragmentId, version);
+  if (!fs.existsSync(path.join(archivedDir, "fragment.yaml"))) return null;
+  const archived = loadFragment(archivedDir, { expectedId: fragmentId });
+  if (archived.version !== version) {
+    throw new FragmentParseError(
+      `${path.join(archivedDir, "fragment.yaml")}: version '${archived.version}' must match archive directory '${version}'`,
+    );
+  }
+  return archived;
 }
 
 /**

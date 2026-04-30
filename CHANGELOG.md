@@ -22,6 +22,11 @@ breaking changes until v1.0.
   archived handoff, and the new Claude Code `Stop` hook
   `handoff-reminder.sh` reminds agents when uncommitted work is newer
   than the latest handoff.
+- **full fragment pinning** — `update` now renders `pinned: true`
+  fragments from `base/.versions/<version>/` or
+  `fragments/<id>/.versions/<version>/` instead of library-current.
+  `update --bump-pinned` explicitly moves pinned entries to the current
+  library version while keeping them pinned.
 
 ## [0.4.1] — 2026-04-30
 

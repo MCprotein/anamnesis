@@ -20,6 +20,9 @@ import {
 import {
   loadAllFragments,
   loadBaseFragment,
+  loadFragment,
+  archivedFragmentDirOf,
+  fragmentDirOf,
   type Capability,
   type FragmentDefinition,
 } from "../core/fragments.js";
@@ -168,6 +171,11 @@ export function doctor(opts: DoctorOptions): DoctorResult {
 type StatusEntry = ReturnType<typeof status>["entries"][number];
 type StatusFragment = ReturnType<typeof status>["fragments"][number];
 
+interface ResolvedFragment {
+  fragment: FragmentDefinition;
+  fragmentDir: string;
+}
+
 function addStatusIssues(
   entries: StatusEntry[],
   fragments: StatusFragment[],
@@ -228,7 +236,7 @@ function addAdapterIssuesAndCollectActions(opts: {
   scopes: Array<{
     path: string;
     tools: ToolName[];
-    fragments: Array<{ id: string; version: number }>;
+    fragments: Array<{ id: string; version: number; pinned?: boolean }>;
   }>;
 }): RenderAction[] {
   const registry = buildRendererRegistry();
@@ -236,9 +244,15 @@ function addAdapterIssuesAndCollectActions(opts: {
 
   for (const scope of opts.scopes) {
     for (const installed of scope.fragments) {
-      const fragment = opts.library.get(installed.id);
-      if (!fragment) continue;
-      const fragmentDir = fragmentDirOf(opts.libraryRoot, fragment.id);
+      const resolved = resolveInstalledFragmentForDoctor({
+        entry: installed,
+        libraryRoot: opts.libraryRoot,
+        library: opts.library,
+        issues: opts.issues,
+        scopePath: scope.path,
+      });
+      if (!resolved) continue;
+      const { fragment, fragmentDir } = resolved;
       const ctx: RenderContext = {
         fragment,
         fragmentDir,
@@ -278,6 +292,69 @@ function addAdapterIssuesAndCollectActions(opts: {
   }
 
   return dedupeActions(actions);
+}
+
+function resolveInstalledFragmentForDoctor(opts: {
+  entry: { id: string; version: number; pinned?: boolean };
+  libraryRoot: string;
+  library: Map<string, FragmentDefinition>;
+  issues: DoctorIssue[];
+  scopePath: string;
+}): ResolvedFragment | undefined {
+  const currentDir = fragmentDirOf(opts.libraryRoot, opts.entry.id);
+  const current = opts.library.get(opts.entry.id);
+
+  if (opts.entry.pinned !== true) {
+    return current ? { fragment: current, fragmentDir: currentDir } : undefined;
+  }
+
+  if (current?.version === opts.entry.version) {
+    return { fragment: current, fragmentDir: currentDir };
+  }
+
+  const archivedDir = archivedFragmentDirOf(
+    opts.libraryRoot,
+    opts.entry.id,
+    opts.entry.version,
+  );
+  const archivedPath = path.join(archivedDir, "fragment.yaml");
+  if (!fs.existsSync(archivedPath)) {
+    opts.issues.push({
+      severity: "error",
+      code: "fragment-library-missing",
+      scopePath: opts.scopePath,
+      fragmentId: opts.entry.id,
+      target: archivedPath,
+      message: `pinned fragment '${opts.entry.id}@${opts.entry.version}' is missing from the version archive`,
+    });
+    return undefined;
+  }
+
+  try {
+    const fragment = loadFragment(archivedDir, { expectedId: opts.entry.id });
+    if (fragment.version !== opts.entry.version) {
+      opts.issues.push({
+        severity: "error",
+        code: "fragment-library-missing",
+        scopePath: opts.scopePath,
+        fragmentId: opts.entry.id,
+        target: archivedPath,
+        message: `pinned fragment '${opts.entry.id}@${opts.entry.version}' archive declares version ${fragment.version}`,
+      });
+      return undefined;
+    }
+    return { fragment, fragmentDir: archivedDir };
+  } catch (e) {
+    opts.issues.push({
+      severity: "error",
+      code: "fragment-library-missing",
+      scopePath: opts.scopePath,
+      fragmentId: opts.entry.id,
+      target: archivedPath,
+      message: `pinned fragment '${opts.entry.id}@${opts.entry.version}' archive could not be loaded: ${(e as Error).message}`,
+    });
+    return undefined;
+  }
 }
 
 function addSettingsIssues(
@@ -355,11 +432,6 @@ function libraryFragmentMap(
   const base = loadBaseFragment(libraryRoot);
   if (base) fragments.set(base.id, base);
   return fragments;
-}
-
-function fragmentDirOf(libraryRoot: string, fragmentId: string): string {
-  if (fragmentId === "base") return path.join(libraryRoot, "base");
-  return path.join(libraryRoot, "fragments", fragmentId);
 }
 
 function dedupeActions(actions: RenderAction[]): RenderAction[] {

@@ -72,6 +72,34 @@ capabilities:
   return lib;
 }
 
+function addPrismaArchive(
+  library: string,
+  opts: { version: number; content: string },
+): void {
+  const archiveDir = path.join(
+    library,
+    "fragments",
+    "prisma",
+    ".versions",
+    String(opts.version),
+  );
+  fs.mkdirSync(path.join(archiveDir, "content"), { recursive: true });
+  fs.writeFileSync(
+    path.join(archiveDir, "fragment.yaml"),
+    `id: prisma
+version: ${opts.version}
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: prisma
+`,
+  );
+  fs.writeFileSync(
+    path.join(archiveDir, "content", "agents.snippet.md"),
+    opts.content,
+  );
+}
+
 function setupPrismaProject(library: string): {
   project: string;
   library: string;
@@ -210,6 +238,98 @@ describe("update — library version bump", () => {
 
     const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
     expect(agentsMd).toContain("v2 — use prisma generate after edits");
+  });
+
+  it("renders pinned fragments from archived versions and preserves Agentfile version", () => {
+    const v1Lib = makeLibrary();
+    const { project } = setupPrismaProject(v1Lib);
+    const af = readAgentfile(project);
+    af.fragments = af.fragments.map((f) =>
+      f.id === "prisma" ? { ...f, pinned: true } : f,
+    );
+    writeAgentfile(project, af);
+
+    const v2Lib = makeLibrary({
+      prismaVersion: 2,
+      prismaContent: "## Prisma\n\nv2 current content.\n",
+    });
+    addPrismaArchive(v2Lib, {
+      version: 1,
+      content: "## Prisma\n\nv1 archived content.\n",
+    });
+
+    update({
+      projectRoot: project,
+      libraryRoot: v2Lib,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    const updated = readAgentfile(project);
+    const prisma = updated.fragments.find((f) => f.id === "prisma")!;
+    expect(prisma).toMatchObject({ version: 1, pinned: true });
+
+    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("v1 archived content");
+    expect(agentsMd).not.toContain("v2 current content");
+  });
+
+  it("bumps pinned fragments only when --bump-pinned is set", () => {
+    const v1Lib = makeLibrary();
+    const { project } = setupPrismaProject(v1Lib);
+    const af = readAgentfile(project);
+    af.fragments = af.fragments.map((f) =>
+      f.id === "prisma" ? { ...f, pinned: true } : f,
+    );
+    writeAgentfile(project, af);
+
+    const v2Lib = makeLibrary({
+      prismaVersion: 2,
+      prismaContent: "## Prisma\n\nv2 current content.\n",
+    });
+    addPrismaArchive(v2Lib, {
+      version: 1,
+      content: "## Prisma\n\nv1 archived content.\n",
+    });
+
+    update({
+      projectRoot: project,
+      libraryRoot: v2Lib,
+      apply: true,
+      allowExecAdapters: false,
+      bumpPinned: true,
+    });
+
+    const updated = readAgentfile(project);
+    const prisma = updated.fragments.find((f) => f.id === "prisma")!;
+    expect(prisma).toMatchObject({ version: 2, pinned: true });
+
+    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("v2 current content");
+  });
+
+  it("errors when a pinned historical version is missing from the archive", () => {
+    const v1Lib = makeLibrary();
+    const { project } = setupPrismaProject(v1Lib);
+    const af = readAgentfile(project);
+    af.fragments = af.fragments.map((f) =>
+      f.id === "prisma" ? { ...f, pinned: true } : f,
+    );
+    writeAgentfile(project, af);
+
+    const v2Lib = makeLibrary({
+      prismaVersion: 2,
+      prismaContent: "## Prisma\n\nv2 current content.\n",
+    });
+
+    expect(() =>
+      update({
+        projectRoot: project,
+        libraryRoot: v2Lib,
+        apply: false,
+        allowExecAdapters: false,
+      }),
+    ).toThrow(/pinned fragment 'prisma@1' not found/);
   });
 });
 

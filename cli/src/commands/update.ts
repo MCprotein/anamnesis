@@ -9,6 +9,7 @@
 //   * Auto-bumps Agentfile fragment versions to match the library on apply.
 //   * Reports new rulebook matches as `suggested` — does NOT auto-install.
 
+import { existsSync } from "node:fs";
 import * as path from "node:path";
 import {
   readAgentfile,
@@ -30,6 +31,9 @@ import {
 import {
   loadAllFragments,
   loadBaseFragment,
+  loadFragment,
+  archivedFragmentDirOf,
+  fragmentDirOf,
   topologicalSort,
   detectConflicts,
   type FragmentDefinition,
@@ -65,10 +69,12 @@ export interface UpdateOptions {
   libraryRoot: string;
   apply: boolean;
   allowExecAdapters: boolean;
+  /** Explicitly move pinned entries to the library-current version. */
+  bumpPinned?: boolean;
 }
 
 export interface UpdateResult {
-  /** Agentfile reflecting library-current versions (only persisted on apply). */
+  /** Agentfile after version bump rules are applied (only persisted on apply). */
   agentfile: Agentfile;
   changes: PlannedChange[];
   nextManifest: Manifest;
@@ -95,14 +101,114 @@ const DEFAULT_SETTINGS = {
   claude_md_path: "CLAUDE.md",
 };
 
-function fragmentDirOf(libraryRoot: string, fragmentId: string): string {
-  if (fragmentId === "base") return path.join(libraryRoot, "base");
-  return path.join(libraryRoot, "fragments", fragmentId);
+interface ResolvedFragment {
+  fragment: FragmentDefinition;
+  fragmentDir: string;
 }
 
 function timestampedBackupName(): string {
   // Filesystem-safe ISO 8601 — colons and dots are out.
   return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function resolveInstalledFragment(opts: {
+  entry: { id: string; version: number; pinned?: boolean };
+  base: FragmentDefinition | null;
+  fragments: Map<string, FragmentDefinition>;
+  libraryRoot: string;
+  bumpPinned: boolean;
+}): ResolvedFragment | undefined {
+  const currentDir = fragmentDirOf(opts.libraryRoot, opts.entry.id);
+
+  if (opts.entry.pinned === true && !opts.bumpPinned) {
+    if (opts.entry.id === "base" && opts.base?.version === opts.entry.version) {
+      return { fragment: opts.base, fragmentDir: currentDir };
+    }
+    const current = opts.fragments.get(opts.entry.id);
+    if (current?.version === opts.entry.version) {
+      return { fragment: current, fragmentDir: currentDir };
+    }
+
+    const archivedDir = archivedFragmentDirOf(
+      opts.libraryRoot,
+      opts.entry.id,
+      opts.entry.version,
+    );
+    if (!pathExists(path.join(archivedDir, "fragment.yaml"))) {
+      throw new UpdateError(
+        `pinned fragment '${opts.entry.id}@${opts.entry.version}' not found in library archive. ` +
+          `Expected ${archivedDir}/fragment.yaml`,
+      );
+    }
+    const archived = loadFragment(archivedDir, { expectedId: opts.entry.id });
+    if (archived.version !== opts.entry.version) {
+      throw new UpdateError(
+        `pinned fragment archive '${opts.entry.id}@${opts.entry.version}' declares version ${archived.version}`,
+      );
+    }
+    return { fragment: archived, fragmentDir: archivedDir };
+  }
+
+  if (opts.entry.id === "base") {
+    return opts.base ? { fragment: opts.base, fragmentDir: currentDir } : undefined;
+  }
+  const fragment = opts.fragments.get(opts.entry.id);
+  return fragment ? { fragment, fragmentDir: currentDir } : undefined;
+}
+
+function pathExists(fp: string): boolean {
+  try {
+    return existsSync(fp);
+  } catch {
+    return false;
+  }
+}
+
+function currentFragmentVersions(
+  base: FragmentDefinition | null,
+  fragments: Map<string, FragmentDefinition>,
+): Map<string, number> {
+  const versions = new Map<string, number>();
+  if (base) versions.set(base.id, base.version);
+  for (const fragment of fragments.values()) {
+    versions.set(fragment.id, fragment.version);
+  }
+  return versions;
+}
+
+function bumpFragmentEntries<T extends { id: string; version: number; pinned?: boolean }>(
+  entries: T[],
+  versions: Map<string, number>,
+  bumpPinned: boolean,
+): T[] {
+  return entries.map((entry) => {
+    const current = versions.get(entry.id);
+    if (current === undefined) return entry;
+    if (entry.pinned === true && !bumpPinned) return entry;
+    return { ...entry, version: current };
+  });
+}
+
+function bumpScopeFragmentEntries(
+  project: Agentfile["project"],
+  versions: Map<string, number>,
+  bumpPinned: boolean,
+): Agentfile["project"] {
+  if (!project.scopes) return project;
+  return {
+    ...project,
+    scopes: project.scopes.map((scope) => {
+      const add = scope.overrides?.fragments_add;
+      if (!add) return scope;
+      return {
+        ...scope,
+        overrides: {
+          ...scope.overrides,
+          fragments_add: bumpFragmentEntries(add, versions, bumpPinned),
+        },
+      };
+    }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -150,40 +256,47 @@ export function update(opts: UpdateOptions): UpdateResult {
   const perScope: Array<{
     scopePath: string;
     tools: ToolName[];
-    ordered: FragmentDefinition[];
-    rootOrdered: boolean;
+    ordered: ResolvedFragment[];
   }> = [];
 
   for (const scope of scopes) {
-    const resolved: FragmentDefinition[] = [];
+    const resolved: ResolvedFragment[] = [];
     const seenInScope = new Set<string>();
 
     for (const entry of scope.fragments) {
       if (seenInScope.has(entry.id)) continue;
-      let frag: FragmentDefinition | undefined;
-      if (entry.id === "base") {
-        frag = base ?? undefined;
-      } else {
-        frag = fragments.get(entry.id);
-      }
+      const frag = resolveInstalledFragment({
+        entry,
+        base,
+        fragments,
+        libraryRoot,
+        bumpPinned: opts.bumpPinned === true,
+      });
       if (!frag) {
         missing.push(`${scope.path}/${entry.id}`);
         continue;
       }
       resolved.push(frag);
-      seenInScope.add(frag.id);
-      allInstalledIds.add(frag.id);
+      seenInScope.add(frag.fragment.id);
+      allInstalledIds.add(frag.fragment.id);
     }
 
     perScope.push({
       scopePath: scope.path,
       tools: scope.tools,
       ordered: [],
-      rootOrdered: scope.path === ".",
     });
     // Topo + conflict per scope (different scopes may share fragment ids).
-    const ordered = topologicalSort(resolved);
-    const conflicts = detectConflicts(ordered);
+    const resolvedById = new Map(
+      resolved.map((r) => [r.fragment.id, r] as const),
+    );
+    const orderedFragments = topologicalSort(
+      resolved.map((r) => r.fragment),
+    );
+    const ordered = orderedFragments.map(
+      (fragment) => resolvedById.get(fragment.id)!,
+    );
+    const conflicts = detectConflicts(orderedFragments);
     if (conflicts.length > 0) {
       const pairs = conflicts.map(([a, b]) => `${a}↔${b}`).join(", ");
       throw new UpdateError(
@@ -210,13 +323,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     (r) => !allInstalledIds.has(r.suggest) && !declinedIds.has(r.suggest),
   );
 
-  // 6. Determine the "ordered" list used for Agentfile version-bump (only
-  // the root scope's fragments are bumped; sub-scope overrides preserved).
-  const rootOrdered =
-    perScope.find((s) => s.rootOrdered)?.ordered ?? [];
-  const ordered = rootOrdered;
-
-  // 7. Plan rendering across all scopes.
+  // 6. Plan rendering across all scopes.
   // Register every adapter that any scope's `tools` declares. Adapters
   // not in any scope's tools are not registered (their rendering paths
   // don't run).
@@ -230,10 +337,9 @@ export function update(opts: UpdateOptions): UpdateResult {
 
   const actions: RenderAction[] = [];
   for (const { scopePath, ordered: scopeOrdered, tools } of perScope) {
-    for (const frag of scopeOrdered) {
-      const fragmentDir = fragmentDirOf(libraryRoot, frag.id);
+    for (const { fragment, fragmentDir } of scopeOrdered) {
       const renderCtx: RenderContext = {
-        fragment: frag,
+        fragment,
         fragmentDir,
         projectRoot,
         scopePath,
@@ -249,28 +355,31 @@ export function update(opts: UpdateOptions): UpdateResult {
   // Dedupe identical actions (e.g., when both `claude-code` and `codex`
   // emit the same project_memory region action). Key by target identity.
   const dedupedActions = dedupeActions(actions);
-  // 8. Plan changes vs existing manifest.
+  // 7. Plan changes vs existing manifest.
   const { changes, nextManifest } = planChanges(dedupedActions, {
     projectRoot,
     manifest,
     allowExecAdapters: opts.allowExecAdapters,
   });
 
-  // 9. Build a post-update Agentfile that reflects library-current versions.
-  //    `pinned` entries are preserved untouched (rendering still uses library
-  //    current — full pinning is a v0.2+ concern; documented as a known gap).
+  // 8. Build a post-update Agentfile that reflects library-current versions.
+  //    Pinned entries stay at their pinned version unless --bump-pinned was
+  //    provided, in which case they move to current while remaining pinned.
   const updatedAgentfile: Agentfile = {
     ...agentfile,
-    fragments: ordered.map((f) => {
-      const existing = agentfile.fragments.find((x) => x.id === f.id);
-      if (existing?.pinned) return existing;
-      return existing
-        ? { ...existing, version: f.version }
-        : { id: f.id, version: f.version };
-    }),
+    fragments: bumpFragmentEntries(
+      agentfileForResolution.fragments,
+      currentFragmentVersions(base, fragments),
+      opts.bumpPinned === true,
+    ),
+    project: bumpScopeFragmentEntries(
+      agentfile.project,
+      currentFragmentVersions(base, fragments),
+      opts.bumpPinned === true,
+    ),
   };
 
-  // 10. Apply (or dry-run).
+  // 9. Apply (or dry-run).
   let backupDir: string | undefined;
   let backedUpFiles: string[] | undefined;
   let hookRegistrations: HookSyncResult[] = [];

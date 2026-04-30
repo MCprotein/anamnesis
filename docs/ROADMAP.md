@@ -73,8 +73,8 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 2 | **Handoff auto-trigger** | implemented, pending patch release | Claude Code `Stop` hook reminds agents to run `/handoff-prepare` when uncommitted work is newer than the latest handoff. |
 | 3 | **Multi-task handoff tracking** | implemented, pending patch release | `/handoff-prepare` writes `.anamnesis/handoff/active.md` plus timestamped archives. Session start injection reads the active index first, then the latest archive. |
 | 4 | **`anamnesis doctor`** | implemented, pending patch release | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
-| 5 | **Full version pinning** | planned | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `fragments/<id>/.versions/`. (Moved from v0.3 — low value while user base is small.) |
-| 6 | **`anamnesis update --bump-pinned`** | planned | Explicitly bump pinned fragments after manual review. Companion to #5. |
+| 5 | **Full version pinning** | implemented, pending patch release | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `base/.versions/<version>/` or `fragments/<id>/.versions/<version>/`. |
+| 6 | **`anamnesis update --bump-pinned`** | implemented, pending patch release | Explicitly bump pinned fragments after manual review while keeping them pinned. Companion to #5. |
 | 7 | **Trusted Publishing setup** | planned | GitHub Actions workflow + npm trust config so future releases don't need manual tokens. |
 | 8 | **Fragment catalog expansion** | planned | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
 | 9 | **Codex hook auto-wiring** | planned | Git pre-commit installer for executable_hook in Codex adapter (deferred from v0.3). Currently Codex agents read region instructions manually. |
@@ -91,6 +91,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 - base v6 handoff continuity (`active.md` + Stop reminder) — implemented, pending patch release
 - `anamnesis doctor` — implemented, pending patch release
 - `anamnesis status --json` — implemented, pending patch release
+- full version pinning + `update --bump-pinned` — implemented, pending patch release
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more

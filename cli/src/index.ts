@@ -141,6 +141,7 @@ Flags (update):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
   --apply                       Actually write (default is dry-run)
+  --bump-pinned                 Explicitly bump pinned fragments to current
   --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
 
 Flags (status / doctor):
@@ -458,6 +459,7 @@ async function main(argv: string[]): Promise<number> {
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           apply: flags["apply"] === true,
+          bumpPinned: flags["bump-pinned"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
         });
         reportUpdate(result);
