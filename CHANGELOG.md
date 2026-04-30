@@ -25,6 +25,11 @@ breaking changes until v1.0.
   `@router.api_route`, etc.), and `include_router` calls. Route facts
   stay separate from include prefixes so Layer A avoids cross-file
   inference.
+- **multi-scope ontology bootstrap** — `anamnesis ontology bootstrap`
+  now resolves `project.scopes`, runs fragment introspectors from each
+  scope root, and writes scope-local
+  `<scope>/.anamnesis/ontology/<id>.bootstrap.yaml` files. The
+  `--fragment` filter works across scopes.
 
 ## [0.4.0] — 2026-04-29
 

@@ -13,6 +13,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { stringify as stringifyYaml } from "yaml";
 import { findAgentfile, readAgentfile } from "../core/agentfile.js";
+import { effectiveScopes } from "../core/scope.js";
 import {
   IntrospectorRegistry,
   type Introspector,
@@ -44,6 +45,8 @@ export type BootstrapOutcome =
   | "skipped-no-introspector";
 
 export interface BootstrapEntry {
+  /** Scope path from Agentfile. Root scope is ".". */
+  scopePath: string;
   fragmentId: string;
   outcome: BootstrapOutcome;
   /** Relative path to the produced file (only when outcome === "written" / "unchanged"). */
@@ -105,14 +108,16 @@ export function bootstrap(opts: BootstrapOptions): BootstrapResult {
   const agentfile = readAgentfile(projectRoot);
 
   const registry = opts.registry ?? makeBuiltinIntrospectorRegistry();
-  const ctx = new ProjectContext(projectRoot);
-  const ontologyDir = path.join(projectRoot, ".anamnesis", "ontology");
+  const scopes = effectiveScopes(agentfile);
+  const selectedScopes = scopes.map((scope) => ({
+    scope,
+    fragments: opts.fragment
+      ? scope.fragments.filter((f) => f.id === opts.fragment)
+      : scope.fragments,
+  }));
+  const installedInAnyScope = selectedScopes.some((s) => s.fragments.length > 0);
 
-  const wantedFragments = opts.fragment
-    ? agentfile.fragments.filter((f) => f.id === opts.fragment)
-    : agentfile.fragments;
-
-  if (opts.fragment && wantedFragments.length === 0) {
+  if (opts.fragment && !installedInAnyScope) {
     throw new OntologyBootstrapError(
       `fragment '${opts.fragment}' is not installed in this project`,
     );
@@ -121,44 +126,59 @@ export function bootstrap(opts: BootstrapOptions): BootstrapResult {
   const entries: BootstrapEntry[] = [];
   let anyWritten = false;
 
-  for (const installed of wantedFragments) {
-    const introspector = registry.for(installed.id);
-    if (!introspector) {
+  for (const { scope, fragments } of selectedScopes) {
+    const scopeRoot =
+      scope.path === "." || scope.path === ""
+        ? projectRoot
+        : path.join(projectRoot, scope.path);
+    const ctx = new ProjectContext(scopeRoot);
+    const ontologyDir = path.join(scopeRoot, ".anamnesis", "ontology");
+
+    for (const installed of fragments) {
+      const introspector = registry.for(installed.id);
+      if (!introspector) {
+        entries.push({
+          scopePath: scope.path,
+          fragmentId: installed.id,
+          outcome: "skipped-no-introspector",
+        });
+        continue;
+      }
+      if (!introspector.appliesTo(ctx)) {
+        entries.push({
+          scopePath: scope.path,
+          fragmentId: installed.id,
+          outcome: "skipped-not-applicable",
+        });
+        continue;
+      }
+      const facts = introspector.introspect(ctx);
+      const content = serialize(introspector, facts);
+      const scopeRel =
+        scope.path === "." || scope.path === "" ? "" : scope.path;
+      const relPath = path.posix.join(
+        scopeRel,
+        ".anamnesis",
+        "ontology",
+        `${introspector.fragmentId}.bootstrap.yaml`,
+      );
+      const absPath = path.join(projectRoot, relPath);
+      const existing = fs.existsSync(absPath)
+        ? fs.readFileSync(absPath, "utf8")
+        : null;
+      const unchanged = existing === content;
+      if (apply && !unchanged) {
+        fs.mkdirSync(ontologyDir, { recursive: true });
+        fs.writeFileSync(absPath, content, "utf8");
+        anyWritten = true;
+      }
       entries.push({
+        scopePath: scope.path,
         fragmentId: installed.id,
-        outcome: "skipped-no-introspector",
+        outcome: unchanged ? "unchanged" : "written",
+        path: relPath,
       });
-      continue;
     }
-    if (!introspector.appliesTo(ctx)) {
-      entries.push({
-        fragmentId: installed.id,
-        outcome: "skipped-not-applicable",
-      });
-      continue;
-    }
-    const facts = introspector.introspect(ctx);
-    const content = serialize(introspector, facts);
-    const relPath = path.join(
-      ".anamnesis",
-      "ontology",
-      `${introspector.fragmentId}.bootstrap.yaml`,
-    );
-    const absPath = path.join(projectRoot, relPath);
-    const existing = fs.existsSync(absPath)
-      ? fs.readFileSync(absPath, "utf8")
-      : null;
-    const unchanged = existing === content;
-    if (apply && !unchanged) {
-      fs.mkdirSync(ontologyDir, { recursive: true });
-      fs.writeFileSync(absPath, content, "utf8");
-      anyWritten = true;
-    }
-    entries.push({
-      fragmentId: installed.id,
-      outcome: unchanged ? "unchanged" : "written",
-      path: relPath,
-    });
   }
 
   return {

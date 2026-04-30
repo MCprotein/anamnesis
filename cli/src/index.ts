@@ -329,7 +329,11 @@ function reportBootstrap(result: BootstrapResult): void {
     if (e.outcome === "written" || e.outcome === "unchanged") {
       suffix = ` → ${e.path}`;
     }
-    console.log(`  ${e.fragmentId.padEnd(20)} ${e.outcome}${suffix}`);
+    const scope =
+      e.scopePath === "." || e.scopePath === ""
+        ? ""
+        : ` [${e.scopePath}]`;
+    console.log(`  ${e.fragmentId.padEnd(20)} ${e.outcome}${scope}${suffix}`);
   }
   if (!result.writtenToDisk) {
     console.log("  (dry-run or nothing changed — no files written)");

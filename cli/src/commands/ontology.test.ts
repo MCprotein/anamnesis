@@ -23,6 +23,12 @@ ${fragments.map((f) => `  - id: ${f.id}\n    version: ${f.version}`).join("\n")}
   fs.writeFileSync(path.join(root, "Agentfile"), agentfile, "utf8");
 }
 
+function write(root: string, rel: string, content: string): void {
+  const fp = path.join(root, rel);
+  fs.mkdirSync(path.dirname(fp), { recursive: true });
+  fs.writeFileSync(fp, content, "utf8");
+}
+
 function makeFakeIntrospector(
   fragmentId: string,
   facts: Record<string, unknown>,
@@ -144,5 +150,176 @@ describe("ontology bootstrap", () => {
         fragment: "nope",
       }),
     ).toThrow(/not installed/);
+  });
+
+  it("uses builtin framework introspectors end-to-end", () => {
+    writeAgentfile(root, [
+      { id: "nextjs", version: 1 },
+      { id: "nestjs", version: 1 },
+      { id: "fastapi", version: 1 },
+    ]);
+    write(root, "app/page.tsx", "export default function Page() {}\n");
+    write(
+      root,
+      "src/users.controller.ts",
+      `@Controller('users')
+export class UsersController {
+  @Get(':id')
+  findOne() {}
+}
+`,
+    );
+    write(
+      root,
+      "api/main.py",
+      `from fastapi import FastAPI
+app = FastAPI()
+@app.get("/health")
+def health(): pass
+`,
+    );
+
+    const result = bootstrap({ projectRoot: root });
+
+    expect(result.entries.filter((e) => e.outcome === "written")).toHaveLength(3);
+    const next = fs.readFileSync(
+      path.join(root, ".anamnesis/ontology/nextjs.bootstrap.yaml"),
+      "utf8",
+    );
+    const nest = fs.readFileSync(
+      path.join(root, ".anamnesis/ontology/nestjs.bootstrap.yaml"),
+      "utf8",
+    );
+    const fast = fs.readFileSync(
+      path.join(root, ".anamnesis/ontology/fastapi.bootstrap.yaml"),
+      "utf8",
+    );
+    expect(next).toContain("introspector=nextjs");
+    expect(next).toContain("app/page.tsx");
+    expect(nest).toContain("UsersController");
+    expect(nest).toContain("/users/:id");
+    expect(fast).toContain("/health");
+  });
+
+  it("writes bootstrap output under each effective scope", () => {
+    write(
+      root,
+      "Agentfile",
+      `version: 1
+project:
+  name: mono
+  scopes:
+    - path: .
+    - path: apps/web
+      extends: .
+      overrides:
+        fragments_add:
+          - { id: nextjs, version: 1 }
+    - path: services/api
+      overrides:
+        tools: [claude-code]
+        fragments_add:
+          - { id: fastapi, version: 1 }
+tools: [claude-code]
+fragments:
+  - { id: base, version: 5 }
+`,
+    );
+    write(root, "apps/web/app/page.tsx", "export default function Page() {}\n");
+    write(
+      root,
+      "services/api/main.py",
+      `from fastapi import FastAPI
+app = FastAPI()
+@app.get("/health")
+def health(): pass
+`,
+    );
+
+    const result = bootstrap({ projectRoot: root });
+
+    expect(result.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scopePath: "apps/web",
+          fragmentId: "nextjs",
+          outcome: "written",
+          path: "apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml",
+        }),
+        expect.objectContaining({
+          scopePath: "services/api",
+          fragmentId: "fastapi",
+          outcome: "written",
+          path: "services/api/.anamnesis/ontology/fastapi.bootstrap.yaml",
+        }),
+      ]),
+    );
+    expect(
+      fs.existsSync(path.join(root, ".anamnesis/ontology/nextjs.bootstrap.yaml")),
+    ).toBe(false);
+    expect(
+      fs.readFileSync(
+        path.join(root, "apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml"),
+        "utf8",
+      ),
+    ).toContain("app/page.tsx");
+    expect(
+      fs.readFileSync(
+        path.join(
+          root,
+          "services/api/.anamnesis/ontology/fastapi.bootstrap.yaml",
+        ),
+        "utf8",
+      ),
+    ).toContain("/health");
+  });
+
+  it("filters --fragment across scopes", () => {
+    write(
+      root,
+      "Agentfile",
+      `version: 1
+project:
+  name: mono
+  scopes:
+    - path: .
+    - path: apps/web
+      overrides:
+        tools: [claude-code]
+        fragments_add:
+          - { id: nextjs, version: 1 }
+    - path: services/api
+      overrides:
+        tools: [claude-code]
+        fragments_add:
+          - { id: fastapi, version: 1 }
+tools: [claude-code]
+fragments: []
+`,
+    );
+    write(root, "apps/web/app/page.tsx", "export default function Page() {}\n");
+    write(
+      root,
+      "services/api/main.py",
+      `from fastapi import FastAPI
+app = FastAPI()
+@app.get("/health")
+def health(): pass
+`,
+    );
+
+    const result = bootstrap({ projectRoot: root, fragment: "fastapi" });
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0]).toMatchObject({
+      scopePath: "services/api",
+      fragmentId: "fastapi",
+      outcome: "written",
+    });
+    expect(
+      fs.existsSync(
+        path.join(root, "apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml"),
+      ),
+    ).toBe(false);
   });
 });

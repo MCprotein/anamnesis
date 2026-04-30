@@ -88,7 +88,8 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
   implemented, pending patch release
 - fastapi introspector (`@app.*` + `@router.*`) — implemented,
   pending patch release
-- multi-scope bootstrap (per-scope ontology output; 0.4.0 is root-only)
+- multi-scope bootstrap (per-scope ontology output) — implemented,
+  pending patch release
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more
