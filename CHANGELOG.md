@@ -56,6 +56,9 @@ breaking changes until v1.0.
   source repositories.
 - Adapter-surface continuity failures now target only the missing or drifted
   surfaces, keeping `doctor` output actionable on real existing projects.
+- `doctor` issues now include repair guidance for user-modified managed files,
+  adapter-surface continuity failures, invalid settings, missing hook
+  registrations, and stale active handoff state.
 
 ## [0.4.4] — 2026-04-30
 

@@ -338,6 +338,9 @@ function reportDoctor(result: DoctorResult): void {
       `  ${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`,
     );
     console.log(`    ${issue.message}`);
+    if (issue.repair) {
+      console.log(`    repair: ${issue.repair}`);
+    }
   }
 }
 

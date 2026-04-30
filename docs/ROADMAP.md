@@ -173,6 +173,9 @@ Progress:
   `sanitized-nextjs-frontend`, and `sanitized-nest-k8s` git-archive snapshots. Fresh Next.js
   and NestJS+k8s installs reached continuity `6/6`; the existing managed
   backend exposed a repair/review gap around user-modified native surfaces.
+- 2026-04-30: Added `doctor` repair guidance for user-modified managed files,
+  adapter-surface continuity failures, invalid settings, missing hook
+  registrations, and stale active handoff state.
 
 Exit criteria:
 - A fresh agent can enter a managed project through each supported adapter

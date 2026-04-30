@@ -109,9 +109,9 @@ Known gaps:
 
 Next checks to improve:
 
-- Use the `sanitized-nest-prisma` matrix finding to decide whether v0.5 needs a
-  repair flow for user-modified managed surfaces, or only clearer release
-  guidance.
+- Use the `sanitized-nest-prisma` matrix finding to watch whether documented
+  repair guidance is enough, or whether a future repair command is needed for
+  user-modified managed surfaces.
 - Use dogfood evidence from sanitized managed fixtures to choose the next
   ontology automation work.
 - Add real external agent-session smoke checks only if local artifact

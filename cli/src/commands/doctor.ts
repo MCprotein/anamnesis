@@ -73,6 +73,7 @@ export interface DoctorIssue {
   scopePath?: string;
   fragmentId?: string;
   target?: string;
+  repair?: string;
 }
 
 export interface DoctorResult {
@@ -226,6 +227,8 @@ function addStatusIssues(
         fragmentId: e.fragmentId,
         target,
         message: `tracked ${e.target} differs from last applied content: ${target}`,
+        repair:
+          "manual merge review required: compare the file against the latest rendered fragment output. If the local edit is intentional, keep it and accept the warning; otherwise merge the library content from the backup/update plan and re-run `anamnesis update --apply --allow-exec-adapters`.",
       });
     }
   }
@@ -243,7 +246,22 @@ function addContinuityIssues(
       code,
       target: check.targets.join(", ") || undefined,
       message: `${check.label} continuity check failed: ${check.detail}`,
+      repair: continuityRepair(check),
     });
+  }
+}
+
+function continuityRepair(check: ContinuityCheck): string {
+  switch (check.id) {
+    case "project-memory":
+    case "handoff":
+    case "adapter-surfaces":
+    case "managed-drift":
+      return "Run `anamnesis update --dry-run --allow-exec-adapters` to inspect the planned repair. If the output is acceptable, run `anamnesis update --apply --allow-exec-adapters`; user-modified managed files still require manual merge review.";
+    case "ontology":
+      return "Run `anamnesis ontology bootstrap --dry-run` to inspect generated ontology, then run without `--dry-run` when the bootstrap output should be written.";
+    case "active-handoff":
+      return "Open `.anamnesis/handoff/active.md`, remove completed or superseded open entries, and point each active task at an existing latest archive.";
   }
 }
 
@@ -430,6 +448,8 @@ function addSettingsIssues(
       code: "settings-invalid",
       target: ".claude/settings.json",
       message: `.claude/settings.json could not be parsed: ${(e as Error).message}`,
+      repair:
+        "Fix `.claude/settings.json` so it is valid JSON, then re-run `anamnesis update --apply --allow-exec-adapters` to restore hook registrations.",
     });
     return;
   }
@@ -442,6 +462,8 @@ function addSettingsIssues(
       code: "hook-registration-missing",
       target: ".claude/settings.json",
       message: `.claude/settings.json is missing ${reg.event}${matcher} registration for ${reg.command}`,
+      repair:
+        "Re-run `anamnesis update --apply --allow-exec-adapters` after reviewing any user-modified managed hook files. If the hook file itself is user-modified, merge or restore it first so update can safely register it.",
     });
   }
 }

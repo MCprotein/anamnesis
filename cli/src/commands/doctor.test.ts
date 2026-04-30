@@ -210,6 +210,7 @@ describe("doctor — installation integrity", () => {
         expect.objectContaining({
           severity: "warning",
           code: "tracked-entry-user-modified",
+          repair: expect.stringContaining("manual merge review"),
         }),
       ]),
     );
@@ -231,6 +232,7 @@ describe("doctor — installation integrity", () => {
         expect.objectContaining({
           severity: "error",
           code: "hook-registration-missing",
+          repair: expect.stringContaining("allow-exec-adapters"),
         }),
       ]),
     );
@@ -292,6 +294,7 @@ describe("doctor — installation integrity", () => {
           severity: "warning",
           code: "continuity-adapter-surface-missing",
           target: expect.stringContaining(".cursor/rules/load-context.mdc"),
+          repair: expect.stringContaining("user-modified managed files"),
         }),
       ]),
     );
@@ -310,6 +313,7 @@ describe("doctor — installation integrity", () => {
           severity: "warning",
           code: "continuity-active-handoff-stale",
           target: expect.stringContaining(".anamnesis/handoff/missing.md"),
+          repair: expect.stringContaining(".anamnesis/handoff/active.md"),
         }),
       ]),
     );
