@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-405%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.4.2-orange)]()
+[![tests](https://img.shields.io/badge/tests-405%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.4%20alpha-orange)]()
 
 ---
 
@@ -12,7 +12,13 @@
 Every time you open a project with Claude Code (or Codex, Cursor, …), your agent starts blank.
 No project conventions. No ontology. No context.
 
-So you write an `AGENTS.md`, a `system_graph.yaml`, a few hooks, slash commands, skills — and then you do it again for the next project. And the project after that.
+So you write an `AGENTS.md`, ontology files, hooks, slash commands,
+skills, and handoff notes — and then you do it again for the next
+project. And the project after that.
+
+Switching tools has the same failure mode. A project configured for
+Claude Code does not automatically give Codex or Cursor the same current
+context, ontology, handoff state, and operating rules.
 
 The word **anamnesis** (ἀνάμνησις) means *"not forgetting"* in Greek — the literal opposite of *amnesia*. This tool prevents **agent amnesia**.
 
@@ -20,10 +26,20 @@ The word **anamnesis** (ἀνάμνησις) means *"not forgetting"* in Greek �
 
 ## What anamnesis does
 
-- **Installs** a baseline of conventions every project benefits from (ontology injection, uncommitted-changes reminder, the `/load-context` skill, …).
-- **Detects** stack-specific concerns from your project files (`prisma/schema.prisma`, `@nestjs/core` in `package.json`, `uv.lock`, …) and overlays the matching fragment.
-- **Re-syncs** as the library evolves, *preserving your edits* — files you've authored or modified are never overwritten without consent.
-- **Promotes** your project-local hooks/skills back into the library so other projects benefit.
+- **Installs always-loaded context**: project memory, ontology slices,
+  handoff instructions, operational reminders, skills, hooks, and command
+  intent.
+- **Keeps context portable across agents**: the same Agentfile and
+  fragment capabilities render to Claude Code, Codex, and Cursor so the
+  next agent can continue without a bespoke "read these files first"
+  prompt.
+- **Detects** stack-specific concerns from your project files
+  (`prisma/schema.prisma`, `@nestjs/core` in `package.json`, `uv.lock`,
+  …) and overlays the matching fragment.
+- **Re-syncs** as the library evolves, *preserving your edits* — files
+  you've authored or modified are never overwritten without consent.
+- **Promotes** your project-local hooks/skills back into the library so
+  other projects benefit.
 
 It is **not** a project scaffolder (no `package.json`, no source code generation). It manages the small markdown/yaml/shell ecosystem your AI agent reads, nothing else.
 
@@ -72,11 +88,15 @@ your-project/
 ├── AGENTS.md                                    # canonical context (existing prose preserved)
 ├── .anamnesis/
 │   ├── manifest.json                            # region/file hashes for drift detection
-│   └── ontology/{base,<fragment>}.yaml          # ontology slices (concatenated at session start)
-└── .claude/                                     # CC adapter output
-    ├── hooks/{inject-ontology, remind-uncommitted, …}.sh
-    ├── commands/load-context.md
-    └── skills/load-context/SKILL.md
+│   ├── ontology/{base,<fragment>}.yaml          # static ontology slices
+│   ├── ontology/*.bootstrap.yaml                # deterministic project facts
+│   └── handoff/active.md                        # current work index when handoff is used
+├── .claude/                                     # Claude Code adapter output
+│   ├── hooks/{inject-ontology, remind-uncommitted, …}.sh
+│   ├── commands/load-context.md
+│   └── skills/load-context/SKILL.md
+├── .cursor/rules/                               # Cursor adapter output when enabled
+└── .anamnesis/codex-hooks/                      # Codex git-hook bridge when enabled
 ```
 
 `AGENTS.md` is *additive* — anamnesis appends regions inside `<!-- anamnesis:region ... -->` anchors. Anything outside the anchors is yours.
@@ -126,15 +146,18 @@ Triggers are evaluated by [`rulebook.md`](rulebook.md). Add your own fragment wi
 
 Each fragment declares one or more **capabilities** in `fragment.yaml`. Capabilities are tool-agnostic; **adapters** render them onto a specific tool's surface.
 
-| Capability | What it represents | Claude Code | Codex (v0.2+) | Cursor (v0.3+) |
+| Capability | What it represents | Claude Code | Codex | Cursor |
 |---|---|---|---|---|
 | `project_memory` | Always-loaded context | `AGENTS.md` region | `AGENTS.md` region | `.cursor/rules` (alwaysApply) |
 | `ontology` | Structured reference | SessionStart hook injection | AGENTS.md instruction | rules instruction |
 | `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | git hook + LLM instruction | git hook + LLM instruction |
 | `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | AGENTS.md section (fallback) | rules (fallback) |
-| `slash_command` | User-invoked command | `.claude/commands/<n>.md` | — (no native equivalent) | — |
+| `slash_command` | User-invoked command | `.claude/commands/<n>.md` | AGENTS.md section (fallback) | rules (fallback) |
 
-v0.1 ships the Claude Code adapter only. Codex and Cursor adapters are scoped for v0.2/v0.3; the IR is already shaped for them.
+The adapters do not promise identical native UI. Claude Code, Codex, and
+Cursor expose different primitives, so anamnesis targets **user-facing
+parity**: project recall, ontology access, handoff continuity, and
+operational guardrails should survive switching agents.
 
 Detail in [`docs/DESIGN.md`](docs/DESIGN.md).
 
@@ -170,6 +193,9 @@ In all four cases, the user-modified protection correctly preserved hand-authore
 | **v0.2** | Multi-tool (Codex), monorepo `scopes`, `status`, npm publish | shipped 2026-04-27 |
 | **v0.3** | Cursor adapter, Codex hook/skill/slash fallback, monorepo init UX, **agent handoff MVP** | shipped 2026-04-28 |
 | **v0.4** | Hybrid ontology bootstrap, `/ontology-enrich`, init auto-bootstrap, continuity polish | shipped 2026-04-29; 0.4.1 expands framework introspectors; 0.4.2 ships operational polish |
+| **v0.5** | Dogfood lifecycle validation and agent-switch continuity hardening | planned |
+| **v0.6** | Ontology automation deepening based on dogfood gaps | planned |
+| **v0.7** | Multi-agent UX and lifecycle scale hardening | planned |
 | **v1.0** | Stable schema, public fragment registry, signing | stable target |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).

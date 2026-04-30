@@ -26,8 +26,12 @@ hand (current example-service `system_graph.yaml`) or skip the file entirely.
 Goal: a new project running `anamnesis init` ends up with an ontology
 that already reflects its real shape.
 
-Non-goal: replacing human curation. Layer A + B together produce a
-**draft**; user reviews, prunes, and accepts.
+Non-goals:
+- replacing human curation. Layer A + B together produce a **draft**;
+  user reviews, prunes, and accepts.
+- becoming the whole product roadmap. Ontology bootstrap supports the
+  larger anamnesis goal: every supported agent should receive current
+  project context and be able to continue work after an agent switch.
 
 ---
 
@@ -223,11 +227,14 @@ rendering pipeline handles this for free.
 |---|---|---|---|
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
-| 0.5.0 | introspector author SDK frozen + community fragment guide | — | planned |
+| 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | — | planned |
+| 0.6.x | ontology drift reporting, Layer B re-run semantics, targeted introspector improvements from dogfood gaps | — | planned |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
 (sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later
-phases add coverage without API churn.
+phases add coverage without API churn, but only after the broader
+agent-switching context story is verified. New framework introspectors
+should be evidence-driven, not added just to fill out a catalog.
 
 ---
 

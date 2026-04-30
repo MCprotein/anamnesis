@@ -9,11 +9,15 @@ breaking changes until v1.0.
 
 ### Documentation
 
-- Clarified the roadmap after v0.4: v0.5 freezes the introspector/parity
-  extension surface, v0.6 expands deterministic ontology coverage, and
-  v0.7 hardens cross-agent user-facing parity.
+- Re-centered the roadmap on anamnesis' product purpose: always inject
+  current context/ontology and let users switch agents without re-briefing.
+- Clarified the roadmap after v0.4: v0.5 proves context continuity across
+  real agent switches, v0.6 deepens ontology automation from dogfood gaps,
+  and v0.7 hardens multi-agent UX/lifecycle scale.
 - Documented the current npm Trusted Publishing/OIDC status and the
   manual npmjs.org publish fallback.
+- Aligned README, design notes, monorepo docs, fragment docs, and the
+  Agentfile spec with the current context-continuity model.
 
 ## [0.4.4] — 2026-04-30
 

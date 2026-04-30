@@ -2,9 +2,9 @@
 
 How to apply anamnesis to a monorepo (multiple apps under one repo).
 
-Available since **v0.2**. UX improvements (interactive init that detects
-the layout) are planned for **v0.3** — until then there's a small
-hand-edit step.
+Available since **v0.2**. `init --monorepo` can detect common workspace
+layouts and generate a multi-scope Agentfile; hand-editing remains useful
+for unusual repo shapes or explicit fragment overrides.
 
 ---
 
@@ -31,15 +31,15 @@ project:
 | Capability | Behavior |
 |---|---|
 | `project_memory` (AGENTS.md region) | Scope-local: writes to `<scope>/AGENTS.md` |
-| `ontology` (slice file) | Scope-local: writes to `<scope>/.anamnesis/ontology/<id>.yaml` |
-| `executable_hook` (`.claude/hooks/*.sh`) | **Project-root only** — Claude Code's `settings.json` is read only at root |
-| `skill` (`.claude/skills/<name>/`) | **Project-root only** — same reason |
-| `slash_command` (`.claude/commands/<name>.md`) | **Project-root only** — same reason |
+| `ontology` (slice file) | Scope-local: writes to `<scope>/.anamnesis/ontology/<id>.yaml`; bootstrap facts write beside the static slice as `<id>.bootstrap.yaml` |
+| `executable_hook` | **Project-root only** for native/bridge files — Claude Code's `settings.json` and git hooks are root concerns |
+| `skill` | Native/fallback files such as `.claude/skills/` and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |
+| `slash_command` | Native/fallback files such as `.claude/commands/` and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |
 
-Implication: scopes are useful for **per-app guidance and ontology**.
-Hooks/skills/commands are repo-wide regardless of scope. This matches
-how Claude Code itself reads things (nested AGENTS.md auto-loads
-per directory; settings.json doesn't).
+Implication: scopes are most useful for **per-app guidance and ontology**.
+Native hook/skill/command surfaces stay repo-wide when the underlying tool
+requires root files, while AGENTS.md-based fallbacks can still carry
+scope-local command or skill intent.
 
 ---
 
@@ -74,12 +74,21 @@ and possibly `python-uv` (if `uv.lock` is at root). Apply with:
 anamnesis init --allow-exec-adapters
 ```
 
-This produces a *single-scope* `Agentfile` with the matched fragments
-applied at the root. It does NOT yet split per app.
+For automatic scope detection, use:
 
-### 2. Hand-edit `Agentfile` to declare scopes
+```bash
+anamnesis init --monorepo --dry-run
+```
 
-Open the generated `Agentfile` and rewrite as multi-scope:
+Anamnesis detects common `apps/*`, `packages/*`, and workspace layouts.
+If your repo shape is unusual, start with the generated Agentfile and
+hand-edit the scopes.
+
+### 2. Review or hand-edit `Agentfile` scopes
+
+If `init --monorepo` detected the layout, review the generated scopes.
+For unusual layouts, open the generated `Agentfile` and rewrite as
+multi-scope:
 
 ```yaml
 version: 1
@@ -142,6 +151,8 @@ What gets created:
 | `.anamnesis/ontology/{base,docker-compose}.yaml` | root ontology |
 | `apps/api/.anamnesis/ontology/{fastapi,python-uv}.yaml` | per-scope |
 | `apps/web/.anamnesis/ontology/nextjs.yaml` | per-scope |
+| `apps/api/.anamnesis/ontology/fastapi.bootstrap.yaml` | per-scope deterministic facts if bootstrap applies |
+| `apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml` | per-scope deterministic facts if bootstrap applies |
 | `.claude/hooks/*` | repo-wide (root only, regardless of scope) |
 | `.claude/commands/load-context.md` | repo-wide |
 
@@ -160,7 +171,9 @@ anamnesis update --apply --allow-exec-adapters
 ## Verification
 
 - `anamnesis status` reports installed fragments + drift across the whole
-  project. (Per-scope grouping in output is a v0.3 polish item.)
+  project, grouped per scope for multi-scope Agentfiles.
+- `anamnesis doctor` reports missing fragments, drift, update warnings,
+  and adapter registration issues across the project.
 - `cat apps/api/AGENTS.md` should show the inherited + scope-specific
   regions.
 - `find . -path '*/.anamnesis/ontology/*.yaml'` lists all ontology
@@ -173,9 +186,8 @@ anamnesis update --apply --allow-exec-adapters
 ### Don't put per-scope hooks in sub-scope `.claude/hooks/`
 
 CC reads `.claude/settings.json` only at project root. Hooks installed
-at `apps/api/.claude/hooks/` won't be auto-registered. Until v0.3 brings
-better per-scope adapter support, exec adapters are root-wide; use
-fragments at the root scope or the base scope for them.
+at `apps/api/.claude/hooks/` won't be auto-registered. Exec adapter files
+are root-wide; use fragments at the root scope or the base scope for them.
 
 ### Don't list root-wide fragments in sub-scopes
 
@@ -195,11 +207,13 @@ edit the Agentfile manually and run `update`.
 
 ---
 
-## Roadmap touchpoints (v0.3+)
+## Roadmap touchpoints
 
-The hand-edit step in (2) goes away in v0.3 with `init --interactive`,
-which detects `apps/*` / `packages/*` / `services/*` patterns and
-proposes a multi-scope Agentfile.
+The next monorepo focus is context continuity, not merely more detection:
+switching from Claude Code to Codex or Cursor inside a scope should still
+surface the same root + scope project memory, ontology, handoff state, and
+operational guardrails without a custom user prompt.
 
-`status` will gain per-scope grouping — useful when 5+ scopes drift
-independently.
+Future hardening will focus on ontology drift reports, mixed-stack
+dogfood fixtures, and clearer diagnostics when root-wide exec adapters and
+scope-local context diverge.

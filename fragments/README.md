@@ -39,6 +39,12 @@ fragments/<id>/
 
 Trigger conditions are defined in [`../rulebook.md`](../rulebook.md) — the format spec lives there too.
 
+`implemented` means the fragment can install project memory and ontology
+snippets. It does not imply deep deterministic ontology bootstrap support.
+Built-in Layer A introspectors currently cover the subset documented in
+[`../docs/ONTOLOGY-BOOTSTRAP.md`](../docs/ONTOLOGY-BOOTSTRAP.md); deeper
+coverage is added when dogfood usage shows that agents need more facts.
+
 ## How `init` selects fragments
 
 1. Always include the `base` fragment (from `../base/`) if present.
@@ -47,4 +53,6 @@ Trigger conditions are defined in [`../rulebook.md`](../rulebook.md) — the for
 4. Topologically sort by `requires`. Detect `conflicts` pairs.
 5. Render via the adapter for each tool listed in the project's `Agentfile`.
 
-The user has the final say — `Agentfile` is editable, and `init` will be made interactive in a later round so suggestions can be accepted/rejected per-fragment.
+The user has the final say. `Agentfile` is editable, declined fragments
+are remembered, and future lifecycle work should keep fragment selection
+aligned with the project context the active agent actually needs.

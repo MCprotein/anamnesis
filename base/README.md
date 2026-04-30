@@ -22,13 +22,20 @@ base/
     │   ├── load-context.md      # /load-context slash command
     │   └── handoff-prepare.md   # /handoff-prepare — prepare cross-session/agent handoff
     └── skills/
-        └── load-context/
-            └── SKILL.md         # load-context skill
+        ├── load-context/
+        │   └── SKILL.md         # load-context skill
+        └── ontology-enrich/
+            └── SKILL.md         # Layer B ontology enrichment skill
 ```
 
 ## Why every capability type?
 
-The base fragment intentionally exercises all five capabilities (project_memory, ontology, executable_hook, skill, slash_command). It serves as both the operational baseline and the smoke-test fixture for the renderer/adapter pipeline.
+The base fragment intentionally exercises all five capabilities
+(project_memory, ontology, executable_hook, skill, slash_command). It
+serves as both the operational baseline and the smoke-test fixture for
+the renderer/adapter pipeline. Adapter outputs differ by tool, but the
+base intent is the same: load context/ontology, preserve handoff
+continuity, and remind agents about operational guardrails.
 
 ## Files installed into a project
 

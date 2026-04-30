@@ -7,6 +7,28 @@ Pre-1.0 semantics: minor version bumps may include breaking changes until
 v1.0. Feature timing is best-effort; items can move between releases as
 verified feedback arrives.
 
+## Product north star
+
+anamnesis exists to make AI coding agents remember a project without the
+user repeating setup instructions every session.
+
+Two promises drive the roadmap:
+
+1. **Always inject the right context and ontology** — project memory,
+   ontology slices, handoff state, operating rules, hooks, skills, and
+   command intent should be installed, refreshed, and discoverable by the
+   active agent.
+2. **Let users switch agents without re-briefing** — moving between Claude
+   Code, Codex, Cursor, or another adapter should preserve enough context
+   for the next agent to continue from the same project state with no
+   bespoke "read these files first" prompt from the user.
+
+This means user-facing parity matters more than identical native UI.
+Adapters may render to different surfaces because the tools expose
+different primitives, but the resulting agent experience should preserve
+project recall, ontology access, handoff continuity, and operational
+guardrails.
+
 ---
 
 ## v0.1 — *shipped 2026-04-26*
@@ -113,57 +135,69 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 
 ## v0.5 — *planned*
 
-> **Theme: freeze the extension surface for ontology generation and adapter parity**
+> **Theme: prove automatic context continuity across real agent switches**
 
-v0.5 is not the "all frameworks are deeply understood" release. It is the
-release that makes future framework support cheap and consistent.
+v0.5 is not primarily an introspector expansion release. The next risk is
+whether the tool actually fulfills its main promise in day-to-day use:
+install once, keep context/ontology current, and switch agents without
+manual re-briefing.
 
 | # | Item | Description |
 |---|---|---|
-| 1 | **Introspector author SDK docs** | Document the `Introspector` contract, stable output expectations, filesystem constraints, fixture shape, and how fragment authors add deterministic Layer A facts. |
-| 2 | **Introspector API freeze candidate** | Review current k8s/prisma/nextjs/nestjs/fastapi introspectors and remove accidental coupling before external fragments rely on the interface. |
-| 3 | **One more framework introspector** | Add at least one non-JS or convention-heavy introspector (candidate: Rails, Django, Go, or Rust) to validate the extension surface before freezing it. |
-| 4 | **Cross-agent parity fixtures** | Add fixture/snapshot coverage proving that the same capability IR produces equivalent user-facing behavior across Claude Code, Codex, and Cursor renderers. |
-| 5 | **Parity vocabulary** | Document that anamnesis targets user-facing parity, not impossible 1:1 native UI parity. Claude slash commands/hooks, Codex AGENTS.md/git-hook bridges, and Cursor rules can differ internally as long as the same project memory, ontology, handoff, and safety intent are available. |
-| 6 | **Ontology output stability** | Stabilize bootstrap YAML conventions enough for agents and future docs to rely on them without treating every field as provisional. |
+| 1 | **Dogfood lifecycle matrix** | Run current anamnesis against sanitized managed fixtures and record `init/update/status/doctor/ontology bootstrap/handoff` behavior per repo and adapter. Candidate repos stay dogfood-driven, not framework-completion driven. |
+| 2 | **Agent-switch acceptance fixtures** | Add tests/fixtures for the same Agentfile rendered to Claude Code, Codex, and Cursor, then assert that project memory, ontology instructions, handoff startup instructions, and operational guardrails are present in each output. |
+| 3 | **Session-start continuity contract** | Make the "new agent starts here" contract explicit and testable: read managed context, read ontology, read latest/active handoff, detect stale handoff, then continue without the user giving extra instructions. |
+| 4 | **Actionable `status`/`doctor` output** | Improve diagnostics so a user can tell whether context, ontology, handoff, fragments, pinned versions, and adapter render targets are installed and current. |
+| 5 | **README/guide alignment** | Update user-facing docs around the two product promises: context/ontology injection and agent switching continuity. Avoid presenting framework introspection as the main product. |
+| 6 | **Release fallback normalization** | Keep npmjs.org manual publish fallback documented while OIDC remains unresolved, so release operations do not block lifecycle work. |
+| 7 | **Introspector API review, not expansion** | Audit the current k8s/prisma/nextjs/nestjs/fastapi introspector interface for accidental coupling, but defer new framework work unless dogfood evidence shows a real gap. |
 
 Exit criteria:
-- New fragment authors can implement a deterministic ontology bootstrap without reading internal code first.
-- Existing adapters have parity snapshots for the core capabilities.
-- The next framework introspector does not require changing the public `Introspector` shape.
+- A fresh agent can enter a managed project through each supported adapter
+  and find the same current context, ontology, handoff state, and guardrails
+  without a bespoke user prompt.
+- `status`/`doctor` can identify missing or stale context-continuity pieces.
+- The next implementation task is chosen from dogfood evidence, not from
+  a framework catalog wishlist.
 
 ---
 
 ## v0.6 — *planned*
 
-> **Theme: expand deterministic ontology coverage**
+> **Theme: deepen ontology automation where dogfood shows gaps**
 
 | # | Item | Description |
 |---|---|---|
-| 1 | **Framework introspector catalog** | Add deterministic Layer A introspectors for high-signal fragments beyond the current set. Priority candidates: Rails, Django, Go services, Rust, SvelteKit, Remix, and Nuxt. |
-| 2 | **Fixture corpus** | Maintain small sanitized-fixture-like fixtures per introspector so route/model/service extraction stays stable. |
-| 3 | **Layer A / Layer B boundary docs** | Clarify which facts are parser-derived and which semantic relationships should remain agent-enriched. |
-| 4 | **Monorepo ontology hardening** | Stress-test mixed-stack multi-scope projects so generated ontology remains scope-local, stable-sorted, and non-duplicative. |
+| 1 | **Ontology gap reports** | Use dogfood runs to identify which missing ontology facts actually make agents less effective. Prioritize gaps in existing sanitized fixtures before adding broad framework coverage. |
+| 2 | **Layer B enrichment lifecycle** | Define how `/ontology-enrich` re-runs should merge, replace, or diff semantic notes so agent-curated ontology can evolve safely. |
+| 3 | **Ontology drift in `status`** | Report when project files imply bootstrap facts have changed and `.bootstrap.yaml` should be regenerated. |
+| 4 | **Output schema stabilization** | Stabilize enough bootstrap/enriched YAML conventions for agents and docs to rely on them. |
+| 5 | **Targeted introspector improvements** | Improve existing introspectors or add a new one only when dogfood evidence shows clear context value. Priority examples are deeper NestJS/Prisma relations, Kubernetes service/workload links, or frontend route ownership. |
+| 6 | **Layer A / Layer B boundary docs** | Clarify which facts are parser-derived and which semantic relationships should remain agent-enriched. |
 
 Exit criteria:
-- New framework support is mostly additive: fragment + introspector + fixtures + rulebook.
-- Common full-stack monorepos produce useful bootstrap ontology before any LLM enrichment.
+- Agents get materially better project understanding from regenerated
+  ontology in at least one sanitized managed fixture.
+- Ontology refresh and enrichment are safe enough to run repeatedly during
+  normal project lifecycle work.
 
 ---
 
 ## v0.7 — *planned*
 
-> **Theme: cross-agent UX hardening**
+> **Theme: harden multi-agent UX and lifecycle scale**
 
 | # | Item | Description |
 |---|---|---|
-| 1 | **Adapter parity matrix** | Publish and test a matrix for each capability (`project_memory`, `ontology`, `executable_hook`, `skill`, `slash_command`) across Claude Code, Codex, and Cursor. |
-| 2 | **Dogfood parity scenarios** | Run the same project through all supported adapters and compare installed files, instructions, handoff behavior, and update drift reports. |
+| 1 | **Adapter parity matrix** | Publish and test a matrix for each capability (`project_memory`, `ontology`, `executable_hook`, `skill`, `slash_command`) across Claude Code, Codex, Cursor, and any new supported adapter. |
+| 2 | **Switching-agent scenarios** | Exercise realistic handoffs: Claude → Codex, Codex → Cursor, Cursor → Claude, with active handoff files and stale-handoff detection. |
 | 3 | **Native-surface improvements** | Where a tool offers a better native surface, use it; where it does not, keep fallback instructions explicit and testable. |
-| 4 | **UX acceptance criteria** | Define "same user experience" as equivalent project recall, safety reminders, ontology access, and handoff continuity, not byte-for-byte identical UI controls. |
+| 4 | **Lifecycle hardening** | Reduce surprises around pinned fragments, user-modified regions, backups, declined suggestions, and multi-scope updates as projects evolve. |
+| 5 | **Public UX docs** | Document the expected user journey for "install once, switch agents, continue work" with limitations per adapter. |
 
 Exit criteria:
-- Switching agents preserves project memory, ontology access, handoff continuity, and operational reminders in normal workflows.
+- Switching agents preserves project memory, ontology access, handoff
+  continuity, and operational reminders in normal workflows.
 - Known adapter gaps are documented as tool-surface limitations, not hidden behavior.
 
 ---
