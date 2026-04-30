@@ -78,7 +78,7 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 
 > anamnesis keeps your AI coding agents from forgetting what your project is.
 
-핵심 가치 4개:
+핵심 가치 6개:
 
 1. **Context-first** — 생성되는 파일은 소스 코드가 아니라 "에이전트가 읽을 지식" 이다.
 2. **Ontology as memory substrate** — 사람이 설명하지 않아도 agent 가 프로젝트 구조와 관계를 찾을 수 있도록 structured reference 를 유지한다.
