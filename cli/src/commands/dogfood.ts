@@ -229,18 +229,7 @@ function scoreCriteria(
 ): DogfoodCriterion[] {
   const tools = new Set(st.agentfile.tools);
   const allToolsEnabled = SUPPORTED_TOOLS.every((t) => tools.has(t));
-  const hasBaseContext = hasCleanRegion(st, "AGENTS.md", "anamnesis-base");
-  const ontologyFiles = st.entries.filter(
-    (e) =>
-      e.target === "file" &&
-      e.path.startsWith(".anamnesis/ontology/") &&
-      e.drift === "clean",
-  );
-  const driftClean =
-    st.summary.entriesMissing === 0 &&
-    st.summary.entriesUserModified === 0 &&
-    st.summary.fragmentLibraryMissing === 0 &&
-    st.summary.fragmentUpdatesAvailable === 0;
+  const continuity = new Map(st.continuity.checks.map((c) => [c.id, c]));
   const verificationPassed =
     checks.length > 0 &&
     checks.every((c) => c.outcome === "pass") &&
@@ -251,31 +240,45 @@ function scoreCriteria(
     {
       id: "context-continuity",
       label: "Context continuity",
-      status: allToolsEnabled && hasBaseContext ? "pass" : "fail",
-      detail: allToolsEnabled
-        ? "all supported tools enabled and AGENTS.md baseline is clean"
-        : `enabled tools: ${st.agentfile.tools.join(", ")}`,
+      status:
+        allToolsEnabled &&
+        continuity.get("project-memory")?.status === "pass" &&
+        continuity.get("handoff")?.status === "pass"
+          ? "pass"
+          : "fail",
+      detail:
+        `enabled tools: ${st.agentfile.tools.join(", ")}; ` +
+        `status continuity ${st.continuity.passed}/${st.continuity.total}`,
     },
     {
       id: "ontology-availability",
       label: "Ontology availability",
-      status: ontologyFiles.length > 0 ? "pass" : "fail",
-      detail:
-        ontologyFiles.length > 0
-          ? `${ontologyFiles.length} clean ontology file(s)`
-          : "no clean .anamnesis/ontology/*.yaml file tracked",
+      status: continuity.get("ontology")?.status ?? "fail",
+      detail: continuity.get("ontology")?.detail ?? "ontology check missing",
     },
     {
       id: "adapter-parity",
       label: "Adapter parity surface",
-      status: adapterParityReady(st) ? "pass" : "fail",
-      detail: "Claude native surfaces, Codex AGENTS fallbacks, and Cursor rules checked",
+      status:
+        allToolsEnabled && continuity.get("adapter-surfaces")?.status === "pass"
+          ? "pass"
+          : "fail",
+      detail:
+        continuity.get("adapter-surfaces")?.detail ??
+        "adapter surface check missing",
     },
     {
       id: "diagnostics-quality",
       label: "Diagnostics quality",
-      status: doc.ok && driftClean ? "pass" : "fail",
-      detail: `doctor ${doc.summary.errors} error(s), ${doc.summary.warnings} warning(s); drift clean=${driftClean}`,
+      status:
+        doc.ok &&
+        st.continuity.ready &&
+        continuity.get("managed-drift")?.status === "pass"
+          ? "pass"
+          : "fail",
+      detail:
+        `doctor ${doc.summary.errors} error(s), ${doc.summary.warnings} warning(s); ` +
+        `status continuity ready=${st.continuity.ready}`,
     },
     {
       id: "verification-strength",
@@ -286,53 +289,6 @@ function scoreCriteria(
         .join("; "),
     },
   ];
-}
-
-function adapterParityReady(st: StatusResult): boolean {
-  const tools = new Set(st.agentfile.tools);
-  if (tools.has("claude-code")) {
-    const ok =
-      hasCleanFile(st, ".claude/hooks/inject-ontology.sh") &&
-      hasCleanFile(st, ".claude/hooks/inject-handoff.sh") &&
-      hasCleanFile(st, ".claude/commands/load-context.md") &&
-      hasCleanFile(st, ".claude/commands/handoff-prepare.md") &&
-      hasCleanFile(st, ".claude/skills/load-context/SKILL.md") &&
-      hasCleanFile(st, ".claude/skills/ontology-enrich/SKILL.md");
-    if (!ok) return false;
-  }
-  if (tools.has("codex")) {
-    const ok =
-      hasCleanRegion(st, "AGENTS.md", "codex-cmd-load-context") &&
-      hasCleanRegion(st, "AGENTS.md", "codex-cmd-handoff-prepare") &&
-      hasCleanRegion(st, "AGENTS.md", "codex-skill-load-context") &&
-      hasCleanRegion(st, "AGENTS.md", "codex-skill-ontology-enrich");
-    if (!ok) return false;
-  }
-  if (tools.has("cursor")) {
-    const ok =
-      hasCleanFile(st, ".cursor/rules/load-context-cmd.mdc") &&
-      hasCleanFile(st, ".cursor/rules/handoff-prepare-cmd.mdc") &&
-      hasCleanFile(st, ".cursor/rules/load-context.mdc") &&
-      hasCleanFile(st, ".cursor/rules/ontology-enrich.mdc");
-    if (!ok) return false;
-  }
-  return true;
-}
-
-function hasCleanRegion(st: StatusResult, file: string, regionId: string): boolean {
-  return st.entries.some(
-    (e) =>
-      e.target === "region" &&
-      e.file === file &&
-      e.regionId === regionId &&
-      e.drift === "clean",
-  );
-}
-
-function hasCleanFile(st: StatusResult, filePath: string): boolean {
-  return st.entries.some(
-    (e) => e.target === "file" && e.path === filePath && e.drift === "clean",
-  );
 }
 
 function previousScore(outputPath: string): number | null {
@@ -381,6 +337,7 @@ function renderMarkdown(input: {
     `Tools: ${input.st.agentfile.tools.join(", ")}`,
     `Fragments: ${input.st.fragments.map((f) => `${f.id}@${f.installedVersion}:${f.status}`).join(", ")}`,
     `Drift: ${input.st.summary.entriesClean} clean, ${input.st.summary.entriesUserModified} modified, ${input.st.summary.entriesMissing} missing`,
+    `Status continuity: ${input.st.continuity.ready ? "ready" : "issues"} (${input.st.continuity.passed}/${input.st.continuity.total})`,
     `Doctor: ${input.doc.ok ? "ok" : "issues"} (${input.doc.summary.errors} errors, ${input.doc.summary.warnings} warnings)`,
     `Ontology bootstrap dry-run: ${bootstrapSummary}`,
     "",

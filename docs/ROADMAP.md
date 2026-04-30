@@ -160,6 +160,9 @@ Progress:
   [`docs/DOGFOOD.md`](DOGFOOD.md).
 - 2026-04-30: Added `anamnesis dogfood check --append` so future version
   bumps can record continuity score/trend automatically.
+- 2026-04-30: Added first-class `status` continuity readiness and `doctor`
+  continuity warnings for project memory, ontology, handoff startup, adapter
+  surfaces, and managed drift.
 
 Exit criteria:
 - A fresh agent can enter a managed project through each supported adapter

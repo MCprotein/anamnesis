@@ -3,9 +3,14 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { init } from "./init.js";
+import { update } from "./update.js";
 import { doctor, DoctorError } from "./doctor.js";
 import { upsertRegion } from "../core/regions.js";
-import { readAgentfile, writeAgentfile } from "../core/agentfile.js";
+import {
+  readAgentfile,
+  writeAgentfile,
+  type ToolName,
+} from "../core/agentfile.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -103,6 +108,28 @@ function installProject(): { project: string; library: string } {
   return { project, library };
 }
 
+function installContinuityProject(): { project: string; library: string } {
+  const project = tmpDir("anamnesis-doctor-continuity-");
+  const library = process.cwd();
+  init({
+    projectRoot: project,
+    libraryRoot: library,
+    dryRun: false,
+    allowExecAdapters: true,
+    noBootstrap: true,
+  });
+  const af = readAgentfile(project);
+  af.tools = ["claude-code", "codex", "cursor"] satisfies ToolName[];
+  writeAgentfile(project, af);
+  update({
+    projectRoot: project,
+    libraryRoot: library,
+    apply: true,
+    allowExecAdapters: true,
+  });
+  return { project, library };
+}
+
 describe("doctor — preconditions", () => {
   it("errors when no Agentfile is present", () => {
     expect(() =>
@@ -121,7 +148,7 @@ describe("doctor — installation integrity", () => {
     const result = doctor({ projectRoot: project, libraryRoot: library });
 
     expect(result.ok).toBe(true);
-    expect(result.issues).toEqual([]);
+    expect(result.summary.errors).toBe(0);
   });
 
   it("reports missing manifest as an error", () => {
@@ -152,6 +179,7 @@ describe("doctor — installation integrity", () => {
     const result = doctor({ projectRoot: project, libraryRoot: library });
 
     expect(result.ok).toBe(true);
+    expect(result.summary.errors).toBe(0);
     expect(result.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -197,7 +225,7 @@ describe("doctor — installation integrity", () => {
     const result = doctor({ projectRoot: project, libraryRoot: v2Library });
 
     expect(result.ok).toBe(true);
-    expect(result.issues).toEqual([]);
+    expect(result.summary.errors).toBe(0);
   });
 
   it("reports pinned archives whose declared version does not match the archive", () => {
@@ -221,6 +249,24 @@ describe("doctor — installation integrity", () => {
           code: "fragment-library-missing",
           fragmentId: "base",
           message: expect.stringContaining("archive declares version 2"),
+        }),
+      ]),
+    );
+  });
+
+  it("reports continuity-specific issues when an enabled adapter surface is missing", () => {
+    const { project, library } = installContinuityProject();
+    fs.unlinkSync(path.join(project, ".cursor/rules/load-context.mdc"));
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "continuity-adapter-surface-missing",
+          target: expect.stringContaining(".cursor/rules/load-context.mdc"),
         }),
       ]),
     );

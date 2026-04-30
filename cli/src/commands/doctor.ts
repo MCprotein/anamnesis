@@ -40,7 +40,7 @@ import {
   readSettings,
   type HookRegistration,
 } from "../core/settings.js";
-import { status } from "./status.js";
+import { status, type ContinuityCheck } from "./status.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,7 +58,12 @@ export type DoctorIssueCode =
   | "adapter-renderer-missing"
   | "render-plan-failed"
   | "settings-invalid"
-  | "hook-registration-missing";
+  | "hook-registration-missing"
+  | "continuity-project-memory-missing"
+  | "continuity-ontology-missing"
+  | "continuity-handoff-missing"
+  | "continuity-adapter-surface-missing"
+  | "continuity-drift-detected";
 
 export interface DoctorIssue {
   severity: DoctorSeverity;
@@ -141,6 +146,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   if (manifestReadable) {
     const st = status({ projectRoot, libraryRoot });
     addStatusIssues(st.entries, st.fragments, issues);
+    addContinuityIssues(st.continuity.checks, issues);
   }
 
   const library = libraryFragmentMap(libraryRoot);
@@ -221,6 +227,37 @@ function addStatusIssues(
         message: `tracked ${e.target} differs from last applied content: ${target}`,
       });
     }
+  }
+}
+
+function addContinuityIssues(
+  checks: ContinuityCheck[],
+  issues: DoctorIssue[],
+): void {
+  for (const check of checks) {
+    if (check.status === "pass") continue;
+    const code = continuityIssueCode(check);
+    issues.push({
+      severity: "warning",
+      code,
+      target: check.targets.join(", ") || undefined,
+      message: `${check.label} continuity check failed: ${check.detail}`,
+    });
+  }
+}
+
+function continuityIssueCode(check: ContinuityCheck): DoctorIssueCode {
+  switch (check.id) {
+    case "project-memory":
+      return "continuity-project-memory-missing";
+    case "ontology":
+      return "continuity-ontology-missing";
+    case "handoff":
+      return "continuity-handoff-missing";
+    case "adapter-surfaces":
+      return "continuity-adapter-surface-missing";
+    case "managed-drift":
+      return "continuity-drift-detected";
   }
 }
 

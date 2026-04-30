@@ -36,6 +36,11 @@ breaking changes until v1.0.
 - Added `anamnesis dogfood check --append` plus npm `dogfood` /
   `release:check` scripts so version bumps can record the self-check before
   publish.
+- `anamnesis status` now reports first-class continuity readiness for
+  project memory, ontology, handoff startup, enabled adapter surfaces, and
+  managed drift. `anamnesis doctor` surfaces the same failures as
+  continuity-specific warnings, and dogfood scoring reuses the status
+  continuity result instead of duplicating adapter checks.
 
 ## [0.4.4] — 2026-04-30
 

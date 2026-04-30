@@ -92,6 +92,28 @@ export interface ScopeStatus {
   entries: EntryStatus[];
 }
 
+export type ContinuityCheckId =
+  | "project-memory"
+  | "ontology"
+  | "handoff"
+  | "adapter-surfaces"
+  | "managed-drift";
+
+export interface ContinuityCheck {
+  id: ContinuityCheckId;
+  label: string;
+  status: "pass" | "fail";
+  detail: string;
+  targets: string[];
+}
+
+export interface ContinuityStatus {
+  ready: boolean;
+  passed: number;
+  total: number;
+  checks: ContinuityCheck[];
+}
+
 export interface StatusResult {
   agentfile: Agentfile;
   /** Flat union across all scopes — preserved for back-compat and quick overview. */
@@ -104,6 +126,8 @@ export interface StatusResult {
    * have one entry per declared scope.
    */
   scopes: ScopeStatus[];
+  /** Continuity readiness for the adapters enabled in this Agentfile. */
+  continuity: ContinuityStatus;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -296,16 +320,192 @@ export function status(opts: StatusOptions): StatusResult {
     suggestedCount: suggested.length,
     declinedCount: declined.length,
   };
+  const continuity = computeContinuityStatus({
+    projectRoot,
+    tools: agentfile.tools,
+    entries,
+    summary,
+  });
 
   return {
     agentfile,
     fragments,
     entries,
     scopes,
+    continuity,
     suggested,
     declined,
     summary,
   };
+}
+
+function computeContinuityStatus(opts: {
+  projectRoot: string;
+  tools: Agentfile["tools"];
+  entries: EntryStatus[];
+  summary: StatusResult["summary"];
+}): ContinuityStatus {
+  const { projectRoot, tools, entries, summary } = opts;
+  const checks: ContinuityCheck[] = [];
+
+  const projectMemoryTargets = ["AGENTS.md [region:anamnesis-base]"];
+  checks.push({
+    id: "project-memory",
+    label: "Project memory",
+    status: hasCleanRegion(entries, "AGENTS.md", "anamnesis-base")
+      ? "pass"
+      : "fail",
+    detail: "AGENTS.md baseline region is installed and clean",
+    targets: projectMemoryTargets,
+  });
+
+  const ontologyTargets = entries
+    .filter(
+      (e) =>
+        e.target === "file" &&
+        e.path.startsWith(".anamnesis/ontology/") &&
+        e.drift === "clean",
+    )
+    .map((e) => (e.target === "file" ? e.path : ""));
+  checks.push({
+    id: "ontology",
+    label: "Ontology availability",
+    status: ontologyTargets.length > 0 ? "pass" : "fail",
+    detail:
+      ontologyTargets.length > 0
+        ? `${ontologyTargets.length} clean ontology file(s) are tracked`
+        : "no clean .anamnesis/ontology/*.yaml file is tracked",
+    targets:
+      ontologyTargets.length > 0 ? ontologyTargets : [".anamnesis/ontology/*.yaml"],
+  });
+
+  const baseRegion = readRegionContent(
+    projectRoot,
+    "AGENTS.md",
+    "anamnesis-base",
+  );
+  const handoffReady =
+    hasCleanRegion(entries, "AGENTS.md", "anamnesis-base") &&
+    baseRegion !== undefined &&
+    baseRegion.includes(".anamnesis/handoff/") &&
+    baseRegion.includes(".anamnesis/handoff/active.md") &&
+    baseRegion.includes("stale");
+  checks.push({
+    id: "handoff",
+    label: "Handoff startup",
+    status: handoffReady ? "pass" : "fail",
+    detail:
+      "session-start instructions include active handoff loading and stale handoff handling",
+    targets: [
+      "AGENTS.md [region:anamnesis-base]",
+      ".anamnesis/handoff/active.md",
+    ],
+  });
+
+  const adapterTargets = adapterContinuityTargets(tools);
+  const missingAdapterTargets = adapterTargets.filter(
+    (target) => !targetClean(entries, target),
+  );
+  checks.push({
+    id: "adapter-surfaces",
+    label: "Adapter surfaces",
+    status: missingAdapterTargets.length === 0 ? "pass" : "fail",
+    detail:
+      missingAdapterTargets.length === 0
+        ? `enabled adapters have clean native or fallback surfaces (${tools.join(", ")})`
+        : `missing or drifted surfaces: ${missingAdapterTargets.join(", ")}`,
+    targets: adapterTargets,
+  });
+
+  const driftReady =
+    summary.entriesMissing === 0 &&
+    summary.entriesUserModified === 0 &&
+    summary.fragmentLibraryMissing === 0;
+  checks.push({
+    id: "managed-drift",
+    label: "Managed drift",
+    status: driftReady ? "pass" : "fail",
+    detail: `${summary.entriesClean} clean, ${summary.entriesUserModified} modified, ${summary.entriesMissing} missing`,
+    targets: [],
+  });
+
+  const passed = checks.filter((c) => c.status === "pass").length;
+  return {
+    ready: passed === checks.length,
+    passed,
+    total: checks.length,
+    checks,
+  };
+}
+
+function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
+  const targets: string[] = [];
+  if (tools.includes("claude-code")) {
+    targets.push(
+      ".claude/hooks/inject-ontology.sh",
+      ".claude/hooks/inject-handoff.sh",
+      ".claude/hooks/handoff-reminder.sh",
+      ".claude/commands/load-context.md",
+      ".claude/commands/handoff-prepare.md",
+      ".claude/skills/load-context/SKILL.md",
+      ".claude/skills/ontology-enrich/SKILL.md",
+    );
+  }
+  if (tools.includes("codex")) {
+    targets.push(
+      "AGENTS.md [region:codex-cmd-load-context]",
+      "AGENTS.md [region:codex-cmd-handoff-prepare]",
+      "AGENTS.md [region:codex-skill-load-context]",
+      "AGENTS.md [region:codex-skill-ontology-enrich]",
+    );
+  }
+  if (tools.includes("cursor")) {
+    targets.push(
+      ".cursor/rules/load-context-cmd.mdc",
+      ".cursor/rules/handoff-prepare-cmd.mdc",
+      ".cursor/rules/load-context.mdc",
+      ".cursor/rules/ontology-enrich.mdc",
+    );
+  }
+  return targets;
+}
+
+function targetClean(entries: EntryStatus[], target: string): boolean {
+  const regionMatch = target.match(/^(.+) \[region:(.+)\]$/);
+  if (regionMatch) {
+    return hasCleanRegion(entries, regionMatch[1]!, regionMatch[2]!);
+  }
+  return hasCleanFile(entries, target);
+}
+
+function hasCleanRegion(
+  entries: EntryStatus[],
+  file: string,
+  regionId: string,
+): boolean {
+  return entries.some(
+    (e) =>
+      e.target === "region" &&
+      e.file === file &&
+      e.regionId === regionId &&
+      e.drift === "clean",
+  );
+}
+
+function hasCleanFile(entries: EntryStatus[], filepath: string): boolean {
+  return entries.some(
+    (e) => e.target === "file" && e.path === filepath && e.drift === "clean",
+  );
+}
+
+function readRegionContent(
+  projectRoot: string,
+  file: string,
+  regionId: string,
+): string | undefined {
+  const fp = path.join(projectRoot, file);
+  if (!fs.existsSync(fp)) return undefined;
+  return findRegion(fs.readFileSync(fp, "utf8"), regionId)?.content;
 }
 
 /**

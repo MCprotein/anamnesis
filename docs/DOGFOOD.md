@@ -96,15 +96,15 @@ Known gaps:
 
 - This repo currently has only the base ontology slice. There is no
   project-specific code ontology for anamnesis internals yet.
-- `status` and `doctor` report clean installation integrity, but they do
-  not yet summarize context-continuity readiness as a first-class score.
-- The current self-check records presence of surfaces. It does not yet
-  run a full simulated Claude -> Codex -> Cursor handoff scenario.
+- `status` now reports continuity readiness and `doctor` emits
+  continuity-specific warnings. The next diagnostic gap is active handoff
+  scenario coverage, not surface presence.
+- The current self-check records presence of surfaces and continuity
+  diagnostics. It does not yet run a full simulated Claude -> Codex ->
+  Cursor handoff scenario.
 
 Next checks to improve:
 
-- Add `status`/`doctor` continuity diagnostics so missing handoff,
-  ontology, or adapter fallback surfaces are reported directly.
 - Add a simulated agent-switch scenario with an active handoff file.
 - Use dogfood evidence from sanitized managed fixtures to choose the next
   ontology automation work.
@@ -133,3 +133,29 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 |---|---|---:|---|
 | `npm run typecheck` | pass | 1359 | passed |
 | `npm test` | pass | 2574 | passed |
+
+
+## Automated Self-Check — 2026-04-30T08:41:11.930Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@6:in-sync
+Drift: 18 clean, 0 modified, 0 missing
+Status continuity: ready (5/5)
+Doctor: ok (0 errors, 0 warnings)
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 5/5 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true |
+| Verification strength | pass | npm run typecheck: pass (1281ms); npm test: pass (1772ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `npm run typecheck` | pass | 1281 | passed |
+| `npm test` | pass | 1772 | passed |

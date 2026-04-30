@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-413%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.4%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-416%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.4%20alpha-orange)]()
 
 ---
 
@@ -109,8 +109,8 @@ your-project/
 anamnesis init      # first-time setup
 anamnesis update    # library updates + drift detection (dry-run by default; --apply to write)
 anamnesis update --bump-pinned  # explicitly move pinned fragments to current
-anamnesis status    # installed fragments, drift, suggestions (--json for tools)
-anamnesis doctor    # read-only installation integrity diagnostics
+anamnesis status    # fragments, drift, suggestions, continuity readiness (--json for tools)
+anamnesis doctor    # read-only installation integrity + continuity diagnostics
 anamnesis dogfood check --append  # score and record self-check continuity evidence
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```

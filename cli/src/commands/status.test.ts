@@ -4,7 +4,12 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { status, StatusError } from "./status.js";
 import { init } from "./init.js";
-import { writeAgentfile, readAgentfile } from "../core/agentfile.js";
+import { update } from "./update.js";
+import {
+  writeAgentfile,
+  readAgentfile,
+  type ToolName,
+} from "../core/agentfile.js";
 import { upsertRegion } from "../core/regions.js";
 
 function tmpDir(prefix: string): string {
@@ -83,6 +88,28 @@ function setupFreshlyInstalled(): { project: string; library: string } {
     libraryRoot: library,
     dryRun: false,
     allowExecAdapters: false,
+  });
+  return { project, library };
+}
+
+function setupContinuityProject(): { project: string; library: string } {
+  const library = process.cwd();
+  const project = tmpDir("anamnesis-continuity-status-");
+  init({
+    projectRoot: project,
+    libraryRoot: library,
+    dryRun: false,
+    allowExecAdapters: true,
+    noBootstrap: true,
+  });
+  const af = readAgentfile(project);
+  af.tools = ["claude-code", "codex", "cursor"] satisfies ToolName[];
+  writeAgentfile(project, af);
+  update({
+    projectRoot: project,
+    libraryRoot: library,
+    apply: true,
+    allowExecAdapters: true,
   });
   return { project, library };
 }
@@ -251,5 +278,39 @@ describe("status — suggested rulebook matches", () => {
     expect(r.suggested.map((s) => s.suggest)).not.toContain("prisma");
     expect(r.declined.map((d) => d.id)).toContain("prisma");
     expect(r.summary.declinedCount).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("status — continuity readiness", () => {
+  it("reports ready when all enabled adapter continuity surfaces are clean", () => {
+    const { project, library } = setupContinuityProject();
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.continuity.ready).toBe(true);
+    expect(r.continuity.passed).toBe(r.continuity.total);
+    expect(r.continuity.checks.map((c) => c.id)).toEqual([
+      "project-memory",
+      "ontology",
+      "handoff",
+      "adapter-surfaces",
+      "managed-drift",
+    ]);
+  });
+
+  it("reports the missing adapter surface when an enabled fallback file is absent", () => {
+    const { project, library } = setupContinuityProject();
+    fs.unlinkSync(path.join(project, ".cursor/rules/load-context.mdc"));
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+    const adapter = r.continuity.checks.find(
+      (c) => c.id === "adapter-surfaces",
+    );
+
+    expect(r.continuity.ready).toBe(false);
+    expect(adapter?.status).toBe("fail");
+    expect(adapter?.detail).toContain(".cursor/rules/load-context.mdc");
   });
 });

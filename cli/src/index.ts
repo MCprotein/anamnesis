@@ -311,6 +311,14 @@ function reportStatus(result: StatusResult): void {
       console.log(`    ${d.id}${when}${why}`);
     }
   }
+
+  const continuity = result.continuity;
+  console.log(
+    `  continuity: ${continuity.ready ? "ready" : "issues"} (${continuity.passed}/${continuity.total})`,
+  );
+  for (const check of continuity.checks.filter((c) => c.status === "fail")) {
+    console.log(`    fail ${check.label}: ${check.detail}`);
+  }
 }
 
 function reportDoctor(result: DoctorResult): void {
