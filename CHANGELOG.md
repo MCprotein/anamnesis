@@ -49,6 +49,13 @@ breaking changes until v1.0.
   handoff startup instructions. Missing archive references, active tasks
   pointing away from the newest archive, and completed/superseded entries in
   open handoff sections are reported before a fresh agent trusts stale state.
+- Added the first sanitized-fixture dogfood matrix for v0.5, covering a managed
+  NestJS+Prisma backend, a fresh Next.js app, and a fresh NestJS+k8s backend
+  from git archive snapshots. The matrix records continuity, doctor,
+  ontology bootstrap, and handoff injection evidence without modifying the
+  source repositories.
+- Adapter-surface continuity failures now target only the missing or drifted
+  surfaces, keeping `doctor` output actionable on real existing projects.
 
 ## [0.4.4] — 2026-04-30
 

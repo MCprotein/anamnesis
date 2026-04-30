@@ -169,6 +169,10 @@ Progress:
 - 2026-04-30: Added stale active-handoff diagnostics to `status` / `doctor`
   for missing archive references, active entries that do not point at the
   newest archive, and completed/superseded entries left in open sections.
+- 2026-04-30: Ran the first sanitized-fixture dogfood matrix on `sanitized-nest-prisma`,
+  `sanitized-nextjs-frontend`, and `sanitized-nest-k8s` git-archive snapshots. Fresh Next.js
+  and NestJS+k8s installs reached continuity `6/6`; the existing managed
+  backend exposed a repair/review gap around user-modified native surfaces.
 
 Exit criteria:
 - A fresh agent can enter a managed project through each supported adapter

@@ -424,7 +424,8 @@ function computeContinuityStatus(opts: {
       missingAdapterTargets.length === 0
         ? `enabled adapters have clean native or fallback surfaces (${tools.join(", ")})`
         : `missing or drifted surfaces: ${missingAdapterTargets.join(", ")}`,
-    targets: adapterTargets,
+    targets:
+      missingAdapterTargets.length === 0 ? adapterTargets : missingAdapterTargets,
   });
 
   const driftReady =

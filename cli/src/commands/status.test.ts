@@ -373,6 +373,7 @@ describe("status — continuity readiness", () => {
     expect(r.continuity.ready).toBe(false);
     expect(adapter?.status).toBe("fail");
     expect(adapter?.detail).toContain(".cursor/rules/load-context.mdc");
+    expect(adapter?.targets).toEqual([".cursor/rules/load-context.mdc"]);
   });
 
   it("reports active handoff entries that reference missing archives", () => {

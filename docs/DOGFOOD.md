@@ -8,6 +8,9 @@ guardrails to continue work after switching tools.
 This is a continuity and agent-effectiveness check, not just a runtime
 speed benchmark.
 
+The sanitized-fixture matrix for v0.5 lives in
+[`docs/DOGFOOD-MATRIX.md`](DOGFOOD-MATRIX.md).
+
 ## Release Gate
 
 Run this command before each release candidate and whenever the base
@@ -106,6 +109,9 @@ Known gaps:
 
 Next checks to improve:
 
+- Use the `sanitized-nest-prisma` matrix finding to decide whether v0.5 needs a
+  repair flow for user-modified managed surfaces, or only clearer release
+  guidance.
 - Use dogfood evidence from sanitized managed fixtures to choose the next
   ontology automation work.
 - Add real external agent-session smoke checks only if local artifact
