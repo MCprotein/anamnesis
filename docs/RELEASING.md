@@ -46,6 +46,29 @@ exchange the GitHub OIDC token during `npm publish`.
 The tag push starts the publish workflow. Manual runs are also available
 from the GitHub Actions UI via `workflow_dispatch`.
 
+## Recovery Notes
+
+If the tag workflow passes install/typecheck/test/build but fails at
+`npm publish` with an npm registry authorization error, first verify the
+case-sensitive Trusted Publishing fields above in npmjs.com. npm does not
+validate those fields when they are saved, so a repository owner, workflow
+filename, or environment mismatch only appears at publish time.
+
+Local developer machines may also have a scoped registry override such as
+`@mcprotein:registry=https://npm.pkg.github.com`, which can make `npm view`
+read GitHub Packages instead of npmjs.org. Force npmjs.org when checking or
+recovering a release:
+
+```bash
+npm view @mcprotein/anamnesis versions --@mcprotein:registry=https://registry.npmjs.org/
+npm publish --access public --@mcprotein:registry=https://registry.npmjs.org/
+```
+
+Use the manual `npm publish` fallback only from a committed release state
+with local package-owner authentication. Do not add long-lived npm publish
+tokens to GitHub Actions; the workflow remains OIDC-first and skips publish
+when the exact package version already exists on npmjs.org.
+
 ## Notes
 
 - Do not add long-lived npm publish tokens for this workflow.

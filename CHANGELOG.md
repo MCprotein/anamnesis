@@ -7,6 +7,23 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-04-30
+
+Packaging recovery for npm publish after the `v0.4.2` tag workflow
+reached the registry step but could not complete the release.
+
+### Fixed
+
+- Normalized the CLI `bin` path so npm 11 does not auto-correct the
+  package metadata during publish.
+- Publish workflow now checks whether the package version already exists
+  on npmjs.org before running `npm publish`, keeping tag workflows
+  idempotent after a manual owner-token recovery publish.
+
+### Coverage
+
+405 tests across 33 files.
+
 ## [0.4.2] — 2026-04-30
 
 Operational polish for agent continuity, pinned fragment updates, release

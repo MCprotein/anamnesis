@@ -1,6 +1,6 @@
 {
   "name": "@mcprotein/anamnesis",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "AI coding agent config lifecycle manager — keeps your agents from forgetting your project",
   "keywords": [
     "claude-code",
@@ -26,7 +26,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "bin": {
-    "anamnesis": "./cli/dist/index.js"
+    "anamnesis": "cli/dist/index.js"
   },
   "files": [
     "cli/dist",
