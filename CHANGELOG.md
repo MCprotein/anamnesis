@@ -27,6 +27,9 @@ breaking changes until v1.0.
   `fragments/<id>/.versions/<version>/` instead of library-current.
   `update --bump-pinned` explicitly moves pinned entries to the current
   library version while keeping them pinned.
+- **Trusted Publishing workflow** — GitHub Actions release workflow for
+  npm Trusted Publishing via OIDC, plus release docs with the npmjs.com
+  trusted publisher fields required for `@mcprotein/anamnesis`.
 
 ## [0.4.1] — 2026-04-30
 

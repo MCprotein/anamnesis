@@ -175,6 +175,7 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan
 - [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
 - [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) — two-layer ontology generation
+- [`docs/RELEASING.md`](docs/RELEASING.md) — npm Trusted Publishing release flow
 - [`docs/DESIGN.md`](docs/DESIGN.md) — architecture, capability model, idempotency
 - [`specs/agentfile.md`](specs/agentfile.md) — `Agentfile` v1 schema
 - [`rulebook.md`](rulebook.md) — auto-detection rules and trigger DSL

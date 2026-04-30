@@ -75,7 +75,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 4 | **`anamnesis doctor`** | implemented, pending patch release | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
 | 5 | **Full version pinning** | implemented, pending patch release | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `base/.versions/<version>/` or `fragments/<id>/.versions/<version>/`. |
 | 6 | **`anamnesis update --bump-pinned`** | implemented, pending patch release | Explicitly bump pinned fragments after manual review while keeping them pinned. Companion to #5. |
-| 7 | **Trusted Publishing setup** | planned | GitHub Actions workflow + npm trust config so future releases don't need manual tokens. |
+| 7 | **Trusted Publishing setup** | workflow implemented; npm publisher registration pending | GitHub Actions workflow + documented npm Trusted Publisher config so future releases don't need manual tokens. npmjs.com package settings still need the one-time trusted publisher registration. |
 | 8 | **Fragment catalog expansion** | planned | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
 | 9 | **Codex hook auto-wiring** | planned | Git pre-commit installer for executable_hook in Codex adapter (deferred from v0.3). Currently Codex agents read region instructions manually. |
 | 10 | **Aider/Windsurf adapters (optional)** | optional | If community demand justifies. Same content+capabilities IR, different render targets. |
@@ -92,6 +92,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 - `anamnesis doctor` — implemented, pending patch release
 - `anamnesis status --json` — implemented, pending patch release
 - full version pinning + `update --bump-pinned` — implemented, pending patch release
+- Trusted Publishing workflow + release docs — implemented; npmjs.com publisher registration pending
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more
