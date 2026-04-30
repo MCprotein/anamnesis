@@ -79,7 +79,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 8 | **Fragment catalog expansion** | planned | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
 | 9 | **Codex hook auto-wiring** | planned | Git pre-commit installer for executable_hook in Codex adapter (deferred from v0.3). Currently Codex agents read region instructions manually. |
 | 10 | **Aider/Windsurf adapters (optional)** | optional | If community demand justifies. Same content+capabilities IR, different render targets. |
-| 11 | **`anamnesis status --json`** | planned | Structured output for CI integration. |
+| 11 | **`anamnesis status --json`** | implemented, pending patch release | Structured output for CI integration. |
 
 **Shipped in 0.4.1 patch:**
 - nextjs introspector (App Router + Pages Router routes)
@@ -89,6 +89,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 
 **Targeted for next 0.4.x patch:**
 - `anamnesis doctor` — implemented, pending patch release
+- `anamnesis status --json` — implemented, pending patch release
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more

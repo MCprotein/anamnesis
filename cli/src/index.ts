@@ -147,6 +147,9 @@ Flags (status / doctor):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
 
+Flags (status):
+  --json                        Print structured JSON for CI/tools
+
 Flags (ontology bootstrap):
   --project-root <path>         Target directory (default: cwd)
   --scope <path>                Run only this Agentfile scope
@@ -475,7 +478,11 @@ async function main(argv: string[]): Promise<number> {
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
         });
-        reportStatus(result);
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportStatus(result);
+        }
         return 0;
       } catch (e) {
         if (e instanceof StatusError) {

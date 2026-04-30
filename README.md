@@ -88,6 +88,8 @@ your-project/
 ```bash
 anamnesis init      # first-time setup
 anamnesis update    # library updates + drift detection (dry-run by default; --apply to write)
+anamnesis status    # installed fragments, drift, suggestions (--json for tools)
+anamnesis doctor    # read-only installation integrity diagnostics
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 

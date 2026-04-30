@@ -14,6 +14,8 @@ breaking changes until v1.0.
   missing library fragments, fragment updates, adapter renderer gaps,
   invalid `.claude/settings.json`, and installed Claude hooks missing
   from settings registration.
+- **`anamnesis status --json`** — prints the existing structured status
+  result as stable JSON for CI and other tools.
 
 ## [0.4.1] — 2026-04-30
 
