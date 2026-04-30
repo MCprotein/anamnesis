@@ -1,0 +1,28 @@
+# Rust slice — written by the rust fragment.
+
+rust:
+  manifest: Cargo.toml
+  layout:
+    binary_entrypoint:
+      - src/main.rs
+      - src/bin/*.rs
+    library_entrypoint: src/lib.rs
+    workspace: cargo_workspace_when_members_present
+  visibility:
+    default: private
+    pub: external_contract_only
+  errors:
+    recoverable: Result<T, E>
+    library_panic: forbidden_for_recoverable_errors
+  async:
+    runtime: single_runtime
+    blocking_work: spawn_blocking_or_dedicated_thread
+  verification:
+    format: cargo fmt
+    tests: cargo test
+    lint: cargo clippy --all-targets --all-features
+  forbidden:
+    - unwrap_in_library_code
+    - mixed_async_runtimes
+    - blocking_io_inside_async_task
+    - feature_flag_without_matrix_check

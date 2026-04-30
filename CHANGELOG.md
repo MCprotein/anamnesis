@@ -30,6 +30,9 @@ breaking changes until v1.0.
 - **Trusted Publishing workflow** — GitHub Actions release workflow for
   npm Trusted Publishing via OIDC, plus release docs with the npmjs.com
   trusted publisher fields required for `@mcprotein/anamnesis`.
+- **fragment catalog expansion** — added project memory + ontology
+  fragments and rulebook triggers for Rails, Django, Go, Rust,
+  SvelteKit, Remix, and Nuxt.
 
 ## [0.4.1] — 2026-04-30
 

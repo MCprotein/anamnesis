@@ -1,0 +1,24 @@
+# Go slice — written by the go fragment.
+
+go:
+  module_file: go.mod
+  layout:
+    entrypoints: cmd/<name>/main.go
+    private_code: internal/
+    package_names: short_specific
+  runtime:
+    context_position: first_argument_for_request_scoped_work
+    config: parse_at_startup_and_inject
+    interfaces: define_at_consumer_boundary
+  errors:
+    wrapping: "%w"
+    panic_scope: programmer_error_or_startup_fatal
+  verification:
+    format: go fmt ./...
+    tests: go test ./...
+    race: go test -race ./...
+  forbidden:
+    - ignored_errors
+    - global_mutable_config
+    - goroutine_without_cancellation_path
+    - broad_utils_package

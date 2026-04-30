@@ -73,3 +73,38 @@ Supported trigger expressions (v0.1):
 - trigger: `any: [file_exists: docker-compose.yml, file_exists: compose.yaml]`
 - suggest: fragments/docker-compose
 - reason: Standard up/down/logs helpers + healthcheck conventions.
+
+## rails
+- trigger: `all: [file_exists: Gemfile, file_exists: config/application.rb]`
+- suggest: fragments/rails
+- reason: Rails projects need migration, credentials, Active Record, job, and bin/rails verification conventions captured for agents.
+
+## django
+- trigger: `any: [pyproject_has: django, file_exists: manage.py]`
+- suggest: fragments/django
+- reason: Django projects need app boundary, settings, migration, ORM/queryset, and manage.py verification conventions captured.
+
+## go
+- trigger: `file_exists: go.mod`
+- suggest: fragments/go
+- reason: Go modules benefit from context propagation, package boundary, error handling, goroutine, and go test conventions.
+
+## rust
+- trigger: `file_exists: Cargo.toml`
+- suggest: fragments/rust
+- reason: Cargo projects benefit from ownership, Result/error, feature flag, async runtime, clippy, and cargo verification conventions.
+
+## sveltekit
+- trigger: `package_json_has: "@sveltejs/kit"`
+- suggest: fragments/sveltekit
+- reason: SvelteKit apps need filesystem routing, load/action, server-only module, env exposure, and adapter runtime conventions.
+
+## remix
+- trigger: `any: [package_json_has: "@remix-run/node", package_json_has: "@remix-run/react"]`
+- suggest: fragments/remix
+- reason: Remix apps need route module, loader/action, session, boundary, and server/client separation conventions.
+
+## nuxt
+- trigger: `package_json_has: nuxt`
+- suggest: fragments/nuxt
+- reason: Nuxt apps need pages/server route, composable, runtimeConfig, Nitro preset, and plugin conventions.

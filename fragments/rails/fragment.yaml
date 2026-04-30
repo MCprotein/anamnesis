@@ -1,0 +1,16 @@
+id: rails
+version: 1
+description: >
+  Ruby on Rails application conventions — MVC boundaries, migrations,
+  validations, jobs, credentials, and bin/rails verification commands.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: rails
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: rails in AGENTS.md
+  - file: .anamnesis/ontology/rails.yaml

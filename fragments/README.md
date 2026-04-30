@@ -18,19 +18,26 @@ fragments/<id>/
     └── cursor/             # v0.3+
 ```
 
-## v0.1 fragments
+## Fragment catalog
 
 | id | rulebook trigger | implemented |
 |---|---|---|
 | `prisma` | `@prisma/client` in package.json or `prisma/schema.prisma` | ✅ |
-| `k8s` | `k8s/` directory or YAML with `apiVersion:` | — |
-| `nestjs` | `@nestjs/core` in package.json | — |
-| `nextjs` | `next` in package.json | — |
-| `fastapi` | `fastapi` in pyproject.toml | — |
-| `python-uv` | `uv.lock` exists | — |
-| `docker-compose` | `docker-compose.yml` or `compose.yaml` | — |
+| `k8s` | `k8s/` directory | ✅ |
+| `nestjs` | `@nestjs/core` in package.json | ✅ |
+| `nextjs` | `next` in package.json | ✅ |
+| `fastapi` | `fastapi` in pyproject.toml | ✅ |
+| `python-uv` | `uv.lock` exists | ✅ |
+| `docker-compose` | `docker-compose.yml` or `compose.yaml` | ✅ |
+| `rails` | `Gemfile` + `config/application.rb` | ✅ |
+| `django` | `django` in `pyproject.toml` or `manage.py` | ✅ |
+| `go` | `go.mod` exists | ✅ |
+| `rust` | `Cargo.toml` exists | ✅ |
+| `sveltekit` | `@sveltejs/kit` in package.json | ✅ |
+| `remix` | `@remix-run/node` or `@remix-run/react` in package.json | ✅ |
+| `nuxt` | `nuxt` in package.json | ✅ |
 
-`prisma` is implemented as the v0.1 reference; the rest are stubs added in subsequent rounds. Trigger conditions are defined in [`../rulebook.md`](../rulebook.md) — the format spec lives there too.
+Trigger conditions are defined in [`../rulebook.md`](../rulebook.md) — the format spec lives there too.
 
 ## How `init` selects fragments
 

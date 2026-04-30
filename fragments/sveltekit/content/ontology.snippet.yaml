@@ -1,0 +1,31 @@
+# SvelteKit slice — written by the sveltekit fragment.
+
+sveltekit:
+  route_root: src/routes
+  files:
+    page: +page.svelte
+    page_load:
+      - +page.ts
+      - +page.server.ts
+    layout_load:
+      - +layout.ts
+      - +layout.server.ts
+    server_routes: +server.ts
+  server_only:
+    - "*.server.ts"
+    - "$lib/server"
+  mutations: form_actions
+  env:
+    private_modules:
+      - $env/static/private
+      - $env/dynamic/private
+    public_prefix: PUBLIC_
+  verification:
+    check: npm run check
+    tests: npm test
+    build: npm run build
+  forbidden:
+    - returning_secrets_from_load
+    - request_state_in_module_global
+    - server_only_import_in_client_bundle
+    - node_api_without_adapter_support

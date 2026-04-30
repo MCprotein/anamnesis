@@ -1,0 +1,25 @@
+# Rails slice — written by the rails fragment.
+
+rails:
+  command_prefix: bin/rails
+  architecture:
+    controller_role: http_orchestration
+    model_role: persistence_validation_domain_invariants
+    view_role: presentation_only
+    complex_flow_home: service_or_form_or_query_object
+  data_changes:
+    schema_changes: migrations_only
+    reversible_migrations: preferred
+    uniqueness_requires_db_index: true
+  runtime:
+    credentials: config_credentials_or_env
+    background_jobs: active_job_adapter
+  verification:
+    tests: bin/rails test
+    routes: bin/rails routes
+    migrations: bin/rails db:migrate:status
+  forbidden:
+    - editing_schema_directly
+    - network_side_effects_in_model_callbacks
+    - complex_business_flow_inside_controller_action
+    - secrets_in_logs

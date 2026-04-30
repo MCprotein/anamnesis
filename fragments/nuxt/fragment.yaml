@@ -1,0 +1,16 @@
+id: nuxt
+version: 1
+description: >
+  Nuxt application conventions — pages routing, Nitro server routes,
+  composables, runtimeConfig, plugins, middleware, and build verification.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: nuxt
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: nuxt in AGENTS.md
+  - file: .anamnesis/ontology/nuxt.yaml

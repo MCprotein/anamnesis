@@ -1,0 +1,28 @@
+# Django slice — written by the django fragment.
+
+django:
+  command_prefix: python manage.py
+  architecture:
+    app_boundary: domain_capability
+    view_role: request_response_orchestration
+    business_logic_home:
+      - model_method
+      - manager_or_queryset
+      - service_module
+  data_changes:
+    schema_changes: migrations_only
+    consistency: transaction_atomic_plus_db_constraints
+  routing:
+    app_urls: included_from_project_urlconf
+  validation:
+    html_forms: django_forms
+    api_payloads: serializers_when_drf
+  verification:
+    checks: python manage.py check
+    tests: python manage.py test
+    migrations: python manage.py showmigrations
+  forbidden:
+    - model_field_change_without_migration
+    - committed_settings_secret
+    - template_n_plus_one_queries
+    - hidden_workflow_in_signal

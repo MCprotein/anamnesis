@@ -76,7 +76,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 5 | **Full version pinning** | implemented, pending patch release | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `base/.versions/<version>/` or `fragments/<id>/.versions/<version>/`. |
 | 6 | **`anamnesis update --bump-pinned`** | implemented, pending patch release | Explicitly bump pinned fragments after manual review while keeping them pinned. Companion to #5. |
 | 7 | **Trusted Publishing setup** | workflow implemented; npm publisher registration pending | GitHub Actions workflow + documented npm Trusted Publisher config so future releases don't need manual tokens. npmjs.com package settings still need the one-time trusted publisher registration. |
-| 8 | **Fragment catalog expansion** | planned | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (sveltekit, remix, nuxt). |
+| 8 | **Fragment catalog expansion** | implemented, pending patch release | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (SvelteKit, Remix, Nuxt). |
 | 9 | **Codex hook auto-wiring** | planned | Git pre-commit installer for executable_hook in Codex adapter (deferred from v0.3). Currently Codex agents read region instructions manually. |
 | 10 | **Aider/Windsurf adapters (optional)** | optional | If community demand justifies. Same content+capabilities IR, different render targets. |
 | 11 | **`anamnesis status --json`** | implemented, pending patch release | Structured output for CI integration. |
@@ -93,6 +93,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 - `anamnesis status --json` — implemented, pending patch release
 - full version pinning + `update --bump-pinned` — implemented, pending patch release
 - Trusted Publishing workflow + release docs — implemented; npmjs.com publisher registration pending
+- Fragment catalog expansion (Rails, Django, Go, Rust, SvelteKit, Remix, Nuxt) — implemented, pending patch release
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more

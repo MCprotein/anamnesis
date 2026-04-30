@@ -1,0 +1,16 @@
+id: django
+version: 1
+description: >
+  Django application conventions — app boundaries, settings, migrations,
+  ORM/querysets, URL routing, forms/serializers, and manage.py verification.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: django
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: django in AGENTS.md
+  - file: .anamnesis/ontology/django.yaml

@@ -148,10 +148,28 @@ describe("loadRulebook", () => {
     const rulebookPath = path.join(repoRoot, "rulebook.md");
     expect(fs.existsSync(rulebookPath)).toBe(true);
     const rules = loadRulebook(repoRoot);
-    // Must have at least the starter rules (prisma, k8s, nestjs, nextjs,
-    // fastapi, python-uv, docker-compose) — 7 as of v0.1.
-    expect(rules.length).toBeGreaterThanOrEqual(5);
-    expect(rules.some((r) => r.suggest === "prisma")).toBe(true);
+    const expected = [
+      "prisma",
+      "k8s",
+      "nestjs",
+      "nextjs",
+      "fastapi",
+      "python-uv",
+      "docker-compose",
+      "rails",
+      "django",
+      "go",
+      "rust",
+      "sveltekit",
+      "remix",
+      "nuxt",
+    ];
+    expect(rules.map((r) => r.suggest)).toEqual(expected);
+    for (const fragmentId of expected) {
+      expect(
+        fs.existsSync(path.join(repoRoot, "fragments", fragmentId, "fragment.yaml")),
+      ).toBe(true);
+    }
   });
 });
 
@@ -182,5 +200,43 @@ describe("evaluateRules / matchingRules", () => {
   it("matchingRules is empty when no rules match", () => {
     const ctx = new ProjectContext(tmpDir());
     expect(matchingRules(rules, ctx)).toEqual([]);
+  });
+
+  it("matches the expanded fragment catalog from common project markers", () => {
+    const repoRoot = path.resolve(__dirname, "..", "..", "..");
+    const actualRules = loadRulebook(repoRoot);
+    const root = tmpDir();
+    fs.mkdirSync(path.join(root, "config"), { recursive: true });
+    fs.writeFileSync(path.join(root, "Gemfile"), "gem 'rails'\n");
+    fs.writeFileSync(path.join(root, "config", "application.rb"), "module App\nend\n");
+    fs.writeFileSync(path.join(root, "manage.py"), "");
+    fs.writeFileSync(path.join(root, "go.mod"), "module example.com/app\n");
+    fs.writeFileSync(path.join(root, "Cargo.toml"), "[package]\nname = \"app\"\n");
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        dependencies: {
+          "@sveltejs/kit": "^2",
+          "@remix-run/node": "^2",
+          nuxt: "^3",
+        },
+      }),
+    );
+
+    const matched = matchingRules(actualRules, new ProjectContext(root)).map(
+      (r) => r.suggest,
+    );
+
+    expect(matched).toEqual(
+      expect.arrayContaining([
+        "rails",
+        "django",
+        "go",
+        "rust",
+        "sveltekit",
+        "remix",
+        "nuxt",
+      ]),
+    );
   });
 });

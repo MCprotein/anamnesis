@@ -1,0 +1,16 @@
+id: go
+version: 1
+description: >
+  Go service conventions — module layout, context propagation, errors,
+  interfaces, configuration, and gofmt/go test verification.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: go
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: go in AGENTS.md
+  - file: .anamnesis/ontology/go.yaml

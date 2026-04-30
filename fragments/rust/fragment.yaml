@@ -1,0 +1,16 @@
+id: rust
+version: 1
+description: >
+  Rust project conventions — cargo workflow, module boundaries, ownership,
+  Result-based errors, async runtime boundaries, and feature flags.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: rust
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: rust in AGENTS.md
+  - file: .anamnesis/ontology/rust.yaml

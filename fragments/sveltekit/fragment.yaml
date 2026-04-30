@@ -1,0 +1,16 @@
+id: sveltekit
+version: 1
+description: >
+  SvelteKit conventions — filesystem routing, load functions, form actions,
+  server-only modules, environment exposure, and adapter-aware builds.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: sveltekit
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: sveltekit in AGENTS.md
+  - file: .anamnesis/ontology/sveltekit.yaml

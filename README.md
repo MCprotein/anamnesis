@@ -98,7 +98,7 @@ Re-running `update` on an unchanged project produces only `noop` results. User e
 
 ---
 
-## Fragment catalog (v0.1)
+## Fragment catalog
 
 | id | trigger | capabilities |
 |---|---|---|
@@ -110,6 +110,13 @@ Re-running `update` on an unchanged project produces only `noop` results. User e
 | `fastapi` | `fastapi` in `pyproject.toml` | project_memory, ontology |
 | `python-uv` | `uv.lock` exists | project_memory, ontology |
 | `docker-compose` | `docker-compose.yml` / `compose.yaml` | project_memory, ontology |
+| `rails` | `Gemfile` + `config/application.rb` | project_memory, ontology |
+| `django` | `django` in `pyproject.toml` or `manage.py` | project_memory, ontology |
+| `go` | `go.mod` exists | project_memory, ontology |
+| `rust` | `Cargo.toml` exists | project_memory, ontology |
+| `sveltekit` | `@sveltejs/kit` in `package.json` | project_memory, ontology |
+| `remix` | `@remix-run/node` / `@remix-run/react` in `package.json` | project_memory, ontology |
+| `nuxt` | `nuxt` in `package.json` | project_memory, ontology |
 
 Triggers are evaluated by [`rulebook.md`](rulebook.md). Add your own fragment with `anamnesis promote` or by adding a directory under `fragments/`.
 
