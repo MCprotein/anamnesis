@@ -19,6 +19,12 @@ breaking changes until v1.0.
   decorators (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`,
   etc.), producing controller prefixes plus stable-sorted route facts
   without adding TypeScript parser dependencies.
+- **fastapi introspector** (`cli/src/introspectors/fastapi.ts`) —
+  scans Python source for `FastAPI()` apps, `APIRouter()` routers,
+  path operation decorators (`@app.get`, `@router.post`,
+  `@router.api_route`, etc.), and `include_router` calls. Route facts
+  stay separate from include prefixes so Layer A avoids cross-file
+  inference.
 
 ## [0.4.0] — 2026-04-29
 

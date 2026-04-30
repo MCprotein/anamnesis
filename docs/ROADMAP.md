@@ -86,7 +86,8 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
   pending patch release
 - nestjs introspector (`@Controller` / route method decorators) —
   implemented, pending patch release
-- fastapi introspector (`@app.*` + `@router.*`)
+- fastapi introspector (`@app.*` + `@router.*`) — implemented,
+  pending patch release
 - multi-scope bootstrap (per-scope ontology output; 0.4.0 is root-only)
 
 **Moved to v0.5:**
