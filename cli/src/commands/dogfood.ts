@@ -179,9 +179,35 @@ function runVerificationChecks(
 ): CommandCheck[] {
   return [
     runActiveHandoffSimulation(libraryRoot),
+    runStaleHandoffSimulation(libraryRoot),
     runNpmScript(projectRoot, "typecheck", ["npm", "run", "typecheck"], runner),
     runNpmScript(projectRoot, "test", ["npm", "test"], runner),
   ];
+}
+
+function installAllAdapterSimulationProject(
+  libraryRoot: string,
+  prefix: string,
+): string {
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  init({
+    projectRoot: project,
+    libraryRoot,
+    dryRun: false,
+    allowExecAdapters: true,
+    noBootstrap: true,
+  });
+
+  const af = readAgentfile(project);
+  af.tools = [...SUPPORTED_TOOLS];
+  writeAgentfile(project, af);
+  update({
+    projectRoot: project,
+    libraryRoot,
+    apply: true,
+    allowExecAdapters: true,
+  });
+  return project;
 }
 
 function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
@@ -190,24 +216,10 @@ function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
   let project: string | undefined;
 
   try {
-    project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-handoff-switch-"));
-    init({
-      projectRoot: project,
+    project = installAllAdapterSimulationProject(
       libraryRoot,
-      dryRun: false,
-      allowExecAdapters: true,
-      noBootstrap: true,
-    });
-
-    const af = readAgentfile(project);
-    af.tools = [...SUPPORTED_TOOLS];
-    writeAgentfile(project, af);
-    update({
-      projectRoot: project,
-      libraryRoot,
-      apply: true,
-      allowExecAdapters: true,
-    });
+      "anamnesis-handoff-switch-",
+    );
 
     const archivePath = ".anamnesis/handoff/2026-04-30T00-00-00Z.md";
     const handoffDir = path.join(project, ".anamnesis", "handoff");
@@ -325,6 +337,150 @@ function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
   }
 }
 
+function runStaleHandoffSimulation(libraryRoot: string): CommandCheck {
+  const command = ["anamnesis", "dogfood", "simulate-stale-handoff"];
+  const start = Date.now();
+  let project: string | undefined;
+
+  try {
+    project = installAllAdapterSimulationProject(
+      libraryRoot,
+      "anamnesis-stale-handoff-",
+    );
+    const oldArchive = ".anamnesis/handoff/2026-04-30T00-00-00Z.md";
+    const newestArchive = ".anamnesis/handoff/2026-04-30T01-00-00Z.md";
+    writeSimulationArchive(
+      project,
+      oldArchive,
+      "Old active handoff state that should be superseded.",
+      new Date("2026-04-30T00:00:00.000Z"),
+    );
+    writeSimulationArchive(
+      project,
+      newestArchive,
+      "Newest handoff state that active.md should reference.",
+      new Date("2026-04-30T01:00:00.000Z"),
+    );
+    writeSimulationActiveIndex(project, oldArchive);
+
+    const st = status({ projectRoot: project, libraryRoot });
+    const active = st.continuity.checks.find((c) => c.id === "active-handoff");
+    const doc = doctor({ projectRoot: project, libraryRoot });
+    const doctorHasWarning = doc.issues.some(
+      (issue) =>
+        issue.code === "continuity-active-handoff-stale" &&
+        issue.target?.includes(newestArchive),
+    );
+    if (active?.status !== "fail" || !active.detail.includes(newestArchive)) {
+      return handoffSimulationResult(
+        command,
+        start,
+        "fail",
+        active?.detail ?? "active-handoff check missing",
+      );
+    }
+    if (!doctorHasWarning) {
+      return handoffSimulationResult(
+        command,
+        start,
+        "fail",
+        "doctor did not report continuity-active-handoff-stale",
+      );
+    }
+
+    return handoffSimulationResult(
+      command,
+      start,
+      "pass",
+      "status and doctor detect active.md that does not reference the newest archive",
+    );
+  } catch (e) {
+    return handoffSimulationResult(
+      command,
+      start,
+      "fail",
+      e instanceof Error ? e.message : String(e),
+    );
+  } finally {
+    if (project !== undefined) {
+      fs.rmSync(project, { recursive: true, force: true });
+    }
+  }
+}
+
+function writeSimulationArchive(
+  project: string,
+  archivePath: string,
+  goal: string,
+  mtime?: Date,
+): void {
+  const abs = path.join(project, archivePath);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(
+    abs,
+    [
+      "---",
+      "created: 2026-04-30T00:00:00.000Z",
+      "agent: claude-code",
+      "git_ref: dogfood-fixture",
+      "---",
+      "",
+      "# Handoff — v0.5 active switch simulation",
+      "",
+      "## Goal",
+      goal,
+      "",
+      "## Done so far",
+      "- Installed Claude Code, Codex, and Cursor adapter surfaces.",
+      "",
+      "## In flight",
+      "- resume v0.5 active handoff simulation",
+      "",
+      "## Decisions",
+      "- Treat active.md as the first session-start index.",
+      "",
+      "## Open questions / blockers",
+      "- none",
+      "",
+      "## Next steps",
+      "1. Verify the next agent receives active handoff context.",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  if (mtime !== undefined) {
+    fs.utimesSync(abs, mtime, mtime);
+  }
+}
+
+function writeSimulationActiveIndex(project: string, archivePath: string): void {
+  const handoffDir = path.join(project, ".anamnesis", "handoff");
+  fs.mkdirSync(handoffDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(handoffDir, "active.md"),
+    [
+      "---",
+      "updated: 2026-04-30T00:00:00.000Z",
+      "agent: claude-code",
+      "git_ref: dogfood-fixture",
+      "---",
+      "",
+      "# Active handoff index",
+      "",
+      "## Current focus",
+      `- v0.5 active handoff simulation — archive: \`${archivePath}\``,
+      "",
+      "## Active tasks",
+      `- [in-flight] resume v0.5 active handoff simulation — next: verify injected handoff context across agents — archive: \`${archivePath}\``,
+      "",
+      "## Recently completed",
+      "- none",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
 function requiredHandoffEvidence(archivePath: string): string[] {
   return [
     "Source: .anamnesis/handoff/active.md",
@@ -415,6 +571,7 @@ function scoreCriteria(
     checks.length > 0 &&
     checks.every((c) => c.outcome === "pass") &&
     checks.some((c) => c.name.includes("simulate-handoff")) &&
+    checks.some((c) => c.name.includes("simulate-stale-handoff")) &&
     checks.some((c) => c.name.includes("typecheck")) &&
     checks.some((c) => c.name.includes("test"));
 
@@ -425,7 +582,8 @@ function scoreCriteria(
       status:
         allToolsEnabled &&
         continuity.get("project-memory")?.status === "pass" &&
-        continuity.get("handoff")?.status === "pass"
+        continuity.get("handoff")?.status === "pass" &&
+        continuity.get("active-handoff")?.status === "pass"
           ? "pass"
           : "fail",
       detail:

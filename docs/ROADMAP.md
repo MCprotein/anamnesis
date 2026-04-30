@@ -166,6 +166,9 @@ Progress:
 - 2026-04-30: Added dogfood active-handoff simulation: temporary all-adapter
   project, `active.md` plus archive, Claude Code injection hook output, and
   Codex/Cursor fallback instructions.
+- 2026-04-30: Added stale active-handoff diagnostics to `status` / `doctor`
+  for missing archive references, active entries that do not point at the
+  newest archive, and completed/superseded entries left in open sections.
 
 Exit criteria:
 - A fresh agent can enter a managed project through each supported adapter

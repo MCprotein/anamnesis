@@ -45,6 +45,10 @@ breaking changes until v1.0.
   installs all supported adapter surfaces in a temporary project, writes an
   `active.md` handoff index plus archive, executes the Claude Code handoff
   injection hook, and verifies Codex/Cursor fallback instructions are present.
+- `status` / `doctor` now diagnose stale active handoff state separately from
+  handoff startup instructions. Missing archive references, active tasks
+  pointing away from the newest archive, and completed/superseded entries in
+  open handoff sections are reported before a fresh agent trusts stale state.
 
 ## [0.4.4] — 2026-04-30
 

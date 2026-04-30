@@ -62,6 +62,7 @@ export type DoctorIssueCode =
   | "continuity-project-memory-missing"
   | "continuity-ontology-missing"
   | "continuity-handoff-missing"
+  | "continuity-active-handoff-stale"
   | "continuity-adapter-surface-missing"
   | "continuity-drift-detected";
 
@@ -254,6 +255,8 @@ function continuityIssueCode(check: ContinuityCheck): DoctorIssueCode {
       return "continuity-ontology-missing";
     case "handoff":
       return "continuity-handoff-missing";
+    case "active-handoff":
+      return "continuity-active-handoff-stale";
     case "adapter-surfaces":
       return "continuity-adapter-surface-missing";
     case "managed-drift":

@@ -114,6 +114,66 @@ function setupContinuityProject(): { project: string; library: string } {
   return { project, library };
 }
 
+function writeActiveHandoff(project: string, archivePath: string): void {
+  const handoffDir = path.join(project, ".anamnesis", "handoff");
+  fs.mkdirSync(handoffDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(handoffDir, "active.md"),
+    [
+      "---",
+      "updated: 2026-04-30T00:00:00.000Z",
+      "agent: codex",
+      "git_ref: test-fixture",
+      "---",
+      "",
+      "# Active handoff index",
+      "",
+      "## Current focus",
+      `- v0.5 stale handoff fixture — archive: \`${archivePath}\``,
+      "",
+      "## Active tasks",
+      `- [in-flight] continue stale handoff fixture — next: verify archive freshness — archive: \`${archivePath}\``,
+      "",
+      "## Recently completed",
+      "- none",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
+function writeHandoffArchive(
+  project: string,
+  name: string,
+  mtime: Date,
+): string {
+  const rel = `.anamnesis/handoff/${name}`;
+  const abs = path.join(project, rel);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(
+    abs,
+    [
+      "---",
+      "created: 2026-04-30T00:00:00.000Z",
+      "agent: codex",
+      "git_ref: test-fixture",
+      "---",
+      "",
+      "# Handoff — stale fixture",
+      "",
+      "## Goal",
+      "Keep active handoff references current.",
+      "",
+      "## Next steps",
+      "1. Continue from the latest archive.",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  fs.utimesSync(abs, mtime, mtime);
+  return rel;
+}
+
 // ---------------------------------------------------------------------------
 
 describe("status — preconditions", () => {
@@ -295,6 +355,7 @@ describe("status — continuity readiness", () => {
       "project-memory",
       "ontology",
       "handoff",
+      "active-handoff",
       "adapter-surfaces",
       "managed-drift",
     ]);
@@ -312,5 +373,40 @@ describe("status — continuity readiness", () => {
     expect(r.continuity.ready).toBe(false);
     expect(adapter?.status).toBe("fail");
     expect(adapter?.detail).toContain(".cursor/rules/load-context.mdc");
+  });
+
+  it("reports active handoff entries that reference missing archives", () => {
+    const { project, library } = setupContinuityProject();
+    writeActiveHandoff(project, ".anamnesis/handoff/missing.md");
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+    const active = r.continuity.checks.find((c) => c.id === "active-handoff");
+
+    expect(r.continuity.ready).toBe(false);
+    expect(active?.status).toBe("fail");
+    expect(active?.detail).toContain("missing archive");
+    expect(active?.targets).toContain(".anamnesis/handoff/missing.md");
+  });
+
+  it("reports active handoff entries that do not point at the newest archive", () => {
+    const { project, library } = setupContinuityProject();
+    const oldArchive = writeHandoffArchive(
+      project,
+      "2026-04-30T00-00-00Z.md",
+      new Date("2026-04-30T00:00:00.000Z"),
+    );
+    const newArchive = writeHandoffArchive(
+      project,
+      "2026-04-30T01-00-00Z.md",
+      new Date("2026-04-30T01:00:00.000Z"),
+    );
+    writeActiveHandoff(project, oldArchive);
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+    const active = r.continuity.checks.find((c) => c.id === "active-handoff");
+
+    expect(r.continuity.ready).toBe(false);
+    expect(active?.status).toBe("fail");
+    expect(active?.detail).toContain(newArchive);
   });
 });

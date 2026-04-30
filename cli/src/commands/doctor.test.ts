@@ -130,6 +130,31 @@ function installContinuityProject(): { project: string; library: string } {
   return { project, library };
 }
 
+function writeActiveHandoff(project: string, archivePath: string): void {
+  const handoffDir = path.join(project, ".anamnesis", "handoff");
+  fs.mkdirSync(handoffDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(handoffDir, "active.md"),
+    [
+      "---",
+      "updated: 2026-04-30T00:00:00.000Z",
+      "agent: codex",
+      "git_ref: test-fixture",
+      "---",
+      "",
+      "# Active handoff index",
+      "",
+      "## Current focus",
+      `- stale handoff fixture — archive: \`${archivePath}\``,
+      "",
+      "## Active tasks",
+      `- [in-flight] stale handoff fixture — next: verify stale diagnostics — archive: \`${archivePath}\``,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
 describe("doctor — preconditions", () => {
   it("errors when no Agentfile is present", () => {
     expect(() =>
@@ -267,6 +292,24 @@ describe("doctor — installation integrity", () => {
           severity: "warning",
           code: "continuity-adapter-surface-missing",
           target: expect.stringContaining(".cursor/rules/load-context.mdc"),
+        }),
+      ]),
+    );
+  });
+
+  it("reports stale active handoff state as a continuity warning", () => {
+    const { project, library } = installContinuityProject();
+    writeActiveHandoff(project, ".anamnesis/handoff/missing.md");
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "continuity-active-handoff-stale",
+          target: expect.stringContaining(".anamnesis/handoff/missing.md"),
         }),
       ]),
     );

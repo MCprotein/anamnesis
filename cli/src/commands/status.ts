@@ -96,6 +96,7 @@ export type ContinuityCheckId =
   | "project-memory"
   | "ontology"
   | "handoff"
+  | "active-handoff"
   | "adapter-surfaces"
   | "managed-drift";
 
@@ -402,6 +403,15 @@ function computeContinuityStatus(opts: {
     ],
   });
 
+  const activeHandoff = validateActiveHandoff(projectRoot);
+  checks.push({
+    id: "active-handoff",
+    label: "Active handoff state",
+    status: activeHandoff.status,
+    detail: activeHandoff.detail,
+    targets: activeHandoff.targets,
+  });
+
   const adapterTargets = adapterContinuityTargets(tools);
   const missingAdapterTargets = adapterTargets.filter(
     (target) => !targetClean(entries, target),
@@ -436,6 +446,170 @@ function computeContinuityStatus(opts: {
     total: checks.length,
     checks,
   };
+}
+
+function validateActiveHandoff(projectRoot: string): ContinuityCheck {
+  const activeRel = ".anamnesis/handoff/active.md";
+  const activePath = path.join(projectRoot, activeRel);
+  if (!fs.existsSync(activePath)) {
+    return {
+      id: "active-handoff",
+      label: "Active handoff state",
+      status: "pass",
+      detail: "no active handoff file is present",
+      targets: [activeRel],
+    };
+  }
+
+  const activeText = fs.readFileSync(activePath, "utf8");
+  const activeArchiveRefs = extractArchiveRefs(activeText);
+  const openTaskLines = activeHandoffOpenTaskLines(activeText);
+  if (openTaskLines.length === 0) {
+    return {
+      id: "active-handoff",
+      label: "Active handoff state",
+      status: "pass",
+      detail: "active handoff has no open task entries",
+      targets: [activeRel],
+    };
+  }
+
+  const completed = openTaskLines.filter(isCompletedHandoffTaskLine);
+  if (completed.length > 0) {
+    return {
+      id: "active-handoff",
+      label: "Active handoff state",
+      status: "fail",
+      detail: `active handoff has completed or superseded task entries: ${completed.join("; ")}`,
+      targets: [activeRel],
+    };
+  }
+
+  const archiveRefs = extractArchiveRefs(openTaskLines.join("\n"));
+  if (archiveRefs.length === 0) {
+    return {
+      id: "active-handoff",
+      label: "Active handoff state",
+      status: "fail",
+      detail: "active handoff has open task entries without archive references",
+      targets: [activeRel],
+    };
+  }
+
+  const missingArchiveRefs = archiveRefs.filter((ref) => {
+    const resolved = resolveProjectPath(projectRoot, ref);
+    return resolved === undefined || !fs.existsSync(resolved);
+  });
+  if (missingArchiveRefs.length > 0) {
+    return {
+      id: "active-handoff",
+      label: "Active handoff state",
+      status: "fail",
+      detail: `active handoff references missing archive(s): ${missingArchiveRefs.join(", ")}`,
+      targets: [activeRel, ...archiveRefs],
+    };
+  }
+
+  const newest = newestHandoffArchive(projectRoot);
+  if (newest !== undefined && !activeArchiveRefs.includes(newest.rel)) {
+    return {
+      id: "active-handoff",
+      label: "Active handoff state",
+      status: "fail",
+      detail: `active handoff does not reference newest archive: ${newest.rel}`,
+      targets: [activeRel, newest.rel, ...archiveRefs],
+    };
+  }
+
+  const invalidArchives = archiveRefs.filter((ref) => {
+    const resolved = resolveProjectPath(projectRoot, ref);
+    if (resolved === undefined) return true;
+    const text = fs.readFileSync(resolved, "utf8");
+    return !text.includes("## Goal") || !text.includes("## Next steps");
+  });
+  if (invalidArchives.length > 0) {
+    return {
+      id: "active-handoff",
+      label: "Active handoff state",
+      status: "fail",
+      detail: `active handoff archive(s) are missing required sections: ${invalidArchives.join(", ")}`,
+      targets: [activeRel, ...archiveRefs],
+    };
+  }
+
+  return {
+    id: "active-handoff",
+    label: "Active handoff state",
+    status: "pass",
+    detail: `active handoff references ${archiveRefs.length} current archive(s)`,
+    targets: [activeRel, ...archiveRefs],
+  };
+}
+
+function activeHandoffOpenTaskLines(text: string): string[] {
+  const lines: string[] = [];
+  let inOpenSection = false;
+  for (const line of text.split(/\r?\n/)) {
+    if (/^##\s+(Current focus|Active tasks)\s*$/i.test(line.trim())) {
+      inOpenSection = true;
+      continue;
+    }
+    if (/^##\s+/.test(line.trim())) {
+      inOpenSection = false;
+      continue;
+    }
+    if (inOpenSection && line.trim().startsWith("-")) {
+      lines.push(line.trim());
+    }
+  }
+  return lines;
+}
+
+function isCompletedHandoffTaskLine(line: string): boolean {
+  return (
+    /\[(done|completed|superseded)\]/i.test(line) ||
+    /\bcompleted in\b/i.test(line) ||
+    /\bsuperseded by\b/i.test(line)
+  );
+}
+
+function extractArchiveRefs(text: string): string[] {
+  const refs = new Set<string>();
+  for (const match of text.matchAll(/archive:\s*`([^`]+)`/g)) {
+    refs.add(match[1]!.trim());
+  }
+  for (const match of text.matchAll(/archive:\s*([^\s]+)/g)) {
+    refs.add(match[1]!.replace(/^`+|[`.,;)]+$/g, "").trim());
+  }
+  return Array.from(refs).filter((ref) => ref.length > 0);
+}
+
+function newestHandoffArchive(
+  projectRoot: string,
+): { rel: string; mtimeMs: number } | undefined {
+  const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
+  if (!fs.existsSync(handoffDir)) return undefined;
+  return fs
+    .readdirSync(handoffDir)
+    .filter((name) => name.endsWith(".md") && name !== "active.md")
+    .map((name) => {
+      const rel = path.join(".anamnesis", "handoff", name);
+      const abs = path.join(projectRoot, rel);
+      return {
+        rel: rel.split(path.sep).join("/"),
+        mtimeMs: fs.statSync(abs).mtimeMs,
+      };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs || a.rel.localeCompare(b.rel))[0];
+}
+
+function resolveProjectPath(projectRoot: string, rel: string): string | undefined {
+  const resolved = path.resolve(projectRoot, rel);
+  const root = path.resolve(projectRoot);
+  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+    return undefined;
+  }
+  return resolved;
 }
 
 function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {

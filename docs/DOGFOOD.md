@@ -26,11 +26,12 @@ The underlying checklist is:
 2. `anamnesis doctor`
 3. `anamnesis ontology bootstrap --dry-run`
 4. Active handoff switch simulation in a temporary all-adapter project
-5. `npm test`
-6. `npm run typecheck`
-7. Confirm that this repo's `Agentfile` enables every supported adapter
+5. Stale active handoff diagnostics through `status` / `doctor`
+6. `npm test`
+7. `npm run typecheck`
+8. Confirm that this repo's `Agentfile` enables every supported adapter
    that should dogfood the base experience.
-8. Record the result below, including whether the new version improved,
+9. Record the result below, including whether the new version improved,
    regressed, or left unchanged:
    - **Context continuity**: can Claude Code, Codex, and Cursor all see the
      same project memory and handoff instructions?
@@ -98,17 +99,17 @@ Known gaps:
 - This repo currently has only the base ontology slice. There is no
   project-specific code ontology for anamnesis internals yet.
 - `status` now reports continuity readiness and `doctor` emits
-  continuity-specific warnings.
+  continuity-specific warnings, including stale active handoff state.
 - The current self-check records presence of surfaces and continuity
   diagnostics, then simulates an active handoff switch locally. It does not
   invoke real external Claude Code, Codex, or Cursor CLI sessions.
 
 Next checks to improve:
 
-- Add stale-handoff scenario coverage around completed or superseded active
-  handoff entries.
 - Use dogfood evidence from sanitized managed fixtures to choose the next
   ontology automation work.
+- Add real external agent-session smoke checks only if local artifact
+  simulation misses a concrete adapter behavior.
 
 
 ## Automated Self-Check — 2026-04-30T08:30:21.884Z
@@ -187,3 +188,31 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood simulate-handoff` | pass | 307 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
 | `npm run typecheck` | pass | 1749 | passed |
 | `npm test` | pass | 2653 | passed |
+
+
+## Automated Self-Check — 2026-04-30T09:29:21.482Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@6:in-sync
+Drift: 18 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Doctor: ok (0 errors, 0 warnings)
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (273ms); anamnesis dogfood simulate-stale-handoff: pass (37ms); npm run typecheck: pass (1361ms); npm test: pass (3147ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 273 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 37 | status and doctor detect active.md that does not reference the newest archive |
+| `npm run typecheck` | pass | 1361 | passed |
+| `npm test` | pass | 3147 | passed |
