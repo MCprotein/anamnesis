@@ -26,6 +26,14 @@ breaking changes until v1.0.
   context/ontology contract, handoff startup instructions, operational
   guardrails, and command/skill surfaces needed for agent switching.
 
+### Changed
+
+- Dogfooded anamnesis on itself with all three supported adapters enabled:
+  Claude Code, Codex, and Cursor.
+- Added [`docs/DOGFOOD.md`](docs/DOGFOOD.md), a recurring self-check log
+  for tracking whether new versions improve context continuity, ontology
+  availability, adapter parity, diagnostics, and verification strength.
+
 ## [0.4.4] — 2026-04-30
 
 Release automation verification after npm Trusted Publishing was configured

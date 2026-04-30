@@ -3,6 +3,8 @@ project:
   name: anamnesis
 tools:
   - claude-code
+  - codex
+  - cursor
 fragments:
   - id: base
     version: 6

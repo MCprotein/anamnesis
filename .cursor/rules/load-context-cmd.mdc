@@ -1,0 +1,18 @@
+---
+description: "Command /load-context (from anamnesis fragment base). Apply when the user invokes /load-context or asks for \"load-context\"."
+agentRequested: true
+---
+
+Show the current project context — entities, relationships, invariants — by reading the ontology files anamnesis maintains.
+
+Steps:
+
+1. Read every `*.yaml` under any `.anamnesis/ontology/` directory in the project — including nested ones for monorepo sub-scopes (e.g. `apps/api/.anamnesis/ontology/`). Use `find . -path '*/.anamnesis/ontology/*.yaml' -type f` (or equivalent) to locate them.
+2. If `system_graph.yaml` exists at the project root, read it (user-managed; takes precedence over slices).
+3. Summarize concisely, grouping by scope when nested ontology dirs are present:
+   - Main entities (services, hosts, identifiers, paths)
+   - Relationships (who calls whom, who depends on what)
+   - Stated invariants ("never do X", "always Y")
+4. Stop. Don't make any edits or run other tools — this is orientation only.
+
+If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists, say so plainly and suggest running `anamnesis init`.

@@ -152,6 +152,13 @@ manual re-briefing.
 | 6 | **Release fallback normalization** | Keep npmjs.org manual publish fallback documented while OIDC remains unresolved, so release operations do not block lifecycle work. |
 | 7 | **Introspector API review, not expansion** | Audit the current k8s/prisma/nextjs/nestjs/fastapi introspector interface for accidental coupling, but defer new framework work unless dogfood evidence shows a real gap. |
 
+Progress:
+- 2026-04-30: Added the initial cross-agent continuity acceptance fixture
+  for the base fragment.
+- 2026-04-30: Enabled Claude Code, Codex, and Cursor outputs on this repo
+  itself and recorded the first dogfood self-check in
+  [`docs/DOGFOOD.md`](DOGFOOD.md).
+
 Exit criteria:
 - A fresh agent can enter a managed project through each supported adapter
   and find the same current context, ontology, handoff state, and guardrails

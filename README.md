@@ -165,14 +165,17 @@ Detail in [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Verified use
 
-anamnesis is dogfooded on itself plus 3 other repositories at the time of v0.1:
+anamnesis is dogfooded on itself plus 3 other repositories:
 
 - **sanitized-k8s** — Kubernetes infrastructure (base + k8s)
 - **sanitized-python-api** — ML pipeline (base + fastapi + python-uv)
 - **sanitized-nest-prisma** — NestJS backend (base + prisma + nestjs)
-- **anamnesis itself** — the tool managing its own context (base only)
+- **anamnesis itself** — the tool managing its own context across Claude
+  Code, Codex, and Cursor (base)
 
 In all four cases, the user-modified protection correctly preserved hand-authored files (4–9 per project).
+
+Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 
 ---
 
