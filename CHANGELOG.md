@@ -41,6 +41,10 @@ breaking changes until v1.0.
   managed drift. `anamnesis doctor` surfaces the same failures as
   continuity-specific warnings, and dogfood scoring reuses the status
   continuity result instead of duplicating adapter checks.
+- Dogfood verification now runs an active handoff switch simulation: it
+  installs all supported adapter surfaces in a temporary project, writes an
+  `active.md` handoff index plus archive, executes the Claude Code handoff
+  injection hook, and verifies Codex/Cursor fallback instructions are present.
 
 ## [0.4.4] — 2026-04-30
 

@@ -6,6 +6,7 @@
 // history and version-to-version comparison.
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import { status, StatusError, type StatusResult } from "./status.js";
@@ -15,7 +16,13 @@ import {
   OntologyBootstrapError,
   type BootstrapResult,
 } from "./ontology.js";
-import type { ToolName } from "../core/agentfile.js";
+import { init } from "./init.js";
+import { update } from "./update.js";
+import {
+  readAgentfile,
+  writeAgentfile,
+  type ToolName,
+} from "../core/agentfile.js";
 
 export type CriterionId =
   | "context-continuity"
@@ -108,7 +115,11 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
     throw e;
   }
 
-  const checks = runVerificationChecks(projectRoot, opts.runner ?? runCommand);
+  const checks = runVerificationChecks(
+    projectRoot,
+    libraryRoot,
+    opts.runner ?? runCommand,
+  );
   const criteria = scoreCriteria(st, doc, checks);
   const passed = criteria.filter((c) => c.status === "pass").length;
   const total = criteria.length;
@@ -163,12 +174,182 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
 
 function runVerificationChecks(
   projectRoot: string,
+  libraryRoot: string,
   runner: (cmd: string[], opts: { cwd: string }) => CommandCheck,
 ): CommandCheck[] {
   return [
+    runActiveHandoffSimulation(libraryRoot),
     runNpmScript(projectRoot, "typecheck", ["npm", "run", "typecheck"], runner),
     runNpmScript(projectRoot, "test", ["npm", "test"], runner),
   ];
+}
+
+function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
+  const command = ["anamnesis", "dogfood", "simulate-handoff"];
+  const start = Date.now();
+  let project: string | undefined;
+
+  try {
+    project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-handoff-switch-"));
+    init({
+      projectRoot: project,
+      libraryRoot,
+      dryRun: false,
+      allowExecAdapters: true,
+      noBootstrap: true,
+    });
+
+    const af = readAgentfile(project);
+    af.tools = [...SUPPORTED_TOOLS];
+    writeAgentfile(project, af);
+    update({
+      projectRoot: project,
+      libraryRoot,
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    const archivePath = ".anamnesis/handoff/2026-04-30T00-00-00Z.md";
+    const handoffDir = path.join(project, ".anamnesis", "handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(project, archivePath),
+      [
+        "---",
+        "created: 2026-04-30T00:00:00.000Z",
+        "agent: claude-code",
+        "git_ref: dogfood-fixture",
+        "---",
+        "",
+        "# Handoff — v0.5 active switch simulation",
+        "",
+        "## Goal",
+        "Codex or Cursor should continue from active.md without a user re-brief.",
+        "",
+        "## Done so far",
+        "- Installed Claude Code, Codex, and Cursor adapter surfaces.",
+        "",
+        "## In flight",
+        "- resume v0.5 active handoff simulation",
+        "",
+        "## Decisions",
+        "- Treat active.md as the first session-start index.",
+        "",
+        "## Open questions / blockers",
+        "- none",
+        "",
+        "## Next steps",
+        "1. Verify the next agent receives active handoff context.",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(handoffDir, "active.md"),
+      [
+        "---",
+        "updated: 2026-04-30T00:00:00.000Z",
+        "agent: claude-code",
+        "git_ref: dogfood-fixture",
+        "---",
+        "",
+        "# Active handoff index",
+        "",
+        "## Current focus",
+        `- v0.5 active handoff simulation — archive: \`${archivePath}\``,
+        "",
+        "## Active tasks",
+        `- [in-flight] resume v0.5 active handoff simulation — next: verify injected handoff context across agents — archive: \`${archivePath}\``,
+        "",
+        "## Recently completed",
+        "- none",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const hookPath = path.join(project, ".claude", "hooks", "inject-handoff.sh");
+    const hook = spawnSync(hookPath, [], {
+      cwd: project,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+    if (hook.status !== 0) {
+      const detail =
+        (hook.stderr ?? "").trim() ||
+        (hook.stdout ?? "").trim() ||
+        hook.error?.message ||
+        `exit ${hook.status}`;
+      return handoffSimulationResult(command, start, "fail", detail);
+    }
+
+    const hookOutput = hook.stdout ?? "";
+    const agents = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    const cursorHandoff = fs.readFileSync(
+      path.join(project, ".cursor", "rules", "handoff-prepare-cmd.mdc"),
+      "utf8",
+    );
+    const missing = requiredHandoffEvidence(archivePath).filter(
+      (needle) =>
+        !hookOutput.includes(needle) &&
+        !agents.includes(needle) &&
+        !cursorHandoff.includes(needle),
+    );
+    if (missing.length > 0) {
+      return handoffSimulationResult(
+        command,
+        start,
+        "fail",
+        `missing active handoff evidence: ${missing.join(", ")}`,
+      );
+    }
+
+    return handoffSimulationResult(
+      command,
+      start,
+      "pass",
+      "active.md and latest archive injected; Codex/Cursor fallback instructions present",
+    );
+  } catch (e) {
+    return handoffSimulationResult(
+      command,
+      start,
+      "fail",
+      e instanceof Error ? e.message : String(e),
+    );
+  } finally {
+    if (project !== undefined) {
+      fs.rmSync(project, { recursive: true, force: true });
+    }
+  }
+}
+
+function requiredHandoffEvidence(archivePath: string): string[] {
+  return [
+    "Source: .anamnesis/handoff/active.md",
+    `--- most recent archived handoff: ${archivePath} ---`,
+    "resume v0.5 active handoff simulation",
+    "Codex or Cursor should continue from active.md without a user re-brief.",
+    ".anamnesis/handoff/active.md",
+    "stale",
+    "/handoff-prepare",
+  ];
+}
+
+function handoffSimulationResult(
+  command: string[],
+  start: number,
+  outcome: CheckOutcome,
+  detail: string,
+): CommandCheck {
+  return {
+    name: command.join(" "),
+    command,
+    outcome,
+    durationMs: Date.now() - start,
+    detail,
+  };
 }
 
 function runNpmScript(
@@ -233,6 +414,7 @@ function scoreCriteria(
   const verificationPassed =
     checks.length > 0 &&
     checks.every((c) => c.outcome === "pass") &&
+    checks.some((c) => c.name.includes("simulate-handoff")) &&
     checks.some((c) => c.name.includes("typecheck")) &&
     checks.some((c) => c.name.includes("test"));
 

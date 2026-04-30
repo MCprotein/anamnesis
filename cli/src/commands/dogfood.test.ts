@@ -80,11 +80,16 @@ describe("dogfoodCheck", () => {
       trend: "new-baseline",
     });
     expect(result.appendedPath).toBe("docs/DOGFOOD.md");
+    expect(result.checks.map((c) => c.name)).toContain(
+      "anamnesis dogfood simulate-handoff",
+    );
 
     const text = fs.readFileSync(path.join(project, "docs", "DOGFOOD.md"), "utf8");
     expect(text).toContain("Automated Self-Check — 2026-04-30T08:00:00.000Z");
     expect(text).toContain("Continuity readiness score: 5/5 (new baseline)");
     expect(text).toContain("Tools: claude-code, codex, cursor");
+    expect(text).toContain("`anamnesis dogfood simulate-handoff`");
+    expect(text).toContain("active.md and latest archive injected");
   });
 
   it("compares the score with the previous appended result", () => {

@@ -163,6 +163,9 @@ Progress:
 - 2026-04-30: Added first-class `status` continuity readiness and `doctor`
   continuity warnings for project memory, ontology, handoff startup, adapter
   surfaces, and managed drift.
+- 2026-04-30: Added dogfood active-handoff simulation: temporary all-adapter
+  project, `active.md` plus archive, Claude Code injection hook output, and
+  Codex/Cursor fallback instructions.
 
 Exit criteria:
 - A fresh agent can enter a managed project through each supported adapter
