@@ -16,6 +16,12 @@ breaking changes until v1.0.
   from settings registration.
 - **`anamnesis status --json`** — prints the existing structured status
   result as stable JSON for CI and other tools.
+- **base v6 handoff continuity** — `/handoff-prepare` now writes both a
+  timestamped archive and `.anamnesis/handoff/active.md` multi-task
+  index. `inject-handoff.sh` injects the active index plus the latest
+  archived handoff, and the new Claude Code `Stop` hook
+  `handoff-reminder.sh` reminds agents when uncommitted work is newer
+  than the latest handoff.
 
 ## [0.4.1] — 2026-04-30
 

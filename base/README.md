@@ -8,14 +8,15 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 7 capabilities (covers all 5 types; v3+)
+├── fragment.yaml                # 10 capabilities (covers all 5 types; v6+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
 └── adapters/claude-code/
     ├── hooks/
-    │   ├── inject-ontology.sh   # SessionStart: cats ontology slices recursively
-    │   ├── inject-handoff.sh    # SessionStart: cats most recent .anamnesis/handoff/*.md
+    │   ├── inject-ontology.sh    # SessionStart: cats ontology slices recursively
+    │   ├── inject-handoff.sh     # SessionStart: cats active.md + recent handoff archive
+    │   ├── handoff-reminder.sh   # Stop: reminds when dirty work is newer than handoff
     │   └── remind-uncommitted.sh # PostToolUse:Edit: nags on dirty git tree
     ├── commands/
     │   ├── load-context.md      # /load-context slash command
@@ -39,7 +40,11 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 | `content/ontology.snippet.yaml` | `.anamnesis/ontology/base.yaml` |
 | `adapters/claude-code/hooks/inject-ontology.sh` | `.claude/hooks/inject-ontology.sh` (mode 0o755) |
 | `adapters/claude-code/hooks/remind-uncommitted.sh` | `.claude/hooks/remind-uncommitted.sh` (mode 0o755) |
+| `adapters/claude-code/hooks/inject-handoff.sh` | `.claude/hooks/inject-handoff.sh` (mode 0o755) |
+| `adapters/claude-code/hooks/handoff-reminder.sh` | `.claude/hooks/handoff-reminder.sh` (mode 0o755) |
 | `adapters/claude-code/commands/load-context.md` | `.claude/commands/load-context.md` |
+| `adapters/claude-code/commands/handoff-prepare.md` | `.claude/commands/handoff-prepare.md` |
 | `adapters/claude-code/skills/load-context/SKILL.md` | `.claude/skills/load-context/SKILL.md` |
+| `adapters/claude-code/skills/ontology-enrich/SKILL.md` | `.claude/skills/ontology-enrich/SKILL.md` |
 
-Without `--allow-exec-adapters`, the AGENTS.md region and ontology file install but the four exec-adapter files are reported as `blocked` (supply-chain protection).
+Without `--allow-exec-adapters`, the AGENTS.md region and ontology file install but the Claude Code hook/command/skill files are reported as `blocked` (supply-chain protection).

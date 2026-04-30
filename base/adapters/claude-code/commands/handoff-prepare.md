@@ -29,7 +29,7 @@ Capture the current task state in a structured handoff file. The next agent — 
 5. **List open questions or blockers.**
    - Items waiting on user input, external systems, or earlier dependencies
 
-6. **Write the handoff file** to `.anamnesis/handoff/<ISO-timestamp>.md` (filesystem-safe timestamp, colons replaced by `-`, e.g., `.anamnesis/handoff/2026-04-27T12-34-56Z.md`). Create the directory if missing.
+6. **Write the archived handoff file** to `.anamnesis/handoff/<ISO-timestamp>.md` (filesystem-safe timestamp, colons replaced by `-`, e.g., `.anamnesis/handoff/2026-04-27T12-34-56Z.md`). Create the directory if missing.
 
    Use exactly this structure:
 
@@ -64,9 +64,41 @@ Capture the current task state in a structured handoff file. The next agent — 
    2. <action>
    ```
 
-7. **Confirm to the user**: print the relative path of the file written and a 1-line summary of what it captured.
+7. **Update the active handoff index** at `.anamnesis/handoff/active.md`.
+   This file is the compact multi-task map that gets injected first on
+   session start. Read the existing file if present, preserve still-valid
+   tasks, remove tasks that are clearly completed, and add/update the
+   current task with a pointer to the archived handoff.
 
-8. **Stop.** Do not continue the task. Handoff completion IS the goal of this command.
+   Use this structure:
+
+   ```markdown
+   ---
+   updated: <ISO-8601 UTC timestamp>
+   agent: <claude-code | codex | cursor | unknown>
+   git_ref: <git rev-parse HEAD output>
+   ---
+
+   # Active handoff index
+
+   ## Current focus
+   - <task summary> — archive: `.anamnesis/handoff/<ISO-timestamp>.md`
+
+   ## Active tasks
+   - [in-flight] <task summary> — next: <next action> — archive: `<relative path>`
+   - [blocked] <task summary> — blocker: <blocker> — archive: `<relative path>`
+
+   ## Recently completed
+   - <task summary> — completed in <commit sha or note>
+   ```
+
+   Keep `active.md` concise. Put detailed reasoning in the archived file,
+   not in the index.
+
+8. **Confirm to the user**: print both relative paths written and a
+   1-line summary of what they captured.
+
+9. **Stop.** Do not continue the task. Handoff completion IS the goal of this command.
 
 ## Quality bar
 

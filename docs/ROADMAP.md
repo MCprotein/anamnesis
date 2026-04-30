@@ -70,8 +70,8 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Hybrid ontology bootstrap** | shipped in 0.4.0; expanded in 0.4.1 | **Layer A** (deterministic CLI introspectors): `anamnesis ontology bootstrap` writes `.anamnesis/ontology/<id>.bootstrap.yaml`. ✓ k8s (namespaces/services/ingresses/workloads). ✓ prisma (datasources/generators/models/enums). 0.4.1 adds ✓ nextjs, ✓ nestjs, ✓ fastapi, plus multi-scope scope-local output and `--scope`. **Layer B** (agent-driven `/ontology-enrich` skill, base v5): shipped via the existing skill pipeline for Claude Code, Codex, and Cursor. **`init` auto-bootstrap**: shipped; `init` runs bootstrap after fragment install (`--no-bootstrap` opt-out). |
-| 2 | **Handoff auto-trigger** | planned | Detect token usage approaching limit, automatically suggest `/handoff prepare`. Or run on session-end hook. |
-| 3 | **Multi-task handoff tracking** | planned | `.anamnesis/handoff/active.md` + archive. Multiple in-flight tasks distinguishable. |
+| 2 | **Handoff auto-trigger** | implemented, pending patch release | Claude Code `Stop` hook reminds agents to run `/handoff-prepare` when uncommitted work is newer than the latest handoff. |
+| 3 | **Multi-task handoff tracking** | implemented, pending patch release | `/handoff-prepare` writes `.anamnesis/handoff/active.md` plus timestamped archives. Session start injection reads the active index first, then the latest archive. |
 | 4 | **`anamnesis doctor`** | implemented, pending patch release | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
 | 5 | **Full version pinning** | planned | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `fragments/<id>/.versions/`. (Moved from v0.3 — low value while user base is small.) |
 | 6 | **`anamnesis update --bump-pinned`** | planned | Explicitly bump pinned fragments after manual review. Companion to #5. |
@@ -88,6 +88,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 - multi-scope bootstrap (per-scope ontology output + `--scope`)
 
 **Targeted for next 0.4.x patch:**
+- base v6 handoff continuity (`active.md` + Stop reminder) — implemented, pending patch release
 - `anamnesis doctor` — implemented, pending patch release
 - `anamnesis status --json` — implemented, pending patch release
 
