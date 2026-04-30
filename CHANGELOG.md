@@ -7,6 +7,14 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+No entries yet.
+
+## [0.5.0] — 2026-04-30
+
+Context-continuity release: validates the main product promise across
+Claude Code, Codex, and Cursor with dogfood automation, active-handoff
+simulation, stale-handoff diagnostics, and repair guidance.
+
 ### Documentation
 
 - Re-centered the roadmap on anamnesis' product purpose: always inject
@@ -59,6 +67,13 @@ breaking changes until v1.0.
 - `doctor` issues now include repair guidance for user-modified managed files,
   adapter-surface continuity failures, invalid settings, missing hook
   registrations, and stale active handoff state.
+- Reviewed the current introspector API as part of the v0.5 scope and kept
+  framework expansion deferred; v0.6 owns deeper ontology schema and refresh
+  lifecycle work.
+
+### Coverage
+
+419 tests across 35 files.
 
 ## [0.4.4] — 2026-04-30
 

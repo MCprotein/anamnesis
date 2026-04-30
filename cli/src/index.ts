@@ -44,7 +44,7 @@ import {
   type DogfoodResult,
 } from "./commands/dogfood.js";
 
-const VERSION = "0.4.1";
+const VERSION = "0.5.0";
 
 // ---------------------------------------------------------------------------
 // Arg parsing — tiny, deliberate, no dependency.

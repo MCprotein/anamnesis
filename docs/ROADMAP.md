@@ -133,7 +133,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 
 ---
 
-## v0.5 — *planned*
+## v0.5 — *shipped 2026-04-30*
 
 > **Theme: prove automatic context continuity across real agent switches**
 
@@ -142,15 +142,15 @@ whether the tool actually fulfills its main promise in day-to-day use:
 install once, keep context/ontology current, and switch agents without
 manual re-briefing.
 
-| # | Item | Description |
-|---|---|---|
-| 1 | **Dogfood lifecycle matrix** | Run current anamnesis against sanitized managed fixtures and record `init/update/status/doctor/ontology bootstrap/handoff` behavior per repo and adapter. Candidate repos stay dogfood-driven, not framework-completion driven. |
-| 2 | **Agent-switch acceptance fixtures** | Add tests/fixtures for the same Agentfile rendered to Claude Code, Codex, and Cursor, then assert that project memory, ontology instructions, handoff startup instructions, and operational guardrails are present in each output. |
-| 3 | **Session-start continuity contract** | Make the "new agent starts here" contract explicit and testable: read managed context, read ontology, read latest/active handoff, detect stale handoff, then continue without the user giving extra instructions. |
-| 4 | **Actionable `status`/`doctor` output** | Improve diagnostics so a user can tell whether context, ontology, handoff, fragments, pinned versions, and adapter render targets are installed and current. |
-| 5 | **README/guide alignment** | Update user-facing docs around the two product promises: context/ontology injection and agent switching continuity. Avoid presenting framework introspection as the main product. |
-| 6 | **Release fallback normalization** | Keep npmjs.org manual publish fallback documented while OIDC remains unresolved, so release operations do not block lifecycle work. |
-| 7 | **Introspector API review, not expansion** | Audit the current k8s/prisma/nextjs/nestjs/fastapi introspector interface for accidental coupling, but defer new framework work unless dogfood evidence shows a real gap. |
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Dogfood lifecycle matrix** | shipped | Ran current anamnesis against sanitized managed fixtures and recorded `init/update/status/doctor/ontology bootstrap/handoff` behavior per repo and adapter. Candidate repos stayed dogfood-driven, not framework-completion driven. |
+| 2 | **Agent-switch acceptance fixtures** | shipped | Added tests/fixtures for the same Agentfile rendered to Claude Code, Codex, and Cursor, then asserted that project memory, ontology instructions, handoff startup instructions, and operational guardrails are present in each output. |
+| 3 | **Session-start continuity contract** | shipped | Made the "new agent starts here" contract explicit and testable: read managed context, read ontology, read latest/active handoff, detect stale handoff, then continue without the user giving extra instructions. |
+| 4 | **Actionable `status`/`doctor` output** | shipped | Improved diagnostics so a user can tell whether context, ontology, handoff, fragments, pinned versions, and adapter render targets are installed and current. |
+| 5 | **README/guide alignment** | shipped | Updated user-facing docs around the two product promises: context/ontology injection and agent switching continuity. Avoided presenting framework introspection as the main product. |
+| 6 | **Release fallback normalization** | shipped | Kept npmjs.org manual publish fallback documented while OIDC remains unresolved, so release operations do not block lifecycle work. |
+| 7 | **Introspector API review, not expansion** | shipped (review-only) | Reviewed the current k8s/prisma/nextjs/nestjs/fastapi introspector interface for accidental coupling. The current contract remains a small registry keyed by fragment id with deterministic `appliesTo` / `introspect` methods; deeper output schema stabilization stays in v0.6. |
 
 Progress:
 - 2026-04-30: Added the initial cross-agent continuity acceptance fixture
@@ -176,8 +176,11 @@ Progress:
 - 2026-04-30: Added `doctor` repair guidance for user-modified managed files,
   adapter-surface continuity failures, invalid settings, missing hook
   registrations, and stale active handoff state.
+- 2026-04-30: Reviewed the current introspector API and kept the v0.5
+  decision at "no expansion"; v0.6 owns deeper ontology schema and refresh
+  lifecycle work.
 
-Exit criteria:
+Exit criteria met:
 - A fresh agent can enter a managed project through each supported adapter
   and find the same current context, ontology, handoff state, and guardrails
   without a bespoke user prompt.

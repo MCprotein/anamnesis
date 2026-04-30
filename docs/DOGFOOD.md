@@ -222,3 +222,31 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood simulate-stale-handoff` | pass | 37 | status and doctor detect active.md that does not reference the newest archive |
 | `npm run typecheck` | pass | 1361 | passed |
 | `npm test` | pass | 3147 | passed |
+
+
+## Automated Self-Check — 2026-04-30T14:31:50.786Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@6:in-sync
+Drift: 18 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Doctor: ok (0 errors, 0 warnings)
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (574ms); anamnesis dogfood simulate-stale-handoff: pass (51ms); npm run typecheck: pass (1323ms); npm test: pass (2230ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 574 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 51 | status and doctor detect active.md that does not reference the newest archive |
+| `npm run typecheck` | pass | 1323 | passed |
+| `npm test` | pass | 2230 | passed |

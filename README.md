@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-419%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.4%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-419%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.5%20alpha-orange)]()
 
 ---
 
@@ -197,7 +197,7 @@ Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 | **v0.2** | Multi-tool (Codex), monorepo `scopes`, `status`, npm publish | shipped 2026-04-27 |
 | **v0.3** | Cursor adapter, Codex hook/skill/slash fallback, monorepo init UX, **agent handoff MVP** | shipped 2026-04-28 |
 | **v0.4** | Hybrid ontology bootstrap, `/ontology-enrich`, init auto-bootstrap, continuity polish | shipped 2026-04-29; 0.4.1 expands framework introspectors; 0.4.2 ships operational polish |
-| **v0.5** | Dogfood lifecycle validation and agent-switch continuity hardening | planned |
+| **v0.5** | Dogfood lifecycle validation and agent-switch continuity hardening | shipped 2026-04-30 |
 | **v0.6** | Ontology automation deepening based on dogfood gaps | planned |
 | **v0.7** | Multi-agent UX and lifecycle scale hardening | planned |
 | **v1.0** | Stable schema, public fragment registry, signing | stable target |

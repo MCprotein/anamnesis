@@ -145,7 +145,7 @@ itself via `registerBuiltinIntrospectors(registry)`.
 # Re-run bootstrap to refresh. To add semantic notes, edit
 # .anamnesis/ontology/k8s.enriched.yaml instead.
 #
-# generator: anamnesis@0.4.1 introspector=k8s
+# generator: anamnesis@0.5.0 introspector=k8s
 
 namespaces:
   - sanitized-app
@@ -227,7 +227,7 @@ rendering pipeline handles this for free.
 |---|---|---|---|
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
-| 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | — | planned |
+| 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | +14 | shipped |
 | 0.6.x | ontology drift reporting, Layer B re-run semantics, targeted introspector improvements from dogfood gaps | — | planned |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
