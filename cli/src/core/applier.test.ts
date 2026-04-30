@@ -68,6 +68,11 @@ describe("isExecAdapterPath", () => {
     expect(isExecAdapterPath(".claude/skills/x/SKILL.md")).toBe(true);
   });
 
+  it("matches Codex git hook bridge paths", () => {
+    expect(isExecAdapterPath(".git/hooks/pre-commit")).toBe(true);
+    expect(isExecAdapterPath(".anamnesis/codex-hooks/prisma.sh")).toBe(true);
+  });
+
   it("does not match AGENTS.md", () => {
     expect(isExecAdapterPath("AGENTS.md")).toBe(false);
   });

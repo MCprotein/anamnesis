@@ -1,0 +1,19 @@
+# Kubernetes slice — written by the k8s fragment.
+# Project-specific cluster details (cluster name, registry hostnames, namespaces
+# in use) belong in your top-level system_graph.yaml, not here.
+
+k8s:
+  service_default: ClusterIP
+  forbidden:
+    - latest_image_tag
+    - secret_in_configmap
+    - shared_pvc_across_workloads
+  pod_security_defaults:
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities_drop: [ALL]
+  validation_order:
+    - static    # YAML syntax, references, ports, labels, selector linkage
+    - pre_deploy  # namespace, secret, configmap existence
+    - post_deploy # pod status, service path, logs

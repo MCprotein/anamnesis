@@ -33,6 +33,11 @@ breaking changes until v1.0.
 - **fragment catalog expansion** — added project memory + ontology
   fragments and rulebook triggers for Rails, Django, Go, Rust,
   SvelteKit, Remix, and Nuxt.
+- **Codex hook auto-wiring** — Codex `executable_hook` rendering now
+  installs a best-effort Git `pre-commit` bridge in Git repos while
+  keeping the AGENTS.md fallback. Prisma and k8s fragments move to v2
+  to opt into Codex hook support, with v1 archives preserved for pinned
+  installs.
 
 ## [0.4.1] — 2026-04-30
 

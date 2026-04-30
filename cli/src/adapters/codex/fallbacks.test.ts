@@ -16,11 +16,12 @@ function makeContext(
   fragmentDir: string,
   fragment: FragmentDefinition,
   scopePath: string = ".",
+  projectRoot: string = "/tmp/proj",
 ): RenderContext {
   return {
     fragment,
     fragmentDir,
-    projectRoot: "/tmp/proj",
+    projectRoot,
     scopePath,
     settings: {
       ontology_file: "system_graph.yaml",
@@ -72,6 +73,57 @@ describe("codex executable_hook fallback", () => {
       expect(actions[0]!.regionId).toBe("codex-hook-x");
       expect(actions[0]!.content).toContain("PostToolUse:Edit");
       expect(actions[0]!.content).toContain("echo hi");
+    }
+  });
+
+  it("installs a best-effort git pre-commit bridge when hooks dir exists", () => {
+    const projectRoot = tmpDir("anamnesis-codex-git-");
+    fs.mkdirSync(path.join(projectRoot, ".git", "hooks"), { recursive: true });
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/x.sh"),
+      "#!/bin/bash\necho hi\n",
+    );
+    const fragment: FragmentDefinition = {
+      id: "myfrag",
+      version: 2,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "PostToolUse:Edit",
+        source: "adapters/claude-code/hooks/x.sh",
+        adapters_supported: ["codex"],
+      },
+      makeContext(fragmentDir, fragment, ".", projectRoot),
+    );
+
+    expect(actions).toHaveLength(3);
+    expect(actions.some((a) => a.kind === "region")).toBe(true);
+    const script = actions.find(
+      (a) => a.kind === "file" && a.path.startsWith(".anamnesis/codex-hooks/"),
+    );
+    expect(script?.kind).toBe("file");
+    if (script?.kind === "file") {
+      expect(script.path).toBe(
+        ".anamnesis/codex-hooks/myfrag-PostToolUse-Edit-x.sh",
+      );
+      expect(script.mode).toBe(0o755);
+      expect(script.content).toContain("echo hi");
+    }
+
+    const preCommit = actions.find(
+      (a) => a.kind === "file" && a.path === ".git/hooks/pre-commit",
+    );
+    expect(preCommit?.kind).toBe("file");
+    if (preCommit?.kind === "file") {
+      expect(preCommit.mode).toBe(0o755);
+      expect(preCommit.content).toContain(".anamnesis/codex-hooks");
+      expect(preCommit.content).toContain("git diff --cached --name-only");
     }
   });
 

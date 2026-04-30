@@ -1,8 +1,8 @@
 id: k8s
-version: 2
+version: 1
 description: >
   Kubernetes operational guardrails — namespace-per-workload, ClusterIP-by-default,
-  pinned image tags, secret hygiene — plus a YAML lint hook/pre-commit check for manifest edits.
+  pinned image tags, secret hygiene — plus a YAML lint hook for manifest edits.
 capabilities:
   - type: project_memory
     source: content/agents.snippet.md
@@ -14,10 +14,9 @@ capabilities:
   - type: executable_hook
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/yaml-lint.sh
-    adapters_supported: [claude-code, codex]
+    adapters_supported: [claude-code]
 
 owns:
   - region: k8s in AGENTS.md
   - file: .anamnesis/ontology/k8s.yaml
   - file: .claude/hooks/yaml-lint.sh
-  - file: .anamnesis/codex-hooks/k8s-PostToolUse-Edit-yaml-lint.sh
