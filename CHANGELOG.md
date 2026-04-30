@@ -19,6 +19,13 @@ breaking changes until v1.0.
 - Aligned README, design notes, monorepo docs, fragment docs, and the
   Agentfile spec with the current context-continuity model.
 
+### Tests
+
+- Added a cross-agent continuity acceptance fixture for the base fragment.
+  It verifies that Claude Code, Codex, and Cursor render the shared
+  context/ontology contract, handoff startup instructions, operational
+  guardrails, and command/skill surfaces needed for agent switching.
+
 ## [0.4.4] — 2026-04-30
 
 Release automation verification after npm Trusted Publishing was configured
