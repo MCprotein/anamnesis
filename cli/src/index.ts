@@ -139,6 +139,8 @@ Flags (update):
 
 Flags (ontology bootstrap):
   --project-root <path>         Target directory (default: cwd)
+  --scope <path>                Run only this Agentfile scope
+                                  (default: all effective scopes)
   --fragment <id>               Run only this fragment's introspector
                                   (default: all installed fragments)
   --dry-run                     Print plan without writing
@@ -497,13 +499,16 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `error: unknown 'ontology' subcommand: ${sub ?? "(none)"}`,
         );
-        console.error(`usage: anamnesis ontology bootstrap [--fragment=<id>] [--dry-run]`);
+        console.error(
+          `usage: anamnesis ontology bootstrap [--scope=<path>] [--fragment=<id>] [--dry-run]`,
+        );
         return 1;
       }
       try {
         const result = bootstrap({
           projectRoot:
             (flags["project-root"] as string | undefined) ?? process.cwd(),
+          scope: flags["scope"] as string | undefined,
           fragment: flags["fragment"] as string | undefined,
           dryRun: flags["dry-run"] === true,
         });

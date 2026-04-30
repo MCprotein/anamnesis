@@ -322,4 +322,79 @@ def health(): pass
       ),
     ).toBe(false);
   });
+
+  it("filters --scope to one effective scope", () => {
+    write(
+      root,
+      "Agentfile",
+      `version: 1
+project:
+  name: mono
+  scopes:
+    - path: apps/web
+      overrides:
+        tools: [claude-code]
+        fragments_add:
+          - { id: nextjs, version: 1 }
+    - path: services/api
+      overrides:
+        tools: [claude-code]
+        fragments_add:
+          - { id: fastapi, version: 1 }
+tools: [claude-code]
+fragments: []
+`,
+    );
+    write(root, "apps/web/app/page.tsx", "export default function Page() {}\n");
+    write(
+      root,
+      "services/api/main.py",
+      `from fastapi import FastAPI
+app = FastAPI()
+@app.get("/health")
+def health(): pass
+`,
+    );
+
+    const result = bootstrap({ projectRoot: root, scope: "apps/web" });
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0]).toMatchObject({
+      scopePath: "apps/web",
+      fragmentId: "nextjs",
+      outcome: "written",
+      path: "apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml",
+    });
+    expect(
+      fs.existsSync(
+        path.join(root, "services/api/.anamnesis/ontology/fastapi.bootstrap.yaml"),
+      ),
+    ).toBe(false);
+  });
+
+  it("throws if --scope names an undefined scope", () => {
+    write(
+      root,
+      "Agentfile",
+      `version: 1
+project:
+  name: mono
+  scopes:
+    - path: apps/web
+      overrides:
+        tools: [claude-code]
+        fragments_add:
+          - { id: nextjs, version: 1 }
+tools: [claude-code]
+fragments: []
+`,
+    );
+
+    expect(() =>
+      bootstrap({
+        projectRoot: root,
+        scope: "services/api",
+      }),
+    ).toThrow(/scope 'services\/api' is not defined/);
+  });
 });

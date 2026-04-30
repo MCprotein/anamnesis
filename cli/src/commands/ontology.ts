@@ -1,13 +1,9 @@
 // `anamnesis ontology bootstrap` — Layer A of the hybrid ontology
 // bootstrap (see docs/ONTOLOGY-BOOTSTRAP.md).
 //
-// Walks the project's installed fragments, looks up a registered
-// introspector for each, runs it, and writes the result to
-// `.anamnesis/ontology/<fragment-id>.bootstrap.yaml`.
-//
-// v0.4.0 first cut: root scope only. Multi-scope bootstrap is a
-// follow-up — same code path, just iterate `effectiveScopes` instead
-// of treating the project as one root.
+// Walks the project's installed fragments per effective scope, looks up
+// a registered introspector for each, runs it, and writes the result to
+// `<scope>/.anamnesis/ontology/<fragment-id>.bootstrap.yaml`.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -61,6 +57,8 @@ export interface BootstrapResult {
 
 export interface BootstrapOptions {
   projectRoot: string;
+  /** Only run one Agentfile scope. Default: all effective scopes. */
+  scope?: string;
   /** Only run this fragment's introspector. Default: all installed fragments. */
   fragment?: string;
   /** Print plan, no writes. */
@@ -108,7 +106,18 @@ export function bootstrap(opts: BootstrapOptions): BootstrapResult {
   const agentfile = readAgentfile(projectRoot);
 
   const registry = opts.registry ?? makeBuiltinIntrospectorRegistry();
-  const scopes = effectiveScopes(agentfile);
+  const allScopes = effectiveScopes(agentfile);
+  const scopes = opts.scope
+    ? allScopes.filter((scope) => scope.path === opts.scope)
+    : allScopes;
+
+  if (opts.scope && scopes.length === 0) {
+    const available = allScopes.map((scope) => scope.path).join(", ");
+    throw new OntologyBootstrapError(
+      `scope '${opts.scope}' is not defined in this project (available: ${available})`,
+    );
+  }
+
   const selectedScopes = scopes.map((scope) => ({
     scope,
     fragments: opts.fragment
