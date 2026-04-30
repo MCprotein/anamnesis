@@ -61,7 +61,7 @@ verified feedback arrives.
 
 ---
 
-## v0.4 — *shipped 2026-04-29; 0.4.x follow-ups in progress*
+## v0.4 — *shipped 2026-04-29; 0.4.1 shipped 2026-04-30*
 
 > **Theme: agent continuity at scale + operational polish + project introspection**
 
@@ -69,7 +69,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Hybrid ontology bootstrap** | shipped in 0.4.0 | **Layer A** (deterministic CLI introspectors): `anamnesis ontology bootstrap` writes `.anamnesis/ontology/<id>.bootstrap.yaml`. ✓ k8s (namespaces/services/ingresses/workloads). ✓ prisma (datasources/generators/models/enums). **Layer B** (agent-driven `/ontology-enrich` skill, base v5): shipped via the existing skill pipeline for Claude Code, Codex, and Cursor. **`init` auto-bootstrap**: shipped; `init` runs bootstrap after fragment install (`--no-bootstrap` opt-out). |
+| 1 | **Hybrid ontology bootstrap** | shipped in 0.4.0; expanded in 0.4.1 | **Layer A** (deterministic CLI introspectors): `anamnesis ontology bootstrap` writes `.anamnesis/ontology/<id>.bootstrap.yaml`. ✓ k8s (namespaces/services/ingresses/workloads). ✓ prisma (datasources/generators/models/enums). 0.4.1 adds ✓ nextjs, ✓ nestjs, ✓ fastapi, plus multi-scope scope-local output and `--scope`. **Layer B** (agent-driven `/ontology-enrich` skill, base v5): shipped via the existing skill pipeline for Claude Code, Codex, and Cursor. **`init` auto-bootstrap**: shipped; `init` runs bootstrap after fragment install (`--no-bootstrap` opt-out). |
 | 2 | **Handoff auto-trigger** | Detect token usage approaching limit, automatically suggest `/handoff prepare`. Or run on session-end hook. |
 | 3 | **Multi-task handoff tracking** | `.anamnesis/handoff/active.md` + archive. Multiple in-flight tasks distinguishable. |
 | 4 | **`anamnesis doctor`** | Installation integrity check: hash mismatches, missing files, adapter coverage gaps, settings.json drift. |
@@ -81,15 +81,11 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 10 | **Aider/Windsurf adapters (optional)** | If community demand justifies. Same content+capabilities IR, different render targets. |
 | 11 | **`anamnesis status --json`** | Structured output for CI integration. |
 
-**Targeted for 0.4.x patches:**
-- nextjs introspector (App Router + Pages Router routes) — implemented,
-  pending patch release
-- nestjs introspector (`@Controller` / route method decorators) —
-  implemented, pending patch release
-- fastapi introspector (`@app.*` + `@router.*`) — implemented,
-  pending patch release
-- multi-scope bootstrap (per-scope ontology output) — implemented,
-  pending patch release
+**Shipped in 0.4.1 patch:**
+- nextjs introspector (App Router + Pages Router routes)
+- nestjs introspector (`@Controller` / route method decorators)
+- fastapi introspector (`@app.*` + `@router.*`)
+- multi-scope bootstrap (per-scope ontology output + `--scope`)
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more

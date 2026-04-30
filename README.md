@@ -158,8 +158,8 @@ In all four cases, the user-modified protection correctly preserved hand-authore
 |---|---|---|
 | **v0.1** | Claude Code adapter + idempotency model | shipped 2026-04-26 |
 | **v0.2** | Multi-tool (Codex), monorepo `scopes`, `status`, npm publish | shipped 2026-04-27 |
-| **v0.3** | Cursor adapter, Codex hook/skill/slash fallback, full pinning, monorepo init UX, **agent handoff MVP** | planned |
-| **v0.4** | Handoff auto-trigger, `anamnesis doctor`, fragment catalog expansion | planned |
+| **v0.3** | Cursor adapter, Codex hook/skill/slash fallback, monorepo init UX, **agent handoff MVP** | shipped 2026-04-28 |
+| **v0.4** | Hybrid ontology bootstrap, `/ontology-enrich`, init auto-bootstrap | shipped 2026-04-29; 0.4.1 expands framework introspectors |
 | **v1.0** | Stable schema, public fragment registry, signing | stable target |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
@@ -169,8 +169,9 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 
 ## Documentation
 
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan (v0.3 / v0.4 / v1.0)
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan
 - [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
+- [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) — two-layer ontology generation
 - [`docs/DESIGN.md`](docs/DESIGN.md) — architecture, capability model, idempotency
 - [`specs/agentfile.md`](specs/agentfile.md) — `Agentfile` v1 schema
 - [`rulebook.md`](rulebook.md) — auto-detection rules and trigger DSL

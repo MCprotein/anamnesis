@@ -7,13 +7,17 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-04-30
+
+Ontology bootstrap expansion for common web/backend stacks and monorepo
+scope-local bootstrap output.
+
 ### Added
 
 - **nextjs introspector** (`cli/src/introspectors/nextjs.ts`) —
   finds App Router `page` / `route` files, Pages Router pages and
   `pages/api` routes, exported HTTP methods on route handlers, and
-  middleware files. Output is stable-sorted and intended as the first
-  0.4.x patch in the ontology bootstrap expansion.
+  middleware files. Output is stable-sorted.
 - **nestjs introspector** (`cli/src/introspectors/nestjs.ts`) —
   scans source files for `@Controller()` classes and HTTP method
   decorators (`@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`,
@@ -29,7 +33,11 @@ breaking changes until v1.0.
   now resolves `project.scopes`, runs fragment introspectors from each
   scope root, and writes scope-local
   `<scope>/.anamnesis/ontology/<id>.bootstrap.yaml` files. The
-  `--fragment` filter works across scopes.
+  `--scope` and `--fragment` filters work across scopes.
+
+### Coverage
+
+389 tests across 32 files.
 
 ## [0.4.0] — 2026-04-29
 
@@ -91,13 +99,11 @@ two-layer design.
 introspector, 8 prisma introspector, 8 bootstrap command, 3 init
 auto-bootstrap.
 
-### Targeted for 0.4.x patches
+### Originally targeted for 0.4.x patches
 
-- nextjs introspector (App Router + Pages Router → routes)
-- nestjs introspector (`@Controller` / `@Get` / `@Post` regex first cut)
-- fastapi introspector (`@app.get/post` + `@router.*`)
-- introspector author SDK docs (community fragments ship parsers)
-- multi-scope bootstrap (currently root-only; per-scope is a follow-up)
+- nextjs / nestjs / fastapi introspectors and multi-scope bootstrap
+  shipped in 0.4.1.
+- introspector author SDK docs moved to v0.5.
 
 ---
 

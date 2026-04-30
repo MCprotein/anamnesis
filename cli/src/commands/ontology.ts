@@ -17,7 +17,7 @@ import {
 import { makeBuiltinIntrospectorRegistry } from "../introspectors/index.js";
 import { ProjectContext } from "../core/triggers.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 // ---------------------------------------------------------------------------
 // Errors

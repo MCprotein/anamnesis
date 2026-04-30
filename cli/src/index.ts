@@ -34,7 +34,7 @@ import {
   type BootstrapResult,
 } from "./commands/ontology.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 // ---------------------------------------------------------------------------
 // Arg parsing — tiny, deliberate, no dependency.
