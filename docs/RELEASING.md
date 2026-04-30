@@ -39,8 +39,8 @@ exchange the GitHub OIDC token during `npm publish`.
 4. Tag the commit:
 
    ```bash
-   git tag v0.4.2
-   git push origin main v0.4.2
+   git tag vX.Y.Z
+   git push origin main vX.Y.Z
    ```
 
 The tag push starts the publish workflow. Manual runs are also available

@@ -7,6 +7,11 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-04-30
+
+Operational polish for agent continuity, pinned fragment updates, release
+automation, and broader stack detection.
+
 ### Added
 
 - **`anamnesis doctor`** — read-only installation integrity diagnostics.
@@ -38,6 +43,10 @@ breaking changes until v1.0.
   keeping the AGENTS.md fallback. Prisma and k8s fragments move to v2
   to opt into Codex hook support, with v1 archives preserved for pinned
   installs.
+
+### Coverage
+
+405 tests across 33 files.
 
 ## [0.4.1] — 2026-04-30
 

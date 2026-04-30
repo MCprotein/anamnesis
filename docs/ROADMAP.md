@@ -70,16 +70,16 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Hybrid ontology bootstrap** | shipped in 0.4.0; expanded in 0.4.1 | **Layer A** (deterministic CLI introspectors): `anamnesis ontology bootstrap` writes `.anamnesis/ontology/<id>.bootstrap.yaml`. ✓ k8s (namespaces/services/ingresses/workloads). ✓ prisma (datasources/generators/models/enums). 0.4.1 adds ✓ nextjs, ✓ nestjs, ✓ fastapi, plus multi-scope scope-local output and `--scope`. **Layer B** (agent-driven `/ontology-enrich` skill, base v5): shipped via the existing skill pipeline for Claude Code, Codex, and Cursor. **`init` auto-bootstrap**: shipped; `init` runs bootstrap after fragment install (`--no-bootstrap` opt-out). |
-| 2 | **Handoff auto-trigger** | implemented, pending patch release | Claude Code `Stop` hook reminds agents to run `/handoff-prepare` when uncommitted work is newer than the latest handoff. |
-| 3 | **Multi-task handoff tracking** | implemented, pending patch release | `/handoff-prepare` writes `.anamnesis/handoff/active.md` plus timestamped archives. Session start injection reads the active index first, then the latest archive. |
-| 4 | **`anamnesis doctor`** | implemented, pending patch release | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
-| 5 | **Full version pinning** | implemented, pending patch release | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `base/.versions/<version>/` or `fragments/<id>/.versions/<version>/`. |
-| 6 | **`anamnesis update --bump-pinned`** | implemented, pending patch release | Explicitly bump pinned fragments after manual review while keeping them pinned. Companion to #5. |
-| 7 | **Trusted Publishing setup** | workflow implemented; npm publisher registration pending | GitHub Actions workflow + documented npm Trusted Publisher config so future releases don't need manual tokens. npmjs.com package settings still need the one-time trusted publisher registration. |
-| 8 | **Fragment catalog expansion** | implemented, pending patch release | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (SvelteKit, Remix, Nuxt). |
-| 9 | **Codex hook auto-wiring** | implemented, pending patch release | Git pre-commit bridge for `executable_hook` in the Codex adapter. Codex still gets AGENTS.md fallback instructions; Git repos also get `.anamnesis/codex-hooks/` plus `.git/hooks/pre-commit` when exec adapters are allowed. |
+| 2 | **Handoff auto-trigger** | shipped in 0.4.2 | Claude Code `Stop` hook reminds agents to run `/handoff-prepare` when uncommitted work is newer than the latest handoff. |
+| 3 | **Multi-task handoff tracking** | shipped in 0.4.2 | `/handoff-prepare` writes `.anamnesis/handoff/active.md` plus timestamped archives. Session start injection reads the active index first, then the latest archive. |
+| 4 | **`anamnesis doctor`** | shipped in 0.4.2 | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
+| 5 | **Full version pinning** | shipped in 0.4.2 | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `base/.versions/<version>/` or `fragments/<id>/.versions/<version>/`. |
+| 6 | **`anamnesis update --bump-pinned`** | shipped in 0.4.2 | Explicitly bump pinned fragments after manual review while keeping them pinned. Companion to #5. |
+| 7 | **Trusted Publishing setup** | workflow shipped in 0.4.2; npm publisher registration pending | GitHub Actions workflow + documented npm Trusted Publisher config so future releases don't need manual tokens. npmjs.com package settings still need the one-time trusted publisher registration. |
+| 8 | **Fragment catalog expansion** | shipped in 0.4.2 | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (SvelteKit, Remix, Nuxt). |
+| 9 | **Codex hook auto-wiring** | shipped in 0.4.2 | Git pre-commit bridge for `executable_hook` in the Codex adapter. Codex still gets AGENTS.md fallback instructions; Git repos also get `.anamnesis/codex-hooks/` plus `.git/hooks/pre-commit` when exec adapters are allowed. |
 | 10 | **Aider/Windsurf adapters (optional)** | optional | If community demand justifies. Same content+capabilities IR, different render targets. |
-| 11 | **`anamnesis status --json`** | implemented, pending patch release | Structured output for CI integration. |
+| 11 | **`anamnesis status --json`** | shipped in 0.4.2 | Structured output for CI integration. |
 
 **Shipped in 0.4.1 patch:**
 - nextjs introspector (App Router + Pages Router routes)
@@ -87,14 +87,18 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 - fastapi introspector (`@app.*` + `@router.*`)
 - multi-scope bootstrap (per-scope ontology output + `--scope`)
 
-**Targeted for next 0.4.x patch:**
-- base v6 handoff continuity (`active.md` + Stop reminder) — implemented, pending patch release
-- `anamnesis doctor` — implemented, pending patch release
-- `anamnesis status --json` — implemented, pending patch release
-- full version pinning + `update --bump-pinned` — implemented, pending patch release
-- Trusted Publishing workflow + release docs — implemented; npmjs.com publisher registration pending
-- Fragment catalog expansion (Rails, Django, Go, Rust, SvelteKit, Remix, Nuxt) — implemented, pending patch release
-- Codex hook auto-wiring — implemented, pending patch release
+**Shipped in 0.4.2 patch:**
+- base v6 handoff continuity (`active.md` + Stop reminder)
+- `anamnesis doctor`
+- `anamnesis status --json`
+- full version pinning + `update --bump-pinned`
+- Trusted Publishing workflow + release docs (npmjs.com publisher registration still pending)
+- Fragment catalog expansion (Rails, Django, Go, Rust, SvelteKit, Remix, Nuxt)
+- Codex hook auto-wiring
+
+**Remaining 0.4.x operational task:**
+- Register npm Trusted Publisher on npmjs.com for `@mcprotein/anamnesis`
+  using `.github/workflows/publish.yml`.
 
 **Moved to v0.5:**
 - Introspector author SDK docs and API freeze, after at least one more

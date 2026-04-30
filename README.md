@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-299%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.2.0-orange)]()
+[![tests](https://img.shields.io/badge/tests-405%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.4.2-orange)]()
 
 ---
 
@@ -169,7 +169,7 @@ In all four cases, the user-modified protection correctly preserved hand-authore
 | **v0.1** | Claude Code adapter + idempotency model | shipped 2026-04-26 |
 | **v0.2** | Multi-tool (Codex), monorepo `scopes`, `status`, npm publish | shipped 2026-04-27 |
 | **v0.3** | Cursor adapter, Codex hook/skill/slash fallback, monorepo init UX, **agent handoff MVP** | shipped 2026-04-28 |
-| **v0.4** | Hybrid ontology bootstrap, `/ontology-enrich`, init auto-bootstrap | shipped 2026-04-29; 0.4.1 expands framework introspectors |
+| **v0.4** | Hybrid ontology bootstrap, `/ontology-enrich`, init auto-bootstrap, continuity polish | shipped 2026-04-29; 0.4.1 expands framework introspectors; 0.4.2 ships operational polish |
 | **v1.0** | Stable schema, public fragment registry, signing | stable target |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
