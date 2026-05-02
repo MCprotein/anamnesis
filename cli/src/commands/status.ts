@@ -38,6 +38,11 @@ import { ProjectContext } from "../core/triggers.js";
 import { findRegion } from "../core/regions.js";
 import { sha256 } from "../util/hash.js";
 import { CLAUDE_MD_REGION_ID } from "../adapters/claude-code/claude_md.js";
+import {
+  collectOntologyGaps,
+  type OntologyGapStatus,
+} from "../core/ontology-gaps.js";
+import { makeBuiltinIntrospectorRegistry } from "../introspectors/index.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -130,6 +135,8 @@ export interface StatusResult {
   scopes: ScopeStatus[];
   /** Continuity readiness for the adapters enabled in this Agentfile. */
   continuity: ContinuityStatus;
+  /** Ontology lifecycle gaps across static, bootstrap, and enriched layers. */
+  ontology: OntologyGapStatus;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -141,6 +148,8 @@ export interface StatusResult {
     entriesClean: number;
     entriesUserModified: number;
     entriesMissing: number;
+    ontologyGapWarnings: number;
+    ontologyGapInfo: number;
     suggestedCount: number;
     declinedCount: number;
   };
@@ -304,6 +313,12 @@ export function status(opts: StatusOptions): StatusResult {
     library,
     entries,
   );
+  const ontology = collectOntologyGaps({
+    projectRoot,
+    scopes: effectiveScopeList,
+    library,
+    registry: makeBuiltinIntrospectorRegistry(),
+  });
 
   // Summary counts.
   const summary = {
@@ -319,6 +334,8 @@ export function status(opts: StatusOptions): StatusResult {
     entriesUserModified: entries.filter((e) => e.drift === "user-modified")
       .length,
     entriesMissing: entries.filter((e) => e.drift === "missing").length,
+    ontologyGapWarnings: ontology.summary.warnings,
+    ontologyGapInfo: ontology.summary.info,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
   };
@@ -335,6 +352,7 @@ export function status(opts: StatusOptions): StatusResult {
     entries,
     scopes,
     continuity,
+    ontology,
     suggested,
     declined,
     summary,

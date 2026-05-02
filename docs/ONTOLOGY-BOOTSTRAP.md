@@ -52,6 +52,12 @@ anamnesis ontology bootstrap [--scope=<path>] [--fragment=<id>] [--dry-run]
 - `--fragment` — bootstrap only one fragment's introspector. Default:
   all installed fragments with a registered introspector.
 - `--dry-run` — print what would be written, no file writes.
+- `anamnesis status` — reports ontology gaps: missing static slices,
+  missing bootstrap facts, missing semantic enrichment, fragments without
+  registered introspectors, and introspectors that are not applicable in
+  the current scope.
+- `anamnesis doctor` — turns actionable ontology gaps into warnings with
+  the next command or skill to run.
 
 ---
 
@@ -73,8 +79,9 @@ for example `apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml`.
 - `bootstrap.yaml` is fully regenerable; running `bootstrap` again
   overwrites it. Keep it isolated so user never accidentally loses
   manual edits.
-- `enriched.yaml` is agent-curated but user-reviewable. Tracked by
-  manifest as `user-modified` once user touches it (existing semantics).
+- `enriched.yaml` is agent-curated and user-reviewable. It is intentionally
+  separate from regenerable bootstrap output; `status` / `doctor` report
+  when it is missing.
 - The static `<id>.yaml` stays untouched as the canonical template.
 
 `SessionStart` ontology injection (existing `inject-ontology.sh`) reads
@@ -163,8 +170,10 @@ workloads:
   - { kind: Deployment, name: zot, namespace: zot, image: ghcr.io/project-zot/zot:v2.x }
 ```
 
-Manifest tracks this file with hash. Re-running `bootstrap` updates the
-hash; `update --apply` doesn't touch it (different command path).
+`bootstrap.yaml` files are regenerable Layer A outputs. Re-running
+`bootstrap` refreshes them; `update --apply` doesn't touch them because it
+only owns fragment-rendered surfaces. `status` / `doctor` report when an
+applicable installed fragment is missing bootstrap or enrichment files.
 
 ---
 
@@ -203,8 +212,12 @@ rendering pipeline handles this for free.
 - `update` flow: doesn't auto-rerun bootstrap (would clobber user
   edits if they touched `.bootstrap.yaml` despite warnings). User runs
   `bootstrap` explicitly when project shape changes.
+- `status` flow: reports whether installed fragments have their static
+  ontology slice, applicable bootstrap output, and semantic enrichment
+  file. It also identifies installed fragments without deterministic
+  Layer A support so dogfood evidence can guide future introspector work.
 - Future `status` flow: report `bootstrap` hash drift if
-  `<id>.bootstrap.yaml` exists but doesn't match what introspector would
+  `<id>.bootstrap.yaml` exists but doesn't match what the introspector would
   produce now.
 
 ---

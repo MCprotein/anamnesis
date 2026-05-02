@@ -331,6 +331,19 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   for (const check of continuity.checks.filter((c) => c.status === "fail")) {
     console.log(`    fail ${check.label}: ${check.detail}`);
   }
+  const ontology = result.ontology;
+  console.log(
+    `  ontology gaps: ${ontology.summary.warnings} warning(s), ${ontology.summary.info} info`,
+  );
+  for (const gap of ontology.gaps.filter((g) => g.severity === "warning")) {
+    const scope = gap.scopePath === "." ? "" : ` [${gap.scopePath}]`;
+    const target = gap.target ? ` ${gap.target}` : "";
+    console.log(
+      `    ${gap.severity.padEnd(7)} ${gap.fragmentId}:${gap.kind}${scope}${target}`,
+    );
+    console.log(`      ${gap.detail}`);
+    console.log(`      next: ${gap.next}`);
+  }
   for (const line of formatGenerationBoundaryLines(
     collectGenerationBoundaryStatus(projectRoot),
   )) {

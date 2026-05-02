@@ -39,7 +39,8 @@ The underlying checklist is:
    - **Context continuity**: can Claude Code, Codex, and Cursor all see the
      same project memory and handoff instructions?
    - **Ontology availability**: can a fresh agent find managed ontology
-     slices and any bootstrap/enriched files?
+     slices and see whether bootstrap/enriched files or introspector support
+     are missing?
    - **Adapter parity surface**: are native or fallback command/skill/hook
      surfaces present for each enabled adapter?
    - **Diagnostics quality**: does `status`/`doctor` make missing or stale
@@ -85,6 +86,7 @@ Results:
 | Fragment state | `base@6` in-sync. |
 | Drift | none. |
 | Doctor | ok: 0 errors, 0 warnings. |
+| Ontology gaps | `status` reports actionable warning counts plus informational Layer A coverage gaps. |
 | Ontology bootstrap | `base` skipped-no-introspector; no files written. This is expected for the base fragment. |
 | Tests | 411 tests passed across 34 files. |
 | Typecheck | passed. |
@@ -278,3 +280,32 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood simulate-stale-handoff` | pass | 38 | status and doctor detect active.md that does not reference the newest archive |
 | `npm run typecheck` | pass | 1213 | passed |
 | `npm test` | pass | 1862 | passed |
+
+
+## Automated Self-Check — 2026-05-02T15:08:20.654Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@6:in-sync
+Drift: 19 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (274ms); anamnesis dogfood simulate-stale-handoff: pass (49ms); npm run typecheck: pass (1400ms); npm test: pass (2640ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 274 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 49 | status and doctor detect active.md that does not reference the newest archive |
+| `npm run typecheck` | pass | 1400 | passed |
+| `npm test` | pass | 2640 | passed |

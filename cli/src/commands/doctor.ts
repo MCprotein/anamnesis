@@ -40,7 +40,7 @@ import {
   readSettings,
   type HookRegistration,
 } from "../core/settings.js";
-import { status, type ContinuityCheck } from "./status.js";
+import { status, type ContinuityCheck, type StatusResult } from "./status.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,7 +64,10 @@ export type DoctorIssueCode =
   | "continuity-handoff-missing"
   | "continuity-active-handoff-stale"
   | "continuity-adapter-surface-missing"
-  | "continuity-drift-detected";
+  | "continuity-drift-detected"
+  | "ontology-static-missing"
+  | "ontology-bootstrap-missing"
+  | "ontology-enrichment-missing";
 
 export interface DoctorIssue {
   severity: DoctorSeverity;
@@ -149,6 +152,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
     const st = status({ projectRoot, libraryRoot });
     addStatusIssues(st.entries, st.fragments, issues);
     addContinuityIssues(st.continuity.checks, issues);
+    addOntologyGapIssues(st.ontology.gaps, issues);
   }
 
   const library = libraryFragmentMap(libraryRoot);
@@ -248,6 +252,40 @@ function addContinuityIssues(
       message: `${check.label} continuity check failed: ${check.detail}`,
       repair: continuityRepair(check),
     });
+  }
+}
+
+function addOntologyGapIssues(
+  gaps: StatusResult["ontology"]["gaps"],
+  issues: DoctorIssue[],
+): void {
+  for (const gap of gaps) {
+    if (gap.severity !== "warning") continue;
+    issues.push({
+      severity: "warning",
+      code: ontologyGapIssueCode(gap.kind),
+      scopePath: gap.scopePath,
+      fragmentId: gap.fragmentId,
+      target: gap.target,
+      message: gap.detail,
+      repair: gap.next,
+    });
+  }
+}
+
+function ontologyGapIssueCode(
+  kind: StatusResult["ontology"]["gaps"][number]["kind"],
+): DoctorIssueCode {
+  switch (kind) {
+    case "static-missing":
+      return "ontology-static-missing";
+    case "bootstrap-missing":
+      return "ontology-bootstrap-missing";
+    case "enrichment-missing":
+      return "ontology-enrichment-missing";
+    case "introspector-unavailable":
+    case "introspector-not-applicable":
+      throw new Error(`non-warning ontology gap kind reached doctor: ${kind}`);
   }
 }
 

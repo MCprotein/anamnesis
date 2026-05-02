@@ -17,6 +17,11 @@ breaking changes until v1.0.
   Claude Code enabled now get a Claude-specific pointer back to canonical
   `AGENTS.md`, managed ontology, and handoff state while preserving user
   prose outside the managed region.
+- Added ontology gap reporting to `status` and `doctor`. `status` now
+  reports missing static slices, missing `.bootstrap.yaml` facts, missing
+  `.enriched.yaml` semantics, fragments without deterministic Layer A
+  introspectors, and introspectors that are not applicable in a scope;
+  `doctor` turns actionable gaps into repair warnings.
 
 ### Documentation
 
@@ -27,6 +32,8 @@ breaking changes until v1.0.
 - Documented the generation boundary in the README.
 - Updated README, design notes, dogfood notes, and the Agentfile spec to
   describe the managed Claude Code entrypoint.
+- Documented the ontology gap report in the README and ontology bootstrap
+  design notes.
 
 ## [0.5.0] — 2026-04-30
 

@@ -318,4 +318,32 @@ describe("doctor — installation integrity", () => {
       ]),
     );
   });
+
+  it("reports missing ontology bootstrap facts as an actionable warning", () => {
+    const project = tmpDir("anamnesis-doctor-ontology-gap-");
+    const library = process.cwd();
+    fs.mkdirSync(path.join(project, "prisma"), { recursive: true });
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      noBootstrap: true,
+    });
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "ontology-bootstrap-missing",
+          fragmentId: "prisma",
+          target: ".anamnesis/ontology/prisma.bootstrap.yaml",
+          repair: expect.stringContaining("ontology bootstrap --dry-run"),
+        }),
+      ]),
+    );
+  });
 });

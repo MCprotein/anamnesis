@@ -618,7 +618,8 @@ function scoreCriteria(
           : "fail",
       detail:
         `doctor ${doc.summary.errors} error(s), ${doc.summary.warnings} warning(s); ` +
-        `status continuity ready=${st.continuity.ready}`,
+        `status continuity ready=${st.continuity.ready}; ` +
+        `ontology gaps warnings=${st.ontology.summary.warnings}`,
     },
     {
       id: "verification-strength",
@@ -679,6 +680,7 @@ function renderMarkdown(input: {
     `Drift: ${input.st.summary.entriesClean} clean, ${input.st.summary.entriesUserModified} modified, ${input.st.summary.entriesMissing} missing`,
     `Status continuity: ${input.st.continuity.ready ? "ready" : "issues"} (${input.st.continuity.passed}/${input.st.continuity.total})`,
     `Doctor: ${input.doc.ok ? "ok" : "issues"} (${input.doc.summary.errors} errors, ${input.doc.summary.warnings} warnings)`,
+    `Ontology gaps: ${input.st.ontology.summary.warnings} warning(s), ${input.st.ontology.summary.info} info`,
     `Ontology bootstrap dry-run: ${bootstrapSummary}`,
     "",
     "| Criterion | Result | Detail |",

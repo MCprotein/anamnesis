@@ -417,3 +417,55 @@ describe("status — continuity readiness", () => {
     expect(active?.detail).toContain(newArchive);
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe("status — ontology gap report", () => {
+  it("reports missing bootstrap facts for an applicable installed fragment", () => {
+    const library = makeLibrary();
+    const project = tmpDir("anamnesis-ontology-gap-");
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      noBootstrap: true,
+    });
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.summary.ontologyGapWarnings).toBeGreaterThanOrEqual(1);
+    expect(r.ontology.gaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scopePath: ".",
+          fragmentId: "prisma",
+          kind: "bootstrap-missing",
+          severity: "warning",
+          target: ".anamnesis/ontology/prisma.bootstrap.yaml",
+          next: expect.stringContaining("ontology bootstrap --dry-run"),
+        }),
+      ]),
+    );
+  });
+
+  it("reports missing semantic enrichment after bootstrap facts exist", () => {
+    const { project, library } = setupFreshlyInstalled();
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.ontology.gaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fragmentId: "prisma",
+          kind: "enrichment-missing",
+          severity: "warning",
+          target: ".anamnesis/ontology/prisma.enriched.yaml",
+          next: expect.stringContaining("/ontology-enrich"),
+        }),
+      ]),
+    );
+  });
+});

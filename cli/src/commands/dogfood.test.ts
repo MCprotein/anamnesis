@@ -91,6 +91,7 @@ describe("dogfoodCheck", () => {
     expect(text).toContain("Automated Self-Check — 2026-04-30T08:00:00.000Z");
     expect(text).toContain("Continuity readiness score: 5/5 (new baseline)");
     expect(text).toContain("Tools: claude-code, codex, cursor");
+    expect(text).toContain("Ontology gaps:");
     expect(text).toContain("`anamnesis dogfood simulate-handoff`");
     expect(text).toContain("`anamnesis dogfood simulate-stale-handoff`");
     expect(text).toContain("active.md and latest archive injected");
