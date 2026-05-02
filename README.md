@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-422%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.5%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-425%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.5%20alpha-orange)]()
 
 ---
 
@@ -86,6 +86,7 @@ What gets created:
 your-project/
 ├── Agentfile                                    # selected fragments + tool list
 ├── AGENTS.md                                    # canonical context (existing prose preserved)
+├── CLAUDE.md                                    # Claude Code entrypoint pointing to AGENTS.md
 ├── .anamnesis/
 │   ├── manifest.json                            # region/file hashes for drift detection
 │   ├── ontology/{base,<fragment>}.yaml          # static ontology slices
@@ -165,7 +166,7 @@ Each fragment declares one or more **capabilities** in `fragment.yaml`. Capabili
 
 | Capability | What it represents | Claude Code | Codex | Cursor |
 |---|---|---|---|---|
-| `project_memory` | Always-loaded context | `AGENTS.md` region | `AGENTS.md` region | `.cursor/rules` (alwaysApply) |
+| `project_memory` | Always-loaded context | `AGENTS.md` region + `CLAUDE.md` entrypoint | `AGENTS.md` region | `.cursor/rules` (alwaysApply) |
 | `ontology` | Structured reference | SessionStart hook injection | AGENTS.md instruction | rules instruction |
 | `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | git hook + LLM instruction | git hook + LLM instruction |
 | `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | AGENTS.md section (fallback) | rules (fallback) |

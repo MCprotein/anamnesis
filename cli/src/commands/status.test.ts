@@ -278,8 +278,14 @@ describe("status — entry drift", () => {
     const { project, library } = setupFreshlyInstalled();
     fs.unlinkSync(path.join(project, "AGENTS.md"));
     const r = status({ projectRoot: project, libraryRoot: library });
-    const regions = r.entries.filter((e) => e.target === "region");
-    expect(regions.every((e) => e.drift === "missing")).toBe(true);
+    const agentsRegions = r.entries.filter(
+      (e) => e.target === "region" && e.file === "AGENTS.md",
+    );
+    expect(agentsRegions.every((e) => e.drift === "missing")).toBe(true);
+    const claudeRegion = r.entries.find(
+      (e) => e.target === "region" && e.file === "CLAUDE.md",
+    );
+    expect(claudeRegion?.drift).toBe("clean");
     expect(r.summary.entriesMissing).toBeGreaterThanOrEqual(2);
   });
 

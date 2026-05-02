@@ -26,6 +26,11 @@ describe("generation boundary guidance", () => {
       "AGENTS.md",
       "<!-- anamnesis:region id=anamnesis-base fragment=base@6 -->\nmanaged\n<!-- /anamnesis:region -->\n",
     );
+    write(
+      root,
+      "CLAUDE.md",
+      "<!-- anamnesis:region id=anamnesis-claude-code-entrypoint fragment=anamnesis-claude-code@1 -->\nmanaged\n<!-- /anamnesis:region -->\n",
+    );
     write(root, ".anamnesis/ontology/base.yaml", "managed_by: anamnesis\n");
     write(root, ".anamnesis/ontology/k8s.bootstrap.yaml", "services: []\n");
     write(root, ".anamnesis/ontology/k8s.enriched.yaml", "flows: []\n");
@@ -39,6 +44,7 @@ describe("generation boundary guidance", () => {
     const status = collectGenerationBoundaryStatus(root);
 
     expect(status.hasManagedAgentsMd).toBe(true);
+    expect(status.hasManagedClaudeMd).toBe(true);
     expect(status.staticOntologyFiles).toEqual([
       ".anamnesis/ontology/base.yaml",
     ]);
@@ -54,6 +60,7 @@ describe("generation boundary guidance", () => {
   it("formats next steps when semantic ontology is missing", () => {
     const lines = formatGenerationBoundaryLines({
       hasManagedAgentsMd: true,
+      hasManagedClaudeMd: true,
       staticOntologyFiles: [".anamnesis/ontology/base.yaml"],
       bootstrapOntologyFiles: [".anamnesis/ontology/k8s.bootstrap.yaml"],
       enrichedOntologyFiles: [],

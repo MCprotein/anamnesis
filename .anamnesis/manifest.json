@@ -50,6 +50,16 @@
       "base_rendered_hash": "sha256:af19fc00e987dbc1acc9178238a26a66378f62b292cc3b426212cb7aab46557e",
       "last_applied_hash": "sha256:af19fc00e987dbc1acc9178238a26a66378f62b292cc3b426212cb7aab46557e",
       "current_user_hash": "sha256:af19fc00e987dbc1acc9178238a26a66378f62b292cc3b426212cb7aab46557e"
+    },
+    {
+      "file": "CLAUDE.md",
+      "region_id": "anamnesis-claude-code-entrypoint",
+      "fragment_id": "anamnesis-claude-code",
+      "fragment_version": 1,
+      "template_version": 1,
+      "base_rendered_hash": "sha256:aa85a84983a082095b405bfe55cad6fee6a21c983075b8e2e51247c11ecbac77",
+      "last_applied_hash": "sha256:f43212100a900f095a11e1c4fd28f8fb0637e5f5bfb09dac55f4d10a4eca3def",
+      "current_user_hash": "sha256:f43212100a900f095a11e1c4fd28f8fb0637e5f5bfb09dac55f4d10a4eca3def"
     }
   ],
   "files": [

@@ -13,6 +13,10 @@ breaking changes until v1.0.
   and `ontology bootstrap` output so users can tell which context and
   ontology files were generated deterministically and which require an
   active agent.
+- Added a Claude Code `CLAUDE.md` entrypoint managed region. Projects with
+  Claude Code enabled now get a Claude-specific pointer back to canonical
+  `AGENTS.md`, managed ontology, and handoff state while preserving user
+  prose outside the managed region.
 
 ### Documentation
 
@@ -21,6 +25,8 @@ breaking changes until v1.0.
   context/ontology from agent-required semantic enrichment and handoff
   documents.
 - Documented the generation boundary in the README.
+- Updated README, design notes, dogfood notes, and the Agentfile spec to
+  describe the managed Claude Code entrypoint.
 
 ## [0.5.0] — 2026-04-30
 

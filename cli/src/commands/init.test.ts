@@ -128,11 +128,39 @@ describe("init", () => {
     expect(findRegion(agentsMd, "prisma")?.content).toContain(
       "prisma migrate deploy",
     );
+    const claudeMd = fs.readFileSync(path.join(project, "CLAUDE.md"), "utf8");
+    expect(claudeMd).toContain(
+      "anamnesis:region id=anamnesis-claude-code-entrypoint",
+    );
+    expect(claudeMd).toContain("`AGENTS.md` is the canonical");
+    expect(claudeMd).toContain("/ontology-enrich");
 
     // Manifest tracks the region.
     const m = readManifest(project);
-    expect(m.regions).toHaveLength(1);
+    expect(m.regions).toHaveLength(2);
     expect(m.regions[0]!.fragment_id).toBe("prisma");
+  });
+
+  it("adds the Claude Code entrypoint without overwriting existing CLAUDE.md prose", () => {
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    fs.writeFileSync(
+      path.join(project, "CLAUDE.md"),
+      "# Existing Claude notes\n\nKeep this sentence.\n",
+    );
+
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+
+    const claudeMd = fs.readFileSync(path.join(project, "CLAUDE.md"), "utf8");
+    expect(claudeMd).toContain("Keep this sentence.");
+    expect(claudeMd).toContain(
+      "anamnesis:region id=anamnesis-claude-code-entrypoint",
+    );
   });
 
   it("dry-run does not write any files", () => {
@@ -147,12 +175,15 @@ describe("init", () => {
     });
 
     expect(result.writtenToDisk).toBe(false);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]!.status).toBe("create");
+    expect(result.changes).toHaveLength(2);
+    expect(result.changes.every((change) => change.status === "create")).toBe(
+      true,
+    );
 
     // Nothing on disk.
     expect(fs.existsSync(path.join(project, "Agentfile"))).toBe(false);
     expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(false);
+    expect(fs.existsSync(path.join(project, "CLAUDE.md"))).toBe(false);
     expect(
       fs.existsSync(path.join(project, ".anamnesis/manifest.json")),
     ).toBe(false);
@@ -483,6 +514,17 @@ describe("init — monorepo detection (--monorepo)", () => {
       "utf8",
     );
     expect(apiAgents).toContain("prisma");
+
+    const rootClaude = fs.readFileSync(
+      path.join(project, "CLAUDE.md"),
+      "utf8",
+    );
+    expect(rootClaude).toContain("Claude Code entrypoint");
+    const apiClaude = fs.readFileSync(
+      path.join(project, "apps/api/CLAUDE.md"),
+      "utf8",
+    );
+    expect(apiClaude).toContain("Claude Code entrypoint");
   });
 
   it("reports empty workspace dirs (no rule match) without installing", () => {

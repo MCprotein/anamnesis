@@ -40,6 +40,7 @@ import {
   type RenderContext,
 } from "../core/render.js";
 import { registerClaudeCode } from "../adapters/claude-code/index.js";
+import { planClaudeMdEntrypoint } from "../adapters/claude-code/claude_md.js";
 import {
   planChanges,
   applyChanges,
@@ -304,6 +305,14 @@ export function init(opts: InitOptions): InitResult {
       };
       actions.push(...registry.planFragment(renderCtx, "claude-code"));
     }
+    if (hasProjectMemory(ordered)) {
+      actions.push(
+        planClaudeMdEntrypoint({
+          scopePath,
+          settings: DEFAULT_SETTINGS,
+        }),
+      );
+    }
   }
 
   // 9. Dedupe identical actions before planChanges.
@@ -375,6 +384,14 @@ function dedupeActions(actions: RenderAction[]): RenderAction[] {
     out.push(a);
   }
   return out;
+}
+
+function hasProjectMemory(fragments: FragmentDefinition[]): boolean {
+  return fragments.some((fragment) =>
+    fragment.capabilities.some(
+      (capability) => capability.type === "project_memory",
+    ),
+  );
 }
 
 /**

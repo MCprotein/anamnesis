@@ -208,6 +208,9 @@ Progress:
 - 2026-05-02: Added generation-boundary CLI guidance for `init`,
   `ontology bootstrap`, `status`, and `doctor`, plus README documentation
   explaining CLI-generated vs agent-required outputs.
+- 2026-05-02: Added managed `CLAUDE.md` entrypoint generation for
+  Claude Code so its native memory surface points at canonical `AGENTS.md`,
+  ontology, and handoff state without replacing user prose.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context

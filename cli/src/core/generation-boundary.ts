@@ -14,6 +14,7 @@ interface BootstrapGenerationResult {
 
 export interface GenerationBoundaryStatus {
   hasManagedAgentsMd: boolean;
+  hasManagedClaudeMd: boolean;
   staticOntologyFiles: string[];
   bootstrapOntologyFiles: string[];
   enrichedOntologyFiles: string[];
@@ -29,9 +30,16 @@ export function collectGenerationBoundaryStatus(
   const agentsText = fs.existsSync(agentsPath)
     ? fs.readFileSync(agentsPath, "utf8")
     : "";
+  const claudePath = path.join(root, "CLAUDE.md");
+  const claudeText = fs.existsSync(claudePath)
+    ? fs.readFileSync(claudePath, "utf8")
+    : "";
 
   return {
     hasManagedAgentsMd: agentsText.includes("anamnesis:region"),
+    hasManagedClaudeMd: claudeText.includes(
+      "anamnesis-claude-code-entrypoint",
+    ),
     staticOntologyFiles: ontologyFiles.filter(isStaticOntologySlice),
     bootstrapOntologyFiles: ontologyFiles.filter((file) =>
       path.basename(file).endsWith(".bootstrap.yaml"),
@@ -62,10 +70,16 @@ export function formatGenerationBoundaryLines(
 
   return [
     "  generation boundary:",
-    `    cli-generated: ${status.hasManagedAgentsMd ? "AGENTS.md managed context present" : "AGENTS.md managed context not found"}; ontology static=${status.staticOntologyFiles.length}, bootstrap=${status.bootstrapOntologyFiles.length}`,
+    `    cli-generated: ${formatManagedAgentsMd(status)}; Claude Code entrypoint=${status.hasManagedClaudeMd ? "present" : "not found"}; ontology static=${status.staticOntologyFiles.length}, bootstrap=${status.bootstrapOntologyFiles.length}`,
     `    agent-required: semantic ontology via /ontology-enrich (.enriched.yaml=${status.enrichedOntologyFiles.length}); task handoff via /handoff-prepare (active=${status.hasActiveHandoff ? "yes" : "no"})`,
     `    next: ${bootstrapNext}; ${enrichNext}; ${handoffNext}`,
   ];
+}
+
+function formatManagedAgentsMd(status: GenerationBoundaryStatus): string {
+  return status.hasManagedAgentsMd
+    ? "AGENTS.md managed context present"
+    : "AGENTS.md managed context not found";
 }
 
 export function formatBootstrapGenerationBoundaryLines(

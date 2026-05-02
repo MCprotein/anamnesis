@@ -93,7 +93,7 @@ Continuity surfaces now present in this repo:
 
 | Adapter | Surface |
 |---|---|
-| Claude Code | `AGENTS.md` baseline, `.anamnesis/ontology/base.yaml`, native `.claude/hooks`, `.claude/commands`, `.claude/skills`. |
+| Claude Code | `AGENTS.md` baseline, `CLAUDE.md` entrypoint, `.anamnesis/ontology/base.yaml`, native `.claude/hooks`, `.claude/commands`, `.claude/skills`. |
 | Codex | `AGENTS.md` baseline plus `codex-cmd-*` and `codex-skill-*` fallback regions. |
 | Cursor | `AGENTS.md` baseline plus `.cursor/rules/*` command and skill fallbacks. |
 
@@ -250,3 +250,31 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood simulate-stale-handoff` | pass | 51 | status and doctor detect active.md that does not reference the newest archive |
 | `npm run typecheck` | pass | 1323 | passed |
 | `npm test` | pass | 2230 | passed |
+
+
+## Automated Self-Check — 2026-05-02T14:41:53.457Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@6:in-sync
+Drift: 19 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Doctor: ok (0 errors, 0 warnings)
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (242ms); anamnesis dogfood simulate-stale-handoff: pass (38ms); npm run typecheck: pass (1213ms); npm test: pass (1862ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 242 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 38 | status and doctor detect active.md that does not reference the newest archive |
+| `npm run typecheck` | pass | 1213 | passed |
+| `npm test` | pass | 1862 | passed |

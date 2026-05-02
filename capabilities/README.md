@@ -8,7 +8,7 @@ Each capability is a semantic unit with a **rendering contract** — "given this
 
 | Capability | What it represents | CC native | Codex native | Cursor native (v0.2+) |
 |---|---|---|---|---|
-| `project_memory` | Always-loaded free-form context | `CLAUDE.md` | `AGENTS.md` | `.cursor/rules/*.mdc (alwaysApply)` |
+| `project_memory` | Always-loaded free-form context | `AGENTS.md` + `CLAUDE.md` entrypoint | `AGENTS.md` | `.cursor/rules/*.mdc (alwaysApply)` |
 | `ontology` | Structured reference, consulted on demand | SessionStart hook injection | `AGENTS.md` instruction pointing to file | `rules` instruction |
 | `executable_hook` | Event-driven automation | `.claude/hooks/` + `settings.json` | git hook + LLM instruction (best-effort) | git hook + LLM instruction |
 | `skill` | Reusable work procedure | `.claude/skills/<name>/SKILL.md` | `AGENTS.md` section (fallback) | `rules` (fallback) |

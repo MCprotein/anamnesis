@@ -37,6 +37,7 @@ import {
 import { ProjectContext } from "../core/triggers.js";
 import { findRegion } from "../core/regions.js";
 import { sha256 } from "../util/hash.js";
+import { CLAUDE_MD_REGION_ID } from "../adapters/claude-code/claude_md.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -617,6 +618,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
   const targets: string[] = [];
   if (tools.includes("claude-code")) {
     targets.push(
+      `CLAUDE.md [region:${CLAUDE_MD_REGION_ID}]`,
       ".claude/hooks/inject-ontology.sh",
       ".claude/hooks/inject-handoff.sh",
       ".claude/hooks/handoff-reminder.sh",

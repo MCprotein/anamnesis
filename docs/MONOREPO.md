@@ -30,7 +30,7 @@ project:
 
 | Capability | Behavior |
 |---|---|
-| `project_memory` (AGENTS.md region) | Scope-local: writes to `<scope>/AGENTS.md` |
+| `project_memory` (AGENTS.md region + Claude entrypoint) | Scope-local: writes to `<scope>/AGENTS.md`; Claude Code also gets `<scope>/CLAUDE.md` pointing at that scope memory |
 | `ontology` (slice file) | Scope-local: writes to `<scope>/.anamnesis/ontology/<id>.yaml`; bootstrap facts write beside the static slice as `<id>.bootstrap.yaml` |
 | `executable_hook` | **Project-root only** for native/bridge files — Claude Code's `settings.json` and git hooks are root concerns |
 | `skill` | Native/fallback files such as `.claude/skills/` and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |

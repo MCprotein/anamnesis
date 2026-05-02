@@ -46,6 +46,7 @@ import {
   type RenderContext,
 } from "../core/render.js";
 import { registerClaudeCode } from "../adapters/claude-code/index.js";
+import { planClaudeMdEntrypoint } from "../adapters/claude-code/claude_md.js";
 import { registerCodex } from "../adapters/codex/index.js";
 import { registerCursor } from "../adapters/cursor/index.js";
 import {
@@ -350,6 +351,14 @@ export function update(opts: UpdateOptions): UpdateResult {
         actions.push(...registry.planFragment(renderCtx, tool));
       }
     }
+    if (tools.includes("claude-code") && hasProjectMemory(scopeOrdered)) {
+      actions.push(
+        planClaudeMdEntrypoint({
+          scopePath,
+          settings: DEFAULT_SETTINGS,
+        }),
+      );
+    }
   }
 
   // Dedupe identical actions (e.g., when both `claude-code` and `codex`
@@ -435,6 +444,14 @@ function dedupeActions(actions: RenderAction[]): RenderAction[] {
     out.push(a);
   }
   return out;
+}
+
+function hasProjectMemory(fragments: ResolvedFragment[]): boolean {
+  return fragments.some(({ fragment }) =>
+    fragment.capabilities.some(
+      (capability) => capability.type === "project_memory",
+    ),
+  );
 }
 
 /**
