@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-428%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.5%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-430%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.5%20alpha-orange)]()
 
 ---
 
@@ -133,9 +133,9 @@ semantic generation:
 CLI commands print this boundary so users can tell whether the current
 project state is CLI-generated, agent-enriched, or still missing semantic
 handoff/ontology context. `status` also reports ontology gaps across static
-slices, deterministic bootstrap facts, semantic enrichment, and fragments
-that do not yet have a Layer A introspector; `doctor` turns actionable gaps
-into repair warnings.
+slices, missing or stale deterministic bootstrap facts, semantic enrichment,
+and fragments that do not yet have a Layer A introspector; `doctor` turns
+actionable gaps into repair warnings.
 
 ---
 

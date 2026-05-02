@@ -53,9 +53,9 @@ anamnesis ontology bootstrap [--scope=<path>] [--fragment=<id>] [--dry-run]
   all installed fragments with a registered introspector.
 - `--dry-run` — print what would be written, no file writes.
 - `anamnesis status` — reports ontology gaps: missing static slices,
-  missing bootstrap facts, missing semantic enrichment, fragments without
-  registered introspectors, and introspectors that are not applicable in
-  the current scope.
+  missing or stale bootstrap facts, missing semantic enrichment, fragments
+  without registered introspectors, and introspectors that are not
+  applicable in the current scope.
 - `anamnesis doctor` — turns actionable ontology gaps into warnings with
   the next command or skill to run.
 
@@ -173,7 +173,9 @@ workloads:
 `bootstrap.yaml` files are regenerable Layer A outputs. Re-running
 `bootstrap` refreshes them; `update --apply` doesn't touch them because it
 only owns fragment-rendered surfaces. `status` / `doctor` report when an
-applicable installed fragment is missing bootstrap or enrichment files.
+applicable installed fragment is missing bootstrap or enrichment files, or
+when the existing bootstrap output no longer matches the current
+introspector result.
 
 ---
 
@@ -264,12 +266,10 @@ open_questions:
   edits if they touched `.bootstrap.yaml` despite warnings). User runs
   `bootstrap` explicitly when project shape changes.
 - `status` flow: reports whether installed fragments have their static
-  ontology slice, applicable bootstrap output, and semantic enrichment
-  file. It also identifies installed fragments without deterministic
-  Layer A support so dogfood evidence can guide future introspector work.
-- Future `status` flow: report `bootstrap` hash drift if
-  `<id>.bootstrap.yaml` exists but doesn't match what the introspector would
-  produce now.
+  ontology slice, applicable bootstrap output, current bootstrap facts, and
+  semantic enrichment file. It also identifies installed fragments without
+  deterministic Layer A support so dogfood evidence can guide future
+  introspector work.
 
 ---
 
@@ -280,7 +280,8 @@ open_questions:
   Assert exact YAML output.
 - **Integration**: `init --apply` on a fixture monorepo with k8s +
   prisma + nextjs. Assert bootstrap files created in expected scopes.
-- **Drift**: modify fixture file, re-run bootstrap, assert hash bumps.
+- **Drift**: modify fixture file, assert `status` / `doctor` report stale
+  bootstrap output, then re-run bootstrap and assert hash bumps.
 - Aim: +30 tests minimum.
 
 ---
@@ -292,7 +293,7 @@ open_questions:
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
 | 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | +14 | shipped |
-| 0.6.x | ontology drift reporting, Layer B re-run semantics, targeted introspector improvements from dogfood gaps | +0 so far | in progress; re-run semantics shipped in base v7 |
+| 0.6.x | ontology drift reporting, Layer B re-run semantics, targeted introspector improvements from dogfood gaps | +5 so far | in progress; gap report, re-run semantics, and bootstrap drift shipped |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
 (sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later

@@ -26,6 +26,10 @@ breaking changes until v1.0.
   now tells every supported adapter to merge existing `.enriched.yaml`
   content by stable IDs, append new facts, use `supersedes` for replaced
   designs, and put weak inferences under `open_questions`.
+- Added bootstrap ontology drift detection. `status` now compares existing
+  `.bootstrap.yaml` files against the current deterministic introspector
+  output and reports stale facts; `doctor` turns stale bootstrap output into
+  an actionable repair warning.
 
 ### Documentation
 
@@ -40,6 +44,7 @@ breaking changes until v1.0.
   design notes.
 - Documented the Layer B enrichment re-run policy in the ontology bootstrap
   design notes.
+- Documented bootstrap drift detection in the ontology bootstrap design notes.
 
 ## [0.5.0] — 2026-04-30
 

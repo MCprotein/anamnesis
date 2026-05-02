@@ -468,4 +468,32 @@ describe("status — ontology gap report", () => {
       ]),
     );
   });
+
+  it("reports stale bootstrap facts when source files change", () => {
+    const { project, library } = setupFreshlyInstalled();
+    fs.writeFileSync(
+      path.join(project, "prisma", "schema.prisma"),
+      [
+        "model User {",
+        "  id Int @id",
+        "  email String",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.ontology.gaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fragmentId: "prisma",
+          kind: "bootstrap-stale",
+          severity: "warning",
+          target: ".anamnesis/ontology/prisma.bootstrap.yaml",
+          next: expect.stringContaining("ontology bootstrap --dry-run"),
+        }),
+      ]),
+    );
+  });
 });

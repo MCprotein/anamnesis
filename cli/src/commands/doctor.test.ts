@@ -346,4 +346,41 @@ describe("doctor — installation integrity", () => {
       ]),
     );
   });
+
+  it("reports stale ontology bootstrap facts as an actionable warning", () => {
+    const project = tmpDir("anamnesis-doctor-ontology-stale-");
+    const library = process.cwd();
+    fs.mkdirSync(path.join(project, "prisma"), { recursive: true });
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    fs.writeFileSync(
+      path.join(project, "prisma", "schema.prisma"),
+      [
+        "model User {",
+        "  id Int @id",
+        "  email String",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "ontology-bootstrap-stale",
+          fragmentId: "prisma",
+          target: ".anamnesis/ontology/prisma.bootstrap.yaml",
+          repair: expect.stringContaining("ontology bootstrap --dry-run"),
+        }),
+      ]),
+    );
+  });
 });

@@ -9,11 +9,13 @@ import * as path from "node:path";
 import type { FragmentDefinition } from "./fragments.js";
 import type { EffectiveScope } from "./scope.js";
 import { IntrospectorRegistry } from "./introspector.js";
+import { renderBootstrapOntology } from "./ontology-bootstrap-render.js";
 import { ProjectContext } from "./triggers.js";
 
 export type OntologyGapKind =
   | "static-missing"
   | "bootstrap-missing"
+  | "bootstrap-stale"
   | "enrichment-missing"
   | "introspector-unavailable"
   | "introspector-not-applicable";
@@ -36,6 +38,7 @@ export interface OntologyGapSummary {
   info: number;
   staticMissing: number;
   bootstrapMissing: number;
+  bootstrapStale: number;
   enrichmentMissing: number;
   introspectorUnavailable: number;
   introspectorNotApplicable: number;
@@ -122,6 +125,25 @@ export function collectOntologyGaps(
         });
         continue;
       }
+      const expectedBootstrap = renderBootstrapOntology(
+        introspector,
+        introspector.introspect(ctx),
+      );
+      const currentBootstrap = fs.readFileSync(
+        path.join(projectRoot, bootstrapRel),
+        "utf8",
+      );
+      if (currentBootstrap !== expectedBootstrap) {
+        gaps.push({
+          scopePath: scope.path,
+          fragmentId: installed.id,
+          kind: "bootstrap-stale",
+          severity: "warning",
+          target: bootstrapRel,
+          detail: `deterministic Layer A facts for '${installed.id}' are stale`,
+          next: "Run `anamnesis ontology bootstrap --dry-run` to inspect the changed facts, then run without `--dry-run` to refresh them.",
+        });
+      }
 
       const enrichedRel = scopedOntologyRelPath(
         scope.path,
@@ -178,6 +200,7 @@ function summarizeOntologyGaps(gaps: OntologyGap[]): OntologyGapSummary {
     staticMissing: gaps.filter((g) => g.kind === "static-missing").length,
     bootstrapMissing: gaps.filter((g) => g.kind === "bootstrap-missing")
       .length,
+    bootstrapStale: gaps.filter((g) => g.kind === "bootstrap-stale").length,
     enrichmentMissing: gaps.filter((g) => g.kind === "enrichment-missing")
       .length,
     introspectorUnavailable: gaps.filter(

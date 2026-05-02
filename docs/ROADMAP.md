@@ -218,6 +218,9 @@ Progress:
   `/ontology-enrich` re-runs merge by stable IDs, append new facts, use
   `supersedes` for replaced designs, and record weak evidence as
   `open_questions`.
+- 2026-05-03: Added bootstrap ontology drift detection so `status` compares
+  existing `.bootstrap.yaml` files with current deterministic introspector
+  output and `doctor` reports stale Layer A facts as repairable warnings.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context

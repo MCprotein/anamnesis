@@ -67,6 +67,7 @@ export type DoctorIssueCode =
   | "continuity-drift-detected"
   | "ontology-static-missing"
   | "ontology-bootstrap-missing"
+  | "ontology-bootstrap-stale"
   | "ontology-enrichment-missing";
 
 export interface DoctorIssue {
@@ -281,6 +282,8 @@ function ontologyGapIssueCode(
       return "ontology-static-missing";
     case "bootstrap-missing":
       return "ontology-bootstrap-missing";
+    case "bootstrap-stale":
+      return "ontology-bootstrap-stale";
     case "enrichment-missing":
       return "ontology-enrichment-missing";
     case "introspector-unavailable":
