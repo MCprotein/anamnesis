@@ -43,6 +43,11 @@ import {
   DogfoodError,
   type DogfoodResult,
 } from "./commands/dogfood.js";
+import {
+  collectGenerationBoundaryStatus,
+  formatBootstrapGenerationBoundaryLines,
+  formatGenerationBoundaryLines,
+} from "./core/generation-boundary.js";
 
 const VERSION = "0.5.0";
 
@@ -240,9 +245,16 @@ function reportInit(result: InitResult): void {
       `  ontology bootstrap: ${wrote} fragment(s) populated, ${skipped} skipped`,
     );
   }
+  console.log("  generation boundary:");
+  console.log(
+    "    cli-generated: AGENTS.md managed context, static ontology slices, and any .bootstrap.yaml facts above",
+  );
+  console.log(
+    "    agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
+  );
 }
 
-function reportStatus(result: StatusResult): void {
+function reportStatus(result: StatusResult, projectRoot: string): void {
   const { agentfile, scopes, suggested, declined, summary } = result;
   console.log(`anamnesis status — ${agentfile.project.name}`);
   console.log(`  tools: ${agentfile.tools.join(", ")}`);
@@ -319,6 +331,11 @@ function reportStatus(result: StatusResult): void {
   for (const check of continuity.checks.filter((c) => c.status === "fail")) {
     console.log(`    fail ${check.label}: ${check.detail}`);
   }
+  for (const line of formatGenerationBoundaryLines(
+    collectGenerationBoundaryStatus(projectRoot),
+  )) {
+    console.log(line);
+  }
 }
 
 function reportDoctor(result: DoctorResult): void {
@@ -329,6 +346,11 @@ function reportDoctor(result: DoctorResult): void {
   );
   if (result.issues.length === 0) {
     console.log("  installation integrity checks passed");
+    for (const line of formatGenerationBoundaryLines(
+      collectGenerationBoundaryStatus(result.projectRoot),
+    )) {
+      console.log(line);
+    }
     return;
   }
   for (const issue of result.issues) {
@@ -341,6 +363,11 @@ function reportDoctor(result: DoctorResult): void {
     if (issue.repair) {
       console.log(`    repair: ${issue.repair}`);
     }
+  }
+  for (const line of formatGenerationBoundaryLines(
+    collectGenerationBoundaryStatus(result.projectRoot),
+  )) {
+    console.log(line);
   }
 }
 
@@ -397,6 +424,9 @@ function reportBootstrap(result: BootstrapResult): void {
   }
   if (!result.writtenToDisk) {
     console.log("  (dry-run or nothing changed — no files written)");
+  }
+  for (const line of formatBootstrapGenerationBoundaryLines(result)) {
+    console.log(line);
   }
 }
 
@@ -527,16 +557,17 @@ async function main(argv: string[]): Promise<number> {
 
     case "status":
       try {
+        const projectRoot =
+          (flags["project-root"] as string | undefined) ?? process.cwd();
         const result = status({
-          projectRoot:
-            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
         });
         if (flags["json"] === true) {
           console.log(JSON.stringify(result, null, 2));
         } else {
-          reportStatus(result);
+          reportStatus(result, projectRoot);
         }
         return 0;
       } catch (e) {

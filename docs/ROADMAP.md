@@ -196,14 +196,22 @@ Exit criteria met:
 
 | # | Item | Description |
 |---|---|---|
-| 1 | **Ontology gap reports** | Use dogfood runs to identify which missing ontology facts actually make agents less effective. Prioritize gaps in existing sanitized fixtures before adding broad framework coverage. |
-| 2 | **Layer B enrichment lifecycle** | Define how `/ontology-enrich` re-runs should merge, replace, or diff semantic notes so agent-curated ontology can evolve safely. |
-| 3 | **Ontology drift in `status`** | Report when project files imply bootstrap facts have changed and `.bootstrap.yaml` should be regenerated. |
-| 4 | **Output schema stabilization** | Stabilize enough bootstrap/enriched YAML conventions for agents and docs to rely on them. |
-| 5 | **Targeted introspector improvements** | Improve existing introspectors or add a new one only when dogfood evidence shows clear context value. Priority examples are deeper NestJS/Prisma relations, Kubernetes service/workload links, or frontend route ownership. |
-| 6 | **Layer A / Layer B boundary docs** | Clarify which facts are parser-derived and which semantic relationships should remain agent-enriched. |
+| 1 | **Generation boundary guidance** | Make CLI output and docs clearly show what anamnesis generated deterministically (`AGENTS.md`, static ontology slices, `.bootstrap.yaml`) and what still needs an agent (`/ontology-enrich`, `/handoff-prepare`, semantic notes). This should appear before deeper ontology work so users do not mistake Layer A facts for complete project understanding. |
+| 2 | **Ontology gap reports** | Use dogfood runs to identify which missing ontology facts actually make agents less effective. Prioritize gaps in existing sanitized fixtures before adding broad framework coverage. |
+| 3 | **Layer B enrichment lifecycle** | Define how `/ontology-enrich` re-runs should merge, replace, or diff semantic notes so agent-curated ontology can evolve safely. |
+| 4 | **Ontology drift in `status`** | Report when project files imply bootstrap facts have changed and `.bootstrap.yaml` should be regenerated. |
+| 5 | **Output schema stabilization** | Stabilize enough bootstrap/enriched YAML conventions for agents and docs to rely on them. |
+| 6 | **Targeted introspector improvements** | Improve existing introspectors or add a new one only when dogfood evidence shows clear context value. Priority examples are deeper NestJS/Prisma relations, Kubernetes service/workload links, or frontend route ownership. |
+| 7 | **Layer A / Layer B boundary docs** | Clarify which facts are parser-derived and which semantic relationships should remain agent-enriched. |
+
+Progress:
+- 2026-05-02: Added generation-boundary CLI guidance for `init`,
+  `ontology bootstrap`, `status`, and `doctor`, plus README documentation
+  explaining CLI-generated vs agent-required outputs.
 
 Exit criteria:
+- Users can tell from command output whether the current ontology/context
+  state is CLI-generated, agent-enriched, or still missing.
 - Agents get materially better project understanding from regenerated
   ontology in at least one sanitized managed fixture.
 - Ontology refresh and enrichment are safe enough to run repeatedly during

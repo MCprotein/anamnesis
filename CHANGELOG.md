@@ -7,7 +7,20 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
-No entries yet.
+### Added
+
+- Added generation-boundary CLI guidance to `init`, `status`, `doctor`,
+  and `ontology bootstrap` output so users can tell which context and
+  ontology files were generated deterministically and which require an
+  active agent.
+
+### Documentation
+
+- Updated the v0.6 roadmap to start with generation-boundary guidance:
+  command output and docs should distinguish deterministic CLI-generated
+  context/ontology from agent-required semantic enrichment and handoff
+  documents.
+- Documented the generation boundary in the README.
 
 ## [0.5.0] — 2026-04-30
 
