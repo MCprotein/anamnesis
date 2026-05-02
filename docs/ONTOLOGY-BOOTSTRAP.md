@@ -14,6 +14,12 @@ new projects don't start with an empty ontology slice.
 The two layers compose: Layer A populates verifiable facts; Layer B adds
 the meaning a parser can't infer.
 
+Layer A is deliberately bounded. It should give every future agent a factual
+starting point, not attempt to encode deep framework or product semantics.
+When the missing context is "why this exists", "how traffic flows", "what
+must never change", or "which service owns this behavior", that belongs in
+Layer B enrichment.
+
 ---
 
 ## 1. Why this design
@@ -32,6 +38,9 @@ Non-goals:
 - becoming the whole product roadmap. Ontology bootstrap supports the
   larger anamnesis goal: every supported agent should receive current
   project context and be able to continue work after an agent switch.
+- building exhaustive framework-specific parsers. Introspectors should
+  extract shallow, deterministic facts; agent enrichment turns those facts
+  into project-specific meaning.
 
 ---
 
@@ -323,7 +332,7 @@ Stable enriched conventions:
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
 | 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | +14 | shipped |
-| 0.6.x | ontology drift reporting, Layer B re-run semantics, output schema stabilization, targeted introspector improvements from dogfood gaps | +5 so far | in progress; gap report, re-run semantics, bootstrap drift, and schema conventions shipped |
+| 0.6.x | ontology drift reporting, Layer B re-run semantics, output schema stabilization, bounded Layer A discipline, and agent-assisted enrichment UX | +5 so far | in progress; gap report, re-run semantics, bootstrap drift, schema conventions, and roadmap boundary guidance shipped |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
 (sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later

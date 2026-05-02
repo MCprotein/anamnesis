@@ -50,6 +50,12 @@ breaking changes until v1.0.
   design notes.
 - Documented bootstrap drift detection in the ontology bootstrap design notes.
 - Documented the bootstrap and enriched ontology schema conventions.
+- Re-centered the v0.6 roadmap and ontology bootstrap docs on bounded
+  deterministic Layer A baselines plus agent-assisted Layer B enrichment,
+  rather than broad framework introspector expansion.
+- Clarified in the README that Layer A extracts provable facts while Layer B
+  carries project-specific relationships, flows, intent, invariants, and open
+  questions for future agents.
 
 ## [0.5.0] — 2026-04-30
 

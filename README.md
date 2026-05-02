@@ -137,6 +137,11 @@ slices, missing or stale deterministic bootstrap facts, semantic enrichment,
 and fragments that do not yet have a Layer A introspector; `doctor` turns
 actionable gaps into repair warnings.
 
+Layer A is intentionally a baseline, not a promise to model every framework
+in depth. The CLI extracts facts it can prove from files; Layer B uses the
+active agent to turn those facts into relationships, flows, intent,
+invariants, and open questions that future agents can reuse.
+
 ---
 
 ## Fragment catalog
@@ -218,7 +223,7 @@ Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 | **v0.3** | Cursor adapter, Codex hook/skill/slash fallback, monorepo init UX, **agent handoff MVP** | shipped 2026-04-28 |
 | **v0.4** | Hybrid ontology bootstrap, `/ontology-enrich`, init auto-bootstrap, continuity polish | shipped 2026-04-29; 0.4.1 expands framework introspectors; 0.4.2 ships operational polish |
 | **v0.5** | Dogfood lifecycle validation and agent-switch continuity hardening | shipped 2026-04-30 |
-| **v0.6** | Ontology automation deepening based on dogfood gaps | planned |
+| **v0.6** | Repeatable bounded ontology generation plus agent-assisted enrichment | in progress |
 | **v0.7** | Multi-agent UX and lifecycle scale hardening | planned |
 | **v1.0** | Stable schema, public fragment registry, signing | stable target |
 

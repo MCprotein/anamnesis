@@ -29,6 +29,14 @@ different primitives, but the resulting agent experience should preserve
 project recall, ontology access, handoff continuity, and operational
 guardrails.
 
+The same boundary applies to ontology automation. Layer A introspectors
+should establish a reliable factual baseline from files the CLI can parse:
+routes, resources, models, package signals, and other high-confidence facts.
+They are not meant to become exhaustive framework-specific knowledge engines.
+Layer B should use the active agent to read those facts plus project docs and
+code, then generate the semantic context that makes future agent sessions
+effective: relationships, flows, intent, invariants, and open questions.
+
 ---
 
 ## v0.1 — *shipped 2026-04-26*
@@ -190,19 +198,26 @@ Exit criteria met:
 
 ---
 
-## v0.6 — *planned*
+## v0.6 — *in progress*
 
-> **Theme: deepen ontology automation where dogfood shows gaps**
+> **Theme: make ontology generation repeatable, bounded, and agent-assisted**
+
+v0.6 is not a framework-introspection expansion release. The product risk is
+whether anamnesis can keep project ontology current without making the user
+hand-write context every time. The CLI should produce the factual base it can
+prove, then guide the active agent to enrich that base into durable project
+memory that every supported adapter can load.
 
 | # | Item | Description |
 |---|---|---|
 | 1 | **Generation boundary guidance** | Make CLI output and docs clearly show what anamnesis generated deterministically (`AGENTS.md`, static ontology slices, `.bootstrap.yaml`) and what still needs an agent (`/ontology-enrich`, `/handoff-prepare`, semantic notes). This should appear before deeper ontology work so users do not mistake Layer A facts for complete project understanding. |
-| 2 | **Ontology gap reports** | Use dogfood runs to identify which missing ontology facts actually make agents less effective. Prioritize gaps in existing sanitized fixtures before adding broad framework coverage. |
+| 2 | **Ontology gap reports** | Use dogfood runs to identify which missing context pieces actually make agents less effective. Prioritize missing static slices, missing/stale bootstrap facts, missing enrichment, and adapter-visible guidance before adding broad framework coverage. |
 | 3 | **Layer B enrichment lifecycle** | Define how `/ontology-enrich` re-runs should merge, replace, or diff semantic notes so agent-curated ontology can evolve safely. |
 | 4 | **Ontology drift in `status`** | Report when project files imply bootstrap facts have changed and `.bootstrap.yaml` should be regenerated. |
 | 5 | **Output schema stabilization** | Stabilize enough bootstrap/enriched YAML conventions for agents and docs to rely on them. |
-| 6 | **Targeted introspector improvements** | Improve existing introspectors or add a new one only when dogfood evidence shows clear context value. Priority examples are deeper NestJS/Prisma relations, Kubernetes service/workload links, or frontend route ownership. |
-| 7 | **Layer A / Layer B boundary docs** | Clarify which facts are parser-derived and which semantic relationships should remain agent-enriched. |
+| 6 | **Layer A baseline discipline** | Keep introspectors focused on shallow, deterministic, high-confidence facts. Improve or add one only when dogfood evidence shows the factual base itself is blocking agent continuity; semantic intent and operational meaning stay in Layer B. |
+| 7 | **Agent-assisted enrichment UX** | Make the path from `status` / `doctor` / `ontology bootstrap` to `/ontology-enrich` obvious enough that users can get useful enriched ontology without manually authoring YAML. |
+| 8 | **Dogfood proof of generated ontology value** | Run the full bootstrap + enrichment lifecycle against at least one sanitized managed fixture and record whether the next agent receives better context than static fragments alone. |
 
 Progress:
 - 2026-05-02: Added generation-boundary CLI guidance for `init`,
@@ -225,12 +240,19 @@ Progress:
   renders `schema_version: anamnesis.bootstrap.v1`, deterministic
   `generator`, and wrapped `facts`; `.enriched.yaml` guidance now requires
   `schema_version: anamnesis.enriched.v1`.
+- 2026-05-03: Re-centered the remaining v0.6 plan on bounded Layer A
+  baselines plus agent-assisted Layer B enrichment. Introspector work remains
+  allowed only when a real dogfood gap shows that deterministic facts, not
+  semantic enrichment, are the blocker.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context
   state is CLI-generated, agent-enriched, or still missing.
-- Agents get materially better project understanding from regenerated
-  ontology in at least one sanitized managed fixture.
+- Agents get materially better project understanding from generated and
+  enriched ontology in at least one sanitized managed fixture.
+- Layer A output stays deterministic and shallow enough to be trusted as
+  facts; Layer B carries relationships, flows, intent, invariants, and weak
+  inferences.
 - Ontology refresh and enrichment are safe enough to run repeatedly during
   normal project lifecycle work.
 
@@ -247,6 +269,7 @@ Exit criteria:
 | 3 | **Native-surface improvements** | Where a tool offers a better native surface, use it; where it does not, keep fallback instructions explicit and testable. |
 | 4 | **Lifecycle hardening** | Reduce surprises around pinned fragments, user-modified regions, backups, declined suggestions, and multi-scope updates as projects evolve. |
 | 5 | **Public UX docs** | Document the expected user journey for "install once, switch agents, continue work" with limitations per adapter. |
+| 6 | **Ontology refresh workflow hardening** | Turn the v0.6 bootstrap/enrichment path into a reliable lifecycle workflow: detect stale facts, prompt or route agent enrichment, preserve reviewed semantics, and keep all adapter entrypoints pointing at the same context. |
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff
