@@ -127,7 +127,7 @@ semantic generation:
 |---|---|---|
 | CLI (`init`, `update`) | `AGENTS.md`, static `.anamnesis/ontology/*.yaml`, adapter surfaces | Managed context, baseline ontology slices, and tool-specific read surfaces |
 | CLI (`ontology bootstrap`) | `.anamnesis/ontology/*.bootstrap.yaml` | Regenerable Layer A facts such as routes, models, services, namespaces, and ports |
-| Agent (`/ontology-enrich`) | `.anamnesis/ontology/*.enriched.yaml` | Layer B semantics: relationships, flows, intent, operational rules, and decisions |
+| Agent (`/ontology-enrich`) | `.anamnesis/ontology/*.enriched.yaml` | Layer B semantics with stable IDs, evidence, confidence, append-safe re-runs, `supersedes`, and `open_questions` |
 | Agent (`/handoff-prepare`) | `.anamnesis/handoff/active.md` plus timestamped archives | Current task state for switching sessions or agents |
 
 CLI commands print this boundary so users can tell whether the current

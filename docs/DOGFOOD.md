@@ -49,7 +49,7 @@ The underlying checklist is:
 
 ## Current Dogfood Baseline
 
-Recorded: 2026-04-30
+Recorded: 2026-05-03
 
 Scope: this repository, `anamnesis`.
 
@@ -62,7 +62,7 @@ tools:
   - cursor
 fragments:
   - id: base
-    version: 6
+    version: 7
 ```
 
 Commands run:
@@ -82,13 +82,13 @@ Results:
 | Check | Result |
 |---|---|
 | Adapter dogfood surface | Improved: `Agentfile` now enables `claude-code`, `codex`, and `cursor` instead of Claude Code only. |
-| Managed entries | Improved: `status` reports 18 clean entries after adding Codex fallback regions and Cursor rule files. Previous self-check had 10 clean entries. |
-| Fragment state | `base@6` in-sync. |
+| Managed entries | Improved: `status` reports 19 clean entries after adding Codex fallback regions, Cursor rule files, and the Claude Code entrypoint. Previous self-check had 10 clean entries. |
+| Fragment state | `base@7` in-sync. |
 | Drift | none. |
 | Doctor | ok: 0 errors, 0 warnings. |
 | Ontology gaps | `status` reports actionable warning counts plus informational Layer A coverage gaps. |
 | Ontology bootstrap | `base` skipped-no-introspector; no files written. This is expected for the base fragment. |
-| Tests | 411 tests passed across 34 files. |
+| Tests | 428 tests passed across 37 files. |
 | Typecheck | passed. |
 
 Continuity surfaces now present in this repo:
@@ -309,3 +309,32 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood simulate-stale-handoff` | pass | 49 | status and doctor detect active.md that does not reference the newest archive |
 | `npm run typecheck` | pass | 1400 | passed |
 | `npm test` | pass | 2640 | passed |
+
+
+## Automated Self-Check — 2026-05-02T16:03:57.478Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@7:in-sync
+Drift: 19 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (266ms); anamnesis dogfood simulate-stale-handoff: pass (44ms); npm run typecheck: pass (1259ms); npm test: pass (1881ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 266 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 44 | status and doctor detect active.md that does not reference the newest archive |
+| `npm run typecheck` | pass | 1259 | passed |
+| `npm test` | pass | 1881 | passed |

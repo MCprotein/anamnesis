@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 10 capabilities (covers all 5 types; v7+)
+├── fragment.yaml                # 10 capabilities (covers all 5 types; v6+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -25,7 +25,7 @@ base/
         ├── load-context/
         │   └── SKILL.md         # load-context skill
         └── ontology-enrich/
-            └── SKILL.md         # Layer B ontology enrichment + re-run lifecycle skill
+            └── SKILL.md         # Layer B ontology enrichment skill
 ```
 
 ## Why every capability type?

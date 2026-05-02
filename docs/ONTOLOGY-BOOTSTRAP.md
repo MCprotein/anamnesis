@@ -191,17 +191,68 @@ agent:
    - cross-namespace dependencies
    - operational rules (e.g., "skip_verify unsupported on containerd v2")
    - hostname/path/port intent (why this NodePort, what it serves)
-4. Append to .anamnesis/ontology/<fragment>.enriched.yaml under top-level keys:
+4. Write or update .anamnesis/ontology/<fragment>.enriched.yaml under top-level keys:
      relationships:
      flows:
      operational_notes:
+     open_questions:
    Never modify .bootstrap.yaml (auto-generated).
-5. Stop. Show diff. User reviews and commits.
+5. Merge existing enriched content by stable entry IDs.
+6. Stop. Show diff. User reviews and commits.
 ```
 
 Tool-agnostic — same content rendered via SKILL.md (CC), AGENTS.md
 region (Codex), `.cursor/rules/*.mdc` (Cursor). Existing skill
 rendering pipeline handles this for free.
+
+### Layer B re-run policy
+
+`<id>.enriched.yaml` is user-reviewed semantic memory. A re-run must treat
+existing content as state, not scratch output:
+
+- **Same id, same meaning**: leave unchanged.
+- **New id, new fact**: append with `evidence` and `confidence`.
+- **Old id, changed design**: append a replacement with `supersedes:
+  "<old-id>"` instead of deleting the old entry.
+- **Old id, invalid fact**: make the smallest correction only when preserving
+  the old text would mislead the next agent.
+- **Weak evidence or inference**: write an `open_questions` entry instead of
+  pretending it is a fact.
+- **Ordering**: preserve existing arrays; append by default.
+
+Recommended entry fields:
+
+```yaml
+relationships:
+  - id: "service-to-ingress"
+    from: { kind: Service, name: api, namespace: app }
+    to: { kind: Ingress, name: api, namespace: app }
+    reason: "Ingress terminates external HTTP traffic before routing to api"
+    evidence:
+      - "k8s.bootstrap.yaml: Service/api and Ingress/api"
+    confidence: "high"
+
+flows:
+  - id: "user-login"
+    name: "user login"
+    path: "browser -> web -> api -> postgres"
+    evidence:
+      - "README.md: authentication flow"
+    confidence: "medium"
+
+operational_notes:
+  - id: "db-migration-before-deploy"
+    rule: "Run migrations before deploying api pods"
+    severity: "must"
+    evidence:
+      - "AGENTS.md: deploy invariant"
+
+open_questions:
+  - id: "cache-owner"
+    question: "Which service owns cache invalidation?"
+    evidence:
+      - "No owner found in docs or bootstrap output"
+```
 
 ---
 
@@ -241,7 +292,7 @@ rendering pipeline handles this for free.
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
 | 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | +14 | shipped |
-| 0.6.x | ontology drift reporting, Layer B re-run semantics, targeted introspector improvements from dogfood gaps | — | planned |
+| 0.6.x | ontology drift reporting, Layer B re-run semantics, targeted introspector improvements from dogfood gaps | +0 so far | in progress; re-run semantics shipped in base v7 |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
 (sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later
@@ -253,9 +304,9 @@ should be evidence-driven, not added just to fill out a catalog.
 
 ## 11. Open questions
 
-- **Layer B re-runs**: if user runs `/ontology-enrich` twice, does it
-  append, replace, or diff? Lean toward "instruct agent to merge
-  intelligently and present diff" — defer enforcement to the agent.
+- **Layer B re-runs**: resolved in base v7 as append-safe merge by stable
+  entry IDs, `supersedes` for replacement designs, and `open_questions` for
+  weak evidence.
 - **Multi-scope fact aggregation**: resolved in 0.4.1 as per-scope
   output. Each scope's introspector reads its own subtree; root-level
   manifests are handled by the root scope only.

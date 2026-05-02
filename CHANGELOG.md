@@ -22,6 +22,10 @@ breaking changes until v1.0.
   `.enriched.yaml` semantics, fragments without deterministic Layer A
   introspectors, and introspectors that are not applicable in a scope;
   `doctor` turns actionable gaps into repair warnings.
+- Added the base v7 Layer B enrichment lifecycle contract. `/ontology-enrich`
+  now tells every supported adapter to merge existing `.enriched.yaml`
+  content by stable IDs, append new facts, use `supersedes` for replaced
+  designs, and put weak inferences under `open_questions`.
 
 ### Documentation
 
@@ -33,6 +37,8 @@ breaking changes until v1.0.
 - Updated README, design notes, dogfood notes, and the Agentfile spec to
   describe the managed Claude Code entrypoint.
 - Documented the ontology gap report in the README and ontology bootstrap
+  design notes.
+- Documented the Layer B enrichment re-run policy in the ontology bootstrap
   design notes.
 
 ## [0.5.0] — 2026-04-30

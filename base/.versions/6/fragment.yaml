@@ -1,10 +1,10 @@
 id: base
-version: 7
+version: 6
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
-  the ontology-enrich lifecycle contract, and the AGENTS.md baseline region.
-  anamnesis init auto-includes this fragment regardless of rulebook matches.
+  and the AGENTS.md baseline region. anamnesis init auto-includes this
+  fragment regardless of rulebook matches.
 capabilities:
   - type: project_memory
     source: content/agents.snippet.md

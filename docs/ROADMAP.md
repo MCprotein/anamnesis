@@ -214,6 +214,10 @@ Progress:
 - 2026-05-03: Added ontology gap reporting to `status` / `doctor` so
   installed fragments show whether static ontology, deterministic bootstrap
   facts, semantic enrichment, or Layer A introspector support is missing.
+- 2026-05-03: Added base v7 Layer B enrichment lifecycle rules so
+  `/ontology-enrich` re-runs merge by stable IDs, append new facts, use
+  `supersedes` for replaced designs, and record weak evidence as
+  `open_questions`.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context

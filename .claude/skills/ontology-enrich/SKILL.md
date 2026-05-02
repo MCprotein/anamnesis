@@ -13,6 +13,8 @@ description: |
 
 This skill is **Layer B**: agent-driven semantic enrichment. You read the bootstrap output plus surrounding context, then write the *meaning* into a sibling `enriched.yaml` file.
 
+Layer B is re-runnable. Existing semantic entries are user-reviewed project memory, so every re-run must merge carefully instead of replacing the file wholesale.
+
 ## Steps
 
 1. **Discover ontology files**:
@@ -34,33 +36,67 @@ This skill is **Layer B**: agent-driven semantic enrichment. You read the bootst
    - **Operational notes** — invariants ("skip_verify unsupported on containerd v2"), gotchas ("ClusterIP changes require microk8s restart"), why-this-design decisions
    - **Intent** — purpose of specific resources (e.g., "this NodePort exposes the Steam query endpoint", "this Ingress fronts the OCI registry")
 
-4. **Write `<id>.enriched.yaml`** for each fragment, using these top-level keys:
+4. **Write or update `<id>.enriched.yaml`** for each fragment, using these top-level keys:
    ```yaml
    relationships:
-     - from: { namespace: zot, kind: Service, name: zot }
+     - id: "zot-service-ingress"
+       from: { namespace: zot, kind: Service, name: zot }
        to:   { namespace: traefik, kind: Ingress, name: zot }
        reason: "external TLS termination + cert delivery via DNS-01"
+       evidence:
+         - "k8s.bootstrap.yaml: Service/zot and Ingress/zot"
+       confidence: "high"
 
    flows:
-     - name: "image push"
+     - id: "image-push"
+       name: "image push"
        path: "developer → github actions runner → zot.zot.svc.cluster.local:5000"
-     - name: "image pull (kubelet)"
+       evidence:
+         - "docs/architecture.md: image publishing"
+       confidence: "medium"
+     - id: "image-pull-kubelet"
+       name: "image pull (kubelet)"
        path: "kubelet → registry.<host>:8443 → certs.d → ClusterIP redirect"
 
    operational_notes:
      - id: "containerd-v2-skip-verify"
        rule: "MicroK8s containerd v2 does not support `skip_verify`; setting it crashes the runtime"
        severity: "must"
+       evidence:
+         - "AGENTS.md: deployment invariant"
+
+   open_questions:
+     - id: "registry-retention-owner"
+       question: "Which component owns registry retention policy?"
+       evidence:
+         - "No retention configuration found in bootstrap output"
    ```
-   Use whichever subset of keys applies. Omit empty sections rather than emitting `relationships: []`.
+   Use whichever subset of keys applies. Omit empty sections rather than emitting `relationships: []`. Prefer stable `id` fields for every entry so future re-runs can merge by identity.
 
 5. **Never modify `<id>.bootstrap.yaml`** — it's auto-regenerable; your edits would be lost on the next bootstrap. Always write to `<id>.enriched.yaml`.
 
-6. **Show the diff** to the user. State what you added, why, and what you weren't sure about. Stop. Let the user review and commit.
+6. **Apply the re-run merge policy**:
+   - Preserve existing entries, ordering, wording, and IDs unless the underlying fact is clearly wrong or the user asked for cleanup.
+   - If an existing entry still holds, leave it unchanged.
+   - If you discover a new semantic fact, append a new entry with a stable `id`, `evidence`, and `confidence`.
+   - If a previous entry is superseded by a new design, append the replacement with `supersedes: "<old-id>"` instead of deleting the old entry.
+   - If a previous entry is wrong and keeping it would mislead future agents, make the smallest direct correction and explain it in the final diff summary.
+   - If evidence is weak or the relationship is inferred, put it under `open_questions` rather than pretending it is a fact.
+   - Do not reorder existing arrays just to make the file prettier. Append-only is the default.
+
+7. **Show the diff** to the user. State what you added, what you preserved, what you superseded or corrected, and what remains uncertain. Stop. Let the user review and commit.
 
 ## Re-running this skill
 
-If `<id>.enriched.yaml` already exists, treat it as the source of truth for semantic content the user has already approved. Add new entries; do not overwrite or reorder existing entries unless the underlying fact changed (e.g., a service moved namespaces). When in doubt, append rather than rewrite.
+If `<id>.enriched.yaml` already exists, treat it as the source of truth for semantic content the user has already approved. Merge by stable `id` where possible:
+
+- **Same id, same meaning**: leave unchanged.
+- **New id, new fact**: append.
+- **Old id, changed design**: append a replacement with `supersedes`.
+- **Old id, invalid fact**: make the smallest correction only when preserving the old text would harm the next agent.
+- **Uncertain fact**: write an `open_questions` entry.
+
+When in doubt, append rather than rewrite.
 
 ## When to invoke
 
