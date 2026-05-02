@@ -45,11 +45,11 @@
       "file": "AGENTS.md",
       "region_id": "codex-skill-ontology-enrich",
       "fragment_id": "base",
-      "fragment_version": 7,
-      "template_version": 7,
+      "fragment_version": 8,
+      "template_version": 8,
       "base_rendered_hash": "sha256:af19fc00e987dbc1acc9178238a26a66378f62b292cc3b426212cb7aab46557e",
-      "last_applied_hash": "sha256:8f4b6835222af4e53a2810908f65b2a393265ec59889d81e55f953a6b2be0051",
-      "current_user_hash": "sha256:8f4b6835222af4e53a2810908f65b2a393265ec59889d81e55f953a6b2be0051"
+      "last_applied_hash": "sha256:1f69c3513f8cf994cc1584aca6259d0d7afaea13647dd78d1fb41f95e57e10f6",
+      "current_user_hash": "sha256:1f69c3513f8cf994cc1584aca6259d0d7afaea13647dd78d1fb41f95e57e10f6"
     },
     {
       "file": "CLAUDE.md",
@@ -115,9 +115,9 @@
     {
       "path": ".claude/skills/ontology-enrich/SKILL.md",
       "fragment_id": "base",
-      "fragment_version": 7,
-      "last_applied_hash": "sha256:c71484fb4e3e31932a8642a87acc77e19fb6ee470773653881a6dff8031eac20",
-      "current_user_hash": "sha256:c71484fb4e3e31932a8642a87acc77e19fb6ee470773653881a6dff8031eac20"
+      "fragment_version": 8,
+      "last_applied_hash": "sha256:06c3baa9d857fcaf248d5ec1dd2f0387e838286c13edd13acf89b99e29544b1f",
+      "current_user_hash": "sha256:06c3baa9d857fcaf248d5ec1dd2f0387e838286c13edd13acf89b99e29544b1f"
     },
     {
       "path": ".claude/hooks/handoff-reminder.sh",
@@ -150,9 +150,9 @@
     {
       "path": ".cursor/rules/ontology-enrich.mdc",
       "fragment_id": "base",
-      "fragment_version": 7,
-      "last_applied_hash": "sha256:fa121abdb9ada4e59bc804dae959f95e990034c7d7246e4de80608cc7d2ad1d8",
-      "current_user_hash": "sha256:fa121abdb9ada4e59bc804dae959f95e990034c7d7246e4de80608cc7d2ad1d8"
+      "fragment_version": 8,
+      "last_applied_hash": "sha256:a56529b8be36037b4d599c03a19c81de2524bb4f93c225ea26fdd73521cd2b2b",
+      "current_user_hash": "sha256:a56529b8be36037b4d599c03a19c81de2524bb4f93c225ea26fdd73521cd2b2b"
     }
   ]
 }

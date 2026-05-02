@@ -152,22 +152,29 @@ itself via `registerBuiltinIntrospectors(registry)`.
 # Re-run bootstrap to refresh. To add semantic notes, edit
 # .anamnesis/ontology/k8s.enriched.yaml instead.
 #
+# schema_version: anamnesis.bootstrap.v1
 # generator: anamnesis@0.5.0 introspector=k8s
 
-namespaces:
-  - sanitized-app
-  - zot
-  - traefik
-services:
-  - name: zot
-    namespace: zot
-    type: ClusterIP
-    ports: [{ name: http, port: 5000, target: 5000 }]
-ingresses:
-  - host: registry.mcprotein.mywire.org
-    paths: [{ path: /, service: zot, port: 5000 }]
-workloads:
-  - { kind: Deployment, name: zot, namespace: zot, image: ghcr.io/project-zot/zot:v2.x }
+facts:
+  namespaces:
+    - sanitized-app
+    - zot
+    - traefik
+  services:
+    - name: zot
+      namespace: zot
+      type: ClusterIP
+      ports: [{ name: http, port: 5000, target: 5000 }]
+  ingresses:
+    - host: registry.mcprotein.mywire.org
+      paths: [{ path: /, service: zot, port: 5000 }]
+  workloads:
+    - { kind: Deployment, name: zot, namespace: zot, image: ghcr.io/project-zot/zot:v2.x }
+generator:
+  introspector: k8s
+  name: anamnesis
+  version: 0.5.0
+schema_version: anamnesis.bootstrap.v1
 ```
 
 `bootstrap.yaml` files are regenerable Layer A outputs. Re-running
@@ -176,6 +183,15 @@ only owns fragment-rendered surfaces. `status` / `doctor` report when an
 applicable installed fragment is missing bootstrap or enrichment files, or
 when the existing bootstrap output no longer matches the current
 introspector result.
+
+Stable bootstrap conventions:
+
+- `schema_version` is required and currently `anamnesis.bootstrap.v1`.
+- `generator.name` is `anamnesis`.
+- `generator.introspector` matches the fragment/introspector id.
+- `facts` contains deterministic parser output. Its shape is
+  introspector-specific, but keys and arrays should stay stable-sorted unless
+  order is semantic.
 
 ---
 
@@ -194,6 +210,7 @@ agent:
    - operational rules (e.g., "skip_verify unsupported on containerd v2")
    - hostname/path/port intent (why this NodePort, what it serves)
 4. Write or update .anamnesis/ontology/<fragment>.enriched.yaml under top-level keys:
+     schema_version:
      relationships:
      flows:
      operational_notes:
@@ -225,6 +242,8 @@ existing content as state, not scratch output:
 Recommended entry fields:
 
 ```yaml
+schema_version: "anamnesis.enriched.v1"
+
 relationships:
   - id: "service-to-ingress"
     from: { kind: Service, name: api, namespace: app }
@@ -255,6 +274,17 @@ open_questions:
     evidence:
       - "No owner found in docs or bootstrap output"
 ```
+
+Stable enriched conventions:
+
+- `schema_version` is required and currently `anamnesis.enriched.v1`.
+- `id` is required for every `relationships`, `flows`, `operational_notes`,
+  and `open_questions` entry.
+- `confidence` should be `high`, `medium`, or `low` when present.
+- `operational_notes[].severity` should be `must`, `should`, or `note`.
+- `evidence` should cite concrete files, bootstrap facts, docs, or observed
+  behavior.
+- `supersedes` points to the stable `id` of a replaced entry.
 
 ---
 
@@ -293,7 +323,7 @@ open_questions:
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
 | 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | +14 | shipped |
-| 0.6.x | ontology drift reporting, Layer B re-run semantics, targeted introspector improvements from dogfood gaps | +5 so far | in progress; gap report, re-run semantics, and bootstrap drift shipped |
+| 0.6.x | ontology drift reporting, Layer B re-run semantics, output schema stabilization, targeted introspector improvements from dogfood gaps | +5 so far | in progress; gap report, re-run semantics, bootstrap drift, and schema conventions shipped |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
 (sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later
@@ -314,6 +344,5 @@ should be evidence-driven, not added just to fill out a catalog.
 - **Stable ordering**: introspector output must be deterministic to
   avoid spurious drift. Use sorted keys, sorted arrays where order is
   not semantic.
-- **Schema versioning**: `<id>.bootstrap.yaml` should carry a
-  `schema_version` field so future introspector changes can migrate
-  smoothly.
+- **Schema versioning**: resolved for current v0.6 scope with
+  `anamnesis.bootstrap.v1` and `anamnesis.enriched.v1`.

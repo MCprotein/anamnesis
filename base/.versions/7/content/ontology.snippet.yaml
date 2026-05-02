@@ -1,0 +1,14 @@
+# anamnesis baseline ontology slice.
+# Stack-specific fragments append their own slices under .anamnesis/ontology/.
+# The user's project-specific entities live in system_graph.yaml at project root.
+
+managed_by: anamnesis
+schema_version: 1
+
+anamnesis:
+  doc: https://github.com/MCprotein/anamnesis
+  conventions:
+    region_anchor: "<!-- anamnesis:region id=<id> fragment=<frag>@<ver> -->"
+    manifest_path: .anamnesis/manifest.json
+    backups_path: .anamnesis/backups/<timestamp>/
+    ontology_dir: .anamnesis/ontology/

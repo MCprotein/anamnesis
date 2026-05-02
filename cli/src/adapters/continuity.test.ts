@@ -147,7 +147,14 @@ describe("cross-agent context continuity acceptance", () => {
     );
     expectContainsAll(
       fileByPath(actions, ".claude/skills/ontology-enrich/SKILL.md").content,
-      ["Layer B", "enriched.yaml", "supersedes", "open_questions"],
+      [
+        "Layer B",
+        "enriched.yaml",
+        "schema_version",
+        "anamnesis.enriched.v1",
+        "supersedes",
+        "open_questions",
+      ],
     );
   });
 
@@ -173,6 +180,7 @@ describe("cross-agent context continuity acceptance", () => {
         "Skill: `ontology-enrich`",
         "Layer B",
         "enriched.yaml",
+        "anamnesis.enriched.v1",
         "supersedes",
       ],
     );
@@ -202,7 +210,13 @@ describe("cross-agent context continuity acceptance", () => {
     );
     expectContainsAll(
       fileByPath(actions, ".cursor/rules/ontology-enrich.mdc").content,
-      ["agentRequested: true", "Layer B", "enriched.yaml", "open_questions"],
+      [
+        "agentRequested: true",
+        "Layer B",
+        "enriched.yaml",
+        "anamnesis.enriched.v1",
+        "open_questions",
+      ],
     );
   });
 });

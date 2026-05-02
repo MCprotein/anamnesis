@@ -1,19 +1,48 @@
 // Shared renderer for deterministic Layer A ontology bootstrap files.
 
 import { stringify as stringifyYaml } from "yaml";
-import type { Introspector } from "./introspector.js";
+import type { Introspector, OntologyFacts } from "./introspector.js";
 
 const VERSION = "0.5.0";
+export const BOOTSTRAP_ONTOLOGY_SCHEMA_VERSION = "anamnesis.bootstrap.v1";
+
+export interface BootstrapOntologyDocument {
+  schema_version: typeof BOOTSTRAP_ONTOLOGY_SCHEMA_VERSION;
+  generator: {
+    name: "anamnesis";
+    version: string;
+    introspector: string;
+  };
+  facts: OntologyFacts;
+}
 
 export function renderBootstrapOntology(
   introspector: Introspector,
-  facts: object,
+  facts: OntologyFacts,
 ): string {
-  const yaml = stringifyYaml(facts, {
-    sortMapEntries: true,
-    aliasDuplicateObjects: false,
-  });
+  const yaml = stringifyYaml(
+    buildBootstrapOntologyDocument(introspector, facts),
+    {
+      sortMapEntries: true,
+      aliasDuplicateObjects: false,
+    },
+  );
   return `${buildBootstrapHeader(introspector)}${yaml}`;
+}
+
+export function buildBootstrapOntologyDocument(
+  introspector: Introspector,
+  facts: OntologyFacts,
+): BootstrapOntologyDocument {
+  return {
+    schema_version: BOOTSTRAP_ONTOLOGY_SCHEMA_VERSION,
+    generator: {
+      name: "anamnesis",
+      version: VERSION,
+      introspector: introspector.fragmentId,
+    },
+    facts,
+  };
 }
 
 function buildBootstrapHeader(introspector: Introspector): string {
@@ -22,6 +51,7 @@ function buildBootstrapHeader(introspector: Introspector): string {
     `# Re-run bootstrap to refresh. To add semantic notes, edit`,
     `# .anamnesis/ontology/${introspector.fragmentId}.enriched.yaml instead.`,
     `#`,
+    `# schema_version: ${BOOTSTRAP_ONTOLOGY_SCHEMA_VERSION}`,
     `# generator: anamnesis@${VERSION} introspector=${introspector.fragmentId}`,
     ``,
   ].join("\n");

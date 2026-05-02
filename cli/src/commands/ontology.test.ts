@@ -74,7 +74,9 @@ describe("ontology bootstrap", () => {
     expect(fs.existsSync(fp)).toBe(true);
     const content = fs.readFileSync(fp, "utf8");
     expect(content).toContain("AUTO-GENERATED");
+    expect(content).toContain("schema_version: anamnesis.bootstrap.v1");
     expect(content).toContain("introspector=k8s");
+    expect(content).toContain("facts:");
     expect(content).toContain("alpha");
     expect(content).toContain("beta");
   });

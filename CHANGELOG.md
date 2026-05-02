@@ -30,6 +30,10 @@ breaking changes until v1.0.
   `.bootstrap.yaml` files against the current deterministic introspector
   output and reports stale facts; `doctor` turns stale bootstrap output into
   an actionable repair warning.
+- Added ontology schema version conventions. `.bootstrap.yaml` output now
+  includes deterministic `schema_version`, `generator`, and `facts` fields;
+  base v8 requires `.enriched.yaml` files to use
+  `schema_version: anamnesis.enriched.v1`.
 
 ### Documentation
 
@@ -45,6 +49,7 @@ breaking changes until v1.0.
 - Documented the Layer B enrichment re-run policy in the ontology bootstrap
   design notes.
 - Documented bootstrap drift detection in the ontology bootstrap design notes.
+- Documented the bootstrap and enriched ontology schema conventions.
 
 ## [0.5.0] — 2026-04-30
 

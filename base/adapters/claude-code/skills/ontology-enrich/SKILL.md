@@ -36,8 +36,10 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
    - **Operational notes** — invariants ("skip_verify unsupported on containerd v2"), gotchas ("ClusterIP changes require microk8s restart"), why-this-design decisions
    - **Intent** — purpose of specific resources (e.g., "this NodePort exposes the Steam query endpoint", "this Ingress fronts the OCI registry")
 
-4. **Write or update `<id>.enriched.yaml`** for each fragment, using these top-level keys:
+4. **Write or update `<id>.enriched.yaml`** for each fragment, using schema version `anamnesis.enriched.v1` and these top-level keys:
    ```yaml
+   schema_version: "anamnesis.enriched.v1"
+
    relationships:
      - id: "zot-service-ingress"
        from: { namespace: zot, kind: Service, name: zot }
@@ -72,6 +74,14 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
          - "No retention configuration found in bootstrap output"
    ```
    Use whichever subset of keys applies. Omit empty sections rather than emitting `relationships: []`. Prefer stable `id` fields for every entry so future re-runs can merge by identity.
+
+   Stable conventions:
+   - `schema_version` is required and must be `anamnesis.enriched.v1`.
+   - `id` is required for every relationship, flow, operational note, and open question.
+   - `confidence` should be `high`, `medium`, or `low` when present.
+   - `severity` for operational notes should be `must`, `should`, or `note`.
+   - `evidence` should cite concrete files, bootstrap facts, docs, or observed behavior.
+   - `supersedes` points to the stable `id` of a replaced entry.
 
 5. **Never modify `<id>.bootstrap.yaml`** — it's auto-regenerable; your edits would be lost on the next bootstrap. Always write to `<id>.enriched.yaml`.
 

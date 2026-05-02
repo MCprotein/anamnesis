@@ -221,6 +221,10 @@ Progress:
 - 2026-05-03: Added bootstrap ontology drift detection so `status` compares
   existing `.bootstrap.yaml` files with current deterministic introspector
   output and `doctor` reports stale Layer A facts as repairable warnings.
+- 2026-05-03: Stabilized ontology output conventions: `.bootstrap.yaml` now
+  renders `schema_version: anamnesis.bootstrap.v1`, deterministic
+  `generator`, and wrapped `facts`; `.enriched.yaml` guidance now requires
+  `schema_version: anamnesis.enriched.v1`.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context
