@@ -9,7 +9,7 @@
 //   * Auto-bumps Agentfile fragment versions to match the library on apply.
 //   * Reports new rulebook matches as `suggested` — does NOT auto-install.
 
-import { existsSync } from "node:fs";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import {
   readAgentfile,
@@ -85,6 +85,8 @@ export interface UpdateResult {
   /** Absolute path of the backup directory created on apply (if any updates occurred). */
   backupDir?: string;
   backedUpFiles?: string[];
+  /** Relative backup directories pruned after apply according to backup_retention. */
+  prunedBackupDirs?: string[];
   /** Per-registration outcome of post-apply settings.json sync. */
   hookRegistrations: HookSyncResult[];
 }
@@ -159,7 +161,7 @@ function resolveInstalledFragment(opts: {
 
 function pathExists(fp: string): boolean {
   try {
-    return existsSync(fp);
+    return fs.existsSync(fp);
   } catch {
     return false;
   }
@@ -391,6 +393,7 @@ export function update(opts: UpdateOptions): UpdateResult {
   // 9. Apply (or dry-run).
   let backupDir: string | undefined;
   let backedUpFiles: string[] | undefined;
+  let prunedBackupDirs: string[] | undefined;
   let hookRegistrations: HookSyncResult[] = [];
   if (opts.apply) {
     backupDir = path.join(
@@ -400,6 +403,11 @@ export function update(opts: UpdateOptions): UpdateResult {
       timestampedBackupName(),
     );
     backedUpFiles = backupBeforeApply(changes, { projectRoot, backupDir });
+    prunedBackupDirs = pruneBackups({
+      projectRoot,
+      retention: agentfile.settings?.backup_retention ?? 10,
+      enabled: backedUpFiles.length > 0,
+    });
     applyChanges(changes, { projectRoot });
     writeManifest(projectRoot, nextManifest);
     writeAgentfile(projectRoot, updatedAgentfile);
@@ -414,8 +422,44 @@ export function update(opts: UpdateOptions): UpdateResult {
     writtenToDisk: opts.apply,
     backupDir: opts.apply ? backupDir : undefined,
     backedUpFiles: opts.apply ? backedUpFiles : undefined,
+    prunedBackupDirs: opts.apply ? prunedBackupDirs : undefined,
     hookRegistrations,
   };
+}
+
+function pruneBackups(opts: {
+  projectRoot: string;
+  retention: number;
+  enabled: boolean;
+}): string[] {
+  if (!opts.enabled || opts.retention === 0) return [];
+  const backupsRoot = path.join(opts.projectRoot, ".anamnesis", "backups");
+  if (!fs.existsSync(backupsRoot)) return [];
+
+  const dirs = listBackupDirs(backupsRoot);
+  const stale = dirs.slice(opts.retention);
+  for (const dir of stale) {
+    fs.rmSync(path.join(backupsRoot, dir.name), {
+      recursive: true,
+      force: true,
+    });
+  }
+  return stale.map((dir) =>
+    path.posix.join(".anamnesis/backups", dir.name),
+  );
+}
+
+function listBackupDirs(
+  backupsRoot: string,
+): Array<{ name: string; mtimeMs: number }> {
+  return fs
+    .readdirSync(backupsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => ({
+      name: entry.name,
+      mtimeMs: fs.statSync(path.join(backupsRoot, entry.name)).mtimeMs,
+    }))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs || b.name.localeCompare(a.name));
 }
 
 /**

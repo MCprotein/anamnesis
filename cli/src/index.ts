@@ -586,6 +586,9 @@ function reportUpdate(result: UpdateResult): void {
     if (result.backedUpFiles && result.backedUpFiles.length > 0) {
       console.log(`  backup: ${result.backupDir}`);
     }
+    if (result.prunedBackupDirs && result.prunedBackupDirs.length > 0) {
+      console.log(`  pruned backups: ${result.prunedBackupDirs.length}`);
+    }
   } else {
     console.log("  (dry-run — re-run with --apply to actually write)");
   }

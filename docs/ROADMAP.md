@@ -303,6 +303,10 @@ Progress:
   deterministic context-quality reporting across static ontology, Layer A
   bootstrap facts, Layer B enrichment, continuity readiness, and adapter
   surfaces. Reports append to `docs/BENCHMARKS.md`.
+- 2026-05-03: Hardened backup lifecycle behavior by enforcing
+  `settings.backup_retention` during `update --apply`; old
+  `.anamnesis/backups/*` directories are pruned only after a new backup is
+  created, and `0` keeps backups unlimited.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff

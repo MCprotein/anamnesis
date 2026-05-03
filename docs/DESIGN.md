@@ -364,6 +364,10 @@ manifest 해시 단위로 관리:
 .anamnesis/backups/{ISO timestamp}/
 ```
 
+`settings.backup_retention` controls lifecycle cleanup for those backup
+directories during `update --apply`: keep the newest N backup directories,
+or keep all backups when set to `0`.
+
 단 Codex 지적대로 백업 디렉토리는 **최후의 안전망**. 주 UX 는 `git diff` 프리뷰와 사용자 수정 승격. 백업은 "실수로 눌렀을 때만" 쓴다.
 
 ---

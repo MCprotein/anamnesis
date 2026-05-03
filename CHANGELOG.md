@@ -31,6 +31,9 @@ breaking changes until v1.0.
   resolve from packaged installs.
 - Dogfood handoff simulations now use the first-install all-adapter init path
   instead of editing `Agentfile.tools` and running `update` as a workaround.
+- `update --apply` now enforces `settings.backup_retention` after creating a
+  new backup. The default keeps the newest 10 backup directories; `0` keeps
+  backups unlimited.
 
 ## [0.6.0] — 2026-05-03
 

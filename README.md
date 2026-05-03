@@ -119,7 +119,7 @@ anamnesis benchmark report --append  # record deterministic context-quality evid
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 
-Re-running `update` on an unchanged project produces only `noop` results. User edits are surfaced as `user-modified` and library updates skip them. Backups go to `.anamnesis/backups/<timestamp>/`.
+Re-running `update` on an unchanged project produces only `noop` results. User edits are surfaced as `user-modified` and library updates skip them. Backups go to `.anamnesis/backups/<timestamp>/`; `settings.backup_retention` keeps the newest N backup directories (`0` means unlimited).
 
 ### Generation boundary
 

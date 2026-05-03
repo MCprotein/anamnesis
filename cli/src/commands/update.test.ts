@@ -378,6 +378,30 @@ describe("update — user-modified preservation", () => {
 // ---------------------------------------------------------------------------
 
 describe("update — backup", () => {
+  function setBackupRetention(project: string, retention: number): void {
+    const af = readAgentfile(project);
+    af.settings = {
+      ontology_file: "system_graph.yaml",
+      agents_md_path: "AGENTS.md",
+      claude_md_path: "CLAUDE.md",
+      commit_on_apply: false,
+      backup_retention: retention,
+    };
+    writeAgentfile(project, af);
+  }
+
+  function writeOldBackup(
+    project: string,
+    name: string,
+    mtime: Date,
+  ): string {
+    const dir = path.join(project, ".anamnesis", "backups", name);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "AGENTS.md"), `backup ${name}\n`);
+    fs.utimesSync(dir, mtime, mtime);
+    return dir;
+  }
+
   it("creates a timestamped backup of files about to be updated", () => {
     const v1Lib = makeLibrary();
     const { project } = setupPrismaProject(v1Lib);
@@ -402,6 +426,68 @@ describe("update — backup", () => {
       "utf8",
     );
     expect(backedUp).toContain("run migrate before deploy");
+  });
+
+  it("prunes old backup directories according to Agentfile backup_retention", () => {
+    const v1Lib = makeLibrary();
+    const { project } = setupPrismaProject(v1Lib);
+    setBackupRetention(project, 1);
+    const oldA = writeOldBackup(
+      project,
+      "2026-01-01T00-00-00-000Z",
+      new Date("2026-01-01T00:00:00.000Z"),
+    );
+    const oldB = writeOldBackup(
+      project,
+      "2026-01-02T00-00-00-000Z",
+      new Date("2026-01-02T00:00:00.000Z"),
+    );
+    const v2Lib = makeLibrary({
+      prismaVersion: 2,
+      prismaContent: "library v2.",
+    });
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: v2Lib,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    expect(result.backedUpFiles).toContain("AGENTS.md");
+    expect(result.prunedBackupDirs).toEqual([
+      ".anamnesis/backups/2026-01-02T00-00-00-000Z",
+      ".anamnesis/backups/2026-01-01T00-00-00-000Z",
+    ]);
+    expect(fs.existsSync(oldA)).toBe(false);
+    expect(fs.existsSync(oldB)).toBe(false);
+    expect(fs.existsSync(result.backupDir!)).toBe(true);
+  });
+
+  it("keeps all backup directories when backup_retention is 0", () => {
+    const v1Lib = makeLibrary();
+    const { project } = setupPrismaProject(v1Lib);
+    setBackupRetention(project, 0);
+    const old = writeOldBackup(
+      project,
+      "2026-01-01T00-00-00-000Z",
+      new Date("2026-01-01T00:00:00.000Z"),
+    );
+    const v2Lib = makeLibrary({
+      prismaVersion: 2,
+      prismaContent: "library v2.",
+    });
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: v2Lib,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    expect(result.prunedBackupDirs).toEqual([]);
+    expect(fs.existsSync(old)).toBe(true);
+    expect(fs.existsSync(result.backupDir!)).toBe(true);
   });
 });
 
