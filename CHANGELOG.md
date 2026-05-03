@@ -7,6 +7,8 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-03
+
 ### Added
 
 - Added a test-backed adapter parity matrix for v0.7. The canonical fixture

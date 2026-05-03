@@ -186,7 +186,7 @@ itself via `registerBuiltinIntrospectors(registry)`.
 # .anamnesis/ontology/k8s.enriched.yaml instead.
 #
 # schema_version: anamnesis.bootstrap.v1
-# generator: anamnesis@0.6.0 introspector=k8s
+# generator: anamnesis@0.7.0 introspector=k8s
 
 facts:
   namespaces:
@@ -206,7 +206,7 @@ facts:
 generator:
   introspector: k8s
   name: anamnesis
-  version: 0.6.0
+  version: 0.7.0
 schema_version: anamnesis.bootstrap.v1
 ```
 

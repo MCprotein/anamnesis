@@ -3,7 +3,7 @@
 import { stringify as stringifyYaml } from "yaml";
 import type { Introspector, OntologyFacts } from "./introspector.js";
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 export const BOOTSTRAP_ONTOLOGY_SCHEMA_VERSION = "anamnesis.bootstrap.v1";
 
 export interface BootstrapOntologyDocument {

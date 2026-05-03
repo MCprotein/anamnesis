@@ -271,7 +271,7 @@ Exit criteria met:
 
 ---
 
-## v0.7 — *planned*
+## v0.7 — *shipped 2026-05-03*
 
 > **Theme: harden multi-agent UX and lifecycle scale**
 
