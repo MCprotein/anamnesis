@@ -26,6 +26,8 @@ breaking changes until v1.0.
 - Included `docs/` in the npm package so README links to the roadmap,
   dogfood log, adapter parity matrix, switching scenarios, and release docs
   resolve from packaged installs.
+- Dogfood handoff simulations now use the first-install all-adapter init path
+  instead of editing `Agentfile.tools` and running `update` as a workaround.
 
 ## [0.6.0] — 2026-05-03
 

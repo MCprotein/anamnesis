@@ -4,8 +4,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { dogfoodCheck, type CommandCheck } from "./dogfood.js";
 import { init } from "./init.js";
-import { update } from "./update.js";
-import { readAgentfile, writeAgentfile, type ToolName } from "../core/agentfile.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -44,17 +42,7 @@ function setupDogfoodProject(): { project: string; library: string } {
     dryRun: false,
     allowExecAdapters: true,
     noBootstrap: true,
-  });
-
-  const af = readAgentfile(project);
-  af.tools = ["claude-code", "codex", "cursor"] satisfies ToolName[];
-  writeAgentfile(project, af);
-
-  update({
-    projectRoot: project,
-    libraryRoot: library,
-    apply: true,
-    allowExecAdapters: true,
+    tools: ["claude-code", "codex", "cursor"],
   });
 
   return { project, library };

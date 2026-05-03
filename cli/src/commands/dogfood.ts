@@ -17,12 +17,7 @@ import {
   type BootstrapResult,
 } from "./ontology.js";
 import { init } from "./init.js";
-import { update } from "./update.js";
-import {
-  readAgentfile,
-  writeAgentfile,
-  type ToolName,
-} from "../core/agentfile.js";
+import type { ToolName } from "../core/agentfile.js";
 
 export type CriterionId =
   | "context-continuity"
@@ -196,16 +191,7 @@ function installAllAdapterSimulationProject(
     dryRun: false,
     allowExecAdapters: true,
     noBootstrap: true,
-  });
-
-  const af = readAgentfile(project);
-  af.tools = [...SUPPORTED_TOOLS];
-  writeAgentfile(project, af);
-  update({
-    projectRoot: project,
-    libraryRoot,
-    apply: true,
-    allowExecAdapters: true,
+    tools: [...SUPPORTED_TOOLS],
   });
   return project;
 }

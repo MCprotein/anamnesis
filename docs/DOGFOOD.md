@@ -28,7 +28,9 @@ The underlying checklist is:
 1. `anamnesis status`
 2. `anamnesis doctor`
 3. `anamnesis ontology bootstrap --dry-run`
-4. Active handoff switch simulation in a temporary all-adapter project;
+4. Active handoff switch simulation in a temporary all-adapter project
+   created through the first-install all-adapter path
+   (`init --tools claude-code,codex,cursor`);
    full ordered 3x3 source/target switching matrix coverage is locked by
    `cli/src/adapters/switching.test.ts` and
    [`docs/SWITCHING-SCENARIOS.md`](SWITCHING-SCENARIOS.md)
