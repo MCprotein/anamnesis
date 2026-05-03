@@ -33,6 +33,7 @@
     "base",
     "fragments",
     "capabilities",
+    "docs",
     "rulebook.md",
     "README.md",
     "LICENSE",

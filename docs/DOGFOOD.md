@@ -28,7 +28,10 @@ The underlying checklist is:
 1. `anamnesis status`
 2. `anamnesis doctor`
 3. `anamnesis ontology bootstrap --dry-run`
-4. Active handoff switch simulation in a temporary all-adapter project
+4. Active handoff switch simulation in a temporary all-adapter project;
+   full ordered 3x3 source/target switching matrix coverage is locked by
+   `cli/src/adapters/switching.test.ts` and
+   [`docs/SWITCHING-SCENARIOS.md`](SWITCHING-SCENARIOS.md)
 5. Stale active handoff diagnostics through `status` / `doctor`
 6. `npm test`
 7. `npm run typecheck`
@@ -106,8 +109,11 @@ Known gaps:
 - `status` now reports continuity readiness and `doctor` emits
   continuity-specific warnings, including stale active handoff state.
 - The current self-check records presence of surfaces and continuity
-  diagnostics, then simulates an active handoff switch locally. It does not
-  invoke real external Claude Code, Codex, or Cursor CLI sessions.
+  diagnostics, then simulates an active handoff switch locally. v0.7 also
+  locks the full ordered 3x3 source/target switching matrix for Claude Code,
+  Codex, and Cursor in
+  [`docs/SWITCHING-SCENARIOS.md`](SWITCHING-SCENARIOS.md). These checks do
+  not invoke real external Claude Code, Codex, or Cursor CLI sessions.
 
 Next checks to improve:
 
@@ -116,6 +122,9 @@ Next checks to improve:
   user-modified managed surfaces.
 - Use dogfood evidence from sanitized managed fixtures to choose the next
   ontology automation work.
+- Promote the 3x3 switching matrix into the recurring dogfood score only if
+  the artifact-level command needs per-pair regression reporting beyond
+  `npm test`.
 - Add real external agent-session smoke checks only if local artifact
   simulation misses a concrete adapter behavior.
 

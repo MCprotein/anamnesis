@@ -18,6 +18,12 @@ breaking changes until v1.0.
   same-agent restarts, with current active handoff and stale handoff
   diagnostics verified for every ordered pair.
 
+### Changed
+
+- Included `docs/` in the npm package so README links to the roadmap,
+  dogfood log, adapter parity matrix, switching scenarios, and release docs
+  resolve from packaged installs.
+
 ## [0.6.0] — 2026-05-03
 
 Ontology-generation release: makes project ontology generation repeatable,
