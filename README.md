@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-433%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.6%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-437%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.6%20alpha-orange)]()
 
 ---
 
@@ -241,6 +241,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
+- [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested
+  3x3 source/target handoff scenarios across supported agents
 - [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
 - [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) — two-layer ontology generation
 - [`docs/RELEASING.md`](docs/RELEASING.md) — npm Trusted Publishing release flow

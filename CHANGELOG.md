@@ -13,6 +13,10 @@ breaking changes until v1.0.
   records native vs fallback surfaces for `project_memory`, `ontology`,
   `executable_hook`, `skill`, and `slash_command` across Claude Code, Codex,
   and Cursor, and `docs/ADAPTER-PARITY.md` is locked to that fixture by tests.
+- Added a test-backed 3x3 switching-agent scenario matrix. Claude Code,
+  Codex, and Cursor are each tested as source and target agents, including
+  same-agent restarts, with current active handoff and stale handoff
+  diagnostics verified for every ordered pair.
 
 ## [0.6.0] — 2026-05-03
 

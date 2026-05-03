@@ -278,7 +278,7 @@ Exit criteria met:
 | # | Item | Description |
 |---|---|---|
 | 1 | **Adapter parity matrix** | Publish and test a matrix for each capability (`project_memory`, `ontology`, `executable_hook`, `skill`, `slash_command`) across Claude Code, Codex, Cursor, and any new supported adapter. |
-| 2 | **Switching-agent scenarios** | Exercise realistic handoffs: Claude → Codex, Codex → Cursor, Cursor → Claude, with active handoff files and stale-handoff detection. |
+| 2 | **Switching-agent scenarios** | Exercise the full ordered 3x3 handoff matrix across Claude Code, Codex, and Cursor, including same-agent restarts, with active handoff files and stale-handoff detection. |
 | 3 | **Native-surface improvements** | Where a tool offers a better native surface, use it; where it does not, keep fallback instructions explicit and testable. |
 | 4 | **Lifecycle hardening** | Reduce surprises around pinned fragments, user-modified regions, backups, declined suggestions, and multi-scope updates as projects evolve. |
 | 5 | **Public UX docs** | Document the expected user journey for "install once, switch agents, continue work" with limitations per adapter. |
@@ -290,6 +290,11 @@ Progress:
   test-backed matrix in `cli/src/adapters/parity.ts` and
   `docs/ADAPTER-PARITY.md`. The matrix documents native vs fallback surfaces
   for all current capabilities across Claude Code, Codex, and Cursor.
+- 2026-05-03: Expanded switching-agent scenarios to the full ordered 3x3
+  matrix: Claude Code, Codex, and Cursor as both source and target agents,
+  including same-agent restarts. `cli/src/adapters/switching.test.ts` now
+  verifies prepare surfaces, resume surfaces, current active handoff state,
+  and stale active handoff diagnostics for every pair.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff
