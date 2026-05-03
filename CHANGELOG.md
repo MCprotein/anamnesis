@@ -23,6 +23,9 @@ breaking changes until v1.0.
 - Added `anamnesis benchmark report`, a deterministic context-quality report
   for static ontology, Layer A bootstrap facts, Layer B enrichment,
   continuity readiness, and adapter surface readiness.
+- Added `docs/AGENT-SWITCHING-GUIDE.md`, a public user journey for installing
+  all agent surfaces, preparing a handoff, resuming in Claude Code/Codex/Cursor,
+  verifying continuity, and understanding native-vs-fallback limits.
 
 ### Changed
 

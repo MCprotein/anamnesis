@@ -191,7 +191,8 @@ Cursor expose different primitives, so anamnesis targets **user-facing
 parity**: project recall, ontology access, handoff continuity, and
 operational guardrails should survive switching agents.
 
-Detail in [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) and
+Detail in [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md),
+[`docs/AGENT-SWITCHING-GUIDE.md`](docs/AGENT-SWITCHING-GUIDE.md), and
 [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ---
@@ -242,6 +243,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 ## Documentation
 
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan
+- [`docs/AGENT-SWITCHING-GUIDE.md`](docs/AGENT-SWITCHING-GUIDE.md) —
+  install once, switch agents, and continue work without re-briefing
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested

@@ -310,6 +310,11 @@ Progress:
 - 2026-05-03: Hardened declined-suggestion lifecycle reporting. `status`
   now labels declined entries as active or stale, and `doctor` warns when an
   Agentfile declined entry no longer corresponds to a current rulebook match.
+- 2026-05-03: Added `docs/AGENT-SWITCHING-GUIDE.md` as the public UX guide
+  for the "install once, switch agents, continue work" flow. The guide links
+  install-time adapter selection, ontology refresh, `/handoff-prepare`, target
+  agent resume behavior, verification commands, and known native-vs-fallback
+  limitations.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff
