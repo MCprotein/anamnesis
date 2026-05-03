@@ -6,17 +6,20 @@ Each capability is a semantic unit with a **rendering contract** — "given this
 
 ## The five capabilities (v0.1)
 
-| Capability | What it represents | CC native | Codex native | Cursor native (v0.2+) |
+| Capability | What it represents | Claude Code | Codex | Cursor |
 |---|---|---|---|---|
-| `project_memory` | Always-loaded free-form context | `AGENTS.md` + `CLAUDE.md` entrypoint | `AGENTS.md` | `.cursor/rules/*.mdc (alwaysApply)` |
+| `project_memory` | Always-loaded free-form context | `AGENTS.md` + `CLAUDE.md` entrypoint | `AGENTS.md` | `AGENTS.md` |
 | `ontology` | Structured reference, consulted on demand | SessionStart hook injection | `AGENTS.md` instruction pointing to file | `rules` instruction |
-| `executable_hook` | Event-driven automation | `.claude/hooks/` + `settings.json` | git hook + LLM instruction (best-effort) | git hook + LLM instruction |
+| `executable_hook` | Event-driven automation | `.claude/hooks/` + `settings.json` | `AGENTS.md` fallback + optional git pre-commit bridge | `.cursor/rules` fallback |
 | `skill` | Reusable work procedure | `.claude/skills/<name>/SKILL.md` | `AGENTS.md` section (fallback) | `rules` (fallback) |
-| `slash_command` | User-invoked command | `.claude/commands/*.md` | — (not supported) | — (not supported) |
+| `slash_command` | User-invoked command | `.claude/commands/*.md` | `AGENTS.md` section (fallback) | `rules` (fallback) |
 
 - ✅ native: tool runs the capability automatically
 - 🟡 best-effort: rendered as instruction/fallback mechanism
 - ❌: unsupported, recorded in `limitations.md`
+
+The canonical, test-backed parity matrix lives in
+[`docs/ADAPTER-PARITY.md`](../docs/ADAPTER-PARITY.md).
 
 ## Why an IR?
 

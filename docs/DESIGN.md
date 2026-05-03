@@ -472,11 +472,15 @@ anamnesis/
 
 ## 9. 도구 커버 매트릭스
 
+Canonical, test-backed adapter parity is maintained in
+[ADAPTER-PARITY.md](ADAPTER-PARITY.md). This section keeps the design-level
+summary.
+
 | Capability | Claude Code | Codex | Cursor |
 |------------|-------------|-------|----------------|
-| project_memory | ✅ AGENTS.md + CLAUDE.md entrypoint + optional CC surfaces | ✅ AGENTS.md 자동 로드 | ✅ `.cursor/rules` alwaysApply |
+| project_memory | ✅ AGENTS.md + CLAUDE.md entrypoint + optional CC surfaces | ✅ AGENTS.md 자동 로드 | ✅ AGENTS.md 자동 로드 |
 | ontology | ✅ SessionStart 훅 주입 | 🟡 AGENTS.md 지시문 (LLM 의존) | 🟡 rules 지시문 |
-| executable_hook | ✅ 네이티브 훅 | 🟡 git hook + LLM 지시 | 🟡 git hook + LLM 지시 |
+| executable_hook | ✅ 네이티브 훅 | 🟡 AGENTS.md + optional git pre-commit bridge | 🟡 `.cursor/rules` 지시 |
 | skill | ✅ `.claude/skills/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
 | slash_command | ✅ `.claude/commands/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
 

@@ -285,6 +285,12 @@ Exit criteria met:
 | 6 | **Ontology refresh workflow hardening** | Turn the v0.6 bootstrap/enrichment path into a reliable lifecycle workflow: detect stale facts, prompt or route agent enrichment, preserve reviewed semantics, and keep all adapter entrypoints pointing at the same context. |
 | 7 | **Benchmark/report command** | Add a repeatable benchmark surface that measures static-only vs bootstrap vs enriched context on sanitized fixture snapshots. Candidate metrics: context recall score, question reduction, time-to-first-correct-action, handoff continuity, ontology coverage, and diagnostic quality. Output should be suitable for `docs/BENCHMARKS.md` and a compact README "sanitized fixture evidence" section. |
 
+Progress:
+- 2026-05-03: Started the v0.7 adapter parity work with a canonical
+  test-backed matrix in `cli/src/adapters/parity.ts` and
+  `docs/ADAPTER-PARITY.md`. The matrix documents native vs fallback surfaces
+  for all current capabilities across Claude Code, Codex, and Cursor.
+
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff
   continuity, and operational reminders in normal workflows.

@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-431%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.6%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-433%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.6%20alpha-orange)]()
 
 ---
 
@@ -179,7 +179,7 @@ Each fragment declares one or more **capabilities** in `fragment.yaml`. Capabili
 |---|---|---|---|---|
 | `project_memory` | Always-loaded context | `AGENTS.md` region + `CLAUDE.md` entrypoint | `AGENTS.md` region | `.cursor/rules` (alwaysApply) |
 | `ontology` | Structured reference | SessionStart hook injection | AGENTS.md instruction | rules instruction |
-| `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | git hook + LLM instruction | git hook + LLM instruction |
+| `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | AGENTS fallback + optional git hook bridge | rules fallback |
 | `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | AGENTS.md section (fallback) | rules (fallback) |
 | `slash_command` | User-invoked command | `.claude/commands/<n>.md` | AGENTS.md section (fallback) | rules (fallback) |
 
@@ -188,7 +188,8 @@ Cursor expose different primitives, so anamnesis targets **user-facing
 parity**: project recall, ontology access, handoff continuity, and
 operational guardrails should survive switching agents.
 
-Detail in [`docs/DESIGN.md`](docs/DESIGN.md).
+Detail in [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) and
+[`docs/DESIGN.md`](docs/DESIGN.md).
 
 ---
 
@@ -238,6 +239,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 ## Documentation
 
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan
+- [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
+  parity matrix across Claude Code, Codex, and Cursor
 - [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
 - [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) — two-layer ontology generation
 - [`docs/RELEASING.md`](docs/RELEASING.md) — npm Trusted Publishing release flow

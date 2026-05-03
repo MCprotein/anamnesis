@@ -7,7 +7,12 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- Added a test-backed adapter parity matrix for v0.7. The canonical fixture
+  records native vs fallback surfaces for `project_memory`, `ontology`,
+  `executable_hook`, `skill`, and `slash_command` across Claude Code, Codex,
+  and Cursor, and `docs/ADAPTER-PARITY.md` is locked to that fixture by tests.
 
 ## [0.6.0] — 2026-05-03
 
