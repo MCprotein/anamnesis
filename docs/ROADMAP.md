@@ -279,11 +279,15 @@ Exit criteria:
 | 4 | **Lifecycle hardening** | Reduce surprises around pinned fragments, user-modified regions, backups, declined suggestions, and multi-scope updates as projects evolve. |
 | 5 | **Public UX docs** | Document the expected user journey for "install once, switch agents, continue work" with limitations per adapter. |
 | 6 | **Ontology refresh workflow hardening** | Turn the v0.6 bootstrap/enrichment path into a reliable lifecycle workflow: detect stale facts, prompt or route agent enrichment, preserve reviewed semantics, and keep all adapter entrypoints pointing at the same context. |
+| 7 | **Benchmark/report command** | Add a repeatable benchmark surface that measures static-only vs bootstrap vs enriched context on sanitized fixture snapshots. Candidate metrics: context recall score, question reduction, time-to-first-correct-action, handoff continuity, ontology coverage, and diagnostic quality. Output should be suitable for `docs/BENCHMARKS.md` and a compact README "sanitized fixture evidence" section. |
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff
   continuity, and operational reminders in normal workflows.
 - Known adapter gaps are documented as tool-surface limitations, not hidden behavior.
+- At least one benchmark report compares before/after context quality on a
+  sanitized fixturesitory without requiring proprietary or credential-bearing source
+  snippets in public docs.
 
 ---
 
@@ -311,6 +315,9 @@ These have been discussed but lack concrete version assignment:
 - **`anamnesis sync`** — pull latest library changes from a remote git source (vs current "just edit fragments/ in this repo")
 - **WebUI for Agentfile editing** — visual editor for non-CLI users
 - **Webhook on fragment update** — notify projects when their installed fragments have library updates
+- **Public benchmark gallery** — after the v0.7 benchmark/report command
+  stabilizes, collect sanitized before/after reports across multiple public
+  repo shapes and surface the headline evidence in README/docs.
 
 ---
 

@@ -65,6 +65,9 @@ breaking changes until v1.0.
 - Added the first v0.6 sanitized-fixture ontology before/after dogfood record for
   `sanitized-nest-prisma`, showing static-only ontology versus bootstrap plus
   agent-enriched ontology on a NestJS/Prisma backend snapshot.
+- Added a v0.7 roadmap item for a repeatable benchmark/report command so
+  future README claims can be backed by measured before/after context quality,
+  not just anecdotal dogfood notes.
 
 ## [0.5.0] — 2026-04-30
 
