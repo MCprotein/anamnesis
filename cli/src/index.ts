@@ -48,8 +48,11 @@ import {
   formatBootstrapGenerationBoundaryLines,
   formatGenerationBoundaryLines,
 } from "./core/generation-boundary.js";
+import type { ToolName } from "./core/agentfile.js";
 
 const VERSION = "0.6.0";
+const SUPPORTED_TOOLS = ["claude-code", "codex", "cursor"] as const satisfies
+  readonly ToolName[];
 
 // ---------------------------------------------------------------------------
 // Arg parsing — tiny, deliberate, no dependency.
@@ -93,6 +96,33 @@ function parseArgs(argv: string[]): ParsedArgs {
   }
 
   return { command, positional, flags };
+}
+
+function parseToolsFlag(value: string | boolean | undefined): ToolName[] | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new InitError("--tools requires a comma-separated list or 'all'");
+  }
+  const raw = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (raw.length === 0) {
+    throw new InitError("--tools requires at least one adapter");
+  }
+  if (raw.length === 1 && raw[0] === "all") {
+    return [...SUPPORTED_TOOLS];
+  }
+  const tools: ToolName[] = [];
+  for (const tool of raw) {
+    if (!SUPPORTED_TOOLS.includes(tool as ToolName)) {
+      throw new InitError(
+        `unknown adapter '${tool}' in --tools. Expected one of: ${SUPPORTED_TOOLS.join(", ")}, all`,
+      );
+    }
+    if (!tools.includes(tool as ToolName)) tools.push(tool as ToolName);
+  }
+  return tools;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +170,9 @@ Flags (init):
   --library <path>              Library path (default: bundled)
   --dry-run                     Show plan without writing
   --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
+  --tools <list|all>            Adapter surfaces to install on first init
+                                  (comma-separated: claude-code,codex,cursor;
+                                  default: claude-code)
   --project-name <name>         Override project name (default: dir basename)
   --monorepo                    Detect package.json workspaces and generate
                                   a multi-scope Agentfile with one scope per
@@ -205,6 +238,7 @@ function reportInit(result: InitResult): void {
   const s = summarizeChanges(result.changes);
   const fragIds = result.selectedFragments.map((f) => f.id).join(", ") || "(none)";
   console.log(`anamnesis init — ${result.agentfile.project.name}`);
+  console.log(`  tools: ${result.agentfile.tools.join(", ")}`);
   console.log(`  fragments (root): ${fragIds}`);
   if (result.monorepoDetection?.isMonorepo) {
     const det = result.monorepoDetection;
@@ -557,6 +591,7 @@ async function main(argv: string[]): Promise<number> {
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           dryRun: flags["dry-run"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
+          tools: parseToolsFlag(flags["tools"]),
           projectName: flags["project-name"] as string | undefined,
           monorepo: flags["monorepo"] === true,
           noBootstrap: flags["no-bootstrap"] === true,

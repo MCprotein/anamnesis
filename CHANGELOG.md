@@ -17,6 +17,9 @@ breaking changes until v1.0.
   Codex, and Cursor are each tested as source and target agents, including
   same-agent restarts, with current active handoff and stale handoff
   diagnostics verified for every ordered pair.
+- Added `anamnesis init --tools <list|all>` so first-time setup can install
+  Claude Code, Codex, and Cursor surfaces without requiring a manual
+  `Agentfile.tools` edit followed by `update`.
 
 ### Changed
 

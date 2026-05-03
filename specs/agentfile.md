@@ -107,7 +107,7 @@ overrides:
 |---|---|---|---|
 | `version` | `int` | ✅ | Agentfile 스키마 버전. 현재 `1` |
 | `project` | `Project` | ✅ | 프로젝트 메타 |
-| `tools` | `string[]` | ✅ | 활성 어댑터. `claude-code` \| `codex` \| `cursor` |
+| `tools` | `string[]` | ✅ | 활성 어댑터. `claude-code` \| `codex` \| `cursor`. `init` 기본값은 `claude-code`; 첫 설치부터 전체 surface 를 원하면 `anamnesis init --tools all` 을 사용한다. |
 | `fragments` | `Fragment[]` | ✅ | 설치된 fragment 목록 (순서는 병합 우선순위) |
 | `declined` | `Declined[]` | ⛔ | 의도적으로 거절한 fragment. rulebook 재제안 방지 |
 | `settings` | `Settings` | ⛔ | 프로젝트 레벨 동작 조정 |

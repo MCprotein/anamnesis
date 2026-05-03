@@ -295,6 +295,10 @@ Progress:
   including same-agent restarts. `cli/src/adapters/switching.test.ts` now
   verifies prepare surfaces, resume surfaces, current active handoff state,
   and stale active handoff diagnostics for every pair.
+- 2026-05-03: Added first-install adapter selection with
+  `anamnesis init --tools <list|all>`, so projects can create Claude Code,
+  Codex, and Cursor surfaces during initial setup instead of manually editing
+  `Agentfile.tools` before the first `update`.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff

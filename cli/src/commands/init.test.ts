@@ -99,6 +99,52 @@ describe("init", () => {
     expect(m.files).toHaveLength(0);
   });
 
+  it("honors an explicit first-install tool list", () => {
+    const withBase = makeLibrary({ withBase: true });
+    const result = init({
+      projectRoot: project,
+      libraryRoot: withBase,
+      dryRun: false,
+      allowExecAdapters: false,
+      tools: ["codex", "cursor"],
+    });
+
+    expect(result.agentfile.tools).toEqual(["codex", "cursor"]);
+    const af = readAgentfile(project);
+    expect(af.tools).toEqual(["codex", "cursor"]);
+    expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(true);
+    expect(fs.existsSync(path.join(project, "CLAUDE.md"))).toBe(false);
+  });
+
+  it("can install all current adapter surfaces during init", () => {
+    const result = init({
+      projectRoot: project,
+      libraryRoot: process.cwd(),
+      dryRun: false,
+      allowExecAdapters: true,
+      tools: ["claude-code", "codex", "cursor"],
+      noBootstrap: true,
+    });
+
+    expect(result.agentfile.tools).toEqual(["claude-code", "codex", "cursor"]);
+    const af = readAgentfile(project);
+    expect(af.tools).toEqual(["claude-code", "codex", "cursor"]);
+    expect(fs.existsSync(path.join(project, "CLAUDE.md"))).toBe(true);
+    expect(
+      fs.existsSync(path.join(project, ".claude/commands/handoff-prepare.md")),
+    ).toBe(true);
+
+    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("codex-cmd-handoff-prepare");
+    expect(agentsMd).toContain("codex-skill-ontology-enrich");
+    expect(
+      fs.existsSync(path.join(project, ".cursor/rules/handoff-prepare-cmd.mdc")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(project, ".cursor/rules/ontology-enrich.mdc")),
+    ).toBe(true);
+  });
+
   it("installs a matching fragment end-to-end", () => {
     // Make the project look like a prisma project.
     fs.mkdirSync(path.join(project, "prisma"));

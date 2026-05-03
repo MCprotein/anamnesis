@@ -78,6 +78,8 @@ Then in any project:
 cd /path/to/your/project
 anamnesis init --dry-run                 # preview what would happen
 anamnesis init --allow-exec-adapters     # actually install
+anamnesis init --tools all --allow-exec-adapters
+# install Claude Code, Codex, and Cursor surfaces on first init
 ```
 
 What gets created:
@@ -177,7 +179,7 @@ Each fragment declares one or more **capabilities** in `fragment.yaml`. Capabili
 
 | Capability | What it represents | Claude Code | Codex | Cursor |
 |---|---|---|---|---|
-| `project_memory` | Always-loaded context | `AGENTS.md` region + `CLAUDE.md` entrypoint | `AGENTS.md` region | `.cursor/rules` (alwaysApply) |
+| `project_memory` | Always-loaded context | `AGENTS.md` region + `CLAUDE.md` entrypoint | `AGENTS.md` region | `AGENTS.md` region read by Cursor |
 | `ontology` | Structured reference | SessionStart hook injection | AGENTS.md instruction | rules instruction |
 | `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | AGENTS fallback + optional git hook bridge | rules fallback |
 | `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | AGENTS.md section (fallback) | rules (fallback) |

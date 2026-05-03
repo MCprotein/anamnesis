@@ -14,6 +14,7 @@ import {
   findAgentfile,
   writeAgentfile,
   type Agentfile,
+  type ToolName,
 } from "../core/agentfile.js";
 import {
   emptyManifest,
@@ -41,6 +42,8 @@ import {
 } from "../core/render.js";
 import { registerClaudeCode } from "../adapters/claude-code/index.js";
 import { planClaudeMdEntrypoint } from "../adapters/claude-code/claude_md.js";
+import { registerCodex } from "../adapters/codex/index.js";
+import { registerCursor } from "../adapters/cursor/index.js";
 import {
   planChanges,
   applyChanges,
@@ -67,6 +70,8 @@ export interface InitOptions {
   dryRun: boolean;
   allowExecAdapters: boolean;
   projectName?: string;
+  /** Adapter surfaces to install on first init. Defaults to Claude Code. */
+  tools?: ToolName[];
   /**
    * If true, detect monorepo layout (package.json `workspaces`) and
    * generate a multi-scope Agentfile with one scope per workspace
@@ -254,6 +259,7 @@ export function init(opts: InitOptions): InitResult {
 
   // 7. Build Agentfile.
   const projectName = opts.projectName ?? path.basename(projectRoot);
+  const tools = opts.tools ?? ["claude-code"];
   const agentfile: Agentfile = {
     version: 1,
     project: subScopes.length > 0
@@ -269,13 +275,15 @@ export function init(opts: InitOptions): InitResult {
           ],
         }
       : { name: projectName },
-    tools: ["claude-code"],
+    tools,
     fragments: rootOrdered.map((f) => ({ id: f.id, version: f.version })),
   };
 
   // 8. Plan rendering — per-scope loop (root + each sub-scope).
   const registry = new RendererRegistry();
-  registerClaudeCode(registry);
+  if (tools.includes("claude-code")) registerClaudeCode(registry);
+  if (tools.includes("codex")) registerCodex(registry);
+  if (tools.includes("cursor")) registerCursor(registry);
 
   const renderTargets: Array<{
     scopePath: string;
@@ -303,9 +311,11 @@ export function init(opts: InitOptions): InitResult {
         settings: DEFAULT_SETTINGS,
         params: {},
       };
-      actions.push(...registry.planFragment(renderCtx, "claude-code"));
+      for (const tool of tools) {
+        actions.push(...registry.planFragment(renderCtx, tool));
+      }
     }
-    if (hasProjectMemory(ordered)) {
+    if (tools.includes("claude-code") && hasProjectMemory(ordered)) {
       actions.push(
         planClaudeMdEntrypoint({
           scopePath,
