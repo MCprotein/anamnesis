@@ -274,6 +274,8 @@ anamnesis promote ./.claude/hooks/my-custom-validate.sh
 
 - `anamnesis status` — 현재 프로젝트의 설치 상태 요약
 - `anamnesis doctor` — 설치 무결성 검사 (누락 파일, 해시 불일치, 어댑터 지원 누락)
+- `anamnesis benchmark report` — static/bootstrap/enriched context surface 와
+  continuity readiness 를 markdown/json 으로 기록
 
 v0.1 에서 `status` 는 필수, `doctor` 는 선택.
 

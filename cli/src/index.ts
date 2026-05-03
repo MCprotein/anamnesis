@@ -44,6 +44,11 @@ import {
   type DogfoodResult,
 } from "./commands/dogfood.js";
 import {
+  benchmarkReport,
+  BenchmarkError,
+  type BenchmarkResult,
+} from "./commands/benchmark.js";
+import {
   collectGenerationBoundaryStatus,
   formatBootstrapGenerationBoundaryLines,
   formatGenerationBoundaryLines,
@@ -161,6 +166,8 @@ Commands:
   doctor                        Diagnose install integrity and adapter wiring
   dogfood check                 Run continuity self-check and optionally append
                                   a record to docs/DOGFOOD.md
+  benchmark report             Generate a deterministic context-quality
+                                  benchmark report for docs/BENCHMARKS.md
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
                                   from project files (Layer A — deterministic)
@@ -201,6 +208,13 @@ Flags (dogfood check):
   --library <path>              Library path (default: bundled)
   --append                      Append markdown result to docs/DOGFOOD.md
   --output <path>               Override self-check log path
+
+Flags (benchmark report):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --json                        Print structured JSON
+  --append                      Append markdown result to docs/BENCHMARKS.md
+  --output <path>               Override benchmark log path
 
 Flags (ontology bootstrap):
   --project-root <path>         Target directory (default: cwd)
@@ -529,6 +543,22 @@ function reportDogfood(result: DogfoodResult): void {
   }
 }
 
+function reportBenchmark(result: BenchmarkResult): void {
+  console.log(
+    `anamnesis benchmark report — ${result.status.agentfile.project.name}`,
+  );
+  console.log(`  tools: ${result.status.agentfile.tools.join(", ")}`);
+  console.log(`  ready layers: ${result.summary.ready}/${result.summary.total}`);
+  for (const layer of result.layers) {
+    console.log(
+      `  ${layer.status.padEnd(7)} ${layer.label}: ${layer.score}/${layer.total}`,
+    );
+  }
+  if (result.appendedPath) {
+    console.log(`  appended: ${result.appendedPath}`);
+  }
+}
+
 function reportUpdate(result: UpdateResult): void {
   const s = summarizeChanges(result.changes);
   const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
@@ -691,6 +721,41 @@ async function main(argv: string[]): Promise<number> {
         return result.ok ? 0 : 1;
       } catch (e) {
         if (e instanceof DogfoodError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
+
+    case "benchmark": {
+      const sub = positional[0];
+      if (sub !== "report") {
+        console.error(
+          `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(
+          `usage: anamnesis benchmark report [--json] [--append] [--output=<path>]`,
+        );
+        return 1;
+      }
+      try {
+        const result = benchmarkReport({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          append: flags["append"] === true,
+          outputPath: flags["output"] as string | undefined,
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportBenchmark(result);
+        }
+        return 0;
+      } catch (e) {
+        if (e instanceof BenchmarkError) {
           console.error(`error: ${e.message}`);
           return 1;
         }

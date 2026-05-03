@@ -20,6 +20,9 @@ breaking changes until v1.0.
 - Added `anamnesis init --tools <list|all>` so first-time setup can install
   Claude Code, Codex, and Cursor surfaces without requiring a manual
   `Agentfile.tools` edit followed by `update`.
+- Added `anamnesis benchmark report`, a deterministic context-quality report
+  for static ontology, Layer A bootstrap facts, Layer B enrichment,
+  continuity readiness, and adapter surface readiness.
 
 ### Changed
 

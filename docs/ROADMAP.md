@@ -299,6 +299,10 @@ Progress:
   `anamnesis init --tools <list|all>`, so projects can create Claude Code,
   Codex, and Cursor surfaces during initial setup instead of manually editing
   `Agentfile.tools` before the first `update`.
+- 2026-05-03: Added the first `anamnesis benchmark report` surface for
+  deterministic context-quality reporting across static ontology, Layer A
+  bootstrap facts, Layer B enrichment, continuity readiness, and adapter
+  surfaces. Reports append to `docs/BENCHMARKS.md`.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff

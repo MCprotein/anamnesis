@@ -115,6 +115,7 @@ anamnesis update --bump-pinned  # explicitly move pinned fragments to current
 anamnesis status    # fragments, drift, ontology gaps, continuity readiness (--json for tools)
 anamnesis doctor    # read-only installation integrity + continuity/ontology diagnostics
 anamnesis dogfood check --append  # score and record self-check continuity evidence
+anamnesis benchmark report --append  # record deterministic context-quality evidence
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 
@@ -245,6 +246,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested
   3x3 source/target handoff scenarios across supported agents
+- [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) — deterministic context-quality
+  benchmark reports
 - [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
 - [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) — two-layer ontology generation
 - [`docs/RELEASING.md`](docs/RELEASING.md) — npm Trusted Publishing release flow
