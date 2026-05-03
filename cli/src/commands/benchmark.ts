@@ -109,7 +109,7 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
       fs.existsSync(outputPath) && fs.readFileSync(outputPath, "utf8").trim() !== ""
         ? "\n\n"
         : "";
-    fs.appendFileSync(outputPath, `${prefix}${markdown}`, "utf8");
+    fs.appendFileSync(outputPath, `${prefix}${markdown}\n`, "utf8");
     appendedPath = path.relative(projectRoot, outputPath);
   }
 

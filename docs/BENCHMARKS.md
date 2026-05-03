@@ -20,3 +20,28 @@ The report measures concrete surfaces on disk, not model intelligence:
 Use these reports to compare static-only, bootstrapped, and enriched project
 context over time. Public README claims should be based on reports that avoid
 proprietary source snippets and credential-bearing details.
+
+
+## Benchmark Report — 2026-05-03T13:42:29.857Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@8:in-sync
+Ready layers: 3/5
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
