@@ -198,7 +198,7 @@ Exit criteria met:
 
 ---
 
-## v0.6 — *in progress*
+## v0.6 — *shipped 2026-05-03*
 
 > **Theme: make ontology generation repeatable, bounded, and agent-assisted**
 
@@ -258,7 +258,7 @@ Progress:
   `sanitized-nest-prisma@e19fc0d` archive bootstrap now records
   `/notifications/stream`, and NestJS route facts increased from 30 to 31.
 
-Exit criteria:
+Exit criteria met:
 - Users can tell from command output whether the current ontology/context
   state is CLI-generated, agent-enriched, or still missing.
 - Agents get materially better project understanding from generated and

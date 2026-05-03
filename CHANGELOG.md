@@ -7,6 +7,16 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+No changes yet.
+
+## [0.6.0] — 2026-05-03
+
+Ontology-generation release: makes project ontology generation repeatable,
+bounded, and agent-assisted. The CLI now produces clearer deterministic
+Layer A facts, reports ontology gaps and drift, and routes the active agent
+toward append-safe Layer B enrichment instead of making users hand-author
+semantic YAML.
+
 ### Added
 
 - Added generation-boundary CLI guidance to `init`, `status`, `doctor`,

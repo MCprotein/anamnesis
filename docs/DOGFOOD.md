@@ -245,6 +245,9 @@ adding NestJS `@Sse()` support showed:
 | New Layer A route | `method: SSE`, `path: /notifications/stream`, `handler: stream` |
 | Ontology warnings after bootstrap | only missing enrichment warnings remained |
 
+The v0.6.0 release-candidate replay produced the same 31 NestJS route facts
+with `generator: anamnesis@0.6.0` in the bootstrap output.
+
 Interpretation:
 
 - The first v0.6 dogfood run produced a valid Layer A improvement because the
@@ -559,3 +562,32 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood simulate-stale-handoff` | pass | 39 | status and doctor detect active.md that does not reference the newest archive |
 | `npm run typecheck` | pass | 1342 | passed |
 | `npm test` | pass | 2211 | passed |
+
+
+## Automated Self-Check — 2026-05-03T12:51:17.295Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@8:in-sync
+Drift: 19 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (856ms); anamnesis dogfood simulate-stale-handoff: pass (46ms); npm run typecheck: pass (1384ms); npm test: pass (2533ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 856 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 46 | status and doctor detect active.md that does not reference the newest archive |
+| `npm run typecheck` | pass | 1384 | passed |
+| `npm test` | pass | 2533 | passed |

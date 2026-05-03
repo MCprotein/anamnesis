@@ -49,7 +49,7 @@ import {
   formatGenerationBoundaryLines,
 } from "./core/generation-boundary.js";
 
-const VERSION = "0.5.0";
+const VERSION = "0.6.0";
 
 // ---------------------------------------------------------------------------
 // Arg parsing — tiny, deliberate, no dependency.

@@ -186,7 +186,7 @@ itself via `registerBuiltinIntrospectors(registry)`.
 # .anamnesis/ontology/k8s.enriched.yaml instead.
 #
 # schema_version: anamnesis.bootstrap.v1
-# generator: anamnesis@0.5.0 introspector=k8s
+# generator: anamnesis@0.6.0 introspector=k8s
 
 facts:
   namespaces:
@@ -206,7 +206,7 @@ facts:
 generator:
   introspector: k8s
   name: anamnesis
-  version: 0.5.0
+  version: 0.6.0
 schema_version: anamnesis.bootstrap.v1
 ```
 
@@ -356,7 +356,7 @@ Stable enriched conventions:
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
 | 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | +14 | shipped |
-| 0.6.x | ontology drift reporting, Layer B re-run semantics, output schema stabilization, bounded Layer A discipline, and agent-assisted enrichment UX | +5 so far | in progress; gap report, re-run semantics, bootstrap drift, schema conventions, and roadmap boundary guidance shipped |
+| 0.6.x | ontology drift reporting, Layer B re-run semantics, output schema stabilization, bounded Layer A discipline, and agent-assisted enrichment UX | 431 total | shipped; gap report, re-run semantics, bootstrap drift, schema conventions, agent-assisted UX, sanitized-fixture dogfood, and SSE route gap follow-up |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
 (sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later
