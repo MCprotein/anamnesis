@@ -62,6 +62,9 @@ breaking changes until v1.0.
   questions for future agents.
 - Documented that bootstrap output should lead directly into agent-assisted
   enrichment instead of leaving users to hand-author semantic ontology YAML.
+- Added the first v0.6 sanitized-fixture ontology before/after dogfood record for
+  `sanitized-nest-prisma`, showing static-only ontology versus bootstrap plus
+  agent-enriched ontology on a NestJS/Prisma backend snapshot.
 
 ## [0.5.0] — 2026-04-30
 

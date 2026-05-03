@@ -119,6 +119,118 @@ Next checks to improve:
 - Add real external agent-session smoke checks only if local artifact
   simulation misses a concrete adapter behavior.
 
+## v0.6 Sanitized fixture Ontology Before/After
+
+Date: 2026-05-03
+
+Subject: `sanitized-nest-prisma@e19fc0d`
+
+Method:
+
+- Used a `git archive HEAD` snapshot under `/tmp` so the source repository was
+  not modified.
+- The live `sanitized-nest-prisma` working tree had uncommitted anamnesis changes,
+  so this run intentionally excluded dirty working-tree state.
+- Used current anamnesis from this repository as the library.
+- Sensitive infrastructure credential values from the target repo docs were
+  not copied into this summary.
+
+### Before: static ontology only
+
+Initial snapshot state:
+
+| Check | Result |
+|---|---|
+| Tools | `claude-code` only |
+| Fragments | `base@2`, `prisma@1`, `nestjs@1` |
+| Managed entries | 9 clean |
+| Static ontology | 3 files: `base.yaml`, `prisma.yaml`, `nestjs.yaml` |
+| Bootstrap ontology | 0 files |
+| Enriched ontology | 0 files |
+| `status` continuity | issues `4/6` |
+| `status` ontology gaps | 2 warnings, 1 info |
+| `doctor` | 3 errors, 6 warnings |
+| `ontology bootstrap --dry-run` | would write `prisma.bootstrap.yaml` and `nestjs.bootstrap.yaml` |
+
+Before interpretation:
+
+- A fresh agent could see generic Prisma and NestJS operating rules, but not
+  the actual models, routes, queues, worker split, or domain flows.
+- The v0.6 diagnostics correctly linked missing Layer A facts to the follow-up
+  `/ontology-enrich` step and printed the expected `.enriched.yaml` targets.
+- Existing managed surfaces still carried older continuity gaps, matching the
+  v0.5 matrix finding for this repo.
+
+### After: bootstrap plus agent enrichment
+
+Actions in the temporary snapshot:
+
+1. Enabled `claude-code`, `codex`, and `cursor` in `Agentfile`.
+2. Ran `update --dry-run --allow-exec-adapters`.
+3. Ran `update --apply --allow-exec-adapters`.
+4. Ran `ontology bootstrap`.
+5. Ran the agent-side enrichment pass and wrote:
+   - `.anamnesis/ontology/prisma.enriched.yaml`
+   - `.anamnesis/ontology/nestjs.enriched.yaml`
+6. Re-ran `status`, `doctor`, and `ontology bootstrap --dry-run`.
+
+After state:
+
+| Check | Result |
+|---|---|
+| Tools | `claude-code`, `codex`, `cursor` |
+| Fragments | `base@8`, `prisma@2`, `nestjs@1` all in sync |
+| Managed entries | 21 clean |
+| Static ontology | 3 files |
+| Bootstrap ontology | 2 files: `prisma.bootstrap.yaml`, `nestjs.bootstrap.yaml` |
+| Enriched ontology | 2 files: `prisma.enriched.yaml`, `nestjs.enriched.yaml` |
+| `status` continuity | issues `5/6` |
+| `status` ontology gaps | 0 warnings, 1 info |
+| `doctor` | 3 errors, 1 warning |
+| `ontology bootstrap --dry-run` | `prisma` and `nestjs` unchanged |
+
+Generated Layer A facts:
+
+| Fragment | Facts |
+|---|---|
+| `prisma` | 10 Prisma models with fields and relations |
+| `nestjs` | 7 controllers and 30 HTTP routes |
+
+Generated Layer B semantics:
+
+| Category | Count | Examples |
+|---|---:|---|
+| Relationships | 8 | user-owned product data, tracked repository aggregate, HTTP/worker split, notification bridge |
+| Flows | 5 | GitHub OAuth, commit sync persistence, monthly AI analysis, report lifecycle |
+| Operational notes | 6 | Prisma client output, migration safety, deploy backend and worker together, API type SDK sync |
+| Open questions | 2 | MinIO/report retention, whether `@Sse()` routes should become Layer A facts |
+
+After interpretation:
+
+- The ontology lifecycle moved from "static rules only" to "static +
+  deterministic project facts + semantic project memory".
+- The main product goal improved for this repo: a new agent can now recover
+  concrete domain structure without re-reading all source files first:
+  persisted entities, route surface, async queues, worker responsibilities,
+  object-storage split, AI-analysis flow, notification flow, and key operating
+  invariants.
+- Remaining `doctor` failures are not ontology failures. They are the known
+  existing-managed-repo repair issue where user-modified Claude Code surfaces
+  block hook registration repair. This should stay tracked separately from the
+  v0.6 ontology automation success.
+
+v0.6 signal:
+
+- The bounded Layer A approach is enough to establish factual shape for a real
+  NestJS/Prisma backend.
+- Layer B enrichment adds the product-level memory a parser should not try to
+  infer: why the modules exist, how queues and workers interact, where domain
+  ownership lives, and which operational invariants future agents must keep.
+- The next product gap is not deeper framework parsing by default. The concrete
+  follow-up from this run is deciding whether `@Sse()` routes should be emitted
+  by the NestJS Layer A introspector, because that is a deterministic route fact
+  currently only captured by Layer B.
+
 
 ## Automated Self-Check — 2026-04-30T08:30:21.884Z
 

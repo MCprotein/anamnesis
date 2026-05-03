@@ -248,6 +248,11 @@ Progress:
   stale bootstrap guidance now points to the follow-up `/ontology-enrich`
   step, and `ontology bootstrap` prints the `.enriched.yaml` targets an agent
   should create or refresh after Layer A facts are current.
+- 2026-05-03: Ran the first v0.6 sanitized-fixture ontology before/after dogfood on
+  a `sanitized-nest-prisma@e19fc0d` archive snapshot. Static-only ontology had 2
+  ontology warnings and no bootstrap/enriched files; after bootstrap plus
+  agent enrichment, ontology warnings dropped to 0, with 10 Prisma models, 7
+  NestJS controllers, 30 routes, and 21 semantic Layer B entries captured.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context
