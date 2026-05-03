@@ -26,6 +26,9 @@ breaking changes until v1.0.
 - Added `docs/AGENT-SWITCHING-GUIDE.md`, a public user journey for installing
   all agent surfaces, preparing a handoff, resuming in Claude Code/Codex/Cursor,
   verifying continuity, and understanding native-vs-fallback limits.
+- Added the first v0.7 sanitized-fixture benchmark comparison in `docs/BENCHMARKS.md`,
+  showing `sanitized-nest-prisma@e19fc0d` improving from ready layers `1/5` to
+  `5/5` after all-adapter install, Layer A bootstrap, and Layer B enrichment.
 
 ### Changed
 

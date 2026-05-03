@@ -315,6 +315,11 @@ Progress:
   install-time adapter selection, ontology refresh, `/handoff-prepare`, target
   agent resume behavior, verification commands, and known native-vs-fallback
   limitations.
+- 2026-05-03: Recorded the first v0.7 sanitized-fixture benchmark comparison in
+  `docs/BENCHMARKS.md` using `sanitized-nest-prisma@e19fc0d`. The existing
+  Claude Code-only managed baseline scored ready layers `1/5`; the same
+  source after all-adapter install, Layer A bootstrap, and Layer B enrichment
+  scored `5/5` with continuity `6/6` and zero ontology warnings.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff

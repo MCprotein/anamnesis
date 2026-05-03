@@ -21,6 +21,19 @@ Use these reports to compare static-only, bootstrapped, and enriched project
 context over time. Public README claims should be based on reports that avoid
 proprietary source snippets and credential-bearing details.
 
+## Current Sanitized Fixture Comparison
+
+The first v0.7 sanitized-fixture comparison uses a `sanitized-nest-prisma@e19fc0d`
+git-archive snapshot. The baseline report captures the existing managed
+project state; the follow-up report captures the same source after fresh
+all-adapter install, deterministic bootstrap, and agent-authored enriched
+ontology.
+
+| Subject | Context state | Ready layers | Continuity | Ontology warnings |
+|---|---|---:|---:|---:|
+| `sanitized-nest-prisma@e19fc0d` | existing managed Claude Code-only install | 1/5 | 4/6 | 2 |
+| `sanitized-nest-prisma@e19fc0d` | all adapters + Layer A bootstrap + Layer B enrichment | 5/5 | 6/6 | 0 |
+
 
 ## Benchmark Report — 2026-05-03T13:42:29.857Z
 
@@ -43,5 +56,55 @@ Ontology files:
 - enriched: (none)
 
 Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+
+
+## Benchmark Report — 2026-05-03T14:08:17.609Z
+
+Project: sanitized-nest-prisma
+Tools: claude-code
+Fragments: base@2:update-available, prisma@1:update-available, nestjs@1:in-sync
+Ready layers: 1/5
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 3/3 | 3 static ontology file(s) found |
+| Layer A bootstrap | missing | 0/2 | 2 missing, 0 stale bootstrap file(s) |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | partial | 4/6 | 4/6 continuity checks passing |
+| Adapter surfaces | missing | 0/1 | missing or drifted surfaces: CLAUDE.md [region:anamnesis-claude-code-entrypoint], .claude/hooks/inject-ontology.sh, .claude/hooks/handoff-reminder.sh, .claude/commands/load-context.md, .claude/skills/ontology-enrich/SKILL.md |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`, `.anamnesis/ontology/nestjs.yaml`, `.anamnesis/ontology/prisma.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1, written=2
+Continuity: issues (4/6)
+Ontology gaps: 2 warning(s), 1 info
+
+
+## Benchmark Report — 2026-05-03T14:08:21.721Z
+
+Project: sanitized-nest-prisma
+Tools: claude-code, codex, cursor
+Fragments: base@8:in-sync, prisma@2:in-sync, nestjs@1:in-sync
+Ready layers: 5/5
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 3/3 | 3 static ontology file(s) found |
+| Layer A bootstrap | ready | 2/2 | 2 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | ready | 2/2 | 2 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`, `.anamnesis/ontology/nestjs.yaml`, `.anamnesis/ontology/prisma.yaml`
+- bootstrap: `.anamnesis/ontology/nestjs.bootstrap.yaml`, `.anamnesis/ontology/prisma.bootstrap.yaml`
+- enriched: `.anamnesis/ontology/nestjs.enriched.yaml`, `.anamnesis/ontology/prisma.enriched.yaml`
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1, unchanged=2
 Continuity: ready (6/6)
 Ontology gaps: 0 warning(s), 1 info
