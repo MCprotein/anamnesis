@@ -253,6 +253,10 @@ Progress:
   ontology warnings and no bootstrap/enriched files; after bootstrap plus
   agent enrichment, ontology warnings dropped to 0, with 10 Prisma models, 7
   NestJS controllers, 30 routes, and 21 semantic Layer B entries captured.
+- 2026-05-03: Resolved the first dogfood-proven deterministic Layer A gap by
+  adding NestJS `@Sse()` route extraction. A follow-up
+  `sanitized-nest-prisma@e19fc0d` archive bootstrap now records
+  `/notifications/stream`, and NestJS route facts increased from 30 to 31.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context

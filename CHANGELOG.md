@@ -38,6 +38,9 @@ breaking changes until v1.0.
   `status` and `doctor` now connect missing or stale Layer A facts to the
   follow-up `/ontology-enrich` step, and `ontology bootstrap` prints
   semantic follow-up targets for matching `.enriched.yaml` files.
+- Added NestJS `@Sse()` route extraction. The NestJS Layer A introspector now
+  records Server-Sent Events routes as deterministic route facts instead of
+  leaving them only to Layer B enrichment.
 
 ### Documentation
 
@@ -68,6 +71,9 @@ breaking changes until v1.0.
 - Added a v0.7 roadmap item for a repeatable benchmark/report command so
   future README claims can be backed by measured before/after context quality,
   not just anecdotal dogfood notes.
+- Documented the Layer A introspector change gate and recorded the
+  `sanitized-nest-prisma` follow-up showing NestJS route facts increasing from 30
+  to 31 after `@Sse()` support.
 
 ## [0.5.0] — 2026-04-30
 

@@ -118,7 +118,10 @@ export class AdminController {
     );
 
     const facts = nestjsIntrospector.introspect(new ProjectContext(root)) as {
-      controllers: Array<{ prefix: string; routes: Array<{ method: string; path: string; handler: string }> }>;
+      controllers: Array<{
+        prefix: string;
+        routes: Array<{ method: string; path: string; handler: string }>;
+      }>;
     };
 
     expect(facts.controllers[0]).toMatchObject({
@@ -148,6 +151,32 @@ export class HealthController {
     expect(facts.controllers[0]).toMatchObject({
       prefix: "",
       routes: [{ method: "ALL", path: "/health", handler: "check" }],
+    });
+  });
+
+  it("extracts Server-Sent Events routes as deterministic route facts", () => {
+    write(
+      root,
+      "src/notifications.controller.ts",
+      `import { Controller, Sse } from '@nestjs/common';
+
+@Controller('notifications')
+export class NotificationController {
+  @Sse('stream')
+  stream() {}
+}
+`,
+    );
+
+    const facts = nestjsIntrospector.introspect(new ProjectContext(root)) as {
+      controllers: Array<{ prefix: string; routes: Array<{ method: string; path: string; handler: string }> }>;
+    };
+
+    expect(facts.controllers[0]).toMatchObject({
+      prefix: "notifications",
+      routes: [
+        { method: "SSE", path: "/notifications/stream", handler: "stream" },
+      ],
     });
   });
 

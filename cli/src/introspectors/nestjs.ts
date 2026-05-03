@@ -2,7 +2,7 @@
 //
 // First cut: regex-based source scan. It intentionally avoids TypeScript AST
 // dependencies and focuses on stable Layer A facts that Layer B can enrich:
-// controller prefix, handler name, HTTP method, and route path.
+// controller prefix, handler name, HTTP/SSE method, and route path.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -32,6 +32,7 @@ const ROUTE_DECORATORS = new Map([
   ["Head", "HEAD"],
   ["Options", "OPTIONS"],
   ["All", "ALL"],
+  ["Sse", "SSE"],
 ]);
 
 interface RouteFact {

@@ -42,6 +42,24 @@ Non-goals:
   extract shallow, deterministic facts; agent enrichment turns those facts
   into project-specific meaning.
 
+### Layer A change gate
+
+Add or expand an introspector only when all of these are true:
+
+- A real dogfood or benchmark run shows the missing fact reduces agent
+  continuity or project understanding.
+- The fact is deterministic and directly visible in project files.
+- The implementation stays shallow: names, paths, resources, routes, models,
+  selectors, or other parseable structure.
+- The fact belongs to an already-supported baseline or a clearly-installed
+  fragment, not a speculative framework catalog entry.
+- The output helps Layer B enrichment by supplying evidence; it does not try
+  to infer product intent, ownership, or operational meaning.
+
+Do not add support for a technology just because it exists. If the missing
+information is semantic, uncertain, or product-specific, capture it in
+`<id>.enriched.yaml` through `/ontology-enrich` instead.
+
 ---
 
 ## 2. CLI surface
@@ -147,7 +165,7 @@ The bootstrap command:
 | `k8s` | `**/*.yaml` (kind: Namespace, Service, Ingress, Deployment, StatefulSet) | namespaces, services (name/ns/type/ports/selector), ingresses (host/paths), workloads (kind/name/ns/image) |
 | `prisma` | `**/schema.prisma` | datasource, generator, models (name + fields + relations) |
 | `nextjs` | `app/**/page.tsx?` and `pages/**/*.tsx?` | routes (file path → URL), dynamic segments, layouts |
-| `nestjs` | `**/*.controller.ts` (regex first cut, ts-morph later) | controllers, route prefixes, handler verbs/paths |
+| `nestjs` | `**/*.controller.ts` (regex first cut, ts-morph later) | controllers, route prefixes, HTTP/SSE handler verbs/paths |
 | `fastapi` | `**/*.py` (regex on `@app.get/post/...` and `@router.*`) | routers, paths, methods |
 
 Each lives at `cli/src/introspectors/<fragment-id>.ts` and registers

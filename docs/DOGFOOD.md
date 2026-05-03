@@ -227,10 +227,32 @@ v0.6 signal:
   infer: why the modules exist, how queues and workers interact, where domain
   ownership lives, and which operational invariants future agents must keep.
 - The next product gap is not deeper framework parsing by default. The concrete
-  follow-up from this run is deciding whether `@Sse()` routes should be emitted
-  by the NestJS Layer A introspector, because that is a deterministic route fact
-  currently only captured by Layer B.
+  follow-up from this run was the bounded `@Sse()` route question below:
+  deterministic route facts belong in Layer A, but product meaning still
+  belongs in Layer B.
 
+### Follow-up: NestJS SSE route fact
+
+Date: 2026-05-03
+
+A follow-up run on a fresh `sanitized-nest-prisma@e19fc0d` archive snapshot after
+adding NestJS `@Sse()` support showed:
+
+| Check | Result |
+|---|---|
+| Source repo mutation | none; the run used a `/tmp` git archive snapshot |
+| NestJS route facts | `30 -> 31` |
+| New Layer A route | `method: SSE`, `path: /notifications/stream`, `handler: stream` |
+| Ontology warnings after bootstrap | only missing enrichment warnings remained |
+
+Interpretation:
+
+- The first v0.6 dogfood run produced a valid Layer A improvement because the
+  missing fact was deterministic, shallow, and directly visible in NestJS
+  controller source.
+- This does not justify broad technology coverage. Future Layer A changes
+  still need dogfood or benchmark evidence that a directly parseable fact is
+  hurting agent continuity.
 
 ## Automated Self-Check — 2026-04-30T08:30:21.884Z
 
