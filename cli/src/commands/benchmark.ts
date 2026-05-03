@@ -110,7 +110,7 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
         ? "\n\n"
         : "";
     fs.appendFileSync(outputPath, `${prefix}${markdown}\n`, "utf8");
-    appendedPath = path.relative(projectRoot, outputPath);
+    appendedPath = displayPathFromProject(projectRoot, outputPath);
   }
 
   return {
@@ -125,6 +125,15 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
     markdown,
     appendedPath,
   };
+}
+
+function displayPathFromProject(projectRoot: string, targetPath: string): string {
+  const rel = path.relative(projectRoot, targetPath).split(path.sep).join("/");
+  if (rel === "") return ".";
+  if (rel.startsWith("../") || rel === ".." || path.isAbsolute(rel)) {
+    return targetPath;
+  }
+  return rel;
 }
 
 function benchmarkLayers(

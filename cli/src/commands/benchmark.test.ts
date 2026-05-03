@@ -90,4 +90,21 @@ describe("benchmarkReport", () => {
     expect(text).toContain("Benchmark Report — 2026-05-03T13:00:00.000Z");
     expect(text).toContain("Ready layers: 5/5");
   });
+
+  it("reports an absolute append path when output is outside the project", () => {
+    const { project, library } = setupBenchmarkProject();
+    const outputDir = tmpDir("anamnesis-benchmark-output-");
+    const outputPath = path.join(outputDir, "BENCHMARKS.md");
+
+    const result = benchmarkReport({
+      projectRoot: project,
+      libraryRoot: library,
+      append: true,
+      outputPath,
+      now: () => new Date("2026-05-03T13:30:00.000Z"),
+    });
+
+    expect(result.appendedPath).toBe(outputPath);
+    expect(fs.existsSync(outputPath)).toBe(true);
+  });
 });

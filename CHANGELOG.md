@@ -42,6 +42,9 @@ breaking changes until v1.0.
   backups unlimited.
 - `status` now marks `declined` entries as active or stale, and `doctor`
   warns when a declined fragment no longer matches the current rulebook.
+- `benchmark report --append --output <absolute-path>` now reports the
+  absolute appended path when the target is outside the benchmarked project,
+  avoiding confusing `../../..` paths during cross-repo benchmark collection.
 
 ## [0.6.0] — 2026-05-03
 

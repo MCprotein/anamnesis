@@ -320,6 +320,9 @@ Progress:
   Claude Code-only managed baseline scored ready layers `1/5`; the same
   source after all-adapter install, Layer A bootstrap, and Layer B enrichment
   scored `5/5` with continuity `6/6` and zero ontology warnings.
+- 2026-05-03: Polished cross-repo benchmark collection UX so
+  `benchmark report --append --output <absolute-path>` prints the absolute
+  output path when the report is written outside the benchmarked project.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff
