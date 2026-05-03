@@ -449,6 +449,13 @@ describe("status — ontology gap report", () => {
         }),
       ]),
     );
+    const missingGap = r.ontology.gaps.find(
+      (gap) => gap.kind === "bootstrap-missing",
+    );
+    expect(missingGap?.next).toContain("/ontology-enrich");
+    expect(missingGap?.next).toContain(
+      ".anamnesis/ontology/prisma.enriched.yaml",
+    );
   });
 
   it("reports missing semantic enrichment after bootstrap facts exist", () => {
@@ -467,6 +474,16 @@ describe("status — ontology gap report", () => {
         }),
       ]),
     );
+    const enrichmentGap = r.ontology.gaps.find(
+      (gap) => gap.kind === "enrichment-missing",
+    );
+    expect(enrichmentGap?.next).toContain(
+      ".anamnesis/ontology/prisma.bootstrap.yaml",
+    );
+    expect(enrichmentGap?.next).toContain(
+      ".anamnesis/ontology/prisma.enriched.yaml",
+    );
+    expect(enrichmentGap?.next).toContain("open questions");
   });
 
   it("reports stale bootstrap facts when source files change", () => {
@@ -494,6 +511,13 @@ describe("status — ontology gap report", () => {
           next: expect.stringContaining("ontology bootstrap --dry-run"),
         }),
       ]),
+    );
+    const staleGap = r.ontology.gaps.find(
+      (gap) => gap.kind === "bootstrap-stale",
+    );
+    expect(staleGap?.next).toContain("/ontology-enrich");
+    expect(staleGap?.next).toContain(
+      ".anamnesis/ontology/prisma.enriched.yaml",
     );
   });
 });

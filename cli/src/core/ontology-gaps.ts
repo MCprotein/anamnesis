@@ -114,6 +114,11 @@ export function collectOntologyGaps(
         ".bootstrap",
       );
       if (!fs.existsSync(path.join(projectRoot, bootstrapRel))) {
+        const enrichedRel = scopedOntologyRelPath(
+          scope.path,
+          installed.id,
+          ".enriched",
+        );
         gaps.push({
           scopePath: scope.path,
           fragmentId: installed.id,
@@ -121,7 +126,7 @@ export function collectOntologyGaps(
           severity: "warning",
           target: bootstrapRel,
           detail: `deterministic Layer A facts for '${installed.id}' have not been bootstrapped`,
-          next: "Run `anamnesis ontology bootstrap --dry-run` to inspect generated facts, then run without `--dry-run` to write them.",
+          next: missingBootstrapNext(enrichedRel),
         });
         continue;
       }
@@ -134,6 +139,11 @@ export function collectOntologyGaps(
         "utf8",
       );
       if (currentBootstrap !== expectedBootstrap) {
+        const enrichedRel = scopedOntologyRelPath(
+          scope.path,
+          installed.id,
+          ".enriched",
+        );
         gaps.push({
           scopePath: scope.path,
           fragmentId: installed.id,
@@ -141,7 +151,7 @@ export function collectOntologyGaps(
           severity: "warning",
           target: bootstrapRel,
           detail: `deterministic Layer A facts for '${installed.id}' are stale`,
-          next: "Run `anamnesis ontology bootstrap --dry-run` to inspect the changed facts, then run without `--dry-run` to refresh them.",
+          next: staleBootstrapNext(enrichedRel),
         });
       }
 
@@ -158,7 +168,7 @@ export function collectOntologyGaps(
           severity: "warning",
           target: enrichedRel,
           detail: `semantic Layer B enrichment for '${installed.id}' is missing`,
-          next: "Run `/ontology-enrich` in an agent to add relationships, flows, intent, and operational notes.",
+          next: missingEnrichmentNext(bootstrapRel, enrichedRel),
         });
       }
     }
@@ -210,6 +220,31 @@ function summarizeOntologyGaps(gaps: OntologyGap[]): OntologyGapSummary {
       (g) => g.kind === "introspector-not-applicable",
     ).length,
   };
+}
+
+function missingBootstrapNext(enrichedRel: string): string {
+  return [
+    "Run `anamnesis ontology bootstrap --dry-run` to inspect generated facts, then run without `--dry-run` to write them.",
+    `After Layer A is current, ask the active agent to run \`/ontology-enrich\` so it can create or update \`${enrichedRel}\` with relationships, flows, intent, invariants, and open questions.`,
+  ].join(" ");
+}
+
+function staleBootstrapNext(enrichedRel: string): string {
+  return [
+    "Run `anamnesis ontology bootstrap --dry-run` to inspect the changed facts, then run without `--dry-run` to refresh them.",
+    `After Layer A is current, ask the active agent to re-run \`/ontology-enrich\` and preserve reviewed semantics in \`${enrichedRel}\`.`,
+  ].join(" ");
+}
+
+function missingEnrichmentNext(
+  bootstrapRel: string,
+  enrichedRel: string,
+): string {
+  return [
+    "Ask the active agent to run `/ontology-enrich`.",
+    `It should read static slices plus \`${bootstrapRel}\` and create \`${enrichedRel}\` with relationships, flows, intent, invariants, and open questions.`,
+    "Do not hand-author this YAML unless reviewing the agent draft.",
+  ].join(" ");
 }
 
 function compareOntologyGaps(a: OntologyGap, b: OntologyGap): number {

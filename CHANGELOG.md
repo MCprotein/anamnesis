@@ -34,6 +34,10 @@ breaking changes until v1.0.
   includes deterministic `schema_version`, `generator`, and `facts` fields;
   base v8 requires `.enriched.yaml` files to use
   `schema_version: anamnesis.enriched.v1`.
+- Added agent-assisted enrichment guidance to ontology diagnostics.
+  `status` and `doctor` now connect missing or stale Layer A facts to the
+  follow-up `/ontology-enrich` step, and `ontology bootstrap` prints
+  semantic follow-up targets for matching `.enriched.yaml` files.
 
 ### Documentation
 
@@ -56,6 +60,8 @@ breaking changes until v1.0.
 - Clarified in the README that Layer A extracts provable facts while Layer B
   carries project-specific relationships, flows, intent, invariants, and open
   questions for future agents.
+- Documented that bootstrap output should lead directly into agent-assisted
+  enrichment instead of leaving users to hand-author semantic ontology YAML.
 
 ## [0.5.0] — 2026-04-30
 

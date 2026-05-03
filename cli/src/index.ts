@@ -441,6 +441,29 @@ function reportBootstrap(result: BootstrapResult): void {
   for (const line of formatBootstrapGenerationBoundaryLines(result)) {
     console.log(line);
   }
+  const enrichmentTargets = bootstrapEnrichmentTargets(result);
+  if (enrichmentTargets.length > 0) {
+    console.log("  semantic follow-up:");
+    console.log(
+      "    Layer A facts are only the baseline. Ask the active agent to run /ontology-enrich next.",
+    );
+    for (const target of enrichmentTargets) {
+      console.log(`    /ontology-enrich -> ${target}`);
+    }
+  }
+}
+
+function bootstrapEnrichmentTargets(result: BootstrapResult): string[] {
+  const targets = new Set<string>();
+  for (const entry of result.entries) {
+    if (
+      entry.path &&
+      (entry.outcome === "written" || entry.outcome === "unchanged")
+    ) {
+      targets.add(entry.path.replace(/\.bootstrap\.yaml$/, ".enriched.yaml"));
+    }
+  }
+  return Array.from(targets).sort();
 }
 
 function reportDogfood(result: DogfoodResult): void {

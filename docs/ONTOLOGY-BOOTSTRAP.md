@@ -64,9 +64,15 @@ anamnesis ontology bootstrap [--scope=<path>] [--fragment=<id>] [--dry-run]
 - `anamnesis status` — reports ontology gaps: missing static slices,
   missing or stale bootstrap facts, missing semantic enrichment, fragments
   without registered introspectors, and introspectors that are not
-  applicable in the current scope.
+  applicable in the current scope. Bootstrap-related guidance includes the
+  follow-up `/ontology-enrich` step so agents do not stop at Layer A facts.
 - `anamnesis doctor` — turns actionable ontology gaps into warnings with
   the next command or skill to run.
+
+After `bootstrap` writes or confirms an applicable `.bootstrap.yaml`, the CLI
+prints the matching `.enriched.yaml` target. That target is for the active
+agent to draft through `/ontology-enrich`; users should review the draft, not
+hand-author semantic YAML as the normal path.
 
 ---
 

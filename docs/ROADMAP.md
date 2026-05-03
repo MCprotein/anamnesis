@@ -244,6 +244,10 @@ Progress:
   baselines plus agent-assisted Layer B enrichment. Introspector work remains
   allowed only when a real dogfood gap shows that deterministic facts, not
   semantic enrichment, are the blocker.
+- 2026-05-03: Added agent-assisted enrichment UX to diagnostics: missing or
+  stale bootstrap guidance now points to the follow-up `/ontology-enrich`
+  step, and `ontology bootstrap` prints the `.enriched.yaml` targets an agent
+  should create or refresh after Layer A facts are current.
 
 Exit criteria:
 - Users can tell from command output whether the current ontology/context

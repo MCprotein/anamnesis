@@ -345,6 +345,13 @@ describe("doctor — installation integrity", () => {
         }),
       ]),
     );
+    const issue = result.issues.find(
+      (i) => i.code === "ontology-bootstrap-missing",
+    );
+    expect(issue?.repair).toContain("/ontology-enrich");
+    expect(issue?.repair).toContain(
+      ".anamnesis/ontology/prisma.enriched.yaml",
+    );
   });
 
   it("reports stale ontology bootstrap facts as an actionable warning", () => {
@@ -381,6 +388,13 @@ describe("doctor — installation integrity", () => {
           repair: expect.stringContaining("ontology bootstrap --dry-run"),
         }),
       ]),
+    );
+    const issue = result.issues.find(
+      (i) => i.code === "ontology-bootstrap-stale",
+    );
+    expect(issue?.repair).toContain("/ontology-enrich");
+    expect(issue?.repair).toContain(
+      ".anamnesis/ontology/prisma.enriched.yaml",
     );
   });
 });

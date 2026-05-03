@@ -135,7 +135,10 @@ project state is CLI-generated, agent-enriched, or still missing semantic
 handoff/ontology context. `status` also reports ontology gaps across static
 slices, missing or stale deterministic bootstrap facts, semantic enrichment,
 and fragments that do not yet have a Layer A introspector; `doctor` turns
-actionable gaps into repair warnings.
+actionable gaps into repair warnings. When Layer A facts are missing or
+stale, the guidance continues into `/ontology-enrich` so the active agent can
+draft the semantic `.enriched.yaml` layer instead of leaving users to write it
+by hand.
 
 Layer A is intentionally a baseline, not a promise to model every framework
 in depth. The CLI extracts facts it can prove from files; Layer B uses the
