@@ -65,6 +65,7 @@ export type DoctorIssueCode =
   | "continuity-active-handoff-stale"
   | "continuity-adapter-surface-missing"
   | "continuity-drift-detected"
+  | "declined-rule-stale"
   | "ontology-static-missing"
   | "ontology-bootstrap-missing"
   | "ontology-bootstrap-stale"
@@ -154,6 +155,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
     addStatusIssues(st.entries, st.fragments, issues);
     addContinuityIssues(st.continuity.checks, issues);
     addOntologyGapIssues(st.ontology.gaps, issues);
+    addDeclinedIssues(st.declined, issues);
   }
 
   const library = libraryFragmentMap(libraryRoot);
@@ -270,6 +272,23 @@ function addOntologyGapIssues(
       target: gap.target,
       message: gap.detail,
       repair: gap.next,
+    });
+  }
+}
+
+function addDeclinedIssues(
+  declined: StatusResult["declined"],
+  issues: DoctorIssue[],
+): void {
+  for (const entry of declined) {
+    if (entry.matched) continue;
+    issues.push({
+      severity: "warning",
+      code: "declined-rule-stale",
+      target: `Agentfile declined:${entry.id}`,
+      message: `declined fragment '${entry.id}' no longer matches the current rulebook`,
+      repair:
+        "Remove this entry from Agentfile.declined if it was only suppressing an old rulebook match. Keep it if the project intentionally documents a permanent opt-out.",
     });
   }
 }

@@ -342,8 +342,44 @@ describe("status — suggested rulebook matches", () => {
 
     const r = status({ projectRoot: project, libraryRoot: library });
     expect(r.suggested.map((s) => s.suggest)).not.toContain("prisma");
-    expect(r.declined.map((d) => d.id)).toContain("prisma");
+    expect(r.declined).toEqual([
+      {
+        id: "prisma",
+        reason: "test",
+        declinedAt: "2026-01-01",
+        matched: true,
+      },
+    ]);
     expect(r.summary.declinedCount).toBe(1);
+    expect(r.summary.declinedStaleCount).toBe(0);
+  });
+
+  it("marks declined fragments stale when their rule no longer matches", () => {
+    const library = makeLibrary();
+    const project = tmpDir("anamnesis-proj-");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+    const af = readAgentfile(project);
+    af.declined = [
+      { id: "prisma", reason: "old frontend-only choice", declined_at: "2026-01-01" },
+    ];
+    writeAgentfile(project, af);
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+    expect(r.declined).toEqual([
+      {
+        id: "prisma",
+        reason: "old frontend-only choice",
+        declinedAt: "2026-01-01",
+        matched: false,
+      },
+    ]);
+    expect(r.summary.declinedCount).toBe(1);
+    expect(r.summary.declinedStaleCount).toBe(1);
   });
 });
 

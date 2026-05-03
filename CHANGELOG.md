@@ -34,6 +34,8 @@ breaking changes until v1.0.
 - `update --apply` now enforces `settings.backup_retention` after creating a
   new backup. The default keeps the newest 10 backup directories; `0` keeps
   backups unlimited.
+- `status` now marks `declined` entries as active or stale, and `doctor`
+  warns when a declined fragment no longer matches the current rulebook.
 
 ## [0.6.0] — 2026-05-03
 

@@ -307,6 +307,9 @@ Progress:
   `settings.backup_retention` during `update --apply`; old
   `.anamnesis/backups/*` directories are pruned only after a new backup is
   created, and `0` keeps backups unlimited.
+- 2026-05-03: Hardened declined-suggestion lifecycle reporting. `status`
+  now labels declined entries as active or stale, and `doctor` warns when an
+  Agentfile declined entry no longer corresponds to a current rulebook match.
 
 Exit criteria:
 - Switching agents preserves project memory, ontology access, handoff

@@ -368,7 +368,8 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
     for (const d of declined) {
       const when = d.declinedAt ? ` (${d.declinedAt})` : "";
       const why = d.reason ? `: ${d.reason}` : "";
-      console.log(`    ${d.id}${when}${why}`);
+      const state = d.matched ? "active" : "stale";
+      console.log(`    ${d.id}${when} [${state}]${why}`);
     }
   }
 

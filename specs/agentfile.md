@@ -204,7 +204,8 @@ anamnesis CLI 는 `Agentfile` 을 읽을 때 다음을 **거부**:
 
 **경고만** (실행 계속):
 
-- `declined` 에 있는데 rulebook 도 매칭되지 않는 fragment
+- `declined` 에 있는데 rulebook 도 매칭되지 않는 fragment. `status` 는
+  이를 stale declined 로 표시하고, `doctor` 는 정리 여부를 경고한다.
 - 설치된 fragment 의 버전이 라이브러리의 **최신** 보다 낮음 (update 제안)
 - `overrides.regions[].region_id` 가 실제 manifest 에 없음 (오타 가능)
 

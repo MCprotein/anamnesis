@@ -87,6 +87,8 @@ export interface DeclinedEntry {
   id: string;
   reason?: string;
   declinedAt?: string;
+  /** True when the current rulebook still matches this declined fragment. */
+  matched: boolean;
 }
 
 export interface ScopeStatus {
@@ -152,6 +154,7 @@ export interface StatusResult {
     ontologyGapInfo: number;
     suggestedCount: number;
     declinedCount: number;
+    declinedStaleCount: number;
   };
 }
 
@@ -295,6 +298,7 @@ export function status(opts: StatusOptions): StatusResult {
   );
   const ctx = new ProjectContext(projectRoot);
   const matched = matchingRules(loadRulebook(libraryRoot), ctx);
+  const matchedSuggestedIds = new Set(matched.map((rule) => rule.suggest));
   const suggested = matched.filter(
     (r) => !installedIds.has(r.suggest) && !declinedIds.has(r.suggest),
   );
@@ -303,6 +307,7 @@ export function status(opts: StatusOptions): StatusResult {
     id: d.id,
     reason: d.reason,
     declinedAt: d.declined_at,
+    matched: matchedSuggestedIds.has(d.id),
   }));
 
   // Per-scope grouping: assign each fragment + entry to the longest-matching
@@ -338,6 +343,7 @@ export function status(opts: StatusOptions): StatusResult {
     ontologyGapInfo: ontology.summary.info,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
+    declinedStaleCount: declined.filter((d) => !d.matched).length,
   };
   const continuity = computeContinuityStatus({
     projectRoot,

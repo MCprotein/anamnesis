@@ -319,6 +319,29 @@ describe("doctor — installation integrity", () => {
     );
   });
 
+  it("reports declined entries that no longer match the current rulebook", () => {
+    const { project, library } = installContinuityProject();
+    const af = readAgentfile(project);
+    af.declined = [
+      { id: "prisma", reason: "old opt-out", declined_at: "2026-01-01" },
+    ];
+    writeAgentfile(project, af);
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "declined-rule-stale",
+          target: "Agentfile declined:prisma",
+          repair: expect.stringContaining("Agentfile.declined"),
+        }),
+      ]),
+    );
+  });
+
   it("reports missing ontology bootstrap facts as an actionable warning", () => {
     const project = tmpDir("anamnesis-doctor-ontology-gap-");
     const library = process.cwd();
