@@ -254,6 +254,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   `anamnesis migrate agentfile` command contract
 - [`docs/API.md`](docs/API.md) — supported TypeScript import boundary
 - [`docs/REPAIR.md`](docs/REPAIR.md) — repair playbook for existing managed projects
+- [`docs/FRAGMENT-REGISTRY.md`](docs/FRAGMENT-REGISTRY.md) —
+  v0.9 registry metadata, discovery, version selection, cache, and trust-boundary design
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested

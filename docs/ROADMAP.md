@@ -415,6 +415,13 @@ Exit criteria:
 - Public docs cover both users and fragment authors.
 - Benchmark evidence includes more than one repo shape.
 
+Progress:
+- 2026-05-04: Added `docs/FRAGMENT-REGISTRY.md` as the v0.9 registry design
+  draft. The design keeps current local-library and Agentfile flows intact,
+  treats registry discovery as passive, requires archive checksums before use,
+  defers signature policy to the next v0.9 item, and calls out Agentfile
+  source metadata as an explicit pre-v1.0 decision.
+
 ---
 
 ## v1.0 — *stable / public-ready*

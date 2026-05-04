@@ -7,6 +7,14 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+### Documentation
+
+- Added `docs/FRAGMENT-REGISTRY.md`, the v0.9 design for registry metadata,
+  discovery, version selection, cache layout, and trust boundaries before
+  implementing remote fragment installation.
+- Updated the architecture docs to keep fragment trigger ownership aligned
+  with the current `rulebook.md` model.
+
 ## [0.8.0] — 2026-05-04
 
 ### Added
