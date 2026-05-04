@@ -393,7 +393,7 @@ Progress:
 
 ---
 
-## v0.9 — *planned*
+## v0.9 — *shipped 2026-05-04*
 
 > **Theme: public ecosystem readiness**
 
@@ -409,7 +409,7 @@ current local-library workflow.
 | 5 | **Public benchmark gallery** | Collect sanitized before/after reports across multiple public repo shapes and surface headline evidence in README/docs. |
 | 6 | **Remote sync strategy** | Decide whether `anamnesis sync` belongs before v1.0 or should wait until a registry exists. |
 
-Exit criteria:
+Exit criteria met:
 - Registry and signing are specified deeply enough to implement without
   changing the frozen Agentfile surface.
 - Public docs cover both users and fragment authors.
@@ -465,7 +465,7 @@ Progress:
 Exit criteria:
 - `npm install -g @mcprotein/anamnesis` plus the documented quickstart works
   from the published package.
-- Existing v0.7/v0.8 managed projects can upgrade without losing user edits.
+- Existing v0.7/v0.8/v0.9 managed projects can upgrade without losing user edits.
 - The schema/API surfaces marked stable have explicit tests and docs.
 - Known limitations are documented as limitations, not hidden behavior.
 

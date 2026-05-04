@@ -7,6 +7,8 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-05-04
+
 ### Documentation
 
 - Added `docs/FRAGMENT-REGISTRY.md`, the v0.9 design for registry metadata,
