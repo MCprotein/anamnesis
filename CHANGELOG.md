@@ -15,6 +15,9 @@ breaking changes until v1.0.
 - Added `docs/REGISTRY-V1-DECISION.md`, the v1.0 decision record that defers
   remote registry/signing implementation post-v1.0 while preserving built-in
   and local-library fragment safety.
+- Added `docs/DOCS-V1-AUDIT.md`, the v1.0 public documentation coverage map
+  for install, lifecycle, parity, ontology, handoff, monorepo, release,
+  fragment authoring, troubleshooting, and limitations.
 
 ### Changed
 

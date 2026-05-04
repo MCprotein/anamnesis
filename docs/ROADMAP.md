@@ -491,6 +491,11 @@ Progress:
   checksum, signature verification, trust store, Agentfile source metadata,
   and unsigned remote escape hatches are post-v1.0; v1.0 keeps built-in and
   local-library fragments as the only installable sources.
+- 2026-05-04: Closed the public documentation completeness item with
+  `docs/DOCS-V1-AUDIT.md`, mapping install, lifecycle, adapter parity,
+  ontology generation, handoff, monorepo, release, fragment authoring,
+  troubleshooting, schema/API/migration, registry/sync scope, and evidence
+  docs to canonical repo entry points plus known v1.0 limitations.
 
 ---
 

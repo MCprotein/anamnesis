@@ -1,6 +1,8 @@
 # Official Docs Site Plan
 
 Status: v0.9 plan. No separate documentation site has shipped yet.
+V1.0 GitHub-first documentation coverage is audited in
+`docs/DOCS-V1-AUDIT.md`.
 
 ## Decision
 

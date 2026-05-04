@@ -271,6 +271,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   v1.0 decision to keep remote registry/signing implementation post-v1.0
 - [`docs/DOCS-SITE-PLAN.md`](docs/DOCS-SITE-PLAN.md) —
   v0.9 GitHub-first docs decision, information architecture, and future site trigger
+- [`docs/DOCS-V1-AUDIT.md`](docs/DOCS-V1-AUDIT.md) —
+  v1.0 public documentation coverage and known limitation audit
 - [`docs/REMOTE-SYNC-STRATEGY.md`](docs/REMOTE-SYNC-STRATEGY.md) —
   v1.0 decision to omit broad `sync` and keep registry refresh/update explicit
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
