@@ -15,7 +15,9 @@ import {
   readAgentfile,
   writeAgentfile,
   findAgentfile,
+  fragmentAdapterEnabled,
   type Agentfile,
+  type Fragment,
   type ToolName,
 } from "../core/agentfile.js";
 import {
@@ -36,6 +38,7 @@ import {
   fragmentDirOf,
   topologicalSort,
   detectConflicts,
+  type Capability,
   type FragmentDefinition,
 } from "../core/fragments.js";
 import { effectiveScopes } from "../core/scope.js";
@@ -105,6 +108,7 @@ const DEFAULT_SETTINGS = {
 };
 
 interface ResolvedFragment {
+  entry: Fragment;
   fragment: FragmentDefinition;
   fragmentDir: string;
 }
@@ -115,7 +119,7 @@ function timestampedBackupName(): string {
 }
 
 function resolveInstalledFragment(opts: {
-  entry: { id: string; version: number; pinned?: boolean };
+  entry: Fragment;
   base: FragmentDefinition | null;
   fragments: Map<string, FragmentDefinition>;
   libraryRoot: string;
@@ -125,11 +129,11 @@ function resolveInstalledFragment(opts: {
 
   if (opts.entry.pinned === true && !opts.bumpPinned) {
     if (opts.entry.id === "base" && opts.base?.version === opts.entry.version) {
-      return { fragment: opts.base, fragmentDir: currentDir };
+      return { entry: opts.entry, fragment: opts.base, fragmentDir: currentDir };
     }
     const current = opts.fragments.get(opts.entry.id);
     if (current?.version === opts.entry.version) {
-      return { fragment: current, fragmentDir: currentDir };
+      return { entry: opts.entry, fragment: current, fragmentDir: currentDir };
     }
 
     const archivedDir = archivedFragmentDirOf(
@@ -149,14 +153,18 @@ function resolveInstalledFragment(opts: {
         `pinned fragment archive '${opts.entry.id}@${opts.entry.version}' declares version ${archived.version}`,
       );
     }
-    return { fragment: archived, fragmentDir: archivedDir };
+    return { entry: opts.entry, fragment: archived, fragmentDir: archivedDir };
   }
 
   if (opts.entry.id === "base") {
-    return opts.base ? { fragment: opts.base, fragmentDir: currentDir } : undefined;
+    return opts.base
+      ? { entry: opts.entry, fragment: opts.base, fragmentDir: currentDir }
+      : undefined;
   }
   const fragment = opts.fragments.get(opts.entry.id);
-  return fragment ? { fragment, fragmentDir: currentDir } : undefined;
+  return fragment
+    ? { entry: opts.entry, fragment, fragmentDir: currentDir }
+    : undefined;
 }
 
 function pathExists(fp: string): boolean {
@@ -340,7 +348,7 @@ export function update(opts: UpdateOptions): UpdateResult {
 
   const actions: RenderAction[] = [];
   for (const { scopePath, ordered: scopeOrdered, tools } of perScope) {
-    for (const { fragment, fragmentDir } of scopeOrdered) {
+    for (const { entry, fragment, fragmentDir } of scopeOrdered) {
       const renderCtx: RenderContext = {
         fragment,
         fragmentDir,
@@ -350,10 +358,14 @@ export function update(opts: UpdateOptions): UpdateResult {
         params: {},
       };
       for (const tool of tools) {
+        if (!fragmentAdapterEnabled(entry, tool)) continue;
         actions.push(...registry.planFragment(renderCtx, tool));
       }
     }
-    if (tools.includes("claude-code") && hasProjectMemory(scopeOrdered)) {
+    if (
+      tools.includes("claude-code") &&
+      hasProjectMemory(scopeOrdered, "claude-code")
+    ) {
       actions.push(
         planClaudeMdEntrypoint({
           scopePath,
@@ -490,12 +502,29 @@ function dedupeActions(actions: RenderAction[]): RenderAction[] {
   return out;
 }
 
-function hasProjectMemory(fragments: ResolvedFragment[]): boolean {
-  return fragments.some(({ fragment }) =>
+function hasProjectMemory(
+  fragments: ResolvedFragment[],
+  tool: ToolName,
+): boolean {
+  return fragments.some(({ entry, fragment }) =>
+    fragmentAdapterEnabled(entry, tool) &&
     fragment.capabilities.some(
-      (capability) => capability.type === "project_memory",
+      (capability) =>
+        capability.type === "project_memory" &&
+        capabilitySupportsTool(capability, tool),
     ),
   );
+}
+
+function capabilitySupportsTool(capability: Capability, tool: ToolName): boolean {
+  if (
+    "adapters_supported" in capability &&
+    capability.adapters_supported !== undefined &&
+    !capability.adapters_supported.includes(tool)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /**

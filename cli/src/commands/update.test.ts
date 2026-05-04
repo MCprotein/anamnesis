@@ -72,6 +72,47 @@ capabilities:
   return lib;
 }
 
+function makeAdapterOverrideLibrary(): string {
+  const lib = tmpDir("anamnesis-lib-");
+
+  const baseDir = path.join(lib, "base");
+  fs.mkdirSync(path.join(baseDir, "content"), { recursive: true });
+  fs.writeFileSync(
+    path.join(baseDir, "fragment.yaml"),
+    `id: base
+version: 1
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+`,
+  );
+  fs.writeFileSync(
+    path.join(baseDir, "content", "agents.snippet.md"),
+    "## anamnesis baseline\n",
+  );
+
+  const opsDir = path.join(lib, "fragments", "ops");
+  fs.mkdirSync(path.join(opsDir, "skills", "check"), { recursive: true });
+  fs.writeFileSync(
+    path.join(opsDir, "fragment.yaml"),
+    `id: ops
+version: 1
+capabilities:
+  - type: skill
+    name: check
+    source: skills/check
+`,
+  );
+  fs.writeFileSync(
+    path.join(opsDir, "skills", "check", "SKILL.md"),
+    "# check\n\nRun the project check procedure.\n",
+  );
+
+  fs.writeFileSync(path.join(lib, "rulebook.md"), "");
+  return lib;
+}
+
 function addPrismaArchive(
   library: string,
   opts: { version: number; content: string },
@@ -625,6 +666,95 @@ describe("update — Codex adapter co-existence", () => {
         (c) => c.target === "region" && c.regionId === "prisma",
       ),
     ).toBe(true);
+  });
+});
+
+describe("update — per-fragment adapter overrides", () => {
+  it("does not render root fragments on adapters disabled in Agentfile", () => {
+    const library = makeAdapterOverrideLibrary();
+    const project = tmpDir("anamnesis-proj-");
+    fs.writeFileSync(
+      path.join(project, "Agentfile"),
+      `version: 1
+project:
+  name: adapter-overrides
+tools:
+  - claude-code
+  - codex
+  - cursor
+fragments:
+  - id: ops
+    version: 1
+    adapters:
+      cursor: false
+`,
+    );
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    expect(
+      result.changes.some(
+        (c) => c.target === "file" && c.path === ".cursor/rules/check.mdc",
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(project, ".claude/skills/check/SKILL.md")),
+    ).toBe(true);
+    expect(fs.readFileSync(path.join(project, "AGENTS.md"), "utf8")).toContain(
+      "codex-skill-check",
+    );
+    expect(
+      fs.existsSync(path.join(project, ".cursor/rules/check.mdc")),
+    ).toBe(false);
+  });
+
+  it("applies adapter overrides to scope fragment additions", () => {
+    const library = makeAdapterOverrideLibrary();
+    const project = tmpDir("anamnesis-proj-");
+    fs.mkdirSync(path.join(project, "apps/web"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, "Agentfile"),
+      `version: 1
+project:
+  name: adapter-overrides
+  scopes:
+    - path: .
+    - path: apps/web
+      extends: .
+      overrides:
+        tools:
+          - cursor
+        fragments_add:
+          - id: ops
+            version: 1
+            adapters:
+              cursor: false
+tools:
+  - cursor
+fragments: []
+`,
+    );
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    expect(
+      result.changes.some(
+        (c) => c.target === "file" && c.path === ".cursor/rules/check.mdc",
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(project, ".cursor/rules/check.mdc")),
+    ).toBe(false);
   });
 });
 

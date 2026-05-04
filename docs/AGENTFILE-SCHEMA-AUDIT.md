@@ -55,11 +55,16 @@ commands such as `status`, `doctor`, `init`, and `update`:
 `specs/agentfile.md` now separates parser-level hard errors from
 library/project-aware command diagnostics.
 
+`fragment.adapters` is now a first-class render gate for existing projects:
+`false` skips that fragment for the selected adapter in `update` and `doctor`,
+while missing keys and `true` mean enabled. Capability-level
+`adapters_supported` remains narrower than the fragment-level override. The
+current contract deliberately does not delete previously generated managed
+files when an adapter is later disabled; cleanup belongs to the repair/migrate
+workflow.
+
 ## V1 Freeze Risks
 
-- `fragment.adapters` is parsed but not yet consistently used as a first-class
-  per-fragment adapter override in every render path. Freeze only after its
-  semantics are either fully implemented or explicitly deferred.
 - `overrides.regions` and `overrides.files` are documented as lock controls,
   but current write protection primarily comes from manifest drift detection.
   Freeze only after the lock semantics are implemented, renamed, or removed.
@@ -72,7 +77,8 @@ library/project-aware command diagnostics.
   does not exist yet. v0.8 should define the migration command before the
   schema is frozen.
 - Partial `fragment.adapters` maps are now parser-supported and covered by
-  compatibility fixtures. Unknown adapter keys remain invalid.
+  compatibility fixtures. Root fragments and scope `fragments_add` entries are
+  covered by render-path tests. Unknown adapter keys remain invalid.
 
 ## V0.8 Recommendations
 

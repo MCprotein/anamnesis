@@ -25,6 +25,8 @@ breaking changes until v1.0.
 
 - `Agentfile` parsing now accepts partial `fragment.adapters` overrides such
   as `cursor: false` without requiring every supported adapter key.
+- `update` and `doctor` now honor `fragment.adapters` as a per-fragment render
+  gate for both root fragments and scope `fragments_add` entries.
 
 ## [0.7.0] — 2026-05-03
 

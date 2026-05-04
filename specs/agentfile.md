@@ -142,6 +142,16 @@ overrides:
 | `adapters` | partial `object<tool, bool>` | ⛔ | 어댑터별 활성/비활성 오버라이드. 필요한 도구만 적는다. 기본: `tools` 전부 활성 |
 | `pinned` | `bool` | ⛔ | `true` 면 `update` 가 자동 bump 하지 않고 `fragments/<id>/.versions/<version>/`(base 는 `base/.versions/<version>/`) 에서 해당 버전을 렌더링. `update --bump-pinned` 로만 명시적 bump |
 
+`adapters` 는 fragment entry 단위의 렌더링 게이트다. 값이 없거나
+`true` 인 어댑터는 활성이고, `false` 인 어댑터는 해당 fragment 의 모든
+capability 렌더링을 건너뛴다. capability 자체의 `adapters_supported` 제한이
+더 좁으면 그 제한이 우선한다. 즉 `adapters: { cursor: true }` 라고 적어도
+fragment capability 가 Cursor 렌더러를 지원하지 않으면 출력되지 않는다.
+
+이미 이전에 생성된 managed file/region 을 삭제하는 의미는 아니다. 어댑터를
+끄면 이후 `update`/`doctor` 렌더 계획에서 제외되고, 기존 산출물 정리는 별도
+repair/migration 단계에서 다룬다.
+
 **순서** — 배열의 순서가 곧 **병합/충돌 해결 우선순위**. 아래 순번일수록 나중에 렌더링되어 덮어씀. 충돌 시 anamnesis 는 경고만 내고 순서를 믿는다.
 
 ### 4.5 `Declined`

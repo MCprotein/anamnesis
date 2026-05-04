@@ -238,6 +238,42 @@ describe("doctor — installation integrity", () => {
     );
   });
 
+  it("does not require adapter wiring for fragments disabled on that adapter", () => {
+    const project = tmpDir("anamnesis-doctor-proj-");
+    const library = makeLibrary();
+    fs.writeFileSync(
+      path.join(project, "Agentfile"),
+      `version: 1
+project:
+  name: disabled-adapter
+tools:
+  - claude-code
+fragments:
+  - id: base
+    version: 1
+    adapters:
+      claude-code: false
+`,
+    );
+    update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "hook-registration-missing" }),
+        expect.objectContaining({ code: "adapter-renderer-missing" }),
+        expect.objectContaining({ code: "render-plan-failed" }),
+      ]),
+    );
+  });
+
   it("uses archived definitions for pinned fragments", () => {
     const { project } = installProject();
     const af = readAgentfile(project);

@@ -7,7 +7,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {
   findAgentfile,
+  fragmentAdapterEnabled,
   readAgentfile,
+  type Fragment,
   type ToolName,
 } from "../core/agentfile.js";
 import {
@@ -187,6 +189,7 @@ type StatusEntry = ReturnType<typeof status>["entries"][number];
 type StatusFragment = ReturnType<typeof status>["fragments"][number];
 
 interface ResolvedFragment {
+  entry: Fragment;
   fragment: FragmentDefinition;
   fragmentDir: string;
 }
@@ -354,7 +357,7 @@ function addAdapterIssuesAndCollectActions(opts: {
   scopes: Array<{
     path: string;
     tools: ToolName[];
-    fragments: Array<{ id: string; version: number; pinned?: boolean }>;
+    fragments: Fragment[];
   }>;
 }): RenderAction[] {
   const registry = buildRendererRegistry();
@@ -370,7 +373,7 @@ function addAdapterIssuesAndCollectActions(opts: {
         scopePath: scope.path,
       });
       if (!resolved) continue;
-      const { fragment, fragmentDir } = resolved;
+      const { entry, fragment, fragmentDir } = resolved;
       const ctx: RenderContext = {
         fragment,
         fragmentDir,
@@ -381,6 +384,7 @@ function addAdapterIssuesAndCollectActions(opts: {
       };
 
       for (const tool of scope.tools) {
+        if (!fragmentAdapterEnabled(entry, tool)) continue;
         for (const cap of fragment.capabilities) {
           if (!capabilitySupportsTool(cap, tool)) continue;
           if (!registry.get(tool, cap.type)) {
@@ -413,7 +417,7 @@ function addAdapterIssuesAndCollectActions(opts: {
 }
 
 function resolveInstalledFragmentForDoctor(opts: {
-  entry: { id: string; version: number; pinned?: boolean };
+  entry: Fragment;
   libraryRoot: string;
   library: Map<string, FragmentDefinition>;
   issues: DoctorIssue[];
@@ -423,11 +427,13 @@ function resolveInstalledFragmentForDoctor(opts: {
   const current = opts.library.get(opts.entry.id);
 
   if (opts.entry.pinned !== true) {
-    return current ? { fragment: current, fragmentDir: currentDir } : undefined;
+    return current
+      ? { entry: opts.entry, fragment: current, fragmentDir: currentDir }
+      : undefined;
   }
 
   if (current?.version === opts.entry.version) {
-    return { fragment: current, fragmentDir: currentDir };
+    return { entry: opts.entry, fragment: current, fragmentDir: currentDir };
   }
 
   const archivedDir = archivedFragmentDirOf(
@@ -461,7 +467,7 @@ function resolveInstalledFragmentForDoctor(opts: {
       });
       return undefined;
     }
-    return { fragment, fragmentDir: archivedDir };
+    return { entry: opts.entry, fragment, fragmentDir: archivedDir };
   } catch (e) {
     opts.issues.push({
       severity: "error",

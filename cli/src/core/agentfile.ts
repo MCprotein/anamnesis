@@ -104,6 +104,13 @@ export type Agentfile = z.infer<typeof agentfileSchema>;
 export type ToolName = z.infer<typeof toolNameSchema>;
 export type Fragment = z.infer<typeof fragmentSchema>;
 
+export function fragmentAdapterEnabled(
+  fragment: Pick<Fragment, "adapters">,
+  tool: ToolName,
+): boolean {
+  return fragment.adapters?.[tool] !== false;
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------

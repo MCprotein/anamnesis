@@ -365,6 +365,11 @@ Progress:
 - 2026-05-04: Updated `specs/agentfile.md` to distinguish parser-level hard
   errors from library/project-aware diagnostics owned by `status`, `doctor`,
   `init`, and `update`.
+- 2026-05-04: Implemented `fragment.adapters` as a render gate for existing
+  projects. `update` skips disabled adapters for root fragments and scope
+  `fragments_add`; `doctor` uses the same gate for renderer and hook-setting
+  diagnostics. Existing managed-file cleanup remains assigned to the v0.8
+  repair/migration workflow.
 
 ---
 
