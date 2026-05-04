@@ -215,6 +215,39 @@ Interpretation:
 - The remaining warning is intentional: generated Layer A bootstrap exists
   before an agent writes Layer B `.enriched.yaml`.
 
+## Published Package Smoke — v1.0.0
+
+Recorded: 2026-05-04
+
+Purpose: verify the npm-published package, not the local TypeScript source or
+local release tarball.
+
+Package:
+
+```bash
+npm view '@mcprotein/anamnesis@1.0.0' version \
+  --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@1.0.0 -- anamnesis --version
+```
+
+Result: `1.0.0`
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh Prisma fixture | published package `init --tools all --allow-exec-adapters` -> `status` -> `doctor` | init completed; continuity `ready (6/6)`; doctor `0` errors and expected Layer B enrichment warning |
+
+Interpretation:
+
+- The tag-triggered publish workflow produced an npmjs.org package visible as
+  `@mcprotein/anamnesis@1.0.0`.
+- The published CLI runs from a fresh temp directory and reports `1.0.0`.
+- A fresh all-adapter project installed from npmjs.org reaches the v1.0
+  continuity target without local source-tree fallback.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03

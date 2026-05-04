@@ -3,9 +3,9 @@
 Version-by-version plan. Brief summary lives in [README.md](../README.md);
 this file is the canonical source.
 
-Pre-1.0 semantics: minor version bumps may include breaking changes until
-v1.0. Feature timing is best-effort; items can move between releases as
-verified feedback arrives.
+v1.0 and later follow semver. Before v1.0, minor version bumps could include
+breaking changes. Feature timing is best-effort; items can move between
+releases as verified feedback arrives.
 
 ## Product north star
 
@@ -449,7 +449,7 @@ Progress:
 
 ---
 
-## v1.0 — *stable / public-ready*
+## v1.0 — *shipped 2026-05-04*
 
 > **Theme: lock the surface, open to community**
 
@@ -506,6 +506,10 @@ Progress:
   `0.8.0`, and `0.9.0` all updated with the current candidate while preserving
   user-authored `AGENTS.md` sentinel prose, retaining continuity `ready (6/6)`,
   and reporting doctor `0 error(s)`.
+- 2026-05-04: Published `@mcprotein/anamnesis@1.0.0` from the tag-triggered
+  workflow and completed npmjs.org post-publish smoke: version lookup returned
+  `1.0.0`, published CLI execution returned `1.0.0`, and a fresh Prisma
+  fixture reached continuity `ready (6/6)` with doctor `0 error(s)`.
 
 ---
 

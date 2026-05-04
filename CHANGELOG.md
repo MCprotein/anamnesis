@@ -7,6 +7,11 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Documentation
+
+- Recorded the npmjs.org post-publish smoke for `@mcprotein/anamnesis@1.0.0`
+  and marked v1.0 as shipped in the README and roadmap.
+
 ## [1.0.0] — 2026-05-04
 
 ### Added
