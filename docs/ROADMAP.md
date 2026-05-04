@@ -347,7 +347,7 @@ to depend on.
 | 1 | **Agentfile schema audit** | Review `Agentfile` v1 fields, defaults, scope inheritance, `settings`, `declined`, and pinned fragment semantics. Decide what can be frozen as-is and what needs a pre-1.0 adjustment. |
 | 2 | **Schema fixture suite** | Add explicit compatibility fixtures for real single-scope, multi-scope, pinned, declined, and all-adapter Agentfiles so future changes can prove backward compatibility. |
 | 3 | **Migration command design** | Designed in `docs/AGENTFILE-MIGRATIONS.md`; CLI skeleton shipped with dry-run/apply/backup/idempotency behavior and no built-in schema transforms yet. |
-| 4 | **Stable TypeScript API boundary** | Separate public import targets from internal modules. Add package `exports` only when the supported API surface is clear enough to document. |
+| 4 | **Stable TypeScript API boundary** | Public import boundary added at `@mcprotein/anamnesis` for Agentfile utilities only; unsupported deep imports are blocked by package `exports`. |
 | 5 | **Existing-project repair workflow** | Tighten diagnostics and repair guidance for older managed projects with user-modified native surfaces, missing hook registrations, stale Agentfile versions, or partial adapter installs. |
 | 6 | **Published package smoke gate** | Make the v0.7.0 npm-package smoke path recurring: fresh fixture plus sanitized-fixture snapshot through `npm exec @mcprotein/anamnesis@<version>`. |
 
@@ -381,6 +381,9 @@ Progress:
   `overrides.*.locked` are ownership hints, not hard update locks;
   `settings.commit_on_apply` is future-reserved / a deprecated candidate; and
   `declined_at` remains a string for historical compatibility.
+- 2026-05-04: Added `docs/API.md`, `cli/src/api.ts`, and package `exports` so
+  the only supported TypeScript import surface is `@mcprotein/anamnesis`
+  Agentfile utilities. Command internals remain CLI-only.
 
 ---
 

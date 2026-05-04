@@ -13,6 +13,9 @@ breaking changes until v1.0.
   optional `--apply`, JSON output, backup-on-write, idempotent migration
   planning, and tests with an injected fixture migration. No built-in schema
   transformations ship yet.
+- Added a small public TypeScript API boundary at `@mcprotein/anamnesis` for
+  Agentfile parse/stringify/read/write utilities and blocked unsupported deep
+  imports with a package `exports` map.
 
 ### Documentation
 
@@ -33,6 +36,7 @@ breaking changes until v1.0.
   ownership hints rather than hard update locks, `commit_on_apply` is
   future-reserved / a deprecated candidate, and `declined_at` remains a
   parser-level string with ISO 8601 recommended.
+- Documented the public API boundary in `docs/API.md`.
 
 ### Fixed
 

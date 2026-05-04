@@ -21,6 +21,13 @@
   "license": "MIT",
   "author": "MCProtein",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./cli/dist/api.d.ts",
+      "import": "./cli/dist/api.js"
+    },
+    "./package.json": "./package.json"
+  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
