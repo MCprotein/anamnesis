@@ -18,6 +18,9 @@ breaking changes until v1.0.
 - Added `docs/FRAGMENT-AUTHORING.md`, a public fragment authoring guide with
   capability examples, rulebook guidance, executable-hook safety rules,
   versioning expectations, tests, review checklist, and compatibility rules.
+- Added `docs/DOCS-SITE-PLAN.md`, the v0.9 decision to stay GitHub-first
+  through v1.0 while defining the future docs-site information architecture
+  and trigger criteria.
 - Updated the architecture docs to keep fragment trigger ownership aligned
   with the current `rulebook.md` model.
 

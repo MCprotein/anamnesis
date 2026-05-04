@@ -431,6 +431,11 @@ Progress:
   executable-hook safety, Layer A vs Layer B boundaries, versioning,
   verification, review checklist, and compatibility rules for future public
   fragments.
+- 2026-05-04: Added `docs/DOCS-SITE-PLAN.md` as the v0.9 docs-site
+  decision. Documentation stays GitHub-first through v1.0; the plan defines
+  user/audience entry points, future site navigation, site trigger criteria,
+  and maintenance rules so a generated site can mirror repo markdown later
+  without creating a second source of truth.
 
 ---
 

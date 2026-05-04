@@ -260,6 +260,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   v0.9 registry metadata, discovery, version selection, cache, and trust-boundary design
 - [`docs/FRAGMENT-SIGNING.md`](docs/FRAGMENT-SIGNING.md) —
   v0.9 remote fragment checksum, signature, trust-store, and rejection policy
+- [`docs/DOCS-SITE-PLAN.md`](docs/DOCS-SITE-PLAN.md) —
+  v0.9 GitHub-first docs decision, information architecture, and future site trigger
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested
