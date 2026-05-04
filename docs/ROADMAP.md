@@ -441,6 +441,11 @@ Progress:
   claims, summarizes the current sanitized backend and self-dogfood evidence,
   and records the additional frontend, infra/backend, and Python API shapes
   needed before broad public benchmark claims.
+- 2026-05-04: Added `docs/REMOTE-SYNC-STRATEGY.md` as the v0.9 remote sync
+  decision. A top-level `anamnesis sync` command is deferred until after
+  v1.0-safe registry primitives exist; registry refresh, fragment discovery,
+  and project update/apply remain explicit operations, and remote upload of
+  handoff or ontology state is out of scope.
 
 ---
 

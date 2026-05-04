@@ -24,6 +24,9 @@ breaking changes until v1.0.
 - Added `docs/BENCHMARK-GALLERY.md`, a public-safe benchmark evidence surface
   with claim policy, current headline-safe entries, supporting evidence, and
   next collection targets.
+- Added `docs/REMOTE-SYNC-STRATEGY.md`, the v0.9 decision to defer a broad
+  `anamnesis sync` command and keep registry refresh, fragment discovery, and
+  project update/apply as explicit separate operations.
 - Updated the architecture docs to keep fragment trigger ownership aligned
   with the current `rulebook.md` model.
 

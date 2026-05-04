@@ -267,6 +267,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   v0.9 remote fragment checksum, signature, trust-store, and rejection policy
 - [`docs/DOCS-SITE-PLAN.md`](docs/DOCS-SITE-PLAN.md) —
   v0.9 GitHub-first docs decision, information architecture, and future site trigger
+- [`docs/REMOTE-SYNC-STRATEGY.md`](docs/REMOTE-SYNC-STRATEGY.md) —
+  v0.9 decision to defer broad `sync` and keep registry refresh/update explicit
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested
