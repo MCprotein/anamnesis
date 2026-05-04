@@ -21,6 +21,9 @@ breaking changes until v1.0.
 - Added `docs/DOCS-SITE-PLAN.md`, the v0.9 decision to stay GitHub-first
   through v1.0 while defining the future docs-site information architecture
   and trigger criteria.
+- Added `docs/BENCHMARK-GALLERY.md`, a public-safe benchmark evidence surface
+  with claim policy, current headline-safe entries, supporting evidence, and
+  next collection targets.
 - Updated the architecture docs to keep fragment trigger ownership aligned
   with the current `rulebook.md` model.
 

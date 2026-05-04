@@ -436,6 +436,11 @@ Progress:
   user/audience entry points, future site navigation, site trigger criteria,
   and maintenance rules so a generated site can mirror repo markdown later
   without creating a second source of truth.
+- 2026-05-04: Added `docs/BENCHMARK-GALLERY.md` as the public-safe benchmark
+  evidence surface. It separates allowed README claims from unsupported
+  claims, summarizes the current sanitized backend and self-dogfood evidence,
+  and records the additional frontend, infra/backend, and Python API shapes
+  needed before broad public benchmark claims.
 
 ---
 

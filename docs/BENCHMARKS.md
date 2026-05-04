@@ -21,6 +21,9 @@ Use these reports to compare static-only, bootstrapped, and enriched project
 context over time. Public README claims should be based on reports that avoid
 proprietary source snippets and credential-bearing details.
 
+Public-safe summaries and claim boundaries live in
+[`docs/BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md).
+
 ## Current Sanitized Fixture Comparison
 
 The first v0.7 sanitized-fixture comparison uses a `sanitized-nest-prisma@e19fc0d`

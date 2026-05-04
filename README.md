@@ -211,6 +211,11 @@ anamnesis is dogfooded on itself plus 3 other repositories:
 In all four cases, the user-modified protection correctly preserved hand-authored files (4–9 per project).
 
 Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
+Public-safe benchmark evidence lives in
+[`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md): the current
+sanitized backend snapshot improved ready layers from `1/5` to `5/5`, while
+the anamnesis self repo keeps cross-agent continuity at `6/6`. Broader README
+claims stay intentionally limited until more public repo shapes are collected.
 
 ---
 
@@ -268,6 +273,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   3x3 source/target handoff scenarios across supported agents
 - [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) — deterministic context-quality
   benchmark reports
+- [`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md) —
+  public-safe benchmark evidence, claim policy, and collection targets
 - [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
 - [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) — two-layer ontology generation
 - [`docs/RELEASING.md`](docs/RELEASING.md) — npm Trusted Publishing release flow
