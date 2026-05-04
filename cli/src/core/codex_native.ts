@@ -52,6 +52,11 @@ export function codexHooksPath(projectRoot: string): string {
   return path.join(projectRoot, CODEX_HOOKS_PATH);
 }
 
+export function codexNativeNodeCommand(scriptPath: string): string {
+  const normalized = scriptPath.replace(/\\/g, "/");
+  return `sh -lc 'root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"; exec node "$root/${normalized}"'`;
+}
+
 export function codexHooksFeatureEnabled(content: string): boolean {
   return /^\s*codex_hooks\s*=\s*true\s*(?:#.*)?$/m.test(
     featureSection(content),
@@ -125,8 +130,18 @@ function readJsonObject(content: string): JsonObject | null {
 }
 
 function managedCommandPattern(reg: CodexHookRegistration): RegExp {
-  const basename = path.posix.basename(reg.command.replace(/\\/g, "/"));
+  const basename =
+    managedAnamnesisHookBasename(reg.command) ??
+    path.posix.basename(reg.command.replace(/\\/g, "/"));
   return new RegExp(`(?:^|[\\\\/])${escapeRegExp(basename)}(?:["'\\s]|$)`);
+}
+
+function managedAnamnesisHookBasename(command: string): string | null {
+  const normalized = command.replace(/\\/g, "/");
+  const match = normalized.match(
+    /\.anamnesis\/(?:codex-native-hooks|codex-hooks)\/([^"'\s;]+)/,
+  );
+  return match?.[1] ?? null;
 }
 
 function escapeRegExp(value: string): string {

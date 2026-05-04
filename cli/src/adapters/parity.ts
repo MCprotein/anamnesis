@@ -90,7 +90,7 @@ export const ADAPTER_PARITY_MATRIX = [
       },
       codex: {
         level: "fallback",
-        surface: "native SessionStart wrapper for base continuity hooks; `AGENTS.md` hook region plus optional Git pre-commit bridge for other hook events",
+        surface: "native wrappers for Codex-supported events (`SessionStart`, `PostToolUse`, `Stop`, and other event-aware shell hooks where installed); `AGENTS.md` hook region plus optional Git pre-commit bridge remain as fallback",
         evidence: ["codex native hook tests", "codex fallback tests"],
       },
       cursor: {

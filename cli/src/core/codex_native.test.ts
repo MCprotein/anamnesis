@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   codexHookRegistrationPresent,
   codexHooksFeatureEnabled,
+  codexNativeNodeCommand,
   mergeCodexHookRegistration,
   upsertCodexHooksFeatureFlag,
 } from "./codex_native.js";
 
 const sessionStartReg = {
   event: "SessionStart",
-  matcher: "startup|resume",
-  command: 'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+  matcher: "startup|resume|clear",
+  command: codexNativeNodeCommand(
+    ".anamnesis/codex-native-hooks/session-start.mjs",
+  ),
 };
 
 describe("Codex native hook config helpers", () => {
@@ -45,11 +48,12 @@ describe("Codex native hook config helpers", () => {
         hooks: {
           SessionStart: [
             {
-              matcher: "startup|resume",
+              matcher: "startup|resume|clear",
               hooks: [
                 {
                   type: "command",
-                  command: 'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+                  command:
+                    'node ".anamnesis/codex-native-hooks/session-start.mjs"',
                 },
                 { type: "command", command: "echo keep-me" },
               ],
@@ -88,5 +92,36 @@ describe("Codex native hook config helpers", () => {
     expect(codexHookRegistrationPresent(merged.content, sessionStartReg)).toBe(
       true,
     );
+  });
+
+  it("dedupes managed hooks even when the command wrapper shape changes", () => {
+    const merged = mergeCodexHookRegistration(
+      JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              matcher: "startup|resume|clear",
+              hooks: [
+                {
+                  type: "command",
+                  command:
+                    'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+                },
+              ],
+            },
+          ],
+        },
+      }),
+      sessionStartReg,
+    );
+
+    const parsed = JSON.parse(merged.content) as {
+      hooks: Record<string, Array<{ hooks?: Array<{ command?: string }> }>>;
+    };
+    const commands = parsed.hooks.SessionStart!.flatMap((entry) =>
+      entry.hooks ?? [],
+    ).map((hook) => hook.command);
+
+    expect(commands).toEqual([sessionStartReg.command]);
   });
 });

@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 10 capabilities (covers all 5 types; v10+)
+├── fragment.yaml                # 10 capabilities (covers all 5 types; v9+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -48,9 +48,7 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 |---|---|
 | `content/agents.snippet.md` | `AGENTS.md` (region `anamnesis-base`) |
 | `content/ontology.snippet.yaml` | `.anamnesis/ontology/base.yaml` |
-| `adapters/codex/hooks/session-start.mjs` | `.anamnesis/codex-native-hooks/session-start.mjs` + `.codex/hooks.json` `SessionStart` registration |
-| `adapters/claude-code/hooks/remind-uncommitted.sh` | `.anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh` + `.anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs` + `.codex/hooks.json` `PostToolUse` registration |
-| `adapters/claude-code/hooks/handoff-reminder.sh` | `.anamnesis/codex-hooks/base-Stop-handoff-reminder.sh` + `.anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs` + `.codex/hooks.json` `Stop` registration |
+| `adapters/codex/hooks/session-start.mjs` | `.anamnesis/codex-native-hooks/session-start.mjs` + `.codex/hooks.json` registration |
 | `adapters/claude-code/hooks/inject-ontology.sh` | `.claude/hooks/inject-ontology.sh` (mode 0o755) |
 | `adapters/claude-code/hooks/remind-uncommitted.sh` | `.claude/hooks/remind-uncommitted.sh` (mode 0o755) |
 | `adapters/claude-code/hooks/inject-handoff.sh` | `.claude/hooks/inject-handoff.sh` (mode 0o755) |

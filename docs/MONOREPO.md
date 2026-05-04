@@ -155,7 +155,7 @@ What gets created:
 | `apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml` | per-scope deterministic facts if bootstrap applies |
 | `.claude/hooks/*` | repo-wide (root only, regardless of scope) |
 | `.claude/commands/load-context.md` | repo-wide |
-| `.codex/hooks.json` + `.anamnesis/codex-native-hooks/session-start.mjs` | repo-wide Codex native SessionStart continuity |
+| `.codex/hooks.json` + `.anamnesis/codex-native-hooks/*.mjs` | repo-wide Codex native lifecycle hooks |
 
 When you actually `cd apps/api` and start a Claude Code session,
 CC reads BOTH `AGENTS.md` (root) AND `apps/api/AGENTS.md` —

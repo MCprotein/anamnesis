@@ -14,11 +14,18 @@ could include breaking changes.
   `.anamnesis/codex-native-hooks/session-start.mjs`, enables
   `.codex/config.toml` `codex_hooks = true`, and merges `.codex/hooks.json`
   without dropping user hook entries.
+- Added Codex native lifecycle shell-hook wrappers for supported
+  non-SessionStart events. Fragment shell hooks can now be adapted through
+  `.anamnesis/codex-native-hooks/*.mjs` and registered in `.codex/hooks.json`
+  for Codex-supported events such as `PostToolUse` and `Stop`, while keeping
+  AGENTS.md and git pre-commit fallbacks.
 
 ### Changed
 
 - Updated `status` / `doctor` continuity checks and adapter parity docs so
   Codex SessionStart is no longer documented as fallback-only.
+- Updated the base fragment to v10 so Codex installs native dirty-work and
+  handoff reminder hooks when executable adapters are allowed.
 
 ### Documentation
 

@@ -4,6 +4,7 @@ import { registerClaudeCode } from "./claude-code/index.js";
 import { registerCodex } from "./codex/index.js";
 import { registerCursor } from "./cursor/index.js";
 import type { ToolName } from "../core/agentfile.js";
+import { codexNativeNodeCommand } from "../core/codex_native.js";
 import { loadBaseFragment } from "../core/fragments.js";
 import {
   RendererRegistry,
@@ -158,7 +159,7 @@ describe("cross-agent context continuity acceptance", () => {
     );
   });
 
-  it("renders Codex native SessionStart plus AGENTS.md fallbacks", () => {
+  it("renders Codex native hooks plus AGENTS.md fallbacks", () => {
     const actions = renderBase("codex");
 
     const sessionStart = fileByPath(
@@ -168,8 +169,10 @@ describe("cross-agent context continuity acceptance", () => {
     expect(sessionStart.mode).toBe(0o755);
     expect(sessionStart.codexHook).toEqual({
       event: "SessionStart",
-      matcher: "startup|resume",
-      command: 'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+      matcher: "startup|resume|clear",
+      command: codexNativeNodeCommand(
+        ".anamnesis/codex-native-hooks/session-start.mjs",
+      ),
     });
     expectContainsAll(sessionStart.content, [
       "hookSpecificOutput",
@@ -177,6 +180,31 @@ describe("cross-agent context continuity acceptance", () => {
       "ontology",
       "handoff",
     ]);
+
+    const dirtyReminder = fileByPath(
+      actions,
+      ".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs",
+    );
+    expect(dirtyReminder.codexHook).toEqual({
+      event: "PostToolUse",
+      matcher: "Edit|Write|apply_patch",
+      command: codexNativeNodeCommand(
+        ".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs",
+      ),
+      statusMessage: "Running anamnesis PostToolUse hook",
+    });
+
+    const stopReminder = fileByPath(
+      actions,
+      ".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs",
+    );
+    expect(stopReminder.codexHook).toEqual({
+      event: "Stop",
+      command: codexNativeNodeCommand(
+        ".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs",
+      ),
+      statusMessage: "Running anamnesis Stop hook",
+    });
 
     expectContainsAll(regionById(actions, "codex-cmd-load-context").content, [
       "/load-context",

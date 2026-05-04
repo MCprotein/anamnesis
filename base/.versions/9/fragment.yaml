@@ -1,5 +1,5 @@
 id: base
-version: 10
+version: 9
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
@@ -22,7 +22,7 @@ capabilities:
   - type: executable_hook
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/remind-uncommitted.sh
-    adapters_supported: [claude-code, codex]
+    adapters_supported: [claude-code]
 
   - type: executable_hook
     event: SessionStart
@@ -32,7 +32,7 @@ capabilities:
   - type: executable_hook
     event: Stop
     source: adapters/claude-code/hooks/handoff-reminder.sh
-    adapters_supported: [claude-code, codex]
+    adapters_supported: [claude-code]
 
   - type: slash_command
     name: load-context
@@ -54,10 +54,6 @@ owns:
   - region: anamnesis-base in AGENTS.md
   - file: .anamnesis/ontology/base.yaml
   - file: .anamnesis/codex-native-hooks/session-start.mjs
-  - file: .anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs
-  - file: .anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs
-  - file: .anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh
-  - file: .anamnesis/codex-hooks/base-Stop-handoff-reminder.sh
   - file: .claude/hooks/inject-ontology.sh
   - file: .claude/hooks/remind-uncommitted.sh
   - file: .claude/hooks/inject-handoff.sh

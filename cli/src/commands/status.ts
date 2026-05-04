@@ -48,6 +48,7 @@ import {
   CODEX_HOOKS_PATH,
   codexHookRegistrationPresent,
   codexHooksFeatureEnabled,
+  codexNativeNodeCommand,
 } from "../core/codex_native.js";
 
 // ---------------------------------------------------------------------------
@@ -662,7 +663,9 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
     targets.push(
       ".anamnesis/codex-native-hooks/session-start.mjs",
       `${CODEX_CONFIG_PATH} [features.codex_hooks=true]`,
-      `${CODEX_HOOKS_PATH} [hook:SessionStart:node \".anamnesis/codex-native-hooks/session-start.mjs\"]`,
+      `${CODEX_HOOKS_PATH} [hook:SessionStart:${codexNativeNodeCommand(".anamnesis/codex-native-hooks/session-start.mjs")}]`,
+      `${CODEX_HOOKS_PATH} [hook:PostToolUse:${codexNativeNodeCommand(".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs")}]`,
+      `${CODEX_HOOKS_PATH} [hook:Stop:${codexNativeNodeCommand(".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs")}]`,
       "AGENTS.md [region:codex-cmd-load-context]",
       "AGENTS.md [region:codex-cmd-handoff-prepare]",
       "AGENTS.md [region:codex-skill-load-context]",
@@ -741,12 +744,26 @@ function codexHookTargetReady(
   try {
     return codexHookRegistrationPresent(fs.readFileSync(fp, "utf8"), {
       event,
-      matcher: event === "SessionStart" ? "startup|resume" : undefined,
+      matcher: codexContinuityMatcher(event, command),
       command,
     });
   } catch {
     return false;
   }
+}
+
+function codexContinuityMatcher(
+  event: string,
+  command: string,
+): string | undefined {
+  if (event === "SessionStart") return "startup|resume|clear";
+  if (
+    event === "PostToolUse" &&
+    command.includes("base-PostToolUse-Edit-remind-uncommitted.mjs")
+  ) {
+    return "Edit|Write|apply_patch";
+  }
+  return undefined;
 }
 
 function readRegionContent(

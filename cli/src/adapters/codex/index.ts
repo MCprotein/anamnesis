@@ -3,8 +3,8 @@
 // As of v0.3, all 5 capabilities have a Codex rendering:
 //   - project_memory / ontology: same output as CC (Codex reads AGENTS.md
 //     and ontology slice files natively)
-//   - executable_hook: native SessionStart wrapper for base continuity hooks,
-//     AGENTS.md region fallback for all hooks, optional Git pre-commit bridge
+//   - executable_hook: native wrappers for Codex-supported lifecycle events,
+//     AGENTS.md fallback regions for all hooks, optional Git pre-commit bridge
 //   - skill / slash_command: AGENTS.md region fallback
 //     that documents the intent so the agent can honor it manually
 //

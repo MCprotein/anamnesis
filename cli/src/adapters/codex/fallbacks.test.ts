@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { executableHookRenderer } from "./executable_hook.js";
 import { skillRenderer } from "./skill.js";
 import { slashCommandRenderer } from "./slash_command.js";
+import { codexNativeNodeCommand } from "../../core/codex_native.js";
 import { RenderError, type RenderContext } from "../../core/render.js";
 import type { FragmentDefinition } from "../../core/fragments.js";
 
@@ -44,7 +46,7 @@ describe("codex executable_hook fallback", () => {
     });
   });
 
-  it("emits AGENTS.md region with hook script body inline", () => {
+  it("emits AGENTS.md region and Codex native wrapper for supported tool hooks", () => {
     fs.writeFileSync(
       path.join(fragmentDir, "adapters/claude-code/hooks/x.sh"),
       "#!/bin/bash\necho hi\n",
@@ -66,13 +68,30 @@ describe("codex executable_hook fallback", () => {
       },
       makeContext(fragmentDir, fragment),
     );
-    expect(actions).toHaveLength(1);
+    expect(actions).toHaveLength(3);
     expect(actions[0]!.kind).toBe("region");
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.file).toBe("AGENTS.md");
       expect(actions[0]!.regionId).toBe("codex-hook-x");
       expect(actions[0]!.content).toContain("PostToolUse:Edit");
+      expect(actions[0]!.content).toContain("Codex native path");
       expect(actions[0]!.content).toContain("echo hi");
+    }
+    const wrapper = actions.find(
+      (a) =>
+        a.kind === "file" &&
+        a.path === ".anamnesis/codex-native-hooks/myfrag-PostToolUse-Edit-x.mjs",
+    );
+    expect(wrapper?.kind).toBe("file");
+    if (wrapper?.kind === "file") {
+      expect(wrapper.codexHook).toEqual({
+        event: "PostToolUse",
+        matcher: "Edit|Write|apply_patch",
+        command: codexNativeNodeCommand(
+          ".anamnesis/codex-native-hooks/myfrag-PostToolUse-Edit-x.mjs",
+        ),
+        statusMessage: "Running anamnesis PostToolUse hook",
+      });
     }
   });
 
@@ -102,7 +121,7 @@ describe("codex executable_hook fallback", () => {
       makeContext(fragmentDir, fragment, ".", projectRoot),
     );
 
-    expect(actions).toHaveLength(3);
+    expect(actions).toHaveLength(4);
     expect(actions.some((a) => a.kind === "region")).toBe(true);
     const script = actions.find(
       (a) => a.kind === "file" && a.path.startsWith(".anamnesis/codex-hooks/"),
@@ -169,10 +188,123 @@ describe("codex executable_hook fallback", () => {
       expect(wrapper.content).toContain("hookSpecificOutput");
       expect(wrapper.codexHook).toEqual({
         event: "SessionStart",
-        matcher: "startup|resume",
-        command: 'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+        matcher: "startup|resume|clear",
+        command: codexNativeNodeCommand(
+          ".anamnesis/codex-native-hooks/session-start.mjs",
+        ),
       });
     }
+  });
+
+  it("registers Stop hooks natively without a matcher", () => {
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/stop.sh"),
+      "#!/bin/bash\necho stop >&2\n",
+    );
+    const fragment: FragmentDefinition = {
+      id: "base",
+      version: 10,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "Stop",
+        source: "adapters/claude-code/hooks/stop.sh",
+        adapters_supported: ["codex"],
+      },
+      makeContext(fragmentDir, fragment),
+    );
+
+    const wrapper = actions.find(
+      (a) =>
+        a.kind === "file" &&
+        a.path === ".anamnesis/codex-native-hooks/base-Stop-stop.mjs",
+    );
+    expect(wrapper?.kind).toBe("file");
+    if (wrapper?.kind === "file") {
+      expect(wrapper.codexHook).toEqual({
+        event: "Stop",
+        command: codexNativeNodeCommand(
+          ".anamnesis/codex-native-hooks/base-Stop-stop.mjs",
+        ),
+        statusMessage: "Running anamnesis Stop hook",
+      });
+      expect(wrapper.content).toContain('"event": "Stop"');
+      expect(wrapper.content).toContain('"scriptPath"');
+    }
+  });
+
+  it("adapts apply_patch targets for native Codex shell wrappers", () => {
+    const projectRoot = tmpDir("anamnesis-codex-native-wrapper-");
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/x.sh"),
+      [
+        "#!/bin/bash",
+        "set -euo pipefail",
+        'mkdir -p "$CLAUDE_PROJECT_DIR/.probe"',
+        'printf "%s\\n" "$CLAUDE_TOOL_FILE_PATH" >> "$CLAUDE_PROJECT_DIR/.probe/targets"',
+        "",
+      ].join("\n"),
+    );
+    const fragment: FragmentDefinition = {
+      id: "myfrag",
+      version: 1,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "PostToolUse:Edit",
+        source: "adapters/claude-code/hooks/x.sh",
+        adapters_supported: ["codex"],
+      },
+      makeContext(fragmentDir, fragment, ".", projectRoot),
+    );
+
+    for (const action of actions) {
+      if (action.kind !== "file") continue;
+      const target = path.join(projectRoot, action.path);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, action.content, "utf8");
+      if (action.mode) fs.chmodSync(target, action.mode);
+    }
+
+    const wrapperPath = path.join(
+      projectRoot,
+      ".anamnesis/codex-native-hooks/myfrag-PostToolUse-Edit-x.mjs",
+    );
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      input: JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "PostToolUse",
+        tool_name: "apply_patch",
+        tool_input: {
+          command: [
+            "*** Begin Patch",
+            "*** Update File: prisma/schema.prisma",
+            "@@",
+            " unchanged",
+            "*** End Patch",
+          ].join("\n"),
+        },
+      }),
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(
+      fs.readFileSync(path.join(projectRoot, ".probe/targets"), "utf8"),
+    ).toBe("prisma/schema.prisma\n");
   });
 
   it("scopes target file to sub-scope when scopePath given", () => {

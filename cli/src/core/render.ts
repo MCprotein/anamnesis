@@ -32,9 +32,11 @@ export interface FileAction {
    * in `.claude/settings.json`. The applier handles the JSON-structural merge
    * idempotently — duplicate registrations are detected and skipped.
    *
-   * `event` examples: "SessionStart", "PostToolUse", "PreToolUse".
-   * `matcher` examples (PostToolUse/PreToolUse only): "Edit", "Write", "Bash".
-   * SessionStart and similar tool-agnostic events have no matcher.
+   * `event` examples: "SessionStart", "PostToolUse", "PreToolUse",
+   * "PermissionRequest", "UserPromptSubmit", "Stop".
+   * `matcher` examples (tool-scoped events): "Edit", "Write", "Bash",
+   * "apply_patch", or MCP tool names. UserPromptSubmit and Stop do not
+   * currently honor matchers in Codex.
    */
   settingsHook?: {
     event: string;
