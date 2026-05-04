@@ -349,7 +349,7 @@ to depend on.
 | 3 | **Migration command design** | Designed in `docs/AGENTFILE-MIGRATIONS.md`; CLI skeleton shipped with dry-run/apply/backup/idempotency behavior and no built-in schema transforms yet. |
 | 4 | **Stable TypeScript API boundary** | Public import boundary added at `@mcprotein/anamnesis` for Agentfile utilities only; unsupported deep imports are blocked by package `exports`. |
 | 5 | **Existing-project repair workflow** | `docs/REPAIR.md` now covers user-modified managed files, missing hook registrations, partial adapter installs, stale Agentfile versions, stale handoff state, and ontology gaps. |
-| 6 | **Published package smoke gate** | Make the v0.7.0 npm-package smoke path recurring: fresh fixture plus sanitized-fixture snapshot through `npm exec @mcprotein/anamnesis@<version>`. |
+| 6 | **Published package smoke gate** | Recurring post-publish gate documented in `docs/RELEASING.md`: force npmjs.org, verify package version/CLI, run a fresh fixture through `npm exec @mcprotein/anamnesis@<version>`, and record sanitized-fixture smoke when release claims depend on it. |
 
 Exit criteria:
 - We can say which parts of `Agentfile` are v1-stable candidates.
@@ -387,6 +387,9 @@ Progress:
 - 2026-05-04: Added `docs/REPAIR.md` as the existing-project repair playbook
   for user-modified managed surfaces, hook registration drift, partial adapter
   installs, pinned updates, stale handoff state, and ontology gaps.
+- 2026-05-04: Added the recurring post-publish smoke gate to
+  `docs/RELEASING.md`, covering forced npmjs.org checks and fresh-fixture
+  `npm exec @mcprotein/anamnesis@<version>` validation.
 
 ---
 

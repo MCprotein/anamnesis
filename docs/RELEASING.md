@@ -60,6 +60,40 @@ Every version bump must end in one of two explicit states:
 The tag push starts the publish workflow. Manual runs are also available
 from the GitHub Actions UI via `workflow_dispatch`.
 
+## Post-Publish Smoke Gate
+
+After npmjs.org shows the new version, verify the published package rather
+than the local source tree. Force npmjs.org so local scoped registry overrides
+cannot accidentally read GitHub Packages:
+
+```bash
+npm view @mcprotein/anamnesis version --@mcprotein:registry=https://registry.npmjs.org/
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis --version
+```
+
+Then run one fresh-fixture smoke with the published CLI:
+
+```bash
+tmp="$(mktemp -d)"
+mkdir -p "$tmp/prisma"
+printf 'datasource db { provider = "postgresql" url = env("DATABASE_URL") }\n' \
+  > "$tmp/prisma/schema.prisma"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@X.Y.Z -- \
+  anamnesis init --project-root "$tmp" --tools all --allow-exec-adapters
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@X.Y.Z -- \
+  anamnesis status --project-root "$tmp"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@X.Y.Z -- \
+  anamnesis doctor --project-root "$tmp"
+```
+
+For releases that claim sanitized-fixture continuity improvements, also repeat the
+published-package smoke on the current dogfood snapshot and record the result
+in `docs/DOGFOOD.md`.
+
 ## Recovery Notes
 
 If the tag workflow passes install/typecheck/test/build but fails at

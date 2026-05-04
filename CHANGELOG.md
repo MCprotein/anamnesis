@@ -40,6 +40,9 @@ breaking changes until v1.0.
 - Added `docs/REPAIR.md`, a playbook for user-modified managed files, missing
   hook registrations, partial adapter installs, stale pinned versions, stale
   handoff state, and ontology gaps.
+- Added the recurring post-publish npmjs.org smoke gate to
+  `docs/RELEASING.md`, including forced npmjs.org registry commands and a
+  fresh-fixture `npm exec @mcprotein/anamnesis@X.Y.Z` check.
 
 ### Fixed
 
