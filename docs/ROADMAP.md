@@ -421,6 +421,11 @@ Progress:
   treats registry discovery as passive, requires archive checksums before use,
   defers signature policy to the next v0.9 item, and calls out Agentfile
   source metadata as an explicit pre-v1.0 decision.
+- 2026-05-04: Added `docs/FRAGMENT-SIGNING.md` as the v0.9 signing/checksum
+  design draft. Remote archives require checksum verification and signed
+  release manifests for default install/update, unsigned local and bundled
+  fragments stay valid, unsigned remote executable adapters are rejected, and
+  optional Agentfile source metadata remains migration-owned before v1.0.
 
 ---
 

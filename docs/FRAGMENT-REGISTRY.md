@@ -232,11 +232,12 @@ Install and update are explicit:
 - `update` keeps dry-run default behavior. A remote source can affect the plan,
   but not the filesystem, without `--apply`.
 
-Signing belongs to the next v0.9 design item:
+Signing is specified separately in
+[`docs/FRAGMENT-SIGNING.md`](FRAGMENT-SIGNING.md):
 
 - v0.9 registry design requires checksums.
-- v0.9 signing design decides signature algorithms, key identity, rotation,
-  revocation, and local trust policy.
+- v0.9 signing design decides signature artifacts, key identity, rotation,
+  revocation, unsigned local-fragment migration, and local trust policy.
 - Until signing ships, the official registry may be useful for design and
   preview flows, but executable remote fragments should remain opt-in and
   visibly marked as unsigned.
