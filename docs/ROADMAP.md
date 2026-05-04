@@ -348,7 +348,7 @@ to depend on.
 | 2 | **Schema fixture suite** | Add explicit compatibility fixtures for real single-scope, multi-scope, pinned, declined, and all-adapter Agentfiles so future changes can prove backward compatibility. |
 | 3 | **Migration command design** | Designed in `docs/AGENTFILE-MIGRATIONS.md`; CLI skeleton shipped with dry-run/apply/backup/idempotency behavior and no built-in schema transforms yet. |
 | 4 | **Stable TypeScript API boundary** | Public import boundary added at `@mcprotein/anamnesis` for Agentfile utilities only; unsupported deep imports are blocked by package `exports`. |
-| 5 | **Existing-project repair workflow** | Tighten diagnostics and repair guidance for older managed projects with user-modified native surfaces, missing hook registrations, stale Agentfile versions, or partial adapter installs. |
+| 5 | **Existing-project repair workflow** | `docs/REPAIR.md` now covers user-modified managed files, missing hook registrations, partial adapter installs, stale Agentfile versions, stale handoff state, and ontology gaps. |
 | 6 | **Published package smoke gate** | Make the v0.7.0 npm-package smoke path recurring: fresh fixture plus sanitized-fixture snapshot through `npm exec @mcprotein/anamnesis@<version>`. |
 
 Exit criteria:
@@ -384,6 +384,9 @@ Progress:
 - 2026-05-04: Added `docs/API.md`, `cli/src/api.ts`, and package `exports` so
   the only supported TypeScript import surface is `@mcprotein/anamnesis`
   Agentfile utilities. Command internals remain CLI-only.
+- 2026-05-04: Added `docs/REPAIR.md` as the existing-project repair playbook
+  for user-modified managed surfaces, hook registration drift, partial adapter
+  installs, pinned updates, stale handoff state, and ontology gaps.
 
 ---
 

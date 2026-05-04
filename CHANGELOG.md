@@ -37,6 +37,9 @@ breaking changes until v1.0.
   future-reserved / a deprecated candidate, and `declined_at` remains a
   parser-level string with ISO 8601 recommended.
 - Documented the public API boundary in `docs/API.md`.
+- Added `docs/REPAIR.md`, a playbook for user-modified managed files, missing
+  hook registrations, partial adapter installs, stale pinned versions, stale
+  handoff state, and ontology gaps.
 
 ### Fixed
 
