@@ -377,6 +377,10 @@ Progress:
   default, `--apply`, `--json`, backup-on-write, and idempotency tests via an
   injected fixture migration. Built-in schema transforms remain pending until
   the remaining v0.8 field decisions are made.
+- 2026-05-04: Clarified remaining Agentfile field semantics:
+  `overrides.*.locked` are ownership hints, not hard update locks;
+  `settings.commit_on_apply` is future-reserved / a deprecated candidate; and
+  `declined_at` remains a string for historical compatibility.
 
 ---
 

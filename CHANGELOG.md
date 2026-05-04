@@ -29,6 +29,10 @@ breaking changes until v1.0.
   `anamnesis migrate agentfile` command contract before implementation.
 - Clarified `specs/agentfile.md` validation rules by separating parser-level
   hard errors from library/project-aware diagnostics.
+- Clarified v0.8 Agentfile field decisions: `overrides.*.locked` are
+  ownership hints rather than hard update locks, `commit_on_apply` is
+  future-reserved / a deprecated candidate, and `declined_at` remains a
+  parser-level string with ISO 8601 recommended.
 
 ### Fixed
 

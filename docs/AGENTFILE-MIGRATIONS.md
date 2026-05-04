@@ -97,15 +97,15 @@ Field-specific guidance for current v0.8 risks:
 
 - `fragment.adapters`: keep as a v1-stable candidate. It now has parser,
   render, and diagnostic semantics.
-- `overrides.regions[].locked` and `overrides.files[].locked`: do not freeze
-  as hard lock semantics until the write path enforces them. Migration may
-  later rename these to explicit ownership metadata if hard locks are rejected.
-- `settings.commit_on_apply`: treat as future-reserved unless commit
-  automation is implemented before v1.0. If removed, migration must delete only
-  this key and preserve the rest of `settings`.
-- `declined_at`: keep as string unless v1.0 intentionally tightens it to ISO
-  8601. If tightened, migration should only rewrite values that are already
-  parseable dates.
+- `overrides.regions[].locked` and `overrides.files[].locked`: treat as
+  ownership metadata, not hard update locks. If hard locks are needed before
+  v1.0, implement them explicitly or add a new field rather than changing the
+  current meaning silently.
+- `settings.commit_on_apply`: treat as future-reserved / a deprecated
+  candidate unless commit automation is implemented before v1.0. If removed,
+  migration must delete only this key and preserve the rest of `settings`.
+- `declined_at`: keep as a parser-level string. ISO 8601 remains recommended,
+  but migration should not rewrite historical values merely for formatting.
 
 ## Test Requirements
 
@@ -126,4 +126,4 @@ Before shipping the command:
 2. Add CLI plumbing for `anamnesis migrate agentfile`.
 3. Add backup and apply support.
 4. Add the first real migration only after the v0.8 audit decides whether
-   `overrides.*.locked` or `settings.commit_on_apply` changes before v1.0.
+   `settings.commit_on_apply` is removed or kept as a reserved field.
