@@ -33,6 +33,9 @@ breaking changes until v1.0.
   exports-map test to keep deep imports outside the supported surface.
 - Updated registry, signing, and remote-sync docs so v1.0 does not imply a
   shipped remote fragment registry or broad sync command.
+- Recorded v1.0 candidate upgrade smoke proving published v0.7.0, v0.8.0,
+  and v0.9.0 managed fixtures can update while preserving user-authored
+  `AGENTS.md` prose.
 
 ## [0.9.0] — 2026-05-04
 

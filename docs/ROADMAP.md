@@ -501,6 +501,11 @@ Progress:
   switching fixtures, tests, benchmark reports, and explicit disallowed
   wording for unsupported ecosystem, native-UX, automatic-ontology, registry,
   signing, and no-review claims.
+- 2026-05-04: Verified the pre-v1 upgrade exit criterion and recorded it in
+  `docs/DOGFOOD.md`: fresh fixtures initialized with published `0.7.0`,
+  `0.8.0`, and `0.9.0` all updated with the current candidate while preserving
+  user-authored `AGENTS.md` sentinel prose, retaining continuity `ready (6/6)`,
+  and reporting doctor `0 error(s)`.
 
 ---
 

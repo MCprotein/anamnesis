@@ -150,6 +150,41 @@ Interpretation:
   missing `.enriched.yaml` is expected until an agent runs `/ontology-enrich`.
 - No `v0.9.1` package-repair patch is needed from this smoke result.
 
+## Upgrade Smoke — v1.0 candidate
+
+Recorded: 2026-05-04
+
+Purpose: verify the v1.0 exit criterion that existing v0.7/v0.8/v0.9 managed
+projects can upgrade without losing user edits.
+
+Procedure:
+
+1. For each published source version (`0.7.0`, `0.8.0`, `0.9.0`), create a
+   fresh Prisma fixture.
+2. Install that fixture with the published npm package:
+   `anamnesis init --tools all --allow-exec-adapters`.
+3. Add a user-authored sentinel line outside managed regions in `AGENTS.md`.
+4. Run the current candidate CLI:
+   `update --apply --allow-exec-adapters`, then `status`, then `doctor`.
+5. Assert that the sentinel remains present, continuity is `ready (6/6)`, and
+   doctor reports `0 error(s)`.
+
+Results:
+
+| Source version | User sentinel | Status | Doctor |
+|---|---|---|---|
+| `0.7.0` | preserved | continuity `ready (6/6)` | ok; `0 error(s)`, expected Layer B enrichment warning |
+| `0.8.0` | preserved | continuity `ready (6/6)` | ok; `0 error(s)`, expected Layer B enrichment warning |
+| `0.9.0` | preserved | continuity `ready (6/6)` | ok; `0 error(s)`, expected Layer B enrichment warning |
+
+Interpretation:
+
+- Existing published managed projects from the supported pre-v1 line can be
+  updated to the current candidate without losing user-authored prose outside
+  managed regions.
+- The remaining warning is intentional: a fresh Prisma fixture has Layer A
+  bootstrap facts but no agent-authored Layer B `.enriched.yaml` yet.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03
