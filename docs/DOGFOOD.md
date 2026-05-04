@@ -82,6 +82,41 @@ Interpretation:
   published CLI correctly routes the user to `/ontology-enrich`.
 - No `v0.7.1` package-repair patch is needed from this smoke result.
 
+## Published Package Smoke — v0.8.0
+
+Recorded: 2026-05-04
+
+Purpose: verify the npm-published package, not the local TypeScript source.
+
+Package:
+
+```bash
+npm view '@mcprotein/anamnesis@0.8.0' version \
+  --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@0.8.0 -- anamnesis --version
+```
+
+Result: `0.8.0`
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh Prisma fixture | `init --tools all --allow-exec-adapters` -> `status` -> `doctor` | init created 23 surfaces; base@8 and prisma@2 in sync; continuity `6/6`; doctor `0` errors and expected Layer B enrichment warning |
+
+Interpretation:
+
+- The `v0.8.0` npm package includes the built CLI, public API entrypoint,
+  docs, base fragment, adapter surfaces, and Prisma fragment required for a
+  fresh all-adapter install.
+- Static ontology and Layer A bootstrap were generated for the fixture;
+  missing `.enriched.yaml` is expected until an agent runs `/ontology-enrich`.
+- The published CLI version check must run from a fresh temp directory. From
+  this repository, `npm exec` can resolve a local or globally installed
+  `anamnesis` binary before the published package binary.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03

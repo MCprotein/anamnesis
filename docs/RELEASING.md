@@ -67,7 +67,8 @@ than the local source tree. Force npmjs.org so local scoped registry overrides
 cannot accidentally read GitHub Packages:
 
 ```bash
-npm view @mcprotein/anamnesis version --@mcprotein:registry=https://registry.npmjs.org/
+npm view '@mcprotein/anamnesis@X.Y.Z' version --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
 npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis --version
 ```
@@ -89,6 +90,10 @@ npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- \
   anamnesis doctor --project-root "$tmp"
 ```
+
+Run the published CLI checks from the fresh temp directory, not from the
+anamnesis repository. Otherwise `npm exec` can resolve a local or globally
+installed `anamnesis` binary before the just-published package binary.
 
 For releases that claim sanitized-fixture continuity improvements, also repeat the
 published-package smoke on the current dogfood snapshot and record the result
