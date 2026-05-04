@@ -22,9 +22,11 @@ Stable candidates:
 - `settings`: `ontology_file`, `agents_md_path`, `claude_md_path`, and
   `backup_retention`.
 - `settings.commit_on_apply` remains parser-supported for compatibility, but
-  is future-reserved / a deprecated candidate because no command auto-commits.
+  is a v1 reserved no-op because no command auto-commits.
 - `overrides.regions[]` and `overrides.files[]` as user-ownership hints, not
   hard update locks.
+- Parser-level strictness: unknown fields are rejected rather than silently
+  stripped, except inside `params`.
 
 Compatibility fixtures are locked in
 `cli/src/core/agentfile.compat.test.ts` for:
@@ -66,30 +68,35 @@ current contract deliberately does not delete previously generated managed
 files when an adapter is later disabled; cleanup belongs to the repair/migrate
 workflow.
 
-## V1 Freeze Risks
+## V1 Freeze Decisions
 
-- `overrides.regions` and `overrides.files` are now documented as ownership
-  hints. If v1.0 needs hard update locks, implement them explicitly or add a
-  new field instead of silently changing the current hint semantics.
-- `settings.commit_on_apply` is now documented as future-reserved / a
-  deprecated candidate. If commit automation is not implemented before v1.0,
-  remove it with an Agentfile migration or keep it explicitly reserved.
+- `overrides.regions` and `overrides.files` are frozen as ownership hints. If
+  future hard update locks are needed, implement them explicitly or add a new
+  field instead of silently changing the current hint semantics.
+- `settings.commit_on_apply` is frozen as a reserved no-op. The parser accepts
+  it for compatibility, but commands must not auto-commit because of it.
 - `declined_at` remains a parser-level string with ISO 8601 recommended, so
   historical free-form values stay valid.
-- Schema evolution docs mention `anamnesis migrate agentfile`, but the command
-  now exists only as a skeleton. `docs/AGENTFILE-MIGRATIONS.md` defines the
-  command contract; built-in transforms remain a v0.8 task before schema
-  freeze.
+- `fragments[].source` is not part of v1. Registry source/trust metadata stays
+  in cache or manifest metadata until a future schema migration.
+- Generic `sync` settings are not part of v1. Remote handoff/ontology sync
+  needs a separate privacy and trust design.
+- No built-in Agentfile migration is required for v1.0 under these decisions.
+  The `anamnesis migrate agentfile` skeleton remains the future migration
+  surface.
 - Partial `fragment.adapters` maps are now parser-supported and covered by
   compatibility fixtures. Root fragments and scope `fragments_add` entries are
   covered by render-path tests. Unknown adapter keys remain invalid.
+- Unknown fields are now parser-level errors across the v1 object graph,
+  except `params`.
 
-## V0.8 Recommendations
+The final freeze record is `docs/AGENTFILE-V1-FREEZE.md`.
 
-1. Decide whether to remove or keep `settings.commit_on_apply` as reserved.
-2. Decide whether hard update locks are needed, or whether ownership hints plus
-   manifest drift detection are sufficient.
-3. Add the first built-in `anamnesis migrate agentfile` transform only after
-   the remaining v0.8 field decisions are made.
-4. Keep compatibility fixtures append-only as new sanitized fixture shapes are
+## Post-Freeze Maintenance
+
+1. Keep compatibility fixtures append-only as new sanitized fixture shapes are
    dogfooded.
+2. Add any future schema field through a version bump or an explicit parser
+   policy change with compatibility tests.
+3. Use `anamnesis migrate agentfile` for destructive or semantic schema
+   changes after v1.0.

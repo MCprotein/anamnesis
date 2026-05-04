@@ -20,85 +20,106 @@ const adapterOverrideSchema = z
   })
   .strict();
 
-const fragmentEntrySchema = z.object({
-  id: z.string().min(1),
-  version: z.number().int().positive(),
-  params: z.record(z.string(), z.unknown()).optional(),
-  adapters: adapterOverrideSchema.optional(),
-  pinned: z.boolean().optional(),
-});
+const fragmentEntrySchema = z
+  .object({
+    id: z.string().min(1),
+    version: z.number().int().positive(),
+    params: z.record(z.string(), z.unknown()).optional(),
+    adapters: adapterOverrideSchema.optional(),
+    pinned: z.boolean().optional(),
+  })
+  .strict();
 
-const scopeSchema = z.object({
-  path: z.string(),
-  extends: z.string().optional(),
-  overrides: z
-    .object({
-      tools: z.array(toolNameSchema).optional(),
-      // Add these fragment entries to the inherited list.
-      fragments_add: z.array(fragmentEntrySchema).optional(),
-      // Drop these fragment ids from the inherited list (for trimming
-      // a child scope down from its parent).
-      fragments_remove: z.array(z.string()).optional(),
-    })
-    .optional(),
-});
+const scopeOverrideSchema = z
+  .object({
+    tools: z.array(toolNameSchema).optional(),
+    // Add these fragment entries to the inherited list.
+    fragments_add: z.array(fragmentEntrySchema).optional(),
+    // Drop these fragment ids from the inherited list (for trimming
+    // a child scope down from its parent).
+    fragments_remove: z.array(z.string()).optional(),
+  })
+  .strict();
 
-const fragmentSchema = z.object({
-  id: z.string().min(1),
-  version: z.number().int().positive(),
-  params: z.record(z.string(), z.unknown()).optional(),
-  adapters: adapterOverrideSchema.optional(),
-  pinned: z.boolean().optional(),
-});
+const scopeSchema = z
+  .object({
+    path: z.string(),
+    extends: z.string().optional(),
+    overrides: scopeOverrideSchema.optional(),
+  })
+  .strict();
 
-const declinedSchema = z.object({
-  id: z.string().min(1),
-  reason: z.string().optional(),
-  declined_at: z.string().optional(),
-});
+const fragmentSchema = z
+  .object({
+    id: z.string().min(1),
+    version: z.number().int().positive(),
+    params: z.record(z.string(), z.unknown()).optional(),
+    adapters: adapterOverrideSchema.optional(),
+    pinned: z.boolean().optional(),
+  })
+  .strict();
 
-const settingsSchema = z.object({
-  ontology_file: z.string().default("system_graph.yaml"),
-  agents_md_path: z.string().default("AGENTS.md"),
-  claude_md_path: z.string().default("CLAUDE.md"),
-  commit_on_apply: z.boolean().default(false),
-  backup_retention: z.number().int().nonnegative().default(10),
-});
+const declinedSchema = z
+  .object({
+    id: z.string().min(1),
+    reason: z.string().optional(),
+    declined_at: z.string().optional(),
+  })
+  .strict();
 
-const regionOverrideSchema = z.object({
-  file: z.string(),
-  region_id: z.string(),
-  locked: z.boolean().optional(),
-  reason: z.string().optional(),
-});
+const settingsSchema = z
+  .object({
+    ontology_file: z.string().default("system_graph.yaml"),
+    agents_md_path: z.string().default("AGENTS.md"),
+    claude_md_path: z.string().default("CLAUDE.md"),
+    commit_on_apply: z.boolean().default(false),
+    backup_retention: z.number().int().nonnegative().default(10),
+  })
+  .strict();
 
-const fileOverrideSchema = z.object({
-  path: z.string(),
-  locked: z.boolean().optional(),
-});
+const regionOverrideSchema = z
+  .object({
+    file: z.string(),
+    region_id: z.string(),
+    locked: z.boolean().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
+const fileOverrideSchema = z
+  .object({
+    path: z.string(),
+    locked: z.boolean().optional(),
+  })
+  .strict();
 
 const overridesSchema = z
   .object({
     regions: z.array(regionOverrideSchema).optional(),
     files: z.array(fileOverrideSchema).optional(),
   })
+  .strict()
   .optional();
 
-const projectSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  scopes: z.array(scopeSchema).optional(),
-});
+const projectSchema = z
+  .object({
+    name: z.string().min(1),
+    description: z.string().optional(),
+    scopes: z.array(scopeSchema).optional(),
+  })
+  .strict();
 
-export const agentfileSchema = z.object({
-  version: z.literal(1),
-  project: projectSchema,
-  tools: z.array(toolNameSchema).min(1),
-  fragments: z.array(fragmentSchema),
-  declined: z.array(declinedSchema).optional(),
-  settings: settingsSchema.optional(),
-  overrides: overridesSchema,
-});
+export const agentfileSchema = z
+  .object({
+    version: z.literal(1),
+    project: projectSchema,
+    tools: z.array(toolNameSchema).min(1),
+    fragments: z.array(fragmentSchema),
+    declined: z.array(declinedSchema).optional(),
+    settings: settingsSchema.optional(),
+    overrides: overridesSchema,
+  })
+  .strict();
 
 export type Agentfile = z.infer<typeof agentfileSchema>;
 export type ToolName = z.infer<typeof toolNameSchema>;

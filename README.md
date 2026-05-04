@@ -255,6 +255,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   install once, switch agents, and continue work without re-briefing
 - [`docs/AGENTFILE-SCHEMA-AUDIT.md`](docs/AGENTFILE-SCHEMA-AUDIT.md) —
   v0.8 audit of Agentfile fields, compatibility fixtures, and v1.0 freeze risks
+- [`docs/AGENTFILE-V1-FREEZE.md`](docs/AGENTFILE-V1-FREEZE.md) —
+  v1 Agentfile freeze decisions, reserved fields, and strict parser policy
 - [`docs/AGENTFILE-MIGRATIONS.md`](docs/AGENTFILE-MIGRATIONS.md) —
   `anamnesis migrate agentfile` command contract
 - [`docs/API.md`](docs/API.md) — supported TypeScript import boundary

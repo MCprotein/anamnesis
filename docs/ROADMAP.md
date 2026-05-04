@@ -469,6 +469,14 @@ Exit criteria:
 - The schema/API surfaces marked stable have explicit tests and docs.
 - Known limitations are documented as limitations, not hidden behavior.
 
+Progress:
+- 2026-05-04: Froze the Agentfile v1 schema in
+  `docs/AGENTFILE-V1-FREEZE.md` and tightened the parser so unknown fields are
+  rejected instead of silently stripped. `settings.commit_on_apply` remains a
+  reserved no-op, `overrides.*.locked` remains an ownership hint,
+  `fragments[].source` and generic `sync` stay out of v1, and no built-in
+  Agentfile migration is required for the freeze.
+
 ---
 
 ## Cross-cutting items (no specific version yet)

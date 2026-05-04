@@ -264,10 +264,10 @@ fragments:
         key_id: official-2026-01
 ```
 
-Open constraint: older v1 parsers currently reject unknown fragment fields.
-Adding this shape therefore requires either a schema migration or a parser
-decision before v1.0. Until then, registry source state can live in the local
-manifest/cache metadata while Agentfile keeps `id` and `version`.
+Open constraint: Agentfile v1 rejects unknown fragment fields. Adding this
+shape therefore requires a schema migration or an explicit parser-policy
+change with compatibility tests. Until then, registry source state can live in
+the local manifest/cache metadata while Agentfile keeps `id` and `version`.
 
 ## Implementation Order
 

@@ -113,6 +113,52 @@ fragments: []
     expect(() => parseAgentfile(yaml)).toThrow(AgentfileParseError);
   });
 
+  it("rejects unknown top-level fields", () => {
+    const yaml = `
+version: 1
+project: { name: x }
+tools: [claude-code]
+fragments: []
+sync: true
+`;
+    expect(() => parseAgentfile(yaml)).toThrow(/Unrecognized key/);
+  });
+
+  it("rejects unknown fragment fields instead of silently dropping them", () => {
+    const yaml = `
+version: 1
+project: { name: x }
+tools: [claude-code]
+fragments:
+  - id: prisma
+    version: 2
+    source:
+      registry: official
+`;
+    expect(() => parseAgentfile(yaml)).toThrow(/Unrecognized key/);
+  });
+
+  it("rejects unknown nested settings, override, and scope fields", () => {
+    const yaml = `
+version: 1
+project:
+  name: x
+  scopes:
+    - path: .
+      source: remote
+tools: [claude-code]
+fragments: []
+settings:
+  backup_retention: 10
+  sync: true
+overrides:
+  files:
+    - path: AGENTS.md
+      mode: hard-lock
+`;
+    expect(() => parseAgentfile(yaml)).toThrow(/Unrecognized key/);
+  });
+
   it("rejects invalid YAML", () => {
     const yaml = `version: 1\nproject: {name: x\ntools: [claude-code]\n`;
     expect(() => parseAgentfile(yaml)).toThrow(/YAML parse error/);

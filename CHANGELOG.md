@@ -7,6 +7,18 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+### Added
+
+- Added `docs/AGENTFILE-V1-FREEZE.md`, the v1.0 Agentfile freeze record for
+  reserved fields, ownership hints, registry/source exclusions, sync
+  exclusions, migration impact, and post-v1 evolution rules.
+
+### Changed
+
+- Tightened Agentfile parsing so unknown v1 fields are rejected instead of
+  silently stripped. Fragment `params` remain open-ended for fragment-specific
+  command-layer validation.
+
 ## [0.9.0] — 2026-05-04
 
 ### Documentation

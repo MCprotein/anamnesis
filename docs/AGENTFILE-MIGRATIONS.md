@@ -101,11 +101,14 @@ Field-specific guidance for current v0.8 risks:
   ownership metadata, not hard update locks. If hard locks are needed before
   v1.0, implement them explicitly or add a new field rather than changing the
   current meaning silently.
-- `settings.commit_on_apply`: treat as future-reserved / a deprecated
-  candidate unless commit automation is implemented before v1.0. If removed,
-  migration must delete only this key and preserve the rest of `settings`.
+- `settings.commit_on_apply`: keep as a v1 reserved no-op. If removed in a
+  later schema, migration must delete only this key and preserve the rest of
+  `settings`.
 - `declined_at`: keep as a parser-level string. ISO 8601 remains recommended,
   but migration should not rewrite historical values merely for formatting.
+- Unknown fields: v1 rejects unknown fields instead of silently stripping
+  them. Future metadata such as `fragments[].source` needs a schema version
+  bump or explicit parser-policy change with compatibility tests.
 
 ## Test Requirements
 
@@ -125,5 +128,6 @@ Before shipping the command:
 1. Add a migration registry and dry-run planner with no built-in migrations.
 2. Add CLI plumbing for `anamnesis migrate agentfile`.
 3. Add backup and apply support.
-4. Add the first real migration only after the v0.8 audit decides whether
-   `settings.commit_on_apply` is removed or kept as a reserved field.
+4. Add the first real migration only when a future schema version needs a
+   destructive or semantic Agentfile transform. The v1.0 freeze does not
+   require a built-in migration.
