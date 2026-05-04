@@ -249,6 +249,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   install once, switch agents, and continue work without re-briefing
 - [`docs/AGENTFILE-SCHEMA-AUDIT.md`](docs/AGENTFILE-SCHEMA-AUDIT.md) —
   v0.8 audit of Agentfile fields, compatibility fixtures, and v1.0 freeze risks
+- [`docs/AGENTFILE-MIGRATIONS.md`](docs/AGENTFILE-MIGRATIONS.md) —
+  planned `anamnesis migrate agentfile` command contract
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested

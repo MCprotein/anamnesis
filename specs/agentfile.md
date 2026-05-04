@@ -263,6 +263,7 @@ Run `anamnesis migrate agentfile` to apply.
 ```
 
 마이그레이션은 파일을 먼저 백업한 뒤 변환 규칙 적용.
+상세 command contract 는 `docs/AGENTFILE-MIGRATIONS.md` 를 따른다.
 
 ### 6.3 하위 호환
 
