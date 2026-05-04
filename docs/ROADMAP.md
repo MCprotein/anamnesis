@@ -481,6 +481,11 @@ Progress:
   backs up before writes, has no built-in transforms because the v1 freeze
   requires none, preserves current no-op formatting/comment content, and now
   reports the next recommended command in both human and JSON output.
+- 2026-05-04: Closed the v1.0 public TypeScript API boundary by documenting
+  the semver-governed stability contract in `docs/API.md`, keeping command
+  result shapes internal, and adding an exports-map test so only
+  `@mcprotein/anamnesis` plus `@mcprotein/anamnesis/package.json` are public
+  package imports.
 
 ---
 

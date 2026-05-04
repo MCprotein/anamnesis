@@ -259,7 +259,7 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   v1 Agentfile freeze decisions, reserved fields, and strict parser policy
 - [`docs/AGENTFILE-MIGRATIONS.md`](docs/AGENTFILE-MIGRATIONS.md) —
   `anamnesis migrate agentfile` command contract
-- [`docs/API.md`](docs/API.md) — supported TypeScript import boundary
+- [`docs/API.md`](docs/API.md) — v1.0 TypeScript API stability contract
 - [`docs/REPAIR.md`](docs/REPAIR.md) — repair playbook for existing managed projects
 - [`docs/FRAGMENT-AUTHORING.md`](docs/FRAGMENT-AUTHORING.md) —
   public fragment authoring guide, review checklist, versioning, and compatibility rules

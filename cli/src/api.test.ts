@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   fragmentAdapterEnabled,
   parseAgentfile,
@@ -32,5 +34,19 @@ fragments:
 
     expect(fragmentAdapterEnabled(fragment, "claude-code")).toBe(true);
     expect(fragmentAdapterEnabled(fragment, "cursor")).toBe(false);
+  });
+
+  it("keeps package exports limited to the public API and package metadata", () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8"),
+    ) as { exports: unknown };
+
+    expect(pkg.exports).toEqual({
+      ".": {
+        types: "./cli/dist/api.d.ts",
+        import: "./cli/dist/api.js",
+      },
+      "./package.json": "./package.json",
+    });
   });
 });

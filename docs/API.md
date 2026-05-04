@@ -1,7 +1,7 @@
 # Public API Boundary
 
 anamnesis is primarily a CLI. The supported TypeScript import surface is
-intentionally small until v1.0.
+intentionally small and semver-governed from v1.0 forward.
 
 ## Supported Import
 
@@ -20,8 +20,19 @@ The package `exports` map only exposes:
 - `@mcprotein/anamnesis/package.json`
 
 Deep imports such as `@mcprotein/anamnesis/cli/dist/core/agentfile.js` are not
-supported. They may change without notice before v1.0 and are intentionally
-blocked by the `exports` map.
+supported. They may change without notice and are intentionally blocked by the
+`exports` map.
+
+## Stability Contract
+
+- Symbols listed below are the supported public TypeScript API.
+- Adding a new public symbol is a minor-version change after v1.0.
+- Removing a public symbol, changing its meaning, or changing its type contract
+  is a major-version change after v1.0.
+- Package-level imports must go through `@mcprotein/anamnesis` or
+  `@mcprotein/anamnesis/package.json`.
+- Deep imports remain internal even if the generated files are present inside
+  the npm package.
 
 ## Current Public Symbols
 

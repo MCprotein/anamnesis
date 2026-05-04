@@ -21,6 +21,8 @@ breaking changes until v1.0.
 - Promoted `anamnesis migrate agentfile` from pre-freeze skeleton to v1.0
   availability surface by documenting its no-built-in-migration behavior and
   reporting the next recommended command in human and JSON output.
+- Clarified the v1.0 public TypeScript API stability contract and added an
+  exports-map test to keep deep imports outside the supported surface.
 
 ## [0.9.0] — 2026-05-04
 
