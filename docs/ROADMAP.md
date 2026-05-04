@@ -346,7 +346,7 @@ to depend on.
 |---|---|---|
 | 1 | **Agentfile schema audit** | Review `Agentfile` v1 fields, defaults, scope inheritance, `settings`, `declined`, and pinned fragment semantics. Decide what can be frozen as-is and what needs a pre-1.0 adjustment. |
 | 2 | **Schema fixture suite** | Add explicit compatibility fixtures for real single-scope, multi-scope, pinned, declined, and all-adapter Agentfiles so future changes can prove backward compatibility. |
-| 3 | **Migration command design** | Designed in `docs/AGENTFILE-MIGRATIONS.md`. Implementation remains pending: detection, dry-run output, backups, idempotency, and preservation tests. |
+| 3 | **Migration command design** | Designed in `docs/AGENTFILE-MIGRATIONS.md`; CLI skeleton shipped with dry-run/apply/backup/idempotency behavior and no built-in schema transforms yet. |
 | 4 | **Stable TypeScript API boundary** | Separate public import targets from internal modules. Add package `exports` only when the supported API surface is clear enough to document. |
 | 5 | **Existing-project repair workflow** | Tighten diagnostics and repair guidance for older managed projects with user-modified native surfaces, missing hook registrations, stale Agentfile versions, or partial adapter installs. |
 | 6 | **Published package smoke gate** | Make the v0.7.0 npm-package smoke path recurring: fresh fixture plus sanitized-fixture snapshot through `npm exec @mcprotein/anamnesis@<version>`. |
@@ -373,6 +373,10 @@ Progress:
 - 2026-05-04: Added `docs/AGENTFILE-MIGRATIONS.md` with the dry-run-first
   command contract, backup/idempotency rules, preservation rules, and test
   requirements for future `anamnesis migrate agentfile` implementation.
+- 2026-05-04: Added the `anamnesis migrate agentfile` skeleton with dry-run
+  default, `--apply`, `--json`, backup-on-write, and idempotency tests via an
+  injected fixture migration. Built-in schema transforms remain pending until
+  the remaining v0.8 field decisions are made.
 
 ---
 

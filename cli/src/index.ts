@@ -49,6 +49,11 @@ import {
   type BenchmarkResult,
 } from "./commands/benchmark.js";
 import {
+  migrateAgentfile,
+  MigrateError,
+  type MigrateAgentfileResult,
+} from "./commands/migrate.js";
+import {
   collectGenerationBoundaryStatus,
   formatBootstrapGenerationBoundaryLines,
   formatGenerationBoundaryLines,
@@ -130,6 +135,21 @@ function parseToolsFlag(value: string | boolean | undefined): ToolName[] | undef
   return tools;
 }
 
+function parsePositiveIntFlag(
+  value: string | boolean | undefined,
+  flagName: string,
+): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new MigrateError(`${flagName} requires a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new MigrateError(`${flagName} requires a positive integer`);
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Library root discovery
 // ---------------------------------------------------------------------------
@@ -168,6 +188,7 @@ Commands:
                                   a record to docs/DOGFOOD.md
   benchmark report             Generate a deterministic context-quality
                                   benchmark report for docs/BENCHMARKS.md
+  migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
                                   from project files (Layer A — deterministic)
@@ -215,6 +236,12 @@ Flags (benchmark report):
   --json                        Print structured JSON
   --append                      Append markdown result to docs/BENCHMARKS.md
   --output <path>               Override benchmark log path
+
+Flags (migrate agentfile):
+  --project-root <path>         Target directory (default: cwd)
+  --apply                       Actually write after backup (default is dry-run)
+  --json                        Print structured JSON
+  --to <version>                Optional explicit target Agentfile schema
 
 Flags (ontology bootstrap):
   --project-root <path>         Target directory (default: cwd)
@@ -560,6 +587,49 @@ function reportBenchmark(result: BenchmarkResult): void {
   }
 }
 
+function reportMigrate(result: MigrateAgentfileResult): void {
+  const verdict = result.changed
+    ? result.applied
+      ? "applied"
+      : "changes available"
+    : "no changes";
+  console.log(`anamnesis migrate agentfile — ${verdict}`);
+  console.log(`  path: ${result.agentfilePath}`);
+  console.log(`  version: ${result.currentVersion} -> ${result.targetVersion}`);
+  if (result.migrations.length === 0) {
+    console.log("  migrations: none");
+  } else {
+    console.log("  migrations:");
+    for (const migration of result.migrations) {
+      console.log(`    ${migration.id}: ${migration.title}`);
+    }
+  }
+  if (result.backupPath) {
+    console.log(`  backup: ${result.backupPath}`);
+  }
+  if (result.changed && !result.applied) {
+    console.log("  (dry-run — re-run with --apply to actually write)");
+    for (const line of formatWholeFileDiff(result)) {
+      console.log(line);
+    }
+  }
+}
+
+function formatWholeFileDiff(result: MigrateAgentfileResult): string[] {
+  if (result.currentContent === result.newContent) return [];
+  const lines = [
+    `--- a/${result.agentfilePath}`,
+    `+++ b/${result.agentfilePath}`,
+  ];
+  for (const line of result.currentContent.split(/\r?\n/)) {
+    lines.push(`-${line}`);
+  }
+  for (const line of result.newContent.split(/\r?\n/)) {
+    lines.push(`+${line}`);
+  }
+  return lines;
+}
+
 function reportUpdate(result: UpdateResult): void {
   const s = summarizeChanges(result.changes);
   const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
@@ -767,6 +837,39 @@ async function main(argv: string[]): Promise<number> {
       }
     }
 
+    case "migrate": {
+      const sub = positional[0];
+      if (sub !== "agentfile") {
+        console.error(
+          `error: unknown 'migrate' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(
+          `usage: anamnesis migrate agentfile [--apply] [--json] [--to=<version>]`,
+        );
+        return 1;
+      }
+      try {
+        const result = migrateAgentfile({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          apply: flags["apply"] === true,
+          targetVersion: parsePositiveIntFlag(flags["to"], "--to"),
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(migrateJson(result), null, 2));
+        } else {
+          reportMigrate(result);
+        }
+        return 0;
+      } catch (e) {
+        if (e instanceof MigrateError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
+
     case "promote": {
       const source = (positional[0] as string | undefined) ?? "";
       const fragmentId = flags["as"] as string | undefined;
@@ -840,6 +943,18 @@ async function main(argv: string[]): Promise<number> {
       console.error(`run 'anamnesis --help' for usage.`);
       return 1;
   }
+}
+
+function migrateJson(result: MigrateAgentfileResult): object {
+  return {
+    agentfilePath: result.agentfilePath,
+    currentVersion: result.currentVersion,
+    targetVersion: result.targetVersion,
+    applied: result.applied,
+    changed: result.changed,
+    migrations: result.migrations,
+    backupPath: result.backupPath,
+  };
 }
 
 main(process.argv)

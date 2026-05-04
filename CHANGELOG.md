@@ -7,6 +7,13 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+### Added
+
+- Added the `anamnesis migrate agentfile` skeleton: dry-run by default,
+  optional `--apply`, JSON output, backup-on-write, idempotent migration
+  planning, and tests with an injected fixture migration. No built-in schema
+  transformations ship yet.
+
 ### Documentation
 
 - Recorded the published-package v0.7.0 smoke test in `docs/DOGFOOD.md`,

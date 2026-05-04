@@ -1,8 +1,10 @@
 # Agentfile Migration Design
 
 This document defines the v0.8 design contract for future
-`anamnesis migrate agentfile` work. The command is not implemented yet; this
-is the behavior to implement before the Agentfile schema is frozen for v1.0.
+`anamnesis migrate agentfile` work. The CLI skeleton is implemented with a
+dry-run/apply/backup pipeline and no built-in schema transformations yet; this
+is the behavior future migrations must preserve before the Agentfile schema is
+frozen for v1.0.
 
 ## Goal
 

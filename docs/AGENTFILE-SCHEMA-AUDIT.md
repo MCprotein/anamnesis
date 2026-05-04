@@ -74,8 +74,9 @@ workflow.
 - `declined_at` is a plain string. That is flexible, but v1.0 should decide
   whether to require ISO dates or keep free-form historical values valid.
 - Schema evolution docs mention `anamnesis migrate agentfile`, but the command
-  does not exist yet. `docs/AGENTFILE-MIGRATIONS.md` now defines the command
-  contract; implementation remains a v0.8 task before schema freeze.
+  now exists only as a skeleton. `docs/AGENTFILE-MIGRATIONS.md` defines the
+  command contract; built-in transforms remain a v0.8 task before schema
+  freeze.
 - Partial `fragment.adapters` maps are now parser-supported and covered by
   compatibility fixtures. Root fragments and scope `fragments_add` entries are
   covered by render-path tests. Unknown adapter keys remain invalid.
@@ -84,7 +85,7 @@ workflow.
 
 1. Decide the fate of `fragment.adapters`, `overrides.*.locked`, and
    `settings.commit_on_apply`.
-2. Implement the dry-run-first `anamnesis migrate agentfile` skeleton from
-   `docs/AGENTFILE-MIGRATIONS.md` before any schema v2 work.
+2. Add the first built-in `anamnesis migrate agentfile` transform only after
+   the remaining v0.8 field decisions are made.
 3. Keep compatibility fixtures append-only as new sanitized fixture shapes are
    dogfooded.
