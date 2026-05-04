@@ -517,17 +517,45 @@ Progress:
 
 > **Theme: remove avoidable fallback-only gaps after the v1 surface freeze**
 
+External review input, 2026-05-04:
+- [`openai/codex`](https://github.com/openai/codex) now exposes a broader
+  native lifecycle surface than the SessionStart-only path anamnesis first
+  targeted. The official Codex docs describe config-layer hook discovery,
+  project/user `.codex/hooks.json`, inline `[hooks]`, plugin lifecycle
+  config, and current hook events including `SessionStart`,
+  `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and
+  `Stop`.
+- [`Yeachan-Heo/oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex)
+  is useful prior art for separating native Codex hooks, runtime/plugin hook
+  dispatch, derived fallback signals, persistent state, logs, and team-safety
+  behavior. anamnesis should learn from those boundaries without becoming
+  dependent on OMX or turning into a runtime orchestrator.
+
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Codex native SessionStart continuity** | in progress | Add a Codex native SessionStart wrapper for the base ontology + handoff continuity path. `--allow-exec-adapters` installs `.anamnesis/codex-native-hooks/session-start.mjs`, enables `.codex/config.toml` `[features].codex_hooks = true`, and merges `.codex/hooks.json` while preserving user hook entries. AGENTS.md fallback instructions remain for environments without native hook installation. |
+| 1 | **Codex native SessionStart continuity** | implemented; pending release | Add a Codex native SessionStart wrapper for the base ontology + handoff continuity path. `--allow-exec-adapters` installs `.anamnesis/codex-native-hooks/session-start.mjs`, enables `.codex/config.toml` `[features].codex_hooks = true`, and merges `.codex/hooks.json` while preserving user hook entries. AGENTS.md fallback instructions remain for environments without native hook installation. |
+| 2 | **Codex native hook surface refresh** | planned | Refresh the Codex adapter against the current official hook vocabulary instead of treating Codex as SessionStart-only. Model `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and `Stop` as event-aware render targets with explicit fallback notes for unsupported or version-gated behavior. |
+| 3 | **Prompt-time and stop-time continuity** | planned | Use Codex `UserPromptSubmit` for compact, budgeted context deltas when ontology/handoff state changed after session start, and use Codex `Stop` for the same dirty-work / handoff reminder role Claude Code already gets. Avoid noisy repeated context injection; prefer delta-only summaries and deterministic caps. |
+| 4 | **Native executable-hook bridge for Codex** | planned | Where Codex `PreToolUse`, `PermissionRequest`, and `PostToolUse` support useful matchers (`Bash`, `apply_patch`/`Edit`/`Write`, MCP tool names), render safe fragment hooks natively before falling back to AGENTS.md instructions or the Git pre-commit bridge. Keep supply-chain gating under `--allow-exec-adapters`. |
+| 5 | **Shared Codex hook ownership diagnostics** | planned | Teach `status` / `doctor` to explain active Codex hook sources and ownership: user config, project config, anamnesis-managed entries, OMX-managed entries, plugin-provided lifecycle config, duplicate handlers, relative-path fragility, and project-trust gating. Preserve unrelated hook entries during every update. |
+| 6 | **Real native-hook smoke tests** | planned | Add reproducible smoke tests that prove native Codex hook behavior, not just rendered files: SessionStart context injection, UserPromptSubmit additional context, Stop continuation/reminder behavior, and at least one tool-scoped Pre/Post hook. Mark synthetic dispatch tests separately from real Codex execution. |
+| 7 | **Codex plugin packaging research** | planned | Investigate whether anamnesis should emit an optional Codex plugin bundle for skills, commands, MCP/app metadata, or examples. Keep runtime hooks in config-layer `.codex/hooks.json` until plugin hook execution and trust semantics are verified in real Codex. |
+| 8 | **Runtime inspiration from OMX, not dependency** | planned | Consider a small anamnesis-owned runtime evidence layer for lifecycle reports, hook logs, and benchmark traces inspired by OMX `.omx/` state/log patterns. Scope it to install/update/status/doctor/benchmark evidence; do not add task orchestration, HUD, team runtime, or OMX as a dependency. |
 
 Exit criteria:
 - Fresh `--tools codex --allow-exec-adapters` install gets automatic
   ontology and handoff context at Codex SessionStart.
-- `status` / `doctor` report the Codex native hook wrapper, feature flag, and
-  hook registration as part of adapter continuity.
+- `status` / `doctor` report the Codex native hook wrapper, feature flag,
+  hook registrations, and shared hook ownership as part of adapter continuity.
 - Existing user `.codex/hooks.json` entries are preserved and stale
   anamnesis-managed wrapper entries are deduped on update.
+- `docs/ADAPTER-PARITY.md` and switching fixtures distinguish Codex native
+  hook parity, fallback parity, and version-gated gaps for every supported
+  capability.
+- At least one real Codex native-hook smoke proves each newly claimed native
+  path before README or benchmark claims mention it.
+- OMX remains compatible as a co-installed runtime, but anamnesis does not
+  require OMX to provide its context/ontology/handoff continuity promise.
 
 ---
 

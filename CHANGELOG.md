@@ -24,6 +24,11 @@ could include breaking changes.
 
 - Recorded the npmjs.org post-publish smoke for `@mcprotein/anamnesis@1.0.0`
   and marked v1.0 as shipped in the README and roadmap.
+- Added post-v1.0 roadmap items from reviewing `openai/codex` and
+  `oh-my-codex`: Codex native hook surface refresh, prompt/stop-time
+  continuity, shared hook ownership diagnostics, real native-hook smokes,
+  Codex plugin packaging research, and OMX-compatible runtime evidence
+  boundaries.
 
 ## [1.0.0] — 2026-05-04
 
