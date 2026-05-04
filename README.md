@@ -247,6 +247,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan
 - [`docs/AGENT-SWITCHING-GUIDE.md`](docs/AGENT-SWITCHING-GUIDE.md) —
   install once, switch agents, and continue work without re-briefing
+- [`docs/AGENTFILE-SCHEMA-AUDIT.md`](docs/AGENTFILE-SCHEMA-AUDIT.md) —
+  v0.8 audit of Agentfile fields, compatibility fixtures, and v1.0 freeze risks
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested

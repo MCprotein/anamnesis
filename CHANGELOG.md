@@ -15,6 +15,14 @@ breaking changes until v1.0.
 - Replanned the post-v0.7 roadmap into v0.8 schema/API/migration
   stabilization, v0.9 registry/signing/docs readiness, and v1.0 surface
   freeze criteria.
+- Added `docs/AGENTFILE-SCHEMA-AUDIT.md` and compatibility fixture tests for
+  historical Claude Code-only, current all-adapter single-scope, and
+  multi-scope pinned Agentfile shapes.
+
+### Fixed
+
+- `Agentfile` parsing now accepts partial `fragment.adapters` overrides such
+  as `cursor: false` without requiring every supported adapter key.
 
 ## [0.7.0] — 2026-05-03
 

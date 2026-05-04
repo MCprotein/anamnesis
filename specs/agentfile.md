@@ -139,7 +139,7 @@ overrides:
 | `id` | `string` | ✅ | 라이브러리의 fragment id (예: `prisma`) |
 | `version` | `int` | ✅ | 설치된 fragment 버전. `update` 가 참조 |
 | `params` | `object` | ⛔ | fragment 가 선언한 파라미터에 대한 값 |
-| `adapters` | `object<tool, bool>` | ⛔ | 어댑터별 활성/비활성. 기본: `tools` 전부 활성 |
+| `adapters` | partial `object<tool, bool>` | ⛔ | 어댑터별 활성/비활성 오버라이드. 필요한 도구만 적는다. 기본: `tools` 전부 활성 |
 | `pinned` | `bool` | ⛔ | `true` 면 `update` 가 자동 bump 하지 않고 `fragments/<id>/.versions/<version>/`(base 는 `base/.versions/<version>/`) 에서 해당 버전을 렌더링. `update --bump-pinned` 로만 명시적 bump |
 
 **순서** — 배열의 순서가 곧 **병합/충돌 해결 우선순위**. 아래 순번일수록 나중에 렌더링되어 덮어씀. 충돌 시 anamnesis 는 경고만 내고 순서를 믿는다.

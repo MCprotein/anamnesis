@@ -12,11 +12,19 @@ import { z } from "zod";
 
 const toolNameSchema = z.enum(["claude-code", "codex", "cursor"]);
 
+const adapterOverrideSchema = z
+  .object({
+    "claude-code": z.boolean().optional(),
+    codex: z.boolean().optional(),
+    cursor: z.boolean().optional(),
+  })
+  .strict();
+
 const fragmentEntrySchema = z.object({
   id: z.string().min(1),
   version: z.number().int().positive(),
   params: z.record(z.string(), z.unknown()).optional(),
-  adapters: z.record(toolNameSchema, z.boolean()).optional(),
+  adapters: adapterOverrideSchema.optional(),
   pinned: z.boolean().optional(),
 });
 
@@ -39,7 +47,7 @@ const fragmentSchema = z.object({
   id: z.string().min(1),
   version: z.number().int().positive(),
   params: z.record(z.string(), z.unknown()).optional(),
-  adapters: z.record(toolNameSchema, z.boolean()).optional(),
+  adapters: adapterOverrideSchema.optional(),
   pinned: z.boolean().optional(),
 });
 

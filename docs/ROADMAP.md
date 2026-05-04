@@ -357,6 +357,12 @@ Exit criteria:
 - Release validation includes source checks and published-package smoke checks.
 - Any remaining schema/API uncertainty is explicitly assigned to v0.9 or v1.0.
 
+Progress:
+- 2026-05-04: Started the Agentfile schema audit in
+  `docs/AGENTFILE-SCHEMA-AUDIT.md` and added compatibility fixtures for
+  historical Claude Code-only, current all-adapter single-scope, and
+  multi-scope pinned Agentfiles in `cli/src/core/agentfile.compat.test.ts`.
+
 ---
 
 ## v0.9 — *planned*
