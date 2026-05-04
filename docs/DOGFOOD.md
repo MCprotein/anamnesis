@@ -52,6 +52,36 @@ The underlying checklist is:
      continuity pieces obvious?
    - **Verification strength**: do tests lock the continuity contract?
 
+## Published Package Smoke — v0.7.0
+
+Recorded: 2026-05-04
+
+Purpose: verify the npm-published package, not the local TypeScript source.
+
+Package:
+
+```bash
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@0.7.0 -- anamnesis --version
+```
+
+Result: `0.7.0`
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh NestJS/Prisma fixture | `init --tools all --allow-exec-adapters` -> `status` -> `doctor` -> `benchmark report` | init created 25 surfaces; continuity `6/6`; doctor `0` errors; benchmark `4/5` before Layer B enrichment |
+| `sanitized-nest-prisma@e19fc0d` source snapshot | same published-package command path | init created 25 surfaces; continuity `6/6`; doctor `0` errors; benchmark `4/5` before Layer B enrichment |
+
+Interpretation:
+
+- The package tarball includes the built CLI, docs, base fragment, adapter
+  surfaces, and framework fragments needed for first-install all-adapter use.
+- Layer B enrichment warnings are expected immediately after `init`; the
+  published CLI correctly routes the user to `/ontology-enrich`.
+- No `v0.7.1` package-repair patch is needed from this smoke result.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03

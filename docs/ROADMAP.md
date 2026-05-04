@@ -334,6 +334,55 @@ Exit criteria:
 
 ---
 
+## v0.8 — *planned*
+
+> **Theme: stabilize schema, API, and migration contracts**
+
+v0.8 should reduce the risk of freezing the wrong surface in v1.0. The
+priority is not new adapter breadth; it is making the existing lifecycle safe
+to depend on.
+
+| # | Item | Description |
+|---|---|---|
+| 1 | **Agentfile schema audit** | Review `Agentfile` v1 fields, defaults, scope inheritance, `settings`, `declined`, and pinned fragment semantics. Decide what can be frozen as-is and what needs a pre-1.0 adjustment. |
+| 2 | **Schema fixture suite** | Add explicit compatibility fixtures for real single-scope, multi-scope, pinned, declined, and all-adapter Agentfiles so future changes can prove backward compatibility. |
+| 3 | **Migration command design** | Define `anamnesis migrate` behavior before implementing migrations: detection, dry-run output, backups, idempotency, and how user-authored fields are preserved. |
+| 4 | **Stable TypeScript API boundary** | Separate public import targets from internal modules. Add package `exports` only when the supported API surface is clear enough to document. |
+| 5 | **Existing-project repair workflow** | Tighten diagnostics and repair guidance for older managed projects with user-modified native surfaces, missing hook registrations, stale Agentfile versions, or partial adapter installs. |
+| 6 | **Published package smoke gate** | Make the v0.7.0 npm-package smoke path recurring: fresh fixture plus sanitized-fixture snapshot through `npm exec @mcprotein/anamnesis@<version>`. |
+
+Exit criteria:
+- We can say which parts of `Agentfile` are v1-stable candidates.
+- Backward-compatibility fixtures exist for the project shapes we already dogfood.
+- Release validation includes source checks and published-package smoke checks.
+- Any remaining schema/API uncertainty is explicitly assigned to v0.9 or v1.0.
+
+---
+
+## v0.9 — *planned*
+
+> **Theme: public ecosystem readiness**
+
+v0.9 should prepare the project for users and fragment authors beyond the
+current local-library workflow.
+
+| # | Item | Description |
+|---|---|---|
+| 1 | **Fragment registry design** | Specify registry metadata, discovery, version selection, and trust boundaries before building a hosted registry. |
+| 2 | **Fragment signing & checksums design** | Define how fragment archives are signed, verified, cached, and rejected. Include migration behavior for unsigned local fragments. |
+| 3 | **Fragment authoring docs** | Turn current internal fragment conventions into public author guidance with examples, review checklist, and compatibility rules. |
+| 4 | **Official docs site plan** | Decide whether docs remain GitHub-first or move to a docs site. Include installation, adapter parity, ontology lifecycle, handoff, monorepo, release, and fragment authoring pages. |
+| 5 | **Public benchmark gallery** | Collect sanitized before/after reports across multiple public repo shapes and surface headline evidence in README/docs. |
+| 6 | **Remote sync strategy** | Decide whether `anamnesis sync` belongs before v1.0 or should wait until a registry exists. |
+
+Exit criteria:
+- Registry and signing are specified deeply enough to implement without
+  changing the frozen Agentfile surface.
+- Public docs cover both users and fragment authors.
+- Benchmark evidence includes more than one repo shape.
+
+---
+
 ## v1.0 — *stable / public-ready*
 
 > **Theme: lock the surface, open to community**
@@ -341,11 +390,18 @@ Exit criteria:
 | # | Item | Description |
 |---|---|---|
 | 1 | **Frozen Agentfile schema** | No more breaking changes after this. Strict semver from v1.0 forward. |
-| 2 | **Public fragment registry** | Discovery site + search (e.g., registry.anamnesis.dev). Fragment authors can publish under their scope. |
-| 3 | **Fragment signing & checksums** | Supply-chain hardening. Fragments cryptographically signed; consumers verify. |
-| 4 | **Stable TypeScript API** | `import { ... } from "@mcprotein/anamnesis"` exports become semver-stable. |
-| 5 | **Official docs site** | Full guide, API reference, examples (anamnesis.dev or similar). |
-| 6 | **Migration tooling** | `anamnesis migrate` for moving between Agentfile schema versions when those change. |
+| 2 | **Migration tooling available** | `anamnesis migrate` supports any pre-1.0 schema adjustments that must survive the freeze. |
+| 3 | **Stable public TypeScript API** | Documented import targets are semver-stable; internal modules remain private. |
+| 4 | **Registry/signing MVP decision** | Either ship a minimal registry/signing path or explicitly keep registry support post-1.0 without weakening local-library safety. |
+| 5 | **Public documentation complete** | Install, lifecycle, adapter parity, ontology generation, handoff, monorepo, release, fragment authoring, and troubleshooting docs are coherent. |
+| 6 | **Evidence-backed README claims** | Public claims about continuity and ontology quality point to dogfood, switching fixtures, and benchmark reports. |
+
+Exit criteria:
+- `npm install -g @mcprotein/anamnesis` plus the documented quickstart works
+  from the published package.
+- Existing v0.7/v0.8 managed projects can upgrade without losing user edits.
+- The schema/API surfaces marked stable have explicit tests and docs.
+- Known limitations are documented as limitations, not hidden behavior.
 
 ---
 
@@ -355,12 +411,8 @@ These have been discussed but lack concrete version assignment:
 
 - **Project type templates** — `init --template react-app` style scaffolding for first-time users
 - **Fragment dependency resolution** — current `requires` is just topo sort; could grow to semver constraint solving
-- **`anamnesis sync`** — pull latest library changes from a remote git source (vs current "just edit fragments/ in this repo")
 - **WebUI for Agentfile editing** — visual editor for non-CLI users
 - **Webhook on fragment update** — notify projects when their installed fragments have library updates
-- **Public benchmark gallery** — after the v0.7 benchmark/report command
-  stabilizes, collect sanitized before/after reports across multiple public
-  repo shapes and surface the headline evidence in README/docs.
 
 ---
 

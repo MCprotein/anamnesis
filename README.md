@@ -233,6 +233,8 @@ Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 | **v0.5** | Dogfood lifecycle validation and agent-switch continuity hardening | shipped 2026-04-30 |
 | **v0.6** | Repeatable bounded ontology generation plus agent-assisted enrichment | shipped 2026-05-03 |
 | **v0.7** | Multi-agent UX, lifecycle scale, and benchmark reports | shipped 2026-05-03 |
+| **v0.8** | Schema, API, migration, and repair workflow stabilization | planned |
+| **v0.9** | Registry, signing, docs, and public benchmark readiness | planned |
 | **v1.0** | Stable schema, public fragment registry, signing | stable target |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).

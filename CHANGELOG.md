@@ -7,6 +7,15 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+### Documentation
+
+- Recorded the published-package v0.7.0 smoke test in `docs/DOGFOOD.md`,
+  covering a fresh NestJS/Prisma fixture and a `sanitized-nest-prisma` source
+  snapshot through `npm exec @mcprotein/anamnesis@0.7.0`.
+- Replanned the post-v0.7 roadmap into v0.8 schema/API/migration
+  stabilization, v0.9 registry/signing/docs readiness, and v1.0 surface
+  freeze criteria.
+
 ## [0.7.0] — 2026-05-03
 
 ### Added
