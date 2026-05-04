@@ -60,7 +60,7 @@ import {
 } from "./core/generation-boundary.js";
 import type { ToolName } from "./core/agentfile.js";
 
-const VERSION = "0.9.0";
+const VERSION = "1.0.0";
 const SUPPORTED_TOOLS = ["claude-code", "codex", "cursor"] as const satisfies
   readonly ToolName[];
 

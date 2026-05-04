@@ -185,6 +185,36 @@ Interpretation:
 - The remaining warning is intentional: a fresh Prisma fixture has Layer A
   bootstrap facts but no agent-authored Layer B `.enriched.yaml` yet.
 
+## Local Package Smoke — v1.0.0 candidate
+
+Recorded: 2026-05-04
+
+Purpose: verify the built npm tarball before publishing `1.0.0`.
+
+Package:
+
+```bash
+npm pack --pack-destination /private/tmp
+npm exec --yes --package=/private/tmp/mcprotein-anamnesis-1.0.0.tgz \
+  -- anamnesis --version
+```
+
+Result: `1.0.0`
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh Prisma fixture | local tarball `init --tools all --allow-exec-adapters` -> `status` -> `doctor` | init completed; continuity `ready (6/6)`; doctor `0` errors and expected Layer B enrichment warning |
+
+Interpretation:
+
+- The local `1.0.0` tarball exposes the correct CLI version and help output.
+- A fresh all-adapter install from the tarball reaches the same continuity
+  readiness target as the source-tree dogfood check.
+- The remaining warning is intentional: generated Layer A bootstrap exists
+  before an agent writes Layer B `.enriched.yaml`.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03
@@ -735,3 +765,32 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood simulate-stale-handoff` | pass | 46 | status and doctor detect active.md that does not reference the newest archive |
 | `npm run typecheck` | pass | 1384 | passed |
 | `npm test` | pass | 2533 | passed |
+
+
+## Automated Self-Check — 2026-05-04T04:20:51.010Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@8:in-sync
+Drift: 19 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (426ms); anamnesis dogfood simulate-stale-handoff: pass (52ms); npm run typecheck: pass (1503ms); npm test: pass (3167ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 426 | active.md and latest archive injected; Codex/Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 52 | status and doctor detect active.md that does not reference the newest archive |
+| `npm run typecheck` | pass | 1503 | passed |
+| `npm test` | pass | 3167 | passed |

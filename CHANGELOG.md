@@ -2,10 +2,12 @@
 
 All notable changes to anamnesis are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
-the project uses pre-1.0 semantics — minor version bumps may include
-breaking changes until v1.0.
+the project follows semver from v1.0 forward. Before v1.0, minor version bumps
+could include breaking changes.
 
 ## [Unreleased]
+
+## [1.0.0] — 2026-05-04
 
 ### Added
 

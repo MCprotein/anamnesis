@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-461%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.9%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-466%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.0%20stable-success)]()
 
 ---
 
@@ -242,7 +242,7 @@ the claim ledger is [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md).
 | **v0.7** | Multi-agent UX, lifecycle scale, and benchmark reports | shipped 2026-05-03 |
 | **v0.8** | Schema, API, migration, and repair workflow stabilization | shipped 2026-05-04 |
 | **v0.9** | Registry, signing, docs, and public benchmark readiness | shipped 2026-05-04 |
-| **v1.0** | Stable schema, public API, migration surface, docs, and evidence-backed claims | stable target |
+| **v1.0** | Stable schema, public API, migration surface, docs, and evidence-backed claims | preparing publish |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
