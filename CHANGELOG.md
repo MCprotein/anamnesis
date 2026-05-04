@@ -15,6 +15,9 @@ breaking changes until v1.0.
 - Added `docs/FRAGMENT-SIGNING.md`, the v0.9 design for remote fragment
   checksums, signed release manifests, trust-store policy, unsigned local
   fragment migration behavior, and rejection diagnostics.
+- Added `docs/FRAGMENT-AUTHORING.md`, a public fragment authoring guide with
+  capability examples, rulebook guidance, executable-hook safety rules,
+  versioning expectations, tests, review checklist, and compatibility rules.
 - Updated the architecture docs to keep fragment trigger ownership aligned
   with the current `rulebook.md` model.
 

@@ -426,6 +426,11 @@ Progress:
   release manifests for default install/update, unsigned local and bundled
   fragments stay valid, unsigned remote executable adapters are rejected, and
   optional Agentfile source metadata remains migration-owned before v1.0.
+- 2026-05-04: Added `docs/FRAGMENT-AUTHORING.md` as the public fragment
+  authoring guide. It documents capability schemas, rulebook ownership,
+  executable-hook safety, Layer A vs Layer B boundaries, versioning,
+  verification, review checklist, and compatibility rules for future public
+  fragments.
 
 ---
 

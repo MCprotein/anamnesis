@@ -38,6 +38,8 @@ fragments/<id>/
 | `nuxt` | `nuxt` in package.json | ✅ |
 
 Trigger conditions are defined in [`../rulebook.md`](../rulebook.md) — the format spec lives there too.
+Public authoring guidance lives in
+[`../docs/FRAGMENT-AUTHORING.md`](../docs/FRAGMENT-AUTHORING.md).
 
 `implemented` means the fragment can install project memory and ontology
 snippets. It does not imply deep deterministic ontology bootstrap support.
