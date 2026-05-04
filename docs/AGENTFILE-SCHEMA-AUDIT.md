@@ -82,8 +82,8 @@ workflow.
 - Generic `sync` settings are not part of v1. Remote handoff/ontology sync
   needs a separate privacy and trust design.
 - No built-in Agentfile migration is required for v1.0 under these decisions.
-  The `anamnesis migrate agentfile` skeleton remains the future migration
-  surface.
+  The available `anamnesis migrate agentfile` command remains the future
+  migration surface.
 - Partial `fragment.adapters` maps are now parser-supported and covered by
   compatibility fixtures. Root fragments and scope `fragments_add` entries are
   covered by render-path tests. Unknown adapter keys remain invalid.

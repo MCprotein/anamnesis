@@ -476,6 +476,11 @@ Progress:
   reserved no-op, `overrides.*.locked` remains an ownership hint,
   `fragments[].source` and generic `sync` stay out of v1, and no built-in
   Agentfile migration is required for the freeze.
+- 2026-05-04: Closed the v1.0 migration-tooling availability surface. The
+  existing `anamnesis migrate agentfile` pipeline remains dry-run first,
+  backs up before writes, has no built-in transforms because the v1 freeze
+  requires none, preserves current no-op formatting/comment content, and now
+  reports the next recommended command in both human and JSON output.
 
 ---
 

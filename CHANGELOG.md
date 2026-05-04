@@ -18,6 +18,9 @@ breaking changes until v1.0.
 - Tightened Agentfile parsing so unknown v1 fields are rejected instead of
   silently stripped. Fragment `params` remain open-ended for fragment-specific
   command-layer validation.
+- Promoted `anamnesis migrate agentfile` from pre-freeze skeleton to v1.0
+  availability surface by documenting its no-built-in-migration behavior and
+  reporting the next recommended command in human and JSON output.
 
 ## [0.9.0] — 2026-05-04
 

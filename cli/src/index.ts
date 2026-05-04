@@ -613,6 +613,7 @@ function reportMigrate(result: MigrateAgentfileResult): void {
       console.log(line);
     }
   }
+  console.log(`  next: ${result.nextCommand}`);
 }
 
 function formatWholeFileDiff(result: MigrateAgentfileResult): string[] {
@@ -954,6 +955,7 @@ function migrateJson(result: MigrateAgentfileResult): object {
     changed: result.changed,
     migrations: result.migrations,
     backupPath: result.backupPath,
+    nextCommand: result.nextCommand,
   };
 }
 

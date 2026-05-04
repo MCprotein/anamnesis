@@ -69,11 +69,34 @@ describe("migrateAgentfile", () => {
       changed: false,
       migrations: [],
       backupPath: null,
+      nextCommand: "anamnesis doctor",
     });
     expect(fs.readFileSync(path.join(project, "Agentfile"), "utf8")).toBe(
       MIN_AGENTFILE,
     );
     expect(fs.existsSync(path.join(project, ".anamnesis"))).toBe(false);
+  });
+
+  it("preserves comments and formatting when no built-in migration applies", () => {
+    const project = tmpDir("anamnesis-migrate-");
+    const content = `# managed by hand
+version: 1
+project:
+  name: migrate-fixture
+tools: [claude-code]
+fragments: [] # intentionally empty
+`;
+    writeAgentfile(project, content);
+
+    const result = migrateAgentfile({ projectRoot: project, apply: true });
+
+    expect(result.changed).toBe(false);
+    expect(result.applied).toBe(false);
+    expect(result.currentContent).toBe(content);
+    expect(result.newContent).toBe(content);
+    expect(fs.readFileSync(path.join(project, "Agentfile"), "utf8")).toBe(
+      content,
+    );
   });
 
   it("rejects unsupported target versions", () => {
@@ -101,6 +124,7 @@ describe("migrateAgentfile", () => {
 
     expect(result.changed).toBe(true);
     expect(result.applied).toBe(false);
+    expect(result.nextCommand).toBe("anamnesis migrate agentfile --apply");
     expect(result.migrations.map((m) => m.id)).toEqual([
       "v1-add-backup-retention",
     ]);
@@ -125,6 +149,7 @@ describe("migrateAgentfile", () => {
 
     expect(first.changed).toBe(true);
     expect(first.applied).toBe(true);
+    expect(first.nextCommand).toBe("anamnesis doctor");
     expect(first.backupPath).toBe(
       path.join(
         project,
@@ -146,6 +171,7 @@ describe("migrateAgentfile", () => {
     expect(second.changed).toBe(false);
     expect(second.applied).toBe(false);
     expect(second.backupPath).toBeNull();
+    expect(second.nextCommand).toBe("anamnesis doctor");
     expect(second.migrations).toEqual([]);
   });
 });

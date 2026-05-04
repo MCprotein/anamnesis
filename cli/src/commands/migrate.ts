@@ -47,6 +47,7 @@ export interface MigrateAgentfileResult {
   changed: boolean;
   migrations: AgentfileMigrationSummary[];
   backupPath: string | null;
+  nextCommand: string;
   currentContent: string;
   newContent: string;
 }
@@ -147,6 +148,10 @@ export function migrateAgentfile(
       toVersion: migration.toVersion,
     })),
     backupPath,
+    nextCommand:
+      changed && !opts.apply
+        ? "anamnesis migrate agentfile --apply"
+        : "anamnesis doctor",
     currentContent,
     newContent,
   };

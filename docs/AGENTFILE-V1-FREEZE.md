@@ -128,7 +128,7 @@ above:
 - `source` is not added to v1.
 - `sync` is not added to v1.
 
-The existing `anamnesis migrate agentfile` skeleton remains the migration
+The existing `anamnesis migrate agentfile` command remains the migration
 surface for future schema versions, but v1.0 does not need a destructive
 pre-freeze transform.
 

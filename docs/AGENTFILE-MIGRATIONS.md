@@ -1,10 +1,10 @@
 # Agentfile Migration Design
 
-This document defines the v0.8 design contract for future
-`anamnesis migrate agentfile` work. The CLI skeleton is implemented with a
-dry-run/apply/backup pipeline and no built-in schema transformations yet; this
-is the behavior future migrations must preserve before the Agentfile schema is
-frozen for v1.0.
+This document defines the v1.0 behavior contract for
+`anamnesis migrate agentfile`. The command is available with a
+dry-run/apply/backup pipeline and no built-in schema transformations because
+the Agentfile v1 freeze did not require a destructive pre-freeze transform.
+This is the behavior future migrations must preserve.
 
 ## Goal
 
@@ -68,7 +68,8 @@ Human output should show:
 - planned migration IDs and titles;
 - whether the Agentfile would change;
 - backup path when `--apply` writes;
-- next recommended command, usually `anamnesis doctor`.
+- next recommended command: `anamnesis migrate agentfile --apply` when a
+  dry-run has changes available, otherwise `anamnesis doctor`.
 
 JSON output should expose the same fields without relying on terminal wording:
 
@@ -82,7 +83,8 @@ JSON output should expose the same fields without relying on terminal wording:
   "migrations": [
     { "id": "v1-remove-commit-on-apply", "title": "..." }
   ],
-  "backupPath": null
+  "backupPath": null,
+  "nextCommand": "anamnesis migrate agentfile --apply"
 }
 ```
 
@@ -110,17 +112,19 @@ Field-specific guidance for current v0.8 risks:
   them. Future metadata such as `fragments[].source` needs a schema version
   bump or explicit parser-policy change with compatibility tests.
 
-## Test Requirements
+## Shipping Evidence
 
-Before shipping the command:
+The v1.0 surface is considered available when these behaviors stay covered:
 
 - dry-run leaves Agentfile, manifest, and managed files untouched;
 - `--apply` writes a backup and the migrated Agentfile;
 - repeated `--apply` is a no-op;
-- comments/formatting behavior is covered by fixtures, even if the accepted
-  behavior is "reformatted with visible diff";
+- comment/format preservation is covered for the no-built-in-migration v1.0
+  path; future migrations that reformat must add fixtures showing the visible
+  dry-run diff;
 - unknown or unsupported schema versions produce actionable errors;
 - migration does not run renderers or create adapter files;
+- the CLI and JSON outputs expose the next recommended command;
 - `doctor` can run after migration and report any remaining repair work.
 
 ## Implementation Order
@@ -128,6 +132,7 @@ Before shipping the command:
 1. Add a migration registry and dry-run planner with no built-in migrations.
 2. Add CLI plumbing for `anamnesis migrate agentfile`.
 3. Add backup and apply support.
-4. Add the first real migration only when a future schema version needs a
+4. Report the next recommended command in both human and JSON output.
+5. Add the first real migration only when a future schema version needs a
    destructive or semantic Agentfile transform. The v1.0 freeze does not
    require a built-in migration.
