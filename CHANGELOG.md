@@ -12,6 +12,9 @@ breaking changes until v1.0.
 - Added `docs/AGENTFILE-V1-FREEZE.md`, the v1.0 Agentfile freeze record for
   reserved fields, ownership hints, registry/source exclusions, sync
   exclusions, migration impact, and post-v1 evolution rules.
+- Added `docs/REGISTRY-V1-DECISION.md`, the v1.0 decision record that defers
+  remote registry/signing implementation post-v1.0 while preserving built-in
+  and local-library fragment safety.
 
 ### Changed
 
@@ -23,6 +26,8 @@ breaking changes until v1.0.
   reporting the next recommended command in human and JSON output.
 - Clarified the v1.0 public TypeScript API stability contract and added an
   exports-map test to keep deep imports outside the supported surface.
+- Updated registry, signing, and remote-sync docs so v1.0 does not imply a
+  shipped remote fragment registry or broad sync command.
 
 ## [0.9.0] — 2026-05-04
 

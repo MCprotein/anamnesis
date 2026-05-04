@@ -241,7 +241,7 @@ claims stay intentionally limited until more public repo shapes are collected.
 | **v0.7** | Multi-agent UX, lifecycle scale, and benchmark reports | shipped 2026-05-03 |
 | **v0.8** | Schema, API, migration, and repair workflow stabilization | shipped 2026-05-04 |
 | **v0.9** | Registry, signing, docs, and public benchmark readiness | shipped 2026-05-04 |
-| **v1.0** | Stable schema, public fragment registry, signing | stable target |
+| **v1.0** | Stable schema, public API, migration surface, docs, and evidence-backed claims | stable target |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
@@ -267,10 +267,12 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   v0.9 registry metadata, discovery, version selection, cache, and trust-boundary design
 - [`docs/FRAGMENT-SIGNING.md`](docs/FRAGMENT-SIGNING.md) —
   v0.9 remote fragment checksum, signature, trust-store, and rejection policy
+- [`docs/REGISTRY-V1-DECISION.md`](docs/REGISTRY-V1-DECISION.md) —
+  v1.0 decision to keep remote registry/signing implementation post-v1.0
 - [`docs/DOCS-SITE-PLAN.md`](docs/DOCS-SITE-PLAN.md) —
   v0.9 GitHub-first docs decision, information architecture, and future site trigger
 - [`docs/REMOTE-SYNC-STRATEGY.md`](docs/REMOTE-SYNC-STRATEGY.md) —
-  v0.9 decision to defer broad `sync` and keep registry refresh/update explicit
+  v1.0 decision to omit broad `sync` and keep registry refresh/update explicit
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
   parity matrix across Claude Code, Codex, and Cursor
 - [`docs/SWITCHING-SCENARIOS.md`](docs/SWITCHING-SCENARIOS.md) — tested

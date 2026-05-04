@@ -1,10 +1,10 @@
 # Remote Sync Strategy
 
-Status: v0.9 decision. No `anamnesis sync` command should ship before v1.0.
+Status: v1.0 decision. No `anamnesis sync` command ships in v1.0.
 
 ## Decision
 
-Do not add a top-level `anamnesis sync` command before v1.0.
+Do not add a top-level `anamnesis sync` command in v1.0.
 
 Use explicit commands instead:
 

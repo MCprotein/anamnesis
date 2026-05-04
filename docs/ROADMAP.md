@@ -486,6 +486,11 @@ Progress:
   result shapes internal, and adding an exports-map test so only
   `@mcprotein/anamnesis` plus `@mcprotein/anamnesis/package.json` are public
   package imports.
+- 2026-05-04: Closed the registry/signing MVP decision in
+  `docs/REGISTRY-V1-DECISION.md`: remote registry installation, cache,
+  checksum, signature verification, trust store, Agentfile source metadata,
+  and unsigned remote escape hatches are post-v1.0; v1.0 keeps built-in and
+  local-library fragments as the only installable sources.
 
 ---
 

@@ -1,6 +1,7 @@
 # Fragment Registry Design
 
-Status: v0.9 design draft. No remote registry implementation has shipped yet.
+Status: v1.0 design accepted; remote registry implementation deferred
+post-v1.0. See `docs/REGISTRY-V1-DECISION.md`.
 
 ## Goal
 
@@ -265,8 +266,8 @@ Rules:
 
 ## Agentfile Recording
 
-Agentfile v1 should not need a breaking change to keep registry-installed
-fragments working. The minimum compatible record remains:
+Agentfile v1 does not record registry source metadata. The minimum compatible
+record remains:
 
 ```yaml
 fragments:
@@ -274,8 +275,10 @@ fragments:
     version: 2
 ```
 
-Future non-breaking metadata can be added only if it is optional and ignored by
-older v1 parsers after a migration decision. Candidate shape:
+Future source metadata is not a transparent v1 addition because strict v1
+parsers reject unknown fragment fields. Adding a shape like this requires a
+schema migration, a later schema version, or an explicit parser-policy change
+with compatibility tests:
 
 ```yaml
 fragments:
@@ -288,7 +291,9 @@ fragments:
 ```
 
 Before adding this field, `docs/AGENTFILE-MIGRATIONS.md` must define how older
-projects are preserved and how source moves are represented.
+projects are preserved and how source moves are represented. Until then,
+registry source state belongs in local manifest/cache metadata, not Agentfile
+v1.
 
 ## CLI Surface
 
@@ -306,9 +311,18 @@ Do not add these until the signing/checksum design is complete. The first
 implementation can be read-only search plus `init` suggestions; remote
 `update --apply` can wait if safety evidence is thin.
 
+## V1.0 Decisions
+
+- Agentfile v1 does not include `fragments[].source`.
+- Built-in and local-library fragments remain the only installable fragment
+  sources in v1.0.
+- Remote registry commands, archive download, cache, checksum verification,
+  and source migration are post-v1.0 implementation work.
+- The registry design must not weaken dry-run behavior, local-library safety,
+  or executable-adapter permission gates.
+
 ## Open Decisions
 
-- Whether `source` metadata belongs in Agentfile v1 before the schema freeze.
 - Whether official fragments should move out of the npm package or remain
   bundled forever with the registry as an extension path.
 - Whether remote archives may contain executable hooks before signatures are
@@ -326,5 +340,5 @@ implementation can be read-only search plus `init` suggestions; remote
 - Existing built-in and local-library flows keep working with no network.
 - Users can tell which source a suggestion came from before installing it.
 - No remote content can execute during discovery or dry-run planning.
-- Any field that could affect Agentfile v1 stability is called out as an open
-  decision before v1.0.
+- Any field that could affect Agentfile stability points to a migration or
+  later schema version before implementation.

@@ -1,7 +1,7 @@
 # Fragment Signing and Checksum Design
 
-Status: v0.9 design draft. No remote signing verification implementation has
-shipped yet.
+Status: v1.0 design accepted; remote signing verification implementation
+deferred post-v1.0. See `docs/REGISTRY-V1-DECISION.md`.
 
 ## Goal
 
@@ -250,7 +250,7 @@ Rules:
 ## Agentfile Source Metadata
 
 Signing does not require immediate Agentfile changes. If source metadata is
-added before v1.0, it should be optional and migration-owned:
+added after v1.0, it should be optional and migration-owned:
 
 ```yaml
 fragments:
