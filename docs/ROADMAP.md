@@ -362,6 +362,9 @@ Progress:
   `docs/AGENTFILE-SCHEMA-AUDIT.md` and added compatibility fixtures for
   historical Claude Code-only, current all-adapter single-scope, and
   multi-scope pinned Agentfiles in `cli/src/core/agentfile.compat.test.ts`.
+- 2026-05-04: Updated `specs/agentfile.md` to distinguish parser-level hard
+  errors from library/project-aware diagnostics owned by `status`, `doctor`,
+  `init`, and `update`.
 
 ---
 

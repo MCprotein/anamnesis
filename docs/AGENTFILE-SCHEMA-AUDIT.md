@@ -52,8 +52,8 @@ commands such as `status`, `doctor`, `init`, and `update`:
 - whether fragment params are declared by the fragment;
 - whether a fragment's required params are present.
 
-`specs/agentfile.md` currently lists some of these context-aware checks under
-general validation. v0.8 should clarify that distinction before v1.0.
+`specs/agentfile.md` now separates parser-level hard errors from
+library/project-aware command diagnostics.
 
 ## V1 Freeze Risks
 
@@ -76,10 +76,8 @@ general validation. v0.8 should clarify that distinction before v1.0.
 
 ## V0.8 Recommendations
 
-1. Update `specs/agentfile.md` to separate parser-only validation from
-   library/project-aware diagnostics.
-2. Decide the fate of `fragment.adapters`, `overrides.*.locked`, and
+1. Decide the fate of `fragment.adapters`, `overrides.*.locked`, and
    `settings.commit_on_apply`.
-3. Add `anamnesis migrate` design before any schema v2 work.
-4. Keep compatibility fixtures append-only as new sanitized fixture shapes are
+2. Add `anamnesis migrate` design before any schema v2 work.
+3. Keep compatibility fixtures append-only as new sanitized fixture shapes are
    dogfooded.

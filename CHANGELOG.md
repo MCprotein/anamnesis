@@ -18,6 +18,8 @@ breaking changes until v1.0.
 - Added `docs/AGENTFILE-SCHEMA-AUDIT.md` and compatibility fixture tests for
   historical Claude Code-only, current all-adapter single-scope, and
   multi-scope pinned Agentfile shapes.
+- Clarified `specs/agentfile.md` validation rules by separating parser-level
+  hard errors from library/project-aware diagnostics.
 
 ### Fixed
 
