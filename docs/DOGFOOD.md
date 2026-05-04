@@ -117,6 +117,39 @@ Interpretation:
   this repository, `npm exec` can resolve a local or globally installed
   `anamnesis` binary before the published package binary.
 
+## Published Package Smoke — v0.9.0
+
+Recorded: 2026-05-04
+
+Purpose: verify the npm-published package, not the local TypeScript source.
+
+Package:
+
+```bash
+npm view '@mcprotein/anamnesis@0.9.0' version \
+  --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@0.9.0 -- anamnesis --version
+```
+
+Result: `0.9.0`
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh Prisma fixture | `init --tools all --allow-exec-adapters` -> `status` -> `doctor` | init created 23 surfaces; base@8 and prisma@2 in sync; continuity `6/6`; doctor `0` errors and expected Layer B enrichment warning |
+
+Interpretation:
+
+- The `v0.9.0` npm package includes the built CLI plus the public ecosystem
+  readiness docs: fragment authoring, registry design, signing/checksum
+  policy, docs-site plan, benchmark gallery, and remote sync strategy.
+- Static ontology and Layer A bootstrap were generated for the fixture;
+  missing `.enriched.yaml` is expected until an agent runs `/ontology-enrich`.
+- No `v0.9.1` package-repair patch is needed from this smoke result.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03
