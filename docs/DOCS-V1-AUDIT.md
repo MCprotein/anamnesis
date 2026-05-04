@@ -25,7 +25,7 @@ entry point without relying on conversation history.
 | Public TypeScript API | `docs/API.md`, `package.json` exports, `cli/src/api.ts` | Covered |
 | Registry/signing scope | `docs/REGISTRY-V1-DECISION.md`, `docs/FRAGMENT-REGISTRY.md`, `docs/FRAGMENT-SIGNING.md` | Covered |
 | Remote sync scope | `docs/REMOTE-SYNC-STRATEGY.md` | Covered |
-| Evidence-backed claims | `docs/BENCHMARK-GALLERY.md`, `docs/BENCHMARKS.md`, `docs/DOGFOOD-MATRIX.md`, `docs/DOGFOOD.md` | Covered |
+| Evidence-backed claims | `docs/README-CLAIMS.md`, `docs/BENCHMARK-GALLERY.md`, `docs/BENCHMARKS.md`, `docs/DOGFOOD-MATRIX.md`, `docs/DOGFOOD.md` | Covered |
 
 ## Known Limitations To Keep Visible
 
@@ -42,8 +42,9 @@ entry point without relying on conversation history.
   deep ontology for every framework.
 - Adapter parity means user-facing continuity parity, not identical native UI
   features in every agent.
-- README benchmark claims must stay within `docs/BENCHMARK-GALLERY.md`
-  approved wording until more public-safe repo shapes are collected.
+- README claims must stay within `docs/README-CLAIMS.md` and
+  `docs/BENCHMARK-GALLERY.md` approved wording until more public-safe repo
+  shapes are collected.
 
 ## Maintenance Rule
 

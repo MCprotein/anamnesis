@@ -215,7 +215,8 @@ Public-safe benchmark evidence lives in
 [`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md): the current
 sanitized backend snapshot improved ready layers from `1/5` to `5/5`, while
 the anamnesis self repo keeps cross-agent continuity at `6/6`. Broader README
-claims stay intentionally limited until more public repo shapes are collected.
+claims stay intentionally limited until more public repo shapes are collected;
+the claim ledger is [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md).
 
 ---
 
@@ -283,6 +284,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   benchmark reports
 - [`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md) —
   public-safe benchmark evidence, claim policy, and collection targets
+- [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md) —
+  v1.0 evidence-backed README claim ledger
 - [`docs/MONOREPO.md`](docs/MONOREPO.md) — applying anamnesis to a monorepo
 - [`docs/ONTOLOGY-BOOTSTRAP.md`](docs/ONTOLOGY-BOOTSTRAP.md) — two-layer ontology generation
 - [`docs/RELEASING.md`](docs/RELEASING.md) — npm Trusted Publishing release flow

@@ -496,6 +496,11 @@ Progress:
   ontology generation, handoff, monorepo, release, fragment authoring,
   troubleshooting, schema/API/migration, registry/sync scope, and evidence
   docs to canonical repo entry points plus known v1.0 limitations.
+- 2026-05-04: Closed evidence-backed README claims with
+  `docs/README-CLAIMS.md`, mapping current README claims to dogfood records,
+  switching fixtures, tests, benchmark reports, and explicit disallowed
+  wording for unsupported ecosystem, native-UX, automatic-ontology, registry,
+  signing, and no-review claims.
 
 ---
 

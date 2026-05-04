@@ -18,6 +18,8 @@ breaking changes until v1.0.
 - Added `docs/DOCS-V1-AUDIT.md`, the v1.0 public documentation coverage map
   for install, lifecycle, parity, ontology, handoff, monorepo, release,
   fragment authoring, troubleshooting, and limitations.
+- Added `docs/README-CLAIMS.md`, the v1.0 evidence ledger that maps README
+  claims to dogfood records, switching fixtures, tests, and benchmark reports.
 
 ### Changed
 

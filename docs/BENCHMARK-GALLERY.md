@@ -1,8 +1,10 @@
 # Public Benchmark Gallery
 
-Status: v0.9 evidence surface. This page summarizes public-safe benchmark
+Status: v1.0 evidence surface. This page summarizes public-safe benchmark
 evidence and separates headline-ready claims from evidence still needing more
 repo shapes.
+
+README claim wording is tracked in [`docs/README-CLAIMS.md`](README-CLAIMS.md).
 
 ## Claim Policy
 
