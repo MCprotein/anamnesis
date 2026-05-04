@@ -197,7 +197,8 @@ Flags (init):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
   --dry-run                     Show plan without writing
-  --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
+  --allow-exec-adapters         Permit executable adapter writes
+                                  (.claude/*, .cursor/rules, Codex hooks)
   --tools <list|all>            Adapter surfaces to install on first init
                                   (comma-separated: claude-code,codex,cursor;
                                   default: claude-code)
@@ -215,7 +216,8 @@ Flags (update):
   --library <path>              Library path (default: bundled)
   --apply                       Actually write (default is dry-run)
   --bump-pinned                 Explicitly bump pinned fragments to current
-  --allow-exec-adapters         Permit .claude/{hooks,commands,skills} writes
+  --allow-exec-adapters         Permit executable adapter writes
+                                  (.claude/*, .cursor/rules, Codex hooks)
 
 Flags (status / doctor):
   --project-root <path>         Target directory (default: cwd)

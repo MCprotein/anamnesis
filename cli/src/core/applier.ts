@@ -2,7 +2,7 @@
 //
 // Responsibilities:
 //   1. Classify each action vs current project state + manifest.
-//   2. Enforce --allow-exec-adapters gate for `.claude/{hooks,commands,skills}`.
+//   2. Enforce --allow-exec-adapters gate for native/fallback agent surfaces.
 //   3. Produce a new manifest reflecting post-apply hashes.
 //   4. Separately, apply planned changes to disk (createDirs, chmod, write).
 
@@ -39,6 +39,7 @@ export const EXEC_ADAPTER_PREFIXES = [
   // Codex adapter — git hook bridge plus executable hook copies.
   ".git/hooks/",
   ".anamnesis/codex-hooks/",
+  ".anamnesis/codex-native-hooks/",
 ] as const;
 
 export function isExecAdapterPath(projectRelative: string): boolean {
@@ -90,6 +91,17 @@ export interface FileChange {
   settingsHook?: {
     event: string;
     matcher?: string;
+  };
+  /**
+   * Propagated from the originating FileAction. Post-apply Codex sync uses
+   * this to merge `.codex/config.toml` and `.codex/hooks.json`.
+   */
+  codexHook?: {
+    event: string;
+    matcher?: string;
+    command: string;
+    timeout?: number;
+    statusMessage?: string;
   };
 }
 
@@ -314,6 +326,7 @@ function planFile(
     status: "create",
     mode: action.mode,
     settingsHook: action.settingsHook,
+    codexHook: action.codexHook,
   };
 
   // Compute intended status.

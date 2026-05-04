@@ -1,11 +1,9 @@
-// Codex adapter — executable_hook fallback.
+// Codex adapter — executable_hook support.
 //
-// Codex has no SessionStart / PostToolUse / etc. hook system. The fallback
-// always emits an AGENTS.md region documenting the hook so the agent can
-// manually follow the intent when relevant. In Git repositories, it also
-// installs a best-effort pre-commit bridge: fragment hook scripts are copied
-// under `.anamnesis/codex-hooks/`, and `.git/hooks/pre-commit` invokes them
-// for each staged file.
+// Codex native hooks are available for SessionStart through `.codex/hooks.json`
+// when the generated wrapper is allowed. Other hook events still use the
+// documented AGENTS.md fallback and, in Git repositories, the best-effort
+// pre-commit bridge under `.anamnesis/codex-hooks/`.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -13,6 +11,8 @@ import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
 const PRE_COMMIT_PATH = ".git/hooks/pre-commit";
+const CODEX_NATIVE_SESSION_START_WRAPPER =
+  ".anamnesis/codex-native-hooks/session-start.mjs";
 
 const PRE_COMMIT_CONTENT = `#!/usr/bin/env bash
 # anamnesis Codex pre-commit bridge.
@@ -97,7 +97,29 @@ export const executableHookRenderer: CapabilityRenderer = {
       },
     ];
 
-    if (gitPreCommitEnabled) {
+    const nativeSessionStart = baseNativeSessionStartSupported({
+      fragmentId: ctx.fragment.id,
+      event: capability.event,
+      basename,
+      fragmentDir: ctx.fragmentDir,
+    });
+    if (nativeSessionStart) {
+      actions.push({
+        kind: "file",
+        path: CODEX_NATIVE_SESSION_START_WRAPPER,
+        fragmentId: ctx.fragment.id,
+        fragmentVersion: ctx.fragment.version,
+        content: fs.readFileSync(nativeSessionStart.templatePath, "utf8"),
+        mode: 0o755,
+        codexHook: {
+          event: "SessionStart",
+          matcher: "startup|resume",
+          command: `node "${CODEX_NATIVE_SESSION_START_WRAPPER}"`,
+        },
+      });
+    }
+
+    if (gitPreCommitEnabled && capability.event !== "SessionStart") {
       actions.push(
         {
           kind: "file",
@@ -151,11 +173,13 @@ function formatHookRegion(params: {
   return [
     `### ${params.fragmentId} hook: \`${params.basename}\``,
     "",
-    `**When:** \`${params.event}\` (Claude Code event; Codex has no native hook system).`,
+    `**When:** \`${params.event}\` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).`,
     "",
-    params.gitPreCommitEnabled
-      ? "**Codex fallback:** eligible for best-effort Git `pre-commit` installation under `.anamnesis/codex-hooks/` when executable adapter writes are allowed and no user-owned hook blocks it."
-      : "**Codex fallback:** documented here only; no `.git/hooks/` directory was present during rendering.",
+    params.event === "SessionStart"
+      ? "**Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback."
+      : params.gitPreCommitEnabled
+        ? "**Codex fallback:** eligible for best-effort Git `pre-commit` installation under `.anamnesis/codex-hooks/` when executable adapter writes are allowed and no user-owned hook blocks it."
+        : "**Codex fallback:** documented here only; no `.git/hooks/` directory was present during rendering.",
     "",
     `**Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).`,
     "",
@@ -163,4 +187,30 @@ function formatHookRegion(params: {
     params.script.trimEnd(),
     "```",
   ].join("\n");
+}
+
+function baseNativeSessionStartSupported(params: {
+  fragmentId: string;
+  event: string;
+  basename: string;
+  fragmentDir: string;
+}): { templatePath: string } | null {
+  if (params.fragmentId !== "base") return null;
+  if (params.event !== "SessionStart") return null;
+  if (
+    params.basename !== "inject-ontology.sh" &&
+    params.basename !== "inject-handoff.sh"
+  ) {
+    return null;
+  }
+  const templatePath = path.join(
+    params.fragmentDir,
+    "adapters/codex/hooks/session-start.mjs",
+  );
+  if (!fs.existsSync(templatePath)) {
+    throw new RenderError(
+      `base Codex SessionStart wrapper not found: ${templatePath}`,
+    );
+  }
+  return { templatePath };
 }

@@ -63,6 +63,11 @@ import {
   type HookRegistration,
   type HookSyncResult,
 } from "../core/settings.js";
+import {
+  syncCodexNativeHookRegistrations,
+  type CodexHookRegistration,
+  type CodexHookSyncResult,
+} from "../core/codex_native.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,6 +97,8 @@ export interface UpdateResult {
   prunedBackupDirs?: string[];
   /** Per-registration outcome of post-apply settings.json sync. */
   hookRegistrations: HookSyncResult[];
+  /** Per-registration outcome of post-apply Codex native hook sync. */
+  codexHookRegistrations: CodexHookSyncResult[];
 }
 
 export class UpdateError extends Error {
@@ -407,6 +414,7 @@ export function update(opts: UpdateOptions): UpdateResult {
   let backedUpFiles: string[] | undefined;
   let prunedBackupDirs: string[] | undefined;
   let hookRegistrations: HookSyncResult[] = [];
+  let codexHookRegistrations: CodexHookSyncResult[] = [];
   if (opts.apply) {
     backupDir = path.join(
       projectRoot,
@@ -423,7 +431,9 @@ export function update(opts: UpdateOptions): UpdateResult {
     applyChanges(changes, { projectRoot });
     writeManifest(projectRoot, nextManifest);
     writeAgentfile(projectRoot, updatedAgentfile);
-    hookRegistrations = syncWrittenHooks(changes, projectRoot);
+    const hookSync = syncWrittenHooks(changes, projectRoot);
+    hookRegistrations = hookSync.claude;
+    codexHookRegistrations = hookSync.codex;
   }
 
   return {
@@ -436,6 +446,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     backedUpFiles: opts.apply ? backedUpFiles : undefined,
     prunedBackupDirs: opts.apply ? prunedBackupDirs : undefined,
     hookRegistrations,
+    codexHookRegistrations,
   };
 }
 
@@ -536,8 +547,9 @@ function capabilitySupportsTool(capability: Capability, tool: ToolName): boolean
 function syncWrittenHooks(
   changes: PlannedChange[],
   projectRoot: string,
-): HookSyncResult[] {
+): { claude: HookSyncResult[]; codex: CodexHookSyncResult[] } {
   const regs: HookRegistration[] = [];
+  const codexRegs: CodexHookRegistration[] = [];
   for (const c of changes) {
     if (c.target !== "file") continue;
     // create/update/noop are all "we own this file" — register. Skip
@@ -549,13 +561,23 @@ function syncWrittenHooks(
     ) {
       continue;
     }
-    if (!c.settingsHook) continue;
-    regs.push({
-      event: c.settingsHook.event,
-      matcher: c.settingsHook.matcher,
-      command: c.path,
-    });
+    if (c.settingsHook) {
+      regs.push({
+        event: c.settingsHook.event,
+        matcher: c.settingsHook.matcher,
+        command: c.path,
+      });
+    }
+    if (c.codexHook) {
+      codexRegs.push(c.codexHook);
+    }
   }
-  if (regs.length === 0) return [];
-  return syncHookRegistrations(projectRoot, regs).results;
+  return {
+    claude: regs.length === 0
+      ? []
+      : syncHookRegistrations(projectRoot, regs).results,
+    codex: codexRegs.length === 0
+      ? []
+      : syncCodexNativeHookRegistrations(projectRoot, codexRegs).results,
+  };
 }

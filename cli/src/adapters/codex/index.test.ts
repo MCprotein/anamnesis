@@ -30,7 +30,8 @@ describe("registerCodex", () => {
     registerClaudeCode(registry);
     registerCodex(registry);
 
-    // Both adapters expose all five capabilities (Codex via region fallbacks).
+    // Both adapters expose all five capabilities (Codex via native SessionStart
+    // for base continuity plus region fallbacks for other surfaces).
     for (const t of [
       "project_memory",
       "ontology",

@@ -513,6 +513,24 @@ Progress:
 
 ---
 
+## v1.1 — *in progress*
+
+> **Theme: remove avoidable fallback-only gaps after the v1 surface freeze**
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Codex native SessionStart continuity** | in progress | Add a Codex native SessionStart wrapper for the base ontology + handoff continuity path. `--allow-exec-adapters` installs `.anamnesis/codex-native-hooks/session-start.mjs`, enables `.codex/config.toml` `[features].codex_hooks = true`, and merges `.codex/hooks.json` while preserving user hook entries. AGENTS.md fallback instructions remain for environments without native hook installation. |
+
+Exit criteria:
+- Fresh `--tools codex --allow-exec-adapters` install gets automatic
+  ontology and handoff context at Codex SessionStart.
+- `status` / `doctor` report the Codex native hook wrapper, feature flag, and
+  hook registration as part of adapter continuity.
+- Existing user `.codex/hooks.json` entries are preserved and stale
+  anamnesis-managed wrapper entries are deduped on update.
+
+---
+
 ## Cross-cutting items (no specific version yet)
 
 These have been discussed but lack concrete version assignment:

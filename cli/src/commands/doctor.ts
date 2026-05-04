@@ -42,6 +42,13 @@ import {
   readSettings,
   type HookRegistration,
 } from "../core/settings.js";
+import {
+  CODEX_CONFIG_PATH,
+  CODEX_HOOKS_PATH,
+  codexHookRegistrationPresent,
+  codexHooksFeatureEnabled,
+  type CodexHookRegistration,
+} from "../core/codex_native.js";
 import { status, type ContinuityCheck, type StatusResult } from "./status.js";
 
 // ---------------------------------------------------------------------------
@@ -60,7 +67,11 @@ export type DoctorIssueCode =
   | "adapter-renderer-missing"
   | "render-plan-failed"
   | "settings-invalid"
+  | "codex-config-missing"
+  | "codex-config-invalid"
+  | "codex-hook-config-invalid"
   | "hook-registration-missing"
+  | "codex-hook-registration-missing"
   | "continuity-project-memory-missing"
   | "continuity-ontology-missing"
   | "continuity-handoff-missing"
@@ -169,6 +180,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
     scopes: effectiveScopes(agentfile),
   });
   addSettingsIssues(projectRoot, manifest, renderActions, issues);
+  addCodexHookIssues(projectRoot, manifest, renderActions, issues);
 
   const errors = issues.filter((i) => i.severity === "error").length;
   const warnings = issues.length - errors;
@@ -530,6 +542,102 @@ function addSettingsIssues(
       message: `.claude/settings.json is missing ${reg.event}${matcher} registration for ${reg.command}`,
       repair:
         "Re-run `anamnesis update --apply --allow-exec-adapters` after reviewing any user-modified managed hook files. If the hook file itself is user-modified, merge or restore it first so update can safely register it.",
+    });
+  }
+}
+
+function addCodexHookIssues(
+  projectRoot: string,
+  manifest: Manifest,
+  actions: RenderAction[],
+  issues: DoctorIssue[],
+): void {
+  const trackedFiles = new Set(manifest.files.map((f) => f.path));
+  const expectedHooks: CodexHookRegistration[] = [];
+
+  for (const action of actions) {
+    if (action.kind !== "file" || !action.codexHook) continue;
+    const installed =
+      trackedFiles.has(action.path) ||
+      fs.existsSync(path.join(projectRoot, action.path));
+    if (!installed) continue;
+    expectedHooks.push(action.codexHook);
+  }
+
+  if (expectedHooks.length === 0) return;
+
+  const configPath = path.join(projectRoot, CODEX_CONFIG_PATH);
+  if (!fs.existsSync(configPath)) {
+    issues.push({
+      severity: "error",
+      code: "codex-config-missing",
+      target: CODEX_CONFIG_PATH,
+      message: `${CODEX_CONFIG_PATH} is missing; Codex native hooks are not enabled for this project`,
+      repair:
+        "Re-run `anamnesis update --apply --allow-exec-adapters` to merge the Codex native hook feature flag.",
+    });
+  } else {
+    try {
+      const config = fs.readFileSync(configPath, "utf8");
+      if (!codexHooksFeatureEnabled(config)) {
+        issues.push({
+          severity: "error",
+          code: "codex-config-invalid",
+          target: CODEX_CONFIG_PATH,
+          message: `${CODEX_CONFIG_PATH} does not enable [features].codex_hooks = true`,
+          repair:
+            "Re-run `anamnesis update --apply --allow-exec-adapters` to merge the Codex native hook feature flag.",
+        });
+      }
+    } catch (e) {
+      issues.push({
+        severity: "error",
+        code: "codex-config-invalid",
+        target: CODEX_CONFIG_PATH,
+        message: `${CODEX_CONFIG_PATH} could not be read: ${(e as Error).message}`,
+      });
+    }
+  }
+
+  const hooksPath = path.join(projectRoot, CODEX_HOOKS_PATH);
+  if (!fs.existsSync(hooksPath)) {
+    issues.push({
+      severity: "error",
+      code: "codex-hook-registration-missing",
+      target: CODEX_HOOKS_PATH,
+      message: `${CODEX_HOOKS_PATH} is missing Codex native hook registrations`,
+      repair:
+        "Re-run `anamnesis update --apply --allow-exec-adapters` to merge Codex native hook registrations while preserving user hooks.",
+    });
+    return;
+  }
+
+  let hooksContent = "";
+  try {
+    hooksContent = fs.readFileSync(hooksPath, "utf8");
+    JSON.parse(hooksContent);
+  } catch (e) {
+    issues.push({
+      severity: "error",
+      code: "codex-hook-config-invalid",
+      target: CODEX_HOOKS_PATH,
+      message: `${CODEX_HOOKS_PATH} could not be parsed: ${(e as Error).message}`,
+      repair:
+        "Fix `.codex/hooks.json` so it is valid JSON, then re-run `anamnesis update --apply --allow-exec-adapters`.",
+    });
+    return;
+  }
+
+  for (const reg of expectedHooks) {
+    if (codexHookRegistrationPresent(hooksContent, reg)) continue;
+    const matcher = reg.matcher ? `:${reg.matcher}` : "";
+    issues.push({
+      severity: "error",
+      code: "codex-hook-registration-missing",
+      target: CODEX_HOOKS_PATH,
+      message: `${CODEX_HOOKS_PATH} is missing ${reg.event}${matcher} registration for ${reg.command}`,
+      repair:
+        "Re-run `anamnesis update --apply --allow-exec-adapters` after reviewing any user-modified managed hook files.",
     });
   }
 }

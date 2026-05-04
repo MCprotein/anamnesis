@@ -283,6 +283,25 @@ function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
     }
 
     const hookOutput = hook.stdout ?? "";
+    const codexHook = spawnSync(
+      process.execPath,
+      [path.join(project, ".anamnesis", "codex-native-hooks", "session-start.mjs")],
+      {
+        cwd: project,
+        input: JSON.stringify({ hook_event_name: "SessionStart", cwd: project }),
+        encoding: "utf8",
+        stdio: "pipe",
+      },
+    );
+    if (codexHook.status !== 0) {
+      const detail =
+        (codexHook.stderr ?? "").trim() ||
+        (codexHook.stdout ?? "").trim() ||
+        codexHook.error?.message ||
+        `exit ${codexHook.status}`;
+      return handoffSimulationResult(command, start, "fail", detail);
+    }
+    const codexOutput = codexHook.stdout ?? "";
     const agents = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
     const cursorHandoff = fs.readFileSync(
       path.join(project, ".cursor", "rules", "handoff-prepare-cmd.mdc"),
@@ -291,6 +310,7 @@ function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
     const missing = requiredHandoffEvidence(archivePath).filter(
       (needle) =>
         !hookOutput.includes(needle) &&
+        !codexOutput.includes(needle) &&
         !agents.includes(needle) &&
         !cursorHandoff.includes(needle),
     );
@@ -307,7 +327,7 @@ function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
       command,
       start,
       "pass",
-      "active.md and latest archive injected; Codex/Cursor fallback instructions present",
+      "active.md and latest archive injected; Codex native SessionStart and Cursor fallback instructions present",
     );
   } catch (e) {
     return handoffSimulationResult(

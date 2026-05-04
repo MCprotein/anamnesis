@@ -117,8 +117,10 @@ for example `apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml`.
   when it is missing.
 - The static `<id>.yaml` stays untouched as the canonical template.
 
-`SessionStart` ontology injection (existing `inject-ontology.sh`) reads
-all three and concatenates in order: static → bootstrap → enriched.
+`SessionStart` ontology injection reads all three and concatenates in order:
+static → bootstrap → enriched. Claude Code uses `inject-ontology.sh`; Codex
+uses `.anamnesis/codex-native-hooks/session-start.mjs` when native hooks are
+installed, with AGENTS.md fallback instructions otherwise.
 
 ---
 

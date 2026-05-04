@@ -108,7 +108,7 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 
 - **content**: 자유 형식. AGENTS.md 섹션 등 사람이 읽는 마크다운·YAML. 도구 무관.
 - **capabilities**: 중간 IR. `project_memory`·`ontology`·`executable_hook`·`skill`·`slash_command` 같은 **의미 단위**. 각 capability 는 어떤 도구가 어떻게 렌더링하는지 계약을 가진다.
-- **adapters**: capability → 도구별 파일 변환. 예: `executable_hook` → CC 는 `.claude/hooks/*.sh` + `settings.json` 등록, Codex 는 AGENTS.md 지시문 + git hook fallback.
+- **adapters**: capability → 도구별 파일 변환. 예: `executable_hook` → CC 는 `.claude/hooks/*.sh` + `settings.json` 등록, Codex 는 native SessionStart wrapper + AGENTS.md 지시문 + git hook fallback.
 
 이 구조가 Codex 가 지적한 "중간 IR 필요" 를 해결한다.
 
@@ -117,14 +117,14 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 | # | Capability | 설명 | CC 구현 | Codex 구현 | Cursor 구현 |
 |---|------------|------|---------|------------|-------------|
 | 1 | `project_memory` | 항상 로드되는 자유 형식 맥락 | `AGENTS.md` + `CLAUDE.md` entrypoint + optional `.claude/` surfaces | `AGENTS.md` | `AGENTS.md` |
-| 2 | `ontology` | 구조화된 레퍼런스 (불변 관계) | SessionStart 훅 주입 | AGENTS.md 지시문 | rules 지시문 |
-| 3 | `executable_hook` | 이벤트 기반 자동 실행 | `.claude/hooks/` + `settings.json` | git hook + LLM 지시문 (best-effort) | git hook + LLM 지시문 |
+| 2 | `ontology` | 구조화된 레퍼런스 (불변 관계) | SessionStart 훅 주입 | native SessionStart wrapper + AGENTS.md fallback | rules 지시문 |
+| 3 | `executable_hook` | 이벤트 기반 자동 실행 | `.claude/hooks/` + `settings.json` | native SessionStart for base continuity; git hook + LLM 지시문 for other events | git hook + LLM 지시문 |
 | 4 | `skill` | 재사용 가능한 작업 절차 | `.claude/skills/<name>/SKILL.md` | AGENTS.md 섹션으로 fallback | rules 로 fallback |
 | 5 | `slash_command` | 사용자 호출 커맨드 | `.claude/commands/*.md` | AGENTS.md 섹션으로 fallback | rules 로 fallback |
 
 **향후 추가 후보**: `scoped_rule` (Cursor 네이티브 — glob 기반 조건부 주입), `pre_commit_check` (executable_hook 의 특수형).
 
-**중요**: `executable_hook` 은 도구마다 보장 수준이 다르다. CC 는 진짜 자동 실행, Codex/Cursor 는 best-effort (LLM 지시 + git hook). 이 한계는 어댑터 문서에 명시한다.
+**중요**: `executable_hook` 은 도구마다 보장 수준이 다르다. CC 는 전용 훅 표면을 쓰고, Codex 는 SessionStart continuity 에 native hook 을 쓰되 다른 이벤트는 AGENTS fallback + git hook bridge 를 쓴다. Cursor 는 best-effort rules 지시문이다. 이 한계는 어댑터 문서에 명시한다.
 
 ### 4.3 Fragment 모델
 
@@ -489,8 +489,8 @@ summary.
 | Capability | Claude Code | Codex | Cursor |
 |------------|-------------|-------|----------------|
 | project_memory | ✅ AGENTS.md + CLAUDE.md entrypoint + optional CC surfaces | ✅ AGENTS.md 자동 로드 | ✅ AGENTS.md 자동 로드 |
-| ontology | ✅ SessionStart 훅 주입 | 🟡 AGENTS.md 지시문 (LLM 의존) | 🟡 rules 지시문 |
-| executable_hook | ✅ 네이티브 훅 | 🟡 AGENTS.md + optional git pre-commit bridge | 🟡 `.cursor/rules` 지시 |
+| ontology | ✅ SessionStart 훅 주입 | ✅ native SessionStart wrapper + AGENTS fallback | 🟡 rules 지시문 |
+| executable_hook | ✅ 네이티브 훅 | 🟡 native SessionStart continuity + AGENTS fallback + optional git pre-commit bridge | 🟡 `.cursor/rules` 지시 |
 | skill | ✅ `.claude/skills/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
 | slash_command | ✅ `.claude/commands/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
 

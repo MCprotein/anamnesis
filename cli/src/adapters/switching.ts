@@ -29,7 +29,7 @@ const SOURCE_SURFACES: Record<ToolName, string> = {
 
 const TARGET_SURFACES: Record<ToolName, string> = {
   "claude-code": "SessionStart `.claude/hooks/inject-handoff.sh`",
-  codex: "`AGENTS.md` session-start handoff procedure",
+  codex: "native `.codex/hooks.json` SessionStart wrapper + `AGENTS.md` fallback",
   cursor: "`AGENTS.md` session-start handoff procedure",
 };
 

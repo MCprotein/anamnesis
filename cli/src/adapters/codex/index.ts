@@ -3,7 +3,9 @@
 // As of v0.3, all 5 capabilities have a Codex rendering:
 //   - project_memory / ontology: same output as CC (Codex reads AGENTS.md
 //     and ontology slice files natively)
-//   - executable_hook / skill / slash_command: AGENTS.md region fallback
+//   - executable_hook: native SessionStart wrapper for base continuity hooks,
+//     AGENTS.md region fallback for all hooks, optional Git pre-commit bridge
+//   - skill / slash_command: AGENTS.md region fallback
 //     that documents the intent so the agent can honor it manually
 //
 // When `codex` shares `tools` with `claude-code`, both adapters render

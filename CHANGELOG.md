@@ -7,6 +7,19 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added Codex native SessionStart continuity for the base ontology and
+  handoff path. When executable adapters are allowed, anamnesis installs
+  `.anamnesis/codex-native-hooks/session-start.mjs`, enables
+  `.codex/config.toml` `codex_hooks = true`, and merges `.codex/hooks.json`
+  without dropping user hook entries.
+
+### Changed
+
+- Updated `status` / `doctor` continuity checks and adapter parity docs so
+  Codex SessionStart is no longer documented as fallback-only.
+
 ### Documentation
 
 - Recorded the npmjs.org post-publish smoke for `@mcprotein/anamnesis@1.0.0`

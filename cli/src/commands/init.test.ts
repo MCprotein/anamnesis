@@ -133,6 +133,17 @@ describe("init", () => {
     expect(
       fs.existsSync(path.join(project, ".claude/commands/handoff-prepare.md")),
     ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis/codex-native-hooks/session-start.mjs"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.readFileSync(path.join(project, ".codex/config.toml"), "utf8"),
+    ).toContain("codex_hooks = true");
+    expect(
+      fs.readFileSync(path.join(project, ".codex/hooks.json"), "utf8"),
+    ).toContain(".anamnesis/codex-native-hooks/session-start.mjs");
 
     const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
     expect(agentsMd).toContain("codex-cmd-handoff-prepare");

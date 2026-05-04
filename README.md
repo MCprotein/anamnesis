@@ -99,6 +99,8 @@ your-project/
 │   ├── commands/load-context.md
 │   └── skills/load-context/SKILL.md
 ├── .cursor/rules/                               # Cursor adapter output when enabled
+├── .codex/{config.toml,hooks.json}              # Codex native hooks when enabled
+├── .anamnesis/codex-native-hooks/               # Codex SessionStart wrapper
 └── .anamnesis/codex-hooks/                      # Codex git-hook bridge when enabled
 ```
 
@@ -182,8 +184,8 @@ Each fragment declares one or more **capabilities** in `fragment.yaml`. Capabili
 | Capability | What it represents | Claude Code | Codex | Cursor |
 |---|---|---|---|---|
 | `project_memory` | Always-loaded context | `AGENTS.md` region + `CLAUDE.md` entrypoint | `AGENTS.md` region | `AGENTS.md` region read by Cursor |
-| `ontology` | Structured reference | SessionStart hook injection | AGENTS.md instruction | rules instruction |
-| `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | AGENTS fallback + optional git hook bridge | rules fallback |
+| `ontology` | Structured reference | SessionStart hook injection | Codex native SessionStart wrapper + AGENTS fallback | rules instruction |
+| `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | native SessionStart for continuity; AGENTS fallback + optional git hook bridge for other events | rules fallback |
 | `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | AGENTS.md section (fallback) | rules (fallback) |
 | `slash_command` | User-invoked command | `.claude/commands/<n>.md` | AGENTS.md section (fallback) | rules (fallback) |
 

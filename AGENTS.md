@@ -35,7 +35,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@6 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@9 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -47,7 +47,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
 - 라이브러리 갱신 반영: `anamnesis update --dry-run` 으로 변경 검토 → 문제 없으면 `--apply`.
-- `.claude/hooks`, `.claude/commands`, `.claude/skills` 같은 실행 가능 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
+- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
 ### 자주 쓰는 커맨드
 
@@ -67,7 +67,9 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
 5. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
 
-Claude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 자동 stdout 주입되지만, Codex / Cursor 는 자동 hook 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
+Claude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 자동 stdout 주입됨.
+Codex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
+Cursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
 Claude Code 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림.
 <!-- /anamnesis:region -->
 
@@ -358,4 +360,160 @@ When in doubt, append rather than rewrite.
 - The bootstrap files don't exist yet — run `anamnesis ontology bootstrap` first
 - The user is asking for a code change. This skill produces ontology, not code.
 - The project has no agent-discernible intent beyond what the static fragments already say (e.g., a tiny single-service repo)
+<!-- /anamnesis:region -->
+
+<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@9 -->
+### base hook: `inject-ontology.sh`
+
+**When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
+
+**Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback.
+
+**Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).
+
+```bash
+#!/bin/bash
+# anamnesis SessionStart hook — inject ontology context for the agent.
+#
+# Concatenates two sources, in order:
+#   1. **/.anamnesis/ontology/*.yaml — anamnesis-managed slices, walked
+#      recursively to support monorepo multi-scope layouts (root + sub-scopes).
+#   2. system_graph.yaml — user-managed top-level ontology, if present.
+#
+# Output goes to stdout; Claude Code captures SessionStart hook stdout and
+# injects it into the conversation context.
+
+set -euo pipefail
+
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+USER_ONTOLOGY="$PROJECT_ROOT/system_graph.yaml"
+
+emitted=0
+
+# Walk all .anamnesis/ontology/*.yaml at any depth (multi-scope monorepo
+# support), skipping common heavy directories.
+ontology_files=()
+while IFS= read -r f; do
+  ontology_files+=("$f")
+done < <(
+  find "$PROJECT_ROOT" \
+    \( -path '*/node_modules' -o -path '*/.git' -o -path '*/dist' \
+       -o -path '*/build' -o -path '*/.next' -o -path '*/.venv' \
+       -o -path '*/venv' -o -path '*/__pycache__' \) -prune -o \
+    -path '*/.anamnesis/ontology/*.yaml' -type f -print 2>/dev/null
+)
+
+if (( ${#ontology_files[@]} > 0 )); then
+  echo "=== anamnesis: ontology context ==="
+  echo
+  echo "프로젝트의 불변 관계(네임스페이스, 식별자, 경로 등)를 담는 온톨로지."
+  echo "매니페스트나 로그를 뒤지기 전에 이 정보를 먼저 참조한다."
+  echo
+  for f in "${ontology_files[@]}"; do
+    rel="${f#$PROJECT_ROOT/}"
+    echo "--- $rel ---"
+    cat "$f"
+    echo
+  done
+  emitted=1
+fi
+
+if [[ -f "$USER_ONTOLOGY" ]]; then
+  if (( emitted == 0 )); then
+    echo "=== anamnesis: ontology context ==="
+    echo
+  fi
+  echo "--- system_graph.yaml (user-managed) ---"
+  cat "$USER_ONTOLOGY"
+  echo
+fi
+
+exit 0
+```
+<!-- /anamnesis:region -->
+
+<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@9 -->
+### base hook: `inject-handoff.sh`
+
+**When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
+
+**Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback.
+
+**Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).
+
+```bash
+#!/bin/bash
+# anamnesis SessionStart hook — inject active and recent agent handoff context.
+#
+# Looks for `.anamnesis/handoff/active.md` plus the most recent archived
+# handoff, and prints them to stdout so Claude Code injects them into the
+# session context. This bridges sessions across token-limit boundaries and
+# across different agents (Claude → Codex, etc.).
+#
+# Silent (exit 0) when no handoff dir or no handoff files exist —
+# brand-new projects don't need to spam an empty notice.
+
+set -euo pipefail
+
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+HANDOFF_DIR="$PROJECT_ROOT/.anamnesis/handoff"
+
+[[ -d "$HANDOFF_DIR" ]] || exit 0
+
+shopt -s nullglob
+files=("$HANDOFF_DIR"/*.md)
+shopt -u nullglob
+
+(( ${#files[@]} > 0 )) || exit 0
+
+# Prefer active.md when present. It is the multi-task index maintained by
+# /handoff-prepare. Also include the newest timestamped archive for detail.
+active="$HANDOFF_DIR/active.md"
+
+# Find newest archived handoff by mtime — portable across BSD (macOS) and
+# GNU stat. Exclude active.md because it is an index, not an archive.
+latest=""
+latest_mtime=0
+for f in "${files[@]}"; do
+  [[ "$(basename "$f")" != "active.md" ]] || continue
+  if mtime=$(stat -f '%m' "$f" 2>/dev/null); then
+    : # BSD stat (macOS)
+  elif mtime=$(stat -c '%Y' "$f" 2>/dev/null); then
+    : # GNU stat (Linux)
+  else
+    continue
+  fi
+  if (( mtime > latest_mtime )); then
+    latest_mtime=$mtime
+    latest="$f"
+  fi
+done
+
+[[ -f "$active" || -n "$latest" ]] || exit 0
+
+echo "=== anamnesis: handoff ==="
+echo
+echo "이전 세션이 남긴 작업 인계서. 무엇을 이어받는지 확인하고 작업 재개."
+echo "더 이상 유효하지 않으면 무시하고 새 작업 시작."
+echo
+
+if [[ -f "$active" ]]; then
+  rel_active="${active#$PROJECT_ROOT/}"
+  echo "Source: $rel_active"
+  echo
+  cat "$active"
+  echo
+fi
+
+if [[ -n "$latest" ]]; then
+  rel="${latest#$PROJECT_ROOT/}"
+  echo "--- most recent archived handoff: $rel ---"
+  echo
+  cat "$latest"
+  echo
+fi
+
+echo "--- end of handoff ---"
+exit 0
+```
 <!-- /anamnesis:region -->

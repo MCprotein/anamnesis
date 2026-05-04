@@ -55,6 +55,11 @@ import {
   type HookSyncResult,
 } from "../core/settings.js";
 import {
+  syncCodexNativeHookRegistrations,
+  type CodexHookRegistration,
+  type CodexHookSyncResult,
+} from "../core/codex_native.js";
+import {
   bootstrap,
   OntologyBootstrapError,
   type BootstrapResult,
@@ -103,6 +108,8 @@ export interface InitResult {
    * `create`/`update` status.
    */
   hookRegistrations: HookSyncResult[];
+  /** Per-registration outcome of post-apply Codex native hook sync. */
+  codexHookRegistrations: CodexHookSyncResult[];
   /**
    * Set when `opts.monorepo` was true and the project actually had
    * package.json workspaces. Includes the detected sub-scopes (with
@@ -340,11 +347,14 @@ export function init(opts: InitOptions): InitResult {
 
   // 11. Apply (or dry-run).
   let hookRegistrations: HookSyncResult[] = [];
+  let codexHookRegistrations: CodexHookSyncResult[] = [];
   if (!opts.dryRun) {
     applyChanges(changes, { projectRoot });
     writeManifest(projectRoot, nextManifest);
     writeAgentfile(projectRoot, agentfile);
-    hookRegistrations = syncWrittenHooks(changes, projectRoot);
+    const hookSync = syncWrittenHooks(changes, projectRoot);
+    hookRegistrations = hookSync.claude;
+    codexHookRegistrations = hookSync.codex;
   }
 
   // 12. Post-install ontology bootstrap (Layer A). Failure does not
@@ -372,6 +382,7 @@ export function init(opts: InitOptions): InitResult {
     monorepoDetection,
     bootstrapResult,
     bootstrapError,
+    codexHookRegistrations,
   };
 }
 
@@ -412,8 +423,9 @@ function hasProjectMemory(fragments: FragmentDefinition[]): boolean {
 function syncWrittenHooks(
   changes: PlannedChange[],
   projectRoot: string,
-): HookSyncResult[] {
+): { claude: HookSyncResult[]; codex: CodexHookSyncResult[] } {
   const regs: HookRegistration[] = [];
+  const codexRegs: CodexHookRegistration[] = [];
   for (const c of changes) {
     if (c.target !== "file") continue;
     // Register hooks we own: freshly written (create/update) AND already-
@@ -428,15 +440,25 @@ function syncWrittenHooks(
     ) {
       continue;
     }
-    if (!c.settingsHook) continue;
-    regs.push({
-      event: c.settingsHook.event,
-      matcher: c.settingsHook.matcher,
-      command: c.path,
-    });
+    if (c.settingsHook) {
+      regs.push({
+        event: c.settingsHook.event,
+        matcher: c.settingsHook.matcher,
+        command: c.path,
+      });
+    }
+    if (c.codexHook) {
+      codexRegs.push(c.codexHook);
+    }
   }
-  if (regs.length === 0) return [];
-  return syncHookRegistrations(projectRoot, regs).results;
+  return {
+    claude: regs.length === 0
+      ? []
+      : syncHookRegistrations(projectRoot, regs).results,
+    codex: codexRegs.length === 0
+      ? []
+      : syncCodexNativeHookRegistrations(projectRoot, codexRegs).results,
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -73,6 +73,12 @@ describe("isExecAdapterPath", () => {
     expect(isExecAdapterPath(".anamnesis/codex-hooks/prisma.sh")).toBe(true);
   });
 
+  it("matches Codex native hook wrapper paths", () => {
+    expect(
+      isExecAdapterPath(".anamnesis/codex-native-hooks/session-start.mjs"),
+    ).toBe(true);
+  });
+
   it("does not match AGENTS.md", () => {
     expect(isExecAdapterPath("AGENTS.md")).toBe(false);
   });

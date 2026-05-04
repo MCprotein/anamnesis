@@ -127,6 +127,54 @@ describe("codex executable_hook fallback", () => {
     }
   });
 
+  it("installs Codex native SessionStart wrapper for the base continuity hooks", () => {
+    fs.mkdirSync(path.join(fragmentDir, "adapters/codex/hooks"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/inject-ontology.sh"),
+      "#!/bin/bash\necho ontology\n",
+    );
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/codex/hooks/session-start.mjs"),
+      "console.log(JSON.stringify({hookSpecificOutput:{hookEventName:'SessionStart',additionalContext:'x'}}));\n",
+    );
+    const fragment: FragmentDefinition = {
+      id: "base",
+      version: 9,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "SessionStart",
+        source: "adapters/claude-code/hooks/inject-ontology.sh",
+        adapters_supported: ["codex"],
+      },
+      makeContext(fragmentDir, fragment),
+    );
+
+    const wrapper = actions.find(
+      (a) =>
+        a.kind === "file" &&
+        a.path === ".anamnesis/codex-native-hooks/session-start.mjs",
+    );
+    expect(wrapper?.kind).toBe("file");
+    if (wrapper?.kind === "file") {
+      expect(wrapper.mode).toBe(0o755);
+      expect(wrapper.content).toContain("hookSpecificOutput");
+      expect(wrapper.codexHook).toEqual({
+        event: "SessionStart",
+        matcher: "startup|resume",
+        command: 'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+      });
+    }
+  });
+
   it("scopes target file to sub-scope when scopePath given", () => {
     fs.writeFileSync(
       path.join(fragmentDir, "adapters/claude-code/hooks/x.sh"),

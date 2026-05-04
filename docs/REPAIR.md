@@ -51,6 +51,10 @@ If the hook file itself is `user-modified`, review or merge that file first.
 anamnesis only registers hooks it owns through `create`, `update`, or `noop`
 planned changes.
 
+If `doctor` reports missing Codex native hook config, use the same update
+command. anamnesis merges `.codex/config.toml` and `.codex/hooks.json`
+structurally and preserves non-anamnesis hook entries.
+
 ## Partial Adapter Install
 
 If a project was installed for one agent and later needs all supported agents,

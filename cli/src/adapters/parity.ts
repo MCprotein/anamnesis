@@ -68,9 +68,9 @@ export const ADAPTER_PARITY_MATRIX = [
         evidence: ["continuity acceptance", "dogfood check"],
       },
       codex: {
-        level: "fallback",
-        surface: "`.anamnesis/ontology/*.yaml` plus `AGENTS.md` procedures",
-        evidence: ["continuity acceptance", "dogfood check"],
+        level: "native",
+        surface: "`.anamnesis/ontology/*.yaml` plus native SessionStart wrapper when exec adapters are allowed; `AGENTS.md` fallback remains",
+        evidence: ["continuity acceptance", "codex native hook tests"],
       },
       cursor: {
         level: "fallback",
@@ -90,8 +90,8 @@ export const ADAPTER_PARITY_MATRIX = [
       },
       codex: {
         level: "fallback",
-        surface: "`AGENTS.md` hook region plus optional Git pre-commit bridge",
-        evidence: ["codex fallback tests", "registry coverage"],
+        surface: "native SessionStart wrapper for base continuity hooks; `AGENTS.md` hook region plus optional Git pre-commit bridge for other hook events",
+        evidence: ["codex native hook tests", "codex fallback tests"],
       },
       cursor: {
         level: "fallback",

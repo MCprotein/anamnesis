@@ -43,6 +43,12 @@ import {
   type OntologyGapStatus,
 } from "../core/ontology-gaps.js";
 import { makeBuiltinIntrospectorRegistry } from "../introspectors/index.js";
+import {
+  CODEX_CONFIG_PATH,
+  CODEX_HOOKS_PATH,
+  codexHookRegistrationPresent,
+  codexHooksFeatureEnabled,
+} from "../core/codex_native.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -439,7 +445,7 @@ function computeContinuityStatus(opts: {
 
   const adapterTargets = adapterContinuityTargets(tools);
   const missingAdapterTargets = adapterTargets.filter(
-    (target) => !targetClean(entries, target),
+    (target) => !targetClean(projectRoot, entries, target),
   );
   checks.push({
     id: "adapter-surfaces",
@@ -654,6 +660,9 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
   }
   if (tools.includes("codex")) {
     targets.push(
+      ".anamnesis/codex-native-hooks/session-start.mjs",
+      `${CODEX_CONFIG_PATH} [features.codex_hooks=true]`,
+      `${CODEX_HOOKS_PATH} [hook:SessionStart:node \".anamnesis/codex-native-hooks/session-start.mjs\"]`,
       "AGENTS.md [region:codex-cmd-load-context]",
       "AGENTS.md [region:codex-cmd-handoff-prepare]",
       "AGENTS.md [region:codex-skill-load-context]",
@@ -671,7 +680,20 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
   return targets;
 }
 
-function targetClean(entries: EntryStatus[], target: string): boolean {
+function targetClean(
+  projectRoot: string,
+  entries: EntryStatus[],
+  target: string,
+): boolean {
+  if (target === `${CODEX_CONFIG_PATH} [features.codex_hooks=true]`) {
+    return codexConfigTargetReady(projectRoot);
+  }
+  const codexHook = target.match(
+    /^\.codex\/hooks\.json \[hook:([^:]+):(.+)\]$/,
+  );
+  if (codexHook) {
+    return codexHookTargetReady(projectRoot, codexHook[1]!, codexHook[2]!);
+  }
   const regionMatch = target.match(/^(.+) \[region:(.+)\]$/);
   if (regionMatch) {
     return hasCleanRegion(entries, regionMatch[1]!, regionMatch[2]!);
@@ -697,6 +719,34 @@ function hasCleanFile(entries: EntryStatus[], filepath: string): boolean {
   return entries.some(
     (e) => e.target === "file" && e.path === filepath && e.drift === "clean",
   );
+}
+
+function codexConfigTargetReady(projectRoot: string): boolean {
+  const fp = path.join(projectRoot, CODEX_CONFIG_PATH);
+  if (!fs.existsSync(fp)) return false;
+  try {
+    return codexHooksFeatureEnabled(fs.readFileSync(fp, "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+function codexHookTargetReady(
+  projectRoot: string,
+  event: string,
+  command: string,
+): boolean {
+  const fp = path.join(projectRoot, CODEX_HOOKS_PATH);
+  if (!fs.existsSync(fp)) return false;
+  try {
+    return codexHookRegistrationPresent(fs.readFileSync(fp, "utf8"), {
+      event,
+      matcher: event === "SessionStart" ? "startup|resume" : undefined,
+      command,
+    });
+  } catch {
+    return false;
+  }
 }
 
 function readRegionContent(

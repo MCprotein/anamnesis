@@ -1,0 +1,63 @@
+id: base
+version: 8
+description: >
+  Always-installed baseline. Provides ontology injection, uncommitted-changes
+  reminder, handoff injection/reminders, the load-context slash command/skill,
+  the ontology-enrich lifecycle/schema contract, and the AGENTS.md baseline
+  region. anamnesis init auto-includes this fragment regardless of rulebook
+  matches.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/inject-ontology.sh
+    adapters_supported: [claude-code]
+
+  - type: executable_hook
+    event: PostToolUse:Edit
+    source: adapters/claude-code/hooks/remind-uncommitted.sh
+    adapters_supported: [claude-code]
+
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/inject-handoff.sh
+    adapters_supported: [claude-code]
+
+  - type: executable_hook
+    event: Stop
+    source: adapters/claude-code/hooks/handoff-reminder.sh
+    adapters_supported: [claude-code]
+
+  - type: slash_command
+    name: load-context
+    source: adapters/claude-code/commands/load-context.md
+
+  - type: slash_command
+    name: handoff-prepare
+    source: adapters/claude-code/commands/handoff-prepare.md
+
+  - type: skill
+    name: load-context
+    source: adapters/claude-code/skills/load-context
+
+  - type: skill
+    name: ontology-enrich
+    source: adapters/claude-code/skills/ontology-enrich
+
+owns:
+  - region: anamnesis-base in AGENTS.md
+  - file: .anamnesis/ontology/base.yaml
+  - file: .claude/hooks/inject-ontology.sh
+  - file: .claude/hooks/remind-uncommitted.sh
+  - file: .claude/hooks/inject-handoff.sh
+  - file: .claude/hooks/handoff-reminder.sh
+  - file: .claude/commands/load-context.md
+  - file: .claude/commands/handoff-prepare.md
+  - file: .claude/skills/load-context/SKILL.md
+  - file: .claude/skills/ontology-enrich/SKILL.md

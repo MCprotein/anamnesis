@@ -158,8 +158,25 @@ describe("cross-agent context continuity acceptance", () => {
     );
   });
 
-  it("renders Codex AGENTS.md fallbacks for commands and skills", () => {
+  it("renders Codex native SessionStart plus AGENTS.md fallbacks", () => {
     const actions = renderBase("codex");
+
+    const sessionStart = fileByPath(
+      actions,
+      ".anamnesis/codex-native-hooks/session-start.mjs",
+    );
+    expect(sessionStart.mode).toBe(0o755);
+    expect(sessionStart.codexHook).toEqual({
+      event: "SessionStart",
+      matcher: "startup|resume",
+      command: 'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+    });
+    expectContainsAll(sessionStart.content, [
+      "hookSpecificOutput",
+      ".anamnesis",
+      "ontology",
+      "handoff",
+    ]);
 
     expectContainsAll(regionById(actions, "codex-cmd-load-context").content, [
       "/load-context",

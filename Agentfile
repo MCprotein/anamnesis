@@ -7,4 +7,4 @@ tools:
   - cursor
 fragments:
   - id: base
-    version: 8
+    version: 9

@@ -1,11 +1,10 @@
 // Codex adapter — ontology capability.
 //
 // Same target as Claude Code: `.anamnesis/ontology/<id>.yaml` (or under
-// the scope's directory in monorepo layouts). Codex agents read these
-// files when AGENTS.md instructs them to (the load-context skill / command
-// in the base fragment, plus the SessionStart hook of the CC adapter
-// which doesn't fire on Codex — Codex users may run `/load-context` or
-// equivalent themselves).
+// the scope's directory in monorepo layouts). Base v9 can also install a
+// Codex native SessionStart wrapper that injects these files when executable
+// adapters are allowed; AGENTS.md load-context instructions remain the
+// fallback and manual orientation path.
 
 import { ontologyRenderer as ccRenderer } from "../claude-code/ontology.js";
 import type { CapabilityRenderer } from "../../core/render.js";

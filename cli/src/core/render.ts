@@ -40,6 +40,22 @@ export interface FileAction {
     event: string;
     matcher?: string;
   };
+  /**
+   * If set, the applier writes the file normally and the command layer then
+   * ensures the file is registered in Codex native hook config:
+   *   .codex/config.toml -> [features].codex_hooks = true
+   *   .codex/hooks.json  -> hooks.<event>[] command entry
+   *
+   * The Codex config files are user-owned and structurally merged rather than
+   * manifest-tracked, mirroring `.claude/settings.json` for Claude Code.
+   */
+  codexHook?: {
+    event: string;
+    matcher?: string;
+    command: string;
+    timeout?: number;
+    statusMessage?: string;
+  };
 }
 
 export type RenderAction = RegionAction | FileAction;

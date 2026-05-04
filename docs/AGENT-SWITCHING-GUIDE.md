@@ -102,7 +102,7 @@ Adapter resume surfaces:
 | Target agent | Resume surface |
 |---|---|
 | Claude Code | SessionStart `.claude/hooks/inject-handoff.sh` plus ontology injection |
-| Codex | `AGENTS.md` session-start handoff and ontology procedures |
+| Codex | Native `.codex/hooks.json` SessionStart wrapper when exec adapters are allowed, plus `AGENTS.md` fallback procedures |
 | Cursor | `AGENTS.md` session-start procedure plus `.cursor/rules/*` |
 
 Expected result: the new agent can continue the current task from the handoff
@@ -137,9 +137,10 @@ What to look for:
 
 - Claude Code has the richest native surface today. Hooks, commands, skills,
   and SessionStart injection are first-class there.
-- Codex and Cursor rely on explicit fallback instructions for some surfaces.
-  This is still supported user-facing parity, but it is not the same native
-  UI as Claude Code.
+- Codex now has native SessionStart continuity when executable adapters are
+  allowed, but still relies on explicit fallback instructions for commands,
+  skills, and non-SessionStart hook events. Cursor relies on fallback rules and
+  startup instructions.
 - Real external agent sessions can still fail if the target agent ignores
   installed startup instructions. `status`, `doctor`, switching fixtures, and
   dogfood checks reduce this risk but do not control third-party agent

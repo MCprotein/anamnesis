@@ -161,6 +161,34 @@ function expectTargetResumeSurface(
     return;
   }
 
+  if (to === "codex") {
+    const hook = spawnSync(
+      process.execPath,
+      [path.join(project, ".anamnesis", "codex-native-hooks", "session-start.mjs")],
+      {
+        cwd: project,
+        input: JSON.stringify({ hook_event_name: "SessionStart", cwd: project }),
+        encoding: "utf8",
+        stdio: "pipe",
+      },
+    );
+    expect(hook.status).toBe(0);
+    const output = JSON.parse(hook.stdout) as {
+      hookSpecificOutput?: { additionalContext?: string };
+    };
+    const context = output.hookSpecificOutput?.additionalContext ?? "";
+    expect(context).toContain("=== anamnesis: handoff ===");
+    expect(context).toContain("Source: .anamnesis/handoff/active.md");
+    expect(context).toContain(`--- most recent archived handoff: ${archivePath} ---`);
+    expect(context).toContain(`switching scenario ${scenarioId}`);
+    const hooksJson = fs.readFileSync(
+      path.join(project, ".codex", "hooks.json"),
+      "utf8",
+    );
+    expect(hooksJson).toContain(".anamnesis/codex-native-hooks/session-start.mjs");
+    return;
+  }
+
   const agents = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
   expect(agents).toContain("Session start: handoff");
   expect(agents).toContain(".anamnesis/handoff/active.md");

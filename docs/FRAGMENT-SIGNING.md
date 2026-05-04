@@ -213,8 +213,9 @@ Rules:
 - Dry-run plans must label executable outputs with source and signature state.
 - Existing drift protection still applies: user-modified generated hook files
   are not overwritten.
-- Codex and Cursor fallback instructions for hooks remain instructions unless
-  a concrete git-hook bridge is written through the normal adapter path.
+- Codex SessionStart wrappers and git-hook bridges require the normal
+  executable-adapter path; Codex/Cursor fallback instructions for other hooks
+  remain instructions unless a concrete executable bridge is installed.
 
 ## Yank and Revocation
 

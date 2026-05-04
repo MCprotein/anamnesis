@@ -5,11 +5,11 @@
       "file": "AGENTS.md",
       "region_id": "anamnesis-base",
       "fragment_id": "base",
-      "fragment_version": 6,
-      "template_version": 6,
+      "fragment_version": 9,
+      "template_version": 9,
       "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "last_applied_hash": "sha256:94086df3cf6ea5c2e7a1b9bd9330b4482abf249bc5df2c402a5b1741d3a571d4",
-      "current_user_hash": "sha256:94086df3cf6ea5c2e7a1b9bd9330b4482abf249bc5df2c402a5b1741d3a571d4"
+      "last_applied_hash": "sha256:f8092f5c14cce7df791f0260f289822818be72abe00385fb87b7380f416e0512",
+      "current_user_hash": "sha256:f8092f5c14cce7df791f0260f289822818be72abe00385fb87b7380f416e0512"
     },
     {
       "file": "AGENTS.md",
@@ -60,6 +60,26 @@
       "base_rendered_hash": "sha256:aa85a84983a082095b405bfe55cad6fee6a21c983075b8e2e51247c11ecbac77",
       "last_applied_hash": "sha256:f43212100a900f095a11e1c4fd28f8fb0637e5f5bfb09dac55f4d10a4eca3def",
       "current_user_hash": "sha256:f43212100a900f095a11e1c4fd28f8fb0637e5f5bfb09dac55f4d10a4eca3def"
+    },
+    {
+      "file": "AGENTS.md",
+      "region_id": "codex-hook-inject-ontology",
+      "fragment_id": "base",
+      "fragment_version": 9,
+      "template_version": 9,
+      "base_rendered_hash": "sha256:bc80217375ca6c084b60e2d7005c7e7c0c295656460bfddab015b7023fc821dd",
+      "last_applied_hash": "sha256:bc80217375ca6c084b60e2d7005c7e7c0c295656460bfddab015b7023fc821dd",
+      "current_user_hash": "sha256:bc80217375ca6c084b60e2d7005c7e7c0c295656460bfddab015b7023fc821dd"
+    },
+    {
+      "file": "AGENTS.md",
+      "region_id": "codex-hook-inject-handoff",
+      "fragment_id": "base",
+      "fragment_version": 9,
+      "template_version": 9,
+      "base_rendered_hash": "sha256:79e8ba2f8c838bdc56911fe2a09c58024b307679d516783834c7ded93b403447",
+      "last_applied_hash": "sha256:79e8ba2f8c838bdc56911fe2a09c58024b307679d516783834c7ded93b403447",
+      "current_user_hash": "sha256:79e8ba2f8c838bdc56911fe2a09c58024b307679d516783834c7ded93b403447"
     }
   ],
   "files": [
@@ -153,6 +173,13 @@
       "fragment_version": 8,
       "last_applied_hash": "sha256:a56529b8be36037b4d599c03a19c81de2524bb4f93c225ea26fdd73521cd2b2b",
       "current_user_hash": "sha256:a56529b8be36037b4d599c03a19c81de2524bb4f93c225ea26fdd73521cd2b2b"
+    },
+    {
+      "path": ".anamnesis/codex-native-hooks/session-start.mjs",
+      "fragment_id": "base",
+      "fragment_version": 9,
+      "last_applied_hash": "sha256:8e3e66e398c44b0700f972d67385f9467b61cdd0144e92725920ddcdbe6d14e0",
+      "current_user_hash": "sha256:8e3e66e398c44b0700f972d67385f9467b61cdd0144e92725920ddcdbe6d14e0"
     }
   ]
 }
