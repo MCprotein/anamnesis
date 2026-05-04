@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-446%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.7%20alpha-orange)]()
+[![tests](https://img.shields.io/badge/tests-461%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v0.8%20alpha-orange)]()
 
 ---
 
@@ -234,7 +234,7 @@ Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 | **v0.5** | Dogfood lifecycle validation and agent-switch continuity hardening | shipped 2026-04-30 |
 | **v0.6** | Repeatable bounded ontology generation plus agent-assisted enrichment | shipped 2026-05-03 |
 | **v0.7** | Multi-agent UX, lifecycle scale, and benchmark reports | shipped 2026-05-03 |
-| **v0.8** | Schema, API, migration, and repair workflow stabilization | planned |
+| **v0.8** | Schema, API, migration, and repair workflow stabilization | shipped 2026-05-04 |
 | **v0.9** | Registry, signing, docs, and public benchmark readiness | planned |
 | **v1.0** | Stable schema, public fragment registry, signing | stable target |
 
@@ -251,7 +251,7 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`docs/AGENTFILE-SCHEMA-AUDIT.md`](docs/AGENTFILE-SCHEMA-AUDIT.md) —
   v0.8 audit of Agentfile fields, compatibility fixtures, and v1.0 freeze risks
 - [`docs/AGENTFILE-MIGRATIONS.md`](docs/AGENTFILE-MIGRATIONS.md) —
-  planned `anamnesis migrate agentfile` command contract
+  `anamnesis migrate agentfile` command contract
 - [`docs/API.md`](docs/API.md) — supported TypeScript import boundary
 - [`docs/REPAIR.md`](docs/REPAIR.md) — repair playbook for existing managed projects
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability

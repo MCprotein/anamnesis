@@ -7,6 +7,8 @@ breaking changes until v1.0.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-05-04
+
 ### Added
 
 - Added the `anamnesis migrate agentfile` skeleton: dry-run by default,

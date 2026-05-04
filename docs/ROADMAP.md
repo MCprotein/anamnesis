@@ -334,7 +334,7 @@ Exit criteria:
 
 ---
 
-## v0.8 — *planned*
+## v0.8 — *shipped 2026-05-04*
 
 > **Theme: stabilize schema, API, and migration contracts**
 
@@ -351,7 +351,7 @@ to depend on.
 | 5 | **Existing-project repair workflow** | `docs/REPAIR.md` now covers user-modified managed files, missing hook registrations, partial adapter installs, stale Agentfile versions, stale handoff state, and ontology gaps. |
 | 6 | **Published package smoke gate** | Recurring post-publish gate documented in `docs/RELEASING.md`: force npmjs.org, verify package version/CLI, run a fresh fixture through `npm exec @mcprotein/anamnesis@<version>`, and record sanitized-fixture smoke when release claims depend on it. |
 
-Exit criteria:
+Exit criteria met:
 - We can say which parts of `Agentfile` are v1-stable candidates.
 - Backward-compatibility fixtures exist for the project shapes we already dogfood.
 - Release validation includes source checks and published-package smoke checks.
