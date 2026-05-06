@@ -25,6 +25,10 @@ could include breaking changes.
   and older relative anamnesis-managed hook commands.
 - Added Codex hook warning counts to automated dogfood self-check records so
   version-to-version continuity reports capture hook ownership health.
+- Added dogfood native-hook evidence for Codex. The default self-check now
+  runs a synthetic Codex JSON dispatch over generated SessionStart,
+  PostToolUse, and Stop wrappers, while `ANAMNESIS_REAL_CODEX_SMOKE=1`
+  enables an opt-in real Codex CLI SessionStart smoke.
 
 ### Changed
 

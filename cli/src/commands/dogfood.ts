@@ -175,6 +175,8 @@ function runVerificationChecks(
   return [
     runActiveHandoffSimulation(libraryRoot),
     runStaleHandoffSimulation(libraryRoot),
+    runCodexNativeDispatchSimulation(libraryRoot),
+    runRealCodexNativeSmokeIfEnabled(),
     runNpmScript(projectRoot, "typecheck", ["npm", "run", "typecheck"], runner),
     runNpmScript(projectRoot, "test", ["npm", "test"], runner),
   ];
@@ -487,6 +489,416 @@ function writeSimulationActiveIndex(project: string, archivePath: string): void 
   );
 }
 
+function runCodexNativeDispatchSimulation(libraryRoot: string): CommandCheck {
+  const command = ["anamnesis", "dogfood", "simulate-codex-native-dispatch"];
+  const start = Date.now();
+  let project: string | undefined;
+
+  try {
+    project = installAllAdapterSimulationProject(
+      libraryRoot,
+      "anamnesis-codex-native-dispatch-",
+    );
+    initializeGitRepo(project);
+    writeActiveHandoffFixture(project);
+    writeDirtyFixtureFiles(project, 9);
+
+    const session = runNodeHook(
+      project,
+      path.join(project, ".anamnesis", "codex-native-hooks", "session-start.mjs"),
+      {
+        hook_event_name: "SessionStart",
+        cwd: project,
+      },
+    );
+    if (session.status !== 0) {
+      return commandResult(command, start, "fail", hookFailureDetail(session));
+    }
+    const sessionContext = parseAdditionalContext(session.stdout);
+    if (
+      !sessionContext.includes("=== anamnesis: ontology context ===") ||
+      !sessionContext.includes("=== anamnesis: handoff ===")
+    ) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        "SessionStart wrapper did not return ontology and handoff context",
+      );
+    }
+
+    const postToolUse = runNodeHook(
+      project,
+      path.join(
+        project,
+        ".anamnesis",
+        "codex-native-hooks",
+        "base-PostToolUse-Edit-remind-uncommitted.mjs",
+      ),
+      {
+        hook_event_name: "PostToolUse",
+        cwd: project,
+        tool_name: "apply_patch",
+        tool_input: {
+          command: [
+            "*** Begin Patch",
+            "*** Update File: dirty-0.txt",
+            "@@",
+            "-old",
+            "+new",
+            "*** End Patch",
+          ].join("\n"),
+        },
+      },
+    );
+    if (postToolUse.status !== 0) {
+      return commandResult(command, start, "fail", hookFailureDetail(postToolUse));
+    }
+    const postContext = parseAdditionalContext(postToolUse.stdout);
+    if (!postContext.includes("uncommitted changes")) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        "PostToolUse wrapper did not surface dirty-work reminder context",
+      );
+    }
+
+    const stop = runNodeHook(
+      project,
+      path.join(
+        project,
+        ".anamnesis",
+        "codex-native-hooks",
+        "base-Stop-handoff-reminder.mjs",
+      ),
+      {
+        hook_event_name: "Stop",
+        cwd: project,
+      },
+    );
+    if (stop.status !== 0) {
+      return commandResult(command, start, "fail", hookFailureDetail(stop));
+    }
+    const stopDecision = parseStopDecision(stop.stdout);
+    if (
+      stopDecision.decision !== "block" ||
+      !stopDecision.reason.includes("/handoff-prepare")
+    ) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        "Stop wrapper did not block with handoff reminder reason",
+      );
+    }
+
+    return commandResult(
+      command,
+      start,
+      "pass",
+      "synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers",
+    );
+  } catch (e) {
+    return commandResult(
+      command,
+      start,
+      "fail",
+      e instanceof Error ? e.message : String(e),
+    );
+  } finally {
+    if (project !== undefined) {
+      fs.rmSync(project, { recursive: true, force: true });
+    }
+  }
+}
+
+function runRealCodexNativeSmokeIfEnabled(): CommandCheck {
+  const command = ["anamnesis", "dogfood", "real-codex-native-smoke"];
+  const start = Date.now();
+  if (process.env.ANAMNESIS_REAL_CODEX_SMOKE !== "1") {
+    return commandResult(
+      command,
+      start,
+      "skipped",
+      "set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke",
+    );
+  }
+
+  let codexHome: string | undefined;
+  let project: string | undefined;
+  try {
+    codexHome = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-home-"));
+    project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-real-"));
+    const sentinel = path.join(project, "codex-hook-sentinel.log");
+    const hookPath = path.join(codexHome, "session-start-smoke.mjs");
+    fs.writeFileSync(
+      path.join(codexHome, "config.toml"),
+      "[features]\ncodex_hooks = true\n",
+      "utf8",
+    );
+    fs.writeFileSync(hookPath, realCodexSmokeHookScript(), "utf8");
+    fs.writeFileSync(
+      path.join(codexHome, "hooks.json"),
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                matcher: "startup|resume|clear",
+                hooks: [
+                  {
+                    type: "command",
+                    command: `node "${hookPath}"`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = spawnSync(
+      "codex",
+      [
+        "exec",
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "--sandbox",
+        "workspace-write",
+        "Return exactly OK.",
+      ],
+      {
+        cwd: project,
+        env: {
+          ...process.env,
+          CODEX_HOME: codexHome,
+          ANAMNESIS_CODEX_SMOKE_SENTINEL: sentinel,
+        },
+        input: "",
+        encoding: "utf8",
+        timeout: 30_000,
+      },
+    );
+
+    if (!fs.existsSync(sentinel)) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        hookFailureDetail(result) || "Codex CLI did not invoke the SessionStart hook",
+      );
+    }
+    const sentinelText = fs.readFileSync(sentinel, "utf8");
+    if (!sentinelText.includes("SessionStart")) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        "Codex CLI invoked the hook but did not pass a SessionStart payload",
+      );
+    }
+    const authFailed = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.includes(
+      "401 Unauthorized",
+    );
+    const suffix =
+      result.status === 0
+        ? "and completed the model turn"
+        : authFailed
+          ? "before expected isolated-CODEX_HOME auth failure"
+          : `before Codex exited ${result.status ?? "unknown"}`;
+    return commandResult(
+      command,
+      start,
+      "pass",
+      `real Codex CLI invoked SessionStart hook ${suffix}`,
+    );
+  } catch (e) {
+    return commandResult(
+      command,
+      start,
+      "fail",
+      e instanceof Error ? e.message : String(e),
+    );
+  } finally {
+    if (project !== undefined) {
+      fs.rmSync(project, { recursive: true, force: true });
+    }
+    if (codexHome !== undefined) {
+      fs.rmSync(codexHome, { recursive: true, force: true });
+    }
+  }
+}
+
+function initializeGitRepo(project: string): void {
+  const result = spawnSync("git", ["init"], {
+    cwd: project,
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  if (result.status !== 0) {
+    throw new Error(hookFailureDetail(result) || "git init failed");
+  }
+}
+
+function writeActiveHandoffFixture(project: string): void {
+  const archivePath = ".anamnesis/handoff/2026-04-30T00-00-00Z.md";
+  const handoffDir = path.join(project, ".anamnesis", "handoff");
+  fs.mkdirSync(handoffDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(project, archivePath),
+    [
+      "---",
+      "created: 2026-04-30T00:00:00.000Z",
+      "agent: codex",
+      "git_ref: dogfood-fixture",
+      "---",
+      "",
+      "# Handoff - Codex native dispatch simulation",
+      "",
+      "## Goal",
+      "Synthetic native dispatch should expose this handoff to Codex.",
+      "",
+      "## Done so far",
+      "- Installed all adapter surfaces.",
+      "",
+      "## In flight",
+      "- verify Codex native dispatch",
+      "",
+      "## Decisions",
+      "- SessionStart includes active.md and latest archive.",
+      "",
+      "## Open questions / blockers",
+      "- none",
+      "",
+      "## Next steps",
+      "1. Continue the smoke.",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(handoffDir, "active.md"),
+    [
+      "---",
+      "updated: 2026-04-30T00:00:00.000Z",
+      "agent: codex",
+      "git_ref: dogfood-fixture",
+      "---",
+      "",
+      "# Active handoff index",
+      "",
+      "## Current focus",
+      `- Codex native dispatch simulation - archive: \`${archivePath}\``,
+      "",
+      "## Active tasks",
+      `- [in-flight] Codex native dispatch simulation - next: verify hook JSON output - archive: \`${archivePath}\``,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
+function writeDirtyFixtureFiles(project: string, count: number): void {
+  const newerThanHandoff = new Date(Date.now() + 5_000);
+  for (let i = 0; i < count; i++) {
+    const file = path.join(project, `dirty-${i}.txt`);
+    fs.writeFileSync(file, `dirty ${i}\n`, "utf8");
+    fs.utimesSync(file, newerThanHandoff, newerThanHandoff);
+  }
+}
+
+function runNodeHook(
+  project: string,
+  hookPath: string,
+  payload: Record<string, unknown>,
+): ReturnType<typeof spawnSync> {
+  return spawnSync(process.execPath, [hookPath], {
+    cwd: project,
+    input: JSON.stringify(payload),
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+}
+
+function parseAdditionalContext(stdout: string | Buffer | null): string {
+  const parsed = parseJsonLine(stdout);
+  const hookSpecificOutput = safeRecord(parsed.hookSpecificOutput);
+  return typeof hookSpecificOutput.additionalContext === "string"
+    ? hookSpecificOutput.additionalContext
+    : "";
+}
+
+function parseStopDecision(
+  stdout: string | Buffer | null,
+): { decision: string; reason: string } {
+  const parsed = parseJsonLine(stdout);
+  return {
+    decision: typeof parsed.decision === "string" ? parsed.decision : "",
+    reason: typeof parsed.reason === "string" ? parsed.reason : "",
+  };
+}
+
+function parseJsonLine(stdout: string | Buffer | null): Record<string, unknown> {
+  const text = typeof stdout === "string" ? stdout.trim() : "";
+  const firstLine = text.split(/\r?\n/).find((line) => line.trim().startsWith("{"));
+  if (!firstLine) return {};
+  try {
+    return safeRecord(JSON.parse(firstLine));
+  } catch {
+    return {};
+  }
+}
+
+function safeRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function hookFailureDetail(result: {
+  status?: number | null;
+  stdout?: string | Buffer | null;
+  stderr?: string | Buffer | null;
+  error?: Error;
+}): string {
+  const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
+  const stdout = typeof result.stdout === "string" ? result.stdout.trim() : "";
+  return (
+    stderr ||
+    stdout ||
+    result.error?.message ||
+    (result.status !== undefined && result.status !== null
+      ? `exit ${result.status}`
+      : "")
+  );
+}
+
+function realCodexSmokeHookScript(): string {
+  return `import fs from "node:fs";
+
+const chunks = [];
+for await (const chunk of process.stdin) {
+  chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+}
+const raw = Buffer.concat(chunks).toString("utf8");
+const sentinel = process.env.ANAMNESIS_CODEX_SMOKE_SENTINEL;
+if (sentinel) {
+  fs.appendFileSync(sentinel, (raw || "{}") + "\\n---\\n");
+}
+process.stdout.write(JSON.stringify({
+  hookSpecificOutput: {
+    hookEventName: "SessionStart",
+    additionalContext: "ANAMNESIS_REAL_CODEX_HOOK_SMOKE",
+  },
+}) + "\\n");
+`;
+}
+
 function requiredHandoffEvidence(archivePath: string): string[] {
   return [
     "Source: .anamnesis/handoff/active.md",
@@ -500,6 +912,15 @@ function requiredHandoffEvidence(archivePath: string): string[] {
 }
 
 function handoffSimulationResult(
+  command: string[],
+  start: number,
+  outcome: CheckOutcome,
+  detail: string,
+): CommandCheck {
+  return commandResult(command, start, outcome, detail);
+}
+
+function commandResult(
   command: string[],
   start: number,
   outcome: CheckOutcome,
@@ -546,6 +967,7 @@ function runCommand(cmd: string[], opts: { cwd: string }): CommandCheck {
   const bin = process.platform === "win32" && cmd[0] === "npm" ? "npm.cmd" : cmd[0]!;
   const result = spawnSync(bin, cmd.slice(1), {
     cwd: opts.cwd,
+    env: withoutRecursiveDogfoodEnv(process.env),
     encoding: "utf8",
     stdio: "pipe",
   });
@@ -565,6 +987,14 @@ function runCommand(cmd: string[], opts: { cwd: string }): CommandCheck {
   };
 }
 
+function withoutRecursiveDogfoodEnv(
+  env: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const next = { ...env };
+  delete next.ANAMNESIS_REAL_CODEX_SMOKE;
+  return next;
+}
+
 function scoreCriteria(
   st: StatusResult,
   doc: DoctorResult,
@@ -576,13 +1006,17 @@ function scoreCriteria(
   const codexHooksReady =
     !tools.has("codex") ||
     (st.codexHooks.readable && st.codexHooks.summary.warnings === 0);
+  const failedChecks = checks.filter((c) => c.outcome === "fail");
+  const hasPassingCheck = (namePart: string): boolean =>
+    checks.some((c) => c.outcome === "pass" && c.name.includes(namePart));
   const verificationPassed =
     checks.length > 0 &&
-    checks.every((c) => c.outcome === "pass") &&
-    checks.some((c) => c.name.includes("simulate-handoff")) &&
-    checks.some((c) => c.name.includes("simulate-stale-handoff")) &&
-    checks.some((c) => c.name.includes("typecheck")) &&
-    checks.some((c) => c.name.includes("test"));
+    failedChecks.length === 0 &&
+    hasPassingCheck("simulate-handoff") &&
+    hasPassingCheck("simulate-stale-handoff") &&
+    hasPassingCheck("simulate-codex-native-dispatch") &&
+    hasPassingCheck("typecheck") &&
+    hasPassingCheck("test");
 
   return [
     {

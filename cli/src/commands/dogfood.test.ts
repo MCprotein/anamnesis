@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -49,6 +49,10 @@ function setupDogfoodProject(): { project: string; library: string } {
 }
 
 describe("dogfoodCheck", () => {
+  beforeEach(() => {
+    delete process.env.ANAMNESIS_REAL_CODEX_SMOKE;
+  });
+
   it("scores a fully rendered cross-agent project and appends markdown", () => {
     const { project, library } = setupDogfoodProject();
     const result = dogfoodCheck({
@@ -74,6 +78,17 @@ describe("dogfoodCheck", () => {
     expect(result.checks.map((c) => c.name)).toContain(
       "anamnesis dogfood simulate-stale-handoff",
     );
+    expect(result.checks.map((c) => c.name)).toContain(
+      "anamnesis dogfood simulate-codex-native-dispatch",
+    );
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "anamnesis dogfood real-codex-native-smoke",
+          outcome: "skipped",
+        }),
+      ]),
+    );
 
     const text = fs.readFileSync(path.join(project, "docs", "DOGFOOD.md"), "utf8");
     expect(text).toContain("Automated Self-Check — 2026-04-30T08:00:00.000Z");
@@ -84,8 +99,11 @@ describe("dogfoodCheck", () => {
     expect(text).toContain("Ontology gaps:");
     expect(text).toContain("`anamnesis dogfood simulate-handoff`");
     expect(text).toContain("`anamnesis dogfood simulate-stale-handoff`");
+    expect(text).toContain("`anamnesis dogfood simulate-codex-native-dispatch`");
+    expect(text).toContain("`anamnesis dogfood real-codex-native-smoke`");
     expect(text).toContain("active.md and latest archive injected");
     expect(text).toContain("status and doctor detect active.md");
+    expect(text).toContain("synthetic Codex JSON dispatch");
   });
 
   it("compares the score with the previous appended result", () => {
@@ -111,6 +129,37 @@ describe("dogfoodCheck", () => {
     const text = fs.readFileSync(path.join(project, "docs", "DOGFOOD.md"), "utf8");
     expect(text).toContain(
       "Continuity readiness score: 5/5 (improved vs previous 4/5)",
+    );
+  });
+
+  it("does not count skipped required verification scripts as passing", () => {
+    const { project, library } = setupDogfoodProject();
+    fs.writeFileSync(
+      path.join(project, "package.json"),
+      JSON.stringify({ scripts: {} }, null, 2),
+    );
+
+    const result = dogfoodCheck({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-04-30T10:00:00.000Z"),
+      runner: (cmd) => passRunner(cmd),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.criteria).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "verification-strength",
+          status: "fail",
+        }),
+      ]),
+    );
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "npm typecheck", outcome: "skipped" }),
+        expect.objectContaining({ name: "npm test", outcome: "skipped" }),
+      ]),
     );
   });
 });
