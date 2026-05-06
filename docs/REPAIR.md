@@ -55,6 +55,13 @@ If `doctor` reports missing Codex native hook config, use the same update
 command. anamnesis merges `.codex/config.toml` and `.codex/hooks.json`
 structurally and preserves non-anamnesis hook entries.
 
+If `status` shows Codex hook ownership warnings or `doctor` reports
+`codex-hook-ownership-warning`, inspect `.codex/hooks.json` before deleting
+anything. User, plugin, and OMX entries are allowed to coexist with anamnesis
+entries. Repair only duplicated commands, malformed matcher entries, or older
+anamnesis-managed commands that use relative project paths; then re-run
+`anamnesis doctor`.
+
 ## Partial Adapter Install
 
 If a project was installed for one agent and later needs all supported agents,

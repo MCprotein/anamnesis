@@ -401,6 +401,8 @@ describe("status — continuity readiness", () => {
       "adapter-surfaces",
       "managed-drift",
     ]);
+    expect(r.codexHooks.summary.anamnesis).toBeGreaterThan(0);
+    expect(r.codexHooks.summary.warnings).toBe(0);
   });
 
   it("reports the missing adapter surface when an enabled fallback file is absent", () => {

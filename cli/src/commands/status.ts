@@ -46,9 +46,11 @@ import { makeBuiltinIntrospectorRegistry } from "../introspectors/index.js";
 import {
   CODEX_CONFIG_PATH,
   CODEX_HOOKS_PATH,
+  analyzeCodexHookOwnership,
   codexHookRegistrationPresent,
   codexHooksFeatureEnabled,
   codexNativeNodeCommand,
+  type CodexHookOwnershipReport,
 } from "../core/codex_native.js";
 
 // ---------------------------------------------------------------------------
@@ -144,6 +146,8 @@ export interface StatusResult {
   scopes: ScopeStatus[];
   /** Continuity readiness for the adapters enabled in this Agentfile. */
   continuity: ContinuityStatus;
+  /** Ownership and advisory warnings for co-installed Codex native hooks. */
+  codexHooks: CodexHookOwnershipReport;
   /** Ontology lifecycle gaps across static, bootstrap, and enriched layers. */
   ontology: OntologyGapStatus;
   suggested: Rule[];
@@ -331,6 +335,7 @@ export function status(opts: StatusOptions): StatusResult {
     library,
     registry: makeBuiltinIntrospectorRegistry(),
   });
+  const codexHooks = analyzeProjectCodexHookOwnership(projectRoot);
 
   // Summary counts.
   const summary = {
@@ -365,6 +370,7 @@ export function status(opts: StatusOptions): StatusResult {
     entries,
     scopes,
     continuity,
+    codexHooks,
     ontology,
     suggested,
     declined,
@@ -749,6 +755,21 @@ function codexHookTargetReady(
     });
   } catch {
     return false;
+  }
+}
+
+function analyzeProjectCodexHookOwnership(
+  projectRoot: string,
+): CodexHookOwnershipReport {
+  const fp = path.join(projectRoot, CODEX_HOOKS_PATH);
+  if (!fs.existsSync(fp)) return analyzeCodexHookOwnership(undefined);
+  try {
+    return analyzeCodexHookOwnership(fs.readFileSync(fp, "utf8"));
+  } catch (e) {
+    return {
+      ...analyzeCodexHookOwnership(undefined),
+      parseError: `${CODEX_HOOKS_PATH} could not be read: ${(e as Error).message}`,
+    };
   }
 }
 

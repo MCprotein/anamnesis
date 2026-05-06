@@ -28,6 +28,43 @@ export interface CodexHookSyncResult {
   status: CodexHookSyncStatus;
 }
 
+export type CodexHookOwner = "anamnesis" | "omx" | "plugin" | "user" | "invalid";
+
+export interface CodexHookOwnershipEntry {
+  event: string;
+  matcher?: string;
+  entryIndex: number;
+  hookIndex: number;
+  type?: string;
+  command?: string;
+  owner: CodexHookOwner;
+}
+
+export type CodexHookOwnershipWarningKind =
+  | "duplicate-command"
+  | "relative-managed-command"
+  | "malformed-entry";
+
+export interface CodexHookOwnershipWarning {
+  kind: CodexHookOwnershipWarningKind;
+  event?: string;
+  matcher?: string;
+  command?: string;
+  detail: string;
+}
+
+export interface CodexHookOwnershipReport {
+  readable: boolean;
+  parseError?: string;
+  entries: CodexHookOwnershipEntry[];
+  warnings: CodexHookOwnershipWarning[];
+  summary: Record<CodexHookOwner, number> & {
+    total: number;
+    duplicates: number;
+    warnings: number;
+  };
+}
+
 type JsonObject = Record<string, unknown>;
 
 interface MatcherEntry {
@@ -60,6 +97,232 @@ export function codexNativeNodeCommand(scriptPath: string): string {
 export function codexHooksFeatureEnabled(content: string): boolean {
   return /^\s*codex_hooks\s*=\s*true\s*(?:#.*)?$/m.test(
     featureSection(content),
+  );
+}
+
+export function analyzeCodexHookOwnership(
+  content: string | null | undefined,
+): CodexHookOwnershipReport {
+  const entries: CodexHookOwnershipEntry[] = [];
+  const warnings: CodexHookOwnershipWarning[] = [];
+  const emptySummary = (): CodexHookOwnershipReport["summary"] => ({
+    total: 0,
+    anamnesis: 0,
+    omx: 0,
+    plugin: 0,
+    user: 0,
+    invalid: 0,
+    duplicates: 0,
+    warnings: 0,
+  });
+
+  if (typeof content !== "string") {
+    return {
+      readable: false,
+      parseError: `${CODEX_HOOKS_PATH} is missing`,
+      entries,
+      warnings,
+      summary: emptySummary(),
+    };
+  }
+
+  const parsed = readJsonObject(content);
+  if (!parsed) {
+    return {
+      readable: false,
+      parseError: `${CODEX_HOOKS_PATH} is not valid JSON object content`,
+      entries,
+      warnings,
+      summary: emptySummary(),
+    };
+  }
+
+  if (!isPlainObject(parsed.hooks)) {
+    return {
+      readable: true,
+      entries,
+      warnings,
+      summary: emptySummary(),
+    };
+  }
+
+  for (const [event, eventEntries] of Object.entries(parsed.hooks)) {
+    if (!Array.isArray(eventEntries)) {
+      warnings.push({
+        kind: "malformed-entry",
+        event,
+        detail: `hooks.${event} is not an array`,
+      });
+      entries.push({
+        event,
+        entryIndex: 0,
+        hookIndex: 0,
+        owner: "invalid",
+      });
+      continue;
+    }
+
+    eventEntries.forEach((entry, entryIndex) => {
+      if (!isPlainObject(entry)) {
+        warnings.push({
+          kind: "malformed-entry",
+          event,
+          detail: `hooks.${event}[${entryIndex}] is not an object`,
+        });
+        entries.push({
+          event,
+          entryIndex,
+          hookIndex: 0,
+          owner: "invalid",
+        });
+        return;
+      }
+
+      const matcher =
+        typeof entry.matcher === "string" ? entry.matcher : undefined;
+      if (!Array.isArray(entry.hooks)) {
+        warnings.push({
+          kind: "malformed-entry",
+          event,
+          matcher,
+          detail: `hooks.${event}[${entryIndex}].hooks is not an array`,
+        });
+        entries.push({
+          event,
+          matcher,
+          entryIndex,
+          hookIndex: 0,
+          owner: "invalid",
+        });
+        return;
+      }
+
+      entry.hooks.forEach((hook, hookIndex) => {
+        if (!isPlainObject(hook)) {
+          warnings.push({
+            kind: "malformed-entry",
+            event,
+            matcher,
+            detail: `hooks.${event}[${entryIndex}].hooks[${hookIndex}] is not an object`,
+          });
+          entries.push({
+            event,
+            matcher,
+            entryIndex,
+            hookIndex,
+            owner: "invalid",
+          });
+          return;
+        }
+
+        const type = typeof hook.type === "string" ? hook.type : undefined;
+        const command =
+          typeof hook.command === "string" ? hook.command : undefined;
+        const owner = classifyCodexHookOwner(command, type);
+        entries.push({
+          event,
+          matcher,
+          entryIndex,
+          hookIndex,
+          type,
+          command,
+          owner,
+        });
+
+        if (
+          owner === "anamnesis" &&
+          command !== undefined &&
+          codexManagedCommandIsRelative(command)
+        ) {
+          warnings.push({
+            kind: "relative-managed-command",
+            event,
+            matcher,
+            command,
+            detail:
+              "anamnesis-managed Codex hook command uses a relative project path; refresh it so it resolves from the Git root.",
+          });
+        }
+      });
+    });
+  }
+
+  const seen = new Map<string, number>();
+  for (const entry of entries) {
+    if (!entry.command) continue;
+    const key = [
+      entry.event,
+      entry.matcher ?? "",
+      entry.command,
+    ].join("\u0000");
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  }
+  for (const [key, count] of seen) {
+    if (count < 2) continue;
+    const [event, matcher, command] = key.split("\u0000");
+    warnings.push({
+      kind: "duplicate-command",
+      event,
+      matcher: matcher || undefined,
+      command,
+      detail: `Codex hook command is registered ${count} times for ${event}${matcher ? `:${matcher}` : ""}`,
+    });
+  }
+
+  const summary = emptySummary();
+  for (const entry of entries) {
+    summary.total += 1;
+    summary[entry.owner] += 1;
+  }
+  summary.duplicates = warnings.filter((w) => w.kind === "duplicate-command")
+    .length;
+  summary.warnings = warnings.length;
+
+  return {
+    readable: true,
+    entries,
+    warnings,
+    summary,
+  };
+}
+
+function classifyCodexHookOwner(
+  command: string | undefined,
+  type: string | undefined,
+): CodexHookOwner {
+  if (type !== undefined && type !== "command") return "user";
+  if (!command) return "user";
+  const normalized = command.replace(/\\/g, "/");
+  if (
+    normalized.includes(".anamnesis/codex-native-hooks/") ||
+    normalized.includes(".anamnesis/codex-hooks/")
+  ) {
+    return "anamnesis";
+  }
+  if (
+    normalized.includes("oh-my-codex") ||
+    normalized.includes("codex-native-hook.js") ||
+    normalized.includes("/.omx/") ||
+    /\bomx(\s|$)/.test(normalized)
+  ) {
+    return "omx";
+  }
+  if (
+    normalized.includes(".codex-plugin/") ||
+    normalized.includes(".codex/plugins/") ||
+    normalized.includes("plugin://")
+  ) {
+    return "plugin";
+  }
+  return "user";
+}
+
+function codexManagedCommandIsRelative(command: string): boolean {
+  const normalized = command.replace(/\\/g, "/");
+  return (
+    normalized.includes(".anamnesis/codex-native-hooks/") &&
+    !normalized.includes("git rev-parse --show-toplevel") &&
+    !normalized.includes("$root/.anamnesis/")
   );
 }
 

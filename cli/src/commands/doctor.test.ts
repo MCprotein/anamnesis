@@ -355,6 +355,34 @@ fragments:
     );
   });
 
+  it("reports advisory Codex hook ownership warnings", () => {
+    const { project, library } = installContinuityProject();
+    const hooksPath = path.join(project, ".codex", "hooks.json");
+    const hooksConfig = JSON.parse(fs.readFileSync(hooksPath, "utf8")) as {
+      hooks: Record<string, Array<{ hooks: Array<Record<string, unknown>> }>>;
+    };
+    hooksConfig.hooks.SessionStart![0]!.hooks.push({
+      type: "command",
+      command: 'node ".anamnesis/codex-native-hooks/session-start.mjs"',
+    });
+    fs.writeFileSync(hooksPath, JSON.stringify(hooksConfig, null, 2));
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "codex-hook-ownership-warning",
+          target: ".codex/hooks.json",
+          message: expect.stringContaining("relative project path"),
+          repair: expect.stringContaining("--allow-exec-adapters"),
+        }),
+      ]),
+    );
+  });
+
   it("reports declined entries that no longer match the current rulebook", () => {
     const { project, library } = installContinuityProject();
     const af = readAgentfile(project);

@@ -573,6 +573,9 @@ function scoreCriteria(
   const tools = new Set(st.agentfile.tools);
   const allToolsEnabled = SUPPORTED_TOOLS.every((t) => tools.has(t));
   const continuity = new Map(st.continuity.checks.map((c) => [c.id, c]));
+  const codexHooksReady =
+    !tools.has("codex") ||
+    (st.codexHooks.readable && st.codexHooks.summary.warnings === 0);
   const verificationPassed =
     checks.length > 0 &&
     checks.every((c) => c.outcome === "pass") &&
@@ -619,13 +622,15 @@ function scoreCriteria(
       status:
         doc.ok &&
         st.continuity.ready &&
-        continuity.get("managed-drift")?.status === "pass"
+        continuity.get("managed-drift")?.status === "pass" &&
+        codexHooksReady
           ? "pass"
           : "fail",
       detail:
         `doctor ${doc.summary.errors} error(s), ${doc.summary.warnings} warning(s); ` +
         `status continuity ready=${st.continuity.ready}; ` +
-        `ontology gaps warnings=${st.ontology.summary.warnings}`,
+        `ontology gaps warnings=${st.ontology.summary.warnings}; ` +
+        `codex hook warnings=${st.codexHooks.summary.warnings}`,
     },
     {
       id: "verification-strength",
@@ -685,6 +690,7 @@ function renderMarkdown(input: {
     `Fragments: ${input.st.fragments.map((f) => `${f.id}@${f.installedVersion}:${f.status}`).join(", ")}`,
     `Drift: ${input.st.summary.entriesClean} clean, ${input.st.summary.entriesUserModified} modified, ${input.st.summary.entriesMissing} missing`,
     `Status continuity: ${input.st.continuity.ready ? "ready" : "issues"} (${input.st.continuity.passed}/${input.st.continuity.total})`,
+    `Codex hooks: ${input.st.codexHooks.summary.total} total (anamnesis ${input.st.codexHooks.summary.anamnesis}, omx ${input.st.codexHooks.summary.omx}, plugin ${input.st.codexHooks.summary.plugin}, user ${input.st.codexHooks.summary.user}, invalid ${input.st.codexHooks.summary.invalid}, warnings ${input.st.codexHooks.summary.warnings})`,
     `Doctor: ${input.doc.ok ? "ok" : "issues"} (${input.doc.summary.errors} errors, ${input.doc.summary.warnings} warnings)`,
     `Ontology gaps: ${input.st.ontology.summary.warnings} warning(s), ${input.st.ontology.summary.info} info`,
     `Ontology bootstrap dry-run: ${bootstrapSummary}`,

@@ -409,6 +409,29 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   for (const check of continuity.checks.filter((c) => c.status === "fail")) {
     console.log(`    fail ${check.label}: ${check.detail}`);
   }
+  const codexHooks = result.codexHooks;
+  if (
+    agentfile.tools.includes("codex") ||
+    codexHooks.summary.total > 0 ||
+    codexHooks.parseError
+  ) {
+    if (codexHooks.readable) {
+      const s = codexHooks.summary;
+      console.log(
+        `  codex hooks: ${s.total} total (anamnesis ${s.anamnesis}, omx ${s.omx}, plugin ${s.plugin}, user ${s.user}, invalid ${s.invalid}; warnings ${s.warnings})`,
+      );
+      for (const warning of codexHooks.warnings.slice(0, 3)) {
+        console.log(`    warning ${warning.kind}: ${warning.detail}`);
+      }
+      if (codexHooks.warnings.length > 3) {
+        console.log(
+          `    ... ${codexHooks.warnings.length - 3} more hook warning(s)`,
+        );
+      }
+    } else {
+      console.log(`  codex hooks: unavailable (${codexHooks.parseError})`);
+    }
+  }
   const ontology = result.ontology;
   console.log(
     `  ontology gaps: ${ontology.summary.warnings} warning(s), ${ontology.summary.info} info`,

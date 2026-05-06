@@ -45,8 +45,10 @@ import {
 import {
   CODEX_CONFIG_PATH,
   CODEX_HOOKS_PATH,
+  analyzeCodexHookOwnership,
   codexHookRegistrationPresent,
   codexHooksFeatureEnabled,
+  type CodexHookOwnershipWarning,
   type CodexHookRegistration,
 } from "../core/codex_native.js";
 import { status, type ContinuityCheck, type StatusResult } from "./status.js";
@@ -72,6 +74,7 @@ export type DoctorIssueCode =
   | "codex-hook-config-invalid"
   | "hook-registration-missing"
   | "codex-hook-registration-missing"
+  | "codex-hook-ownership-warning"
   | "continuity-project-memory-missing"
   | "continuity-ontology-missing"
   | "continuity-handoff-missing"
@@ -639,6 +642,37 @@ function addCodexHookIssues(
       repair:
         "Re-run `anamnesis update --apply --allow-exec-adapters` after reviewing any user-modified managed hook files.",
     });
+  }
+
+  addCodexHookOwnershipWarnings(hooksContent, issues);
+}
+
+function addCodexHookOwnershipWarnings(
+  hooksContent: string,
+  issues: DoctorIssue[],
+): void {
+  const ownership = analyzeCodexHookOwnership(hooksContent);
+  for (const warning of ownership.warnings) {
+    issues.push({
+      severity: "warning",
+      code: "codex-hook-ownership-warning",
+      target: CODEX_HOOKS_PATH,
+      message: warning.detail,
+      repair: codexHookOwnershipRepair(warning),
+    });
+  }
+}
+
+function codexHookOwnershipRepair(
+  warning: CodexHookOwnershipWarning,
+): string {
+  switch (warning.kind) {
+    case "duplicate-command":
+      return "Remove the duplicate hook entry, or re-run `anamnesis update --apply --allow-exec-adapters` so managed anamnesis hook commands are refreshed without duplicating user hooks.";
+    case "relative-managed-command":
+      return "Re-run `anamnesis update --apply --allow-exec-adapters` to replace older relative anamnesis hook commands with Git-root-resolving wrappers.";
+    case "malformed-entry":
+      return "Fix `.codex/hooks.json` so every event maps to matcher entries with a `hooks` array, then re-run `anamnesis doctor`.";
   }
 }
 

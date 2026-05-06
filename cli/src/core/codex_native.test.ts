@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  analyzeCodexHookOwnership,
   codexHookRegistrationPresent,
   codexHooksFeatureEnabled,
   codexNativeNodeCommand,
@@ -123,5 +124,75 @@ describe("Codex native hook config helpers", () => {
     ).map((hook) => hook.command);
 
     expect(commands).toEqual([sessionStartReg.command]);
+  });
+
+  it("classifies co-installed Codex native hook owners", () => {
+    const report = analyzeCodexHookOwnership(
+      JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              matcher: "startup|resume|clear",
+              hooks: [
+                { type: "command", command: sessionStartReg.command },
+                {
+                  type: "command",
+                  command:
+                    "node /tmp/oh-my-codex/dist/scripts/codex-native-hook.js",
+                },
+                {
+                  type: "command",
+                  command: "node .codex/plugins/example/hook.mjs",
+                },
+                { type: "command", command: "echo user" },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(report.readable).toBe(true);
+    expect(report.summary).toMatchObject({
+      total: 4,
+      anamnesis: 1,
+      omx: 1,
+      plugin: 1,
+      user: 1,
+      invalid: 0,
+      warnings: 0,
+    });
+  });
+
+  it("warns about duplicate and older relative managed commands", () => {
+    const relativeCommand =
+      'node ".anamnesis/codex-native-hooks/session-start.mjs"';
+    const report = analyzeCodexHookOwnership(
+      JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              matcher: "startup|resume|clear",
+              hooks: [
+                { type: "command", command: relativeCommand },
+                { type: "command", command: relativeCommand },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(report.summary).toMatchObject({
+      total: 2,
+      anamnesis: 2,
+      duplicates: 1,
+      warnings: 3,
+    });
+    expect(report.warnings.map((warning) => warning.kind)).toEqual([
+      "relative-managed-command",
+      "relative-managed-command",
+      "duplicate-command",
+    ]);
   });
 });

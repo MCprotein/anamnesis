@@ -19,6 +19,12 @@ could include breaking changes.
   `.anamnesis/codex-native-hooks/*.mjs` and registered in `.codex/hooks.json`
   for Codex-supported events such as `PostToolUse` and `Stop`, while keeping
   AGENTS.md and git pre-commit fallbacks.
+- Added shared Codex hook ownership diagnostics. `status` now summarizes
+  `.codex/hooks.json` entries by anamnesis, OMX, plugin, user, and invalid
+  ownership, and `doctor` warns about duplicated commands, malformed entries,
+  and older relative anamnesis-managed hook commands.
+- Added Codex hook warning counts to automated dogfood self-check records so
+  version-to-version continuity reports capture hook ownership health.
 
 ### Changed
 
