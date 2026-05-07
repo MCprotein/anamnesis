@@ -275,6 +275,11 @@ Flags (status / doctor):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
 
+Flags (doctor):
+  --append                      Append markdown to docs/DOCTOR.md and record
+                                  runtime evidence
+  --output <path>               Override doctor check log path
+
 Flags (status):
   --json                        Print structured JSON for CI/tools
 
@@ -564,6 +569,7 @@ function reportDoctor(result: DoctorResult): void {
     )) {
       console.log(line);
     }
+    reportAppendEvidence(result.appendedPath, result.evidencePath);
     return;
   }
   for (const issue of result.issues) {
@@ -581,6 +587,19 @@ function reportDoctor(result: DoctorResult): void {
     collectGenerationBoundaryStatus(result.projectRoot),
   )) {
     console.log(line);
+  }
+  reportAppendEvidence(result.appendedPath, result.evidencePath);
+}
+
+function reportAppendEvidence(
+  appendedPath: string | undefined,
+  evidencePath: string | undefined,
+): void {
+  if (appendedPath) {
+    console.log(`  appended: ${appendedPath}`);
+  }
+  if (evidencePath) {
+    console.log(`  evidence: ${evidencePath}`);
   }
 }
 
@@ -1000,6 +1019,8 @@ async function main(argv: string[]): Promise<number> {
             (flags["project-root"] as string | undefined) ?? process.cwd(),
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          append: flags["append"] === true,
+          outputPath: flags["output"] as string | undefined,
         });
         reportDoctor(result);
         return result.ok ? 0 : 1;

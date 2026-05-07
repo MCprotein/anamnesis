@@ -176,6 +176,54 @@ describe("doctor — installation integrity", () => {
     expect(result.summary.errors).toBe(0);
   });
 
+  it("appends doctor markdown and runtime evidence", () => {
+    const { project, library } = installProject();
+
+    const result = doctor({
+      projectRoot: project,
+      libraryRoot: library,
+      append: true,
+      now: () => new Date("2026-05-07T10:00:00.000Z"),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.appendedPath).toBe("docs/DOCTOR.md");
+    expect(result.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
+    expect(result.markdown).toContain("Doctor Check — 2026-05-07T10:00:00.000Z");
+
+    const doctorText = fs.readFileSync(
+      path.join(project, "docs", "DOCTOR.md"),
+      "utf8",
+    );
+    expect(doctorText).toContain("Status: ok");
+
+    const evidenceLines = fs
+      .readFileSync(
+        path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+        "utf8",
+      )
+      .trim()
+      .split(/\r?\n/);
+    expect(evidenceLines).toHaveLength(1);
+    const evidence = JSON.parse(evidenceLines[0]!) as {
+      kind: string;
+      generated_at: string;
+      summary: { ok?: boolean; errors?: number; warnings?: number };
+      artifacts: Record<string, string>;
+    };
+    expect(evidence).toMatchObject({
+      kind: "doctor-check",
+      generated_at: "2026-05-07T10:00:00.000Z",
+      summary: {
+        ok: true,
+        errors: 0,
+      },
+      artifacts: {
+        markdown: "docs/DOCTOR.md",
+      },
+    });
+  });
+
   it("reports missing manifest as an error", () => {
     const { project, library } = installProject();
     fs.unlinkSync(path.join(project, ".anamnesis", "manifest.json"));

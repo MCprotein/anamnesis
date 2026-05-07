@@ -12,6 +12,7 @@ human-readable report.
 ## Current Writers
 
 - `anamnesis dogfood check --append`
+- `anamnesis doctor --append`
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
 - `anamnesis benchmark task --append`
@@ -19,8 +20,8 @@ human-readable report.
 
 Each record includes:
 
-- `kind`: `dogfood-check`, `benchmark-report`, `benchmark-compare`,
-  `agent-task-benchmark`, or `prompt-delta-gate`
+- `kind`: `dogfood-check`, `doctor-check`, `benchmark-report`,
+  `benchmark-compare`, `agent-task-benchmark`, or `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -33,6 +34,11 @@ Benchmark evidence records include `summary.scorecard` under schema
 instead of reducing benchmark claims to an opaque aggregate: ready layers,
 continuity checks, ontology gaps, doctor issues, Codex hook warnings, adapter
 surfaces, and evidence freshness.
+
+Doctor evidence records use kind `doctor-check`. They capture the same
+installation integrity, managed-drift, adapter wiring, Codex hook ownership,
+continuity, and ontology-gap diagnostics that `anamnesis doctor` prints, with
+summary error/warning counts and issue details.
 
 Benchmark compare evidence records include before/after scorecard deltas and
 summary counts for improved, regressed, and unchanged dimensions.
@@ -62,7 +68,7 @@ lists current evidence entries, README claim candidates, and release warnings
 such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
-`agent-task-benchmark` and `prompt-delta-gate` records.
+`doctor-check`, `agent-task-benchmark`, and `prompt-delta-gate` records.
 
 ## Boundary
 

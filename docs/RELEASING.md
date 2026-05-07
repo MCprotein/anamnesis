@@ -52,7 +52,8 @@ Every version bump must end in one of two explicit states:
    ```
 
    This verifies dogfood continuity, benchmark gallery freshness, the
-   prompt-time context delta gate, and the distribution build.
+   standalone doctor diagnostics, the prompt-time context delta gate, and the
+   distribution build.
 
 4. Commit the release changes.
 5. Tag the commit:

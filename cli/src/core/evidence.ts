@@ -6,6 +6,7 @@ export const EVIDENCE_SCHEMA_VERSION = "anamnesis.evidence.v1";
 
 export type EvidenceKind =
   | "dogfood-check"
+  | "doctor-check"
   | "benchmark-report"
   | "benchmark-compare"
   | "agent-task-benchmark"
@@ -97,6 +98,7 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
   return (
     record.schema_version === EVIDENCE_SCHEMA_VERSION &&
     (record.kind === "dogfood-check" ||
+      record.kind === "doctor-check" ||
       record.kind === "benchmark-report" ||
       record.kind === "benchmark-compare" ||
       record.kind === "agent-task-benchmark" ||

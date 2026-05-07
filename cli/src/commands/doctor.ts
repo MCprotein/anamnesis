@@ -51,6 +51,11 @@ import {
   type CodexHookOwnershipWarning,
   type CodexHookRegistration,
 } from "../core/codex_native.js";
+import {
+  appendEvidenceRecord,
+  EVIDENCE_SCHEMA_VERSION,
+  type RuntimeEvidenceRecord,
+} from "../core/evidence.js";
 import { status, type ContinuityCheck, type StatusResult } from "./status.js";
 
 // ---------------------------------------------------------------------------
@@ -100,17 +105,24 @@ export interface DoctorIssue {
 export interface DoctorResult {
   projectRoot: string;
   libraryRoot: string;
+  generatedAt: string;
   ok: boolean;
   issues: DoctorIssue[];
   summary: {
     errors: number;
     warnings: number;
   };
+  markdown: string;
+  appendedPath?: string;
+  evidencePath?: string;
 }
 
 export interface DoctorOptions {
   projectRoot: string;
   libraryRoot: string;
+  append?: boolean;
+  outputPath?: string;
+  now?: () => Date;
 }
 
 export class DoctorError extends Error {
@@ -127,6 +139,7 @@ export class DoctorError extends Error {
 export function doctor(opts: DoctorOptions): DoctorResult {
   const projectRoot = path.resolve(opts.projectRoot);
   const libraryRoot = path.resolve(opts.libraryRoot);
+  const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
 
   if (!findAgentfile(projectRoot)) {
     throw new DoctorError(
@@ -187,12 +200,53 @@ export function doctor(opts: DoctorOptions): DoctorResult {
 
   const errors = issues.filter((i) => i.severity === "error").length;
   const warnings = issues.length - errors;
+  const summary = { errors, warnings };
+  const ok = errors === 0;
+  const markdown = renderDoctorMarkdown({
+    generatedAt,
+    projectName: agentfile.project.name,
+    ok,
+    issues,
+    summary,
+  });
+
+  let appendedPath: string | undefined;
+  let evidencePath: string | undefined;
+  if (opts.append === true) {
+    const outputPath = path.resolve(
+      projectRoot,
+      opts.outputPath ?? path.join("docs", "DOCTOR.md"),
+    );
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    const prefix =
+      fs.existsSync(outputPath) && fs.readFileSync(outputPath, "utf8").trim() !== ""
+        ? "\n\n"
+        : "";
+    fs.appendFileSync(outputPath, `${prefix}${markdown}\n`, "utf8");
+    appendedPath = displayPathFromProject(projectRoot, outputPath);
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      doctorEvidenceRecord({
+        generatedAt,
+        projectName: agentfile.project.name,
+        ok,
+        issues,
+        summary,
+        appendedPath,
+      }),
+    );
+  }
+
   return {
     projectRoot,
     libraryRoot,
-    ok: errors === 0,
+    generatedAt,
+    ok,
     issues,
-    summary: { errors, warnings },
+    summary,
+    markdown,
+    appendedPath,
+    evidencePath,
   };
 }
 
@@ -717,6 +771,82 @@ function dedupeActions(actions: RenderAction[]): RenderAction[] {
     out.push(action);
   }
   return out;
+}
+
+function renderDoctorMarkdown(input: {
+  generatedAt: string;
+  projectName: string;
+  ok: boolean;
+  issues: readonly DoctorIssue[];
+  summary: DoctorResult["summary"];
+}): string {
+  const issueRows =
+    input.issues.length === 0
+      ? ["| (none) | ok | installation integrity checks passed | |"]
+      : input.issues.map(
+          (issue) =>
+            `| ${issue.severity} | ${issue.code} | ${escapeCell(issue.target ?? issue.scopePath ?? "")} | ${escapeCell(issue.message)} |`,
+        );
+  return [
+    `## Doctor Check — ${input.generatedAt}`,
+    "",
+    `Project: ${input.projectName}`,
+    `Status: ${input.ok ? "ok" : "issues"}`,
+    `Issues: ${input.summary.errors} error(s), ${input.summary.warnings} warning(s)`,
+    "",
+    "| Severity | Code | Target | Message |",
+    "|---|---|---|---|",
+    ...issueRows,
+  ].join("\n");
+}
+
+function doctorEvidenceRecord(input: {
+  generatedAt: string;
+  projectName: string;
+  ok: boolean;
+  issues: readonly DoctorIssue[];
+  summary: DoctorResult["summary"];
+  appendedPath: string;
+}): RuntimeEvidenceRecord {
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "doctor-check",
+    generated_at: input.generatedAt,
+    command: ["anamnesis", "doctor"],
+    project: { name: input.projectName },
+    summary: {
+      ok: input.ok,
+      errors: input.summary.errors,
+      warnings: input.summary.warnings,
+    },
+    details: {
+      issues: input.issues.map((issue) => ({
+        severity: issue.severity,
+        code: issue.code,
+        ...(issue.scopePath ? { scope_path: issue.scopePath } : {}),
+        ...(issue.fragmentId ? { fragment_id: issue.fragmentId } : {}),
+        ...(issue.target ? { target: issue.target } : {}),
+        message: issue.message,
+        ...(issue.repair ? { repair: issue.repair } : {}),
+      })),
+    },
+    artifacts: {
+      markdown: input.appendedPath,
+    },
+  };
+}
+
+function displayPathFromProject(projectRoot: string, targetPath: string): string {
+  const rel = path.relative(projectRoot, targetPath).split(path.sep).join("/");
+  if (rel === "") return ".";
+  if (rel.startsWith("../") || rel === ".." || path.isAbsolute(rel)) {
+    return targetPath;
+  }
+  return rel;
+}
+
+function escapeCell(text: string): string {
+  return text.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
 const DEFAULT_SETTINGS = {
