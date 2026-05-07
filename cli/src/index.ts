@@ -58,9 +58,10 @@ import {
   formatBootstrapGenerationBoundaryLines,
   formatGenerationBoundaryLines,
 } from "./core/generation-boundary.js";
+import { PACKAGE_VERSION } from "./core/version.js";
 import type { ToolName } from "./core/agentfile.js";
 
-const VERSION = "1.0.0";
+const VERSION = PACKAGE_VERSION;
 const SUPPORTED_TOOLS = ["claude-code", "codex", "cursor"] as const satisfies
   readonly ToolName[];
 

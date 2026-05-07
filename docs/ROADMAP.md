@@ -587,6 +587,10 @@ Progress:
   the existing `SessionStart`, `PostToolUse`, and `Stop` coverage. Prompt-time
   delta injection and broader runtime evidence collection are explicitly
   deferred beyond the v1.1 release cut.
+- 2026-05-07: Post-publish smoke for `@mcprotein/anamnesis@1.1.0` caught
+  hard-coded CLI / ontology-generator version metadata. The v1.1 patch line
+  now reads package metadata from `package.json`, adds regression coverage,
+  and treats published CLI version mismatches as release blockers.
 
 Exit criteria:
 - Fresh `--tools codex --allow-exec-adapters` install gets automatic

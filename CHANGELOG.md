@@ -7,6 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-05-07
+
+### Fixed
+
+- Fixed CLI and ontology bootstrap generator version metadata so
+  `anamnesis --version` and generated bootstrap headers read the package
+  version from `package.json` instead of a hard-coded release string.
+
 ## [1.1.0] — 2026-05-07
 
 ### Added

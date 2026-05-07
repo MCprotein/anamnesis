@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-484%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.1%20stable-success)]()
+[![tests](https://img.shields.io/badge/tests-485%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.1%20stable-success)]()
 
 ---
 
@@ -245,7 +245,7 @@ the claim ledger is [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md).
 | **v0.8** | Schema, API, migration, and repair workflow stabilization | shipped 2026-05-04 |
 | **v0.9** | Registry, signing, docs, and public benchmark readiness | shipped 2026-05-04 |
 | **v1.0** | Stable schema, public API, migration surface, docs, and evidence-backed claims | shipped 2026-05-04 |
-| **v1.1** | Codex native lifecycle hooks, hook diagnostics, real hook smokes, and runtime evidence | shipped 2026-05-07 |
+| **v1.1** | Codex native lifecycle hooks, hook diagnostics, real hook smokes, and runtime evidence | shipped 2026-05-07; latest patch 1.1.1 |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

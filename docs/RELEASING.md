@@ -73,6 +73,9 @@ npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis --version
 ```
 
+The printed CLI version must exactly match `X.Y.Z`. Treat any mismatch as a
+release blocker and cut a patch release before calling the release stable.
+
 Then run one fresh-fixture smoke with the published CLI:
 
 ```bash
