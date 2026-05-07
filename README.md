@@ -122,6 +122,8 @@ anamnesis benchmark report --append  # record deterministic context-quality scor
 anamnesis benchmark compare --baseline before.json --after after.json --append  # record before/after deltas
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates
 anamnesis benchmark gallery --validate  # fail when gallery evidence is stale
+anamnesis benchmark task --template  # create a model-dependent task benchmark input
+anamnesis benchmark task --input task-run.json --append  # record an agent task run separately
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 
@@ -290,6 +292,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   3x3 source/target handoff scenarios across supported agents
 - [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) — deterministic context-quality
   benchmark reports
+- [`docs/AGENT-TASK-BENCHMARKS.md`](docs/AGENT-TASK-BENCHMARKS.md) —
+  model-dependent task benchmark harness and claim boundary
 - [`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md) —
   public-safe benchmark evidence, claim policy, and collection targets
 - [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md) —

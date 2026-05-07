@@ -13,6 +13,11 @@ The generated evidence region in
 matching claim candidate or emits a release warning, keep README wording at
 the narrower manually evidenced boundary.
 
+Model-dependent runs recorded through
+[`docs/AGENT-TASK-BENCHMARKS.md`](AGENT-TASK-BENCHMARKS.md) can support only
+controlled-task claims. They must not be used as deterministic context-quality
+or broad model-intelligence claims.
+
 ## Current README Claims
 
 | README claim | Evidence | Boundary |
@@ -52,6 +57,7 @@ Do not claim:
 - "public remote fragment registry shipped";
 - "remote signed fragments supported";
 - "benchmark-proven across the ecosystem";
+- "agent/model benchmark-proven" from a single task run;
 - "no user review needed for generated context."
 
 ## Update Rule

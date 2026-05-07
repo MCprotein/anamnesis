@@ -7,7 +7,8 @@ export const EVIDENCE_SCHEMA_VERSION = "anamnesis.evidence.v1";
 export type EvidenceKind =
   | "dogfood-check"
   | "benchmark-report"
-  | "benchmark-compare";
+  | "benchmark-compare"
+  | "agent-task-benchmark";
 
 export interface RuntimeEvidenceRecord {
   schema_version: typeof EVIDENCE_SCHEMA_VERSION;
@@ -96,7 +97,8 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
     record.schema_version === EVIDENCE_SCHEMA_VERSION &&
     (record.kind === "dogfood-check" ||
       record.kind === "benchmark-report" ||
-      record.kind === "benchmark-compare") &&
+      record.kind === "benchmark-compare" ||
+      record.kind === "agent-task-benchmark") &&
     typeof record.generated_at === "string" &&
     Array.isArray(record.command) &&
     record.command.every((part) => typeof part === "string") &&

@@ -14,10 +14,12 @@ human-readable report.
 - `anamnesis dogfood check --append`
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
+- `anamnesis benchmark task --append`
 
 Each record includes:
 
-- `kind`: `dogfood-check`, `benchmark-report`, or `benchmark-compare`
+- `kind`: `dogfood-check`, `benchmark-report`, `benchmark-compare`, or
+  `agent-task-benchmark`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -34,6 +36,10 @@ surfaces, and evidence freshness.
 Benchmark compare evidence records include before/after scorecard deltas and
 summary counts for improved, regressed, and unchanged dimensions.
 
+Agent task benchmark records use kind `agent-task-benchmark` and summary
+schema `anamnesis.agent_task_benchmark.v1`. These records are explicitly
+model-dependent and stay separate from deterministic benchmark scorecards.
+
 ## Reader
 
 `anamnesis status` reads the evidence log and reports:
@@ -48,7 +54,8 @@ generated evidence region in `docs/BENCHMARK-GALLERY.md`. The generated region
 lists current evidence entries, README claim candidates, and release warnings
 such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
-generated region is missing or stale.
+generated region is missing or stale. The gallery intentionally ignores
+`agent-task-benchmark` records.
 
 ## Boundary
 

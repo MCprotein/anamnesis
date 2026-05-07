@@ -4,6 +4,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { benchmarkCompare, benchmarkReport } from "./benchmark.js";
 import { benchmarkGallery } from "./benchmark_gallery.js";
+import {
+  agentTaskBenchmark,
+  agentTaskBenchmarkTemplate,
+} from "./benchmark_task.js";
 import { init } from "./init.js";
 
 function tmpDir(prefix: string): string {
@@ -377,5 +381,72 @@ describe("benchmarkReport", () => {
       "public-next-fixture",
     ]);
     expect(result.markdown).toContain("public-next-fixture current benchmark");
+  });
+
+  it("records model-dependent agent task benchmarks separately", () => {
+    const project = tmpDir("anamnesis-agent-task-benchmark-");
+    const input = agentTaskBenchmarkTemplate(
+      new Date("2026-05-07T08:00:00.000Z"),
+    );
+    input.project.name = "agent-task-fixture";
+    input.task.id = "handoff-recovery";
+    input.run.id = "handoff-recovery-codex-001";
+    input.metrics = {
+      questions_before_action: 0,
+      tool_turns_to_context: 1,
+      first_correct_action: true,
+      handoff_recovered: true,
+      elapsed_ms: 45000,
+    };
+    const inputPath = path.join(project, "task-run.json");
+    fs.writeFileSync(inputPath, JSON.stringify(input), "utf8");
+
+    const result = agentTaskBenchmark({
+      projectRoot: project,
+      inputPath,
+      append: true,
+      now: () => new Date("2026-05-07T08:01:00.000Z"),
+    });
+
+    expect(result.score).toMatchObject({
+      points: 5,
+      total: 5,
+      first_correct_action: 1,
+      handoff_recovered: 1,
+    });
+    expect(result.appendedPath).toBe("docs/AGENT-TASK-BENCHMARKS.md");
+    expect(result.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
+    expect(result.markdown).toContain("Agent Task Benchmark");
+    expect(result.markdown).toContain("Model-dependent result");
+
+    const evidenceLines = fs
+      .readFileSync(
+        path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+        "utf8",
+      )
+      .trim()
+      .split(/\r?\n/);
+    expect(evidenceLines).toHaveLength(1);
+    const evidence = JSON.parse(evidenceLines[0]!) as {
+      kind: string;
+      summary: {
+        schema_version?: string;
+        score?: { points?: number; total?: number };
+      };
+    };
+    expect(evidence).toMatchObject({
+      kind: "agent-task-benchmark",
+      summary: {
+        schema_version: "anamnesis.agent_task_benchmark.v1",
+        score: { points: 5, total: 5 },
+      },
+    });
+
+    const gallery = benchmarkGallery({ projectRoot: project });
+    expect(gallery.evidenceRecords).toBe(1);
+    expect(gallery.entries).toEqual([]);
+    expect(gallery.warnings).toContain(
+      "No current benchmark scorecard evidence found.",
+    );
   });
 });

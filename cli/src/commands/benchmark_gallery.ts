@@ -198,7 +198,7 @@ function latestGalleryEntries(
   records: readonly RuntimeEvidenceRecord[],
 ): BenchmarkGalleryEntry[] {
   const latest = new Map<string, RuntimeEvidenceRecord>();
-  for (const record of records) {
+  for (const record of records.filter(isGalleryEvidenceRecord)) {
     const key = `${record.kind}:${record.project.name}`;
     const previous = latest.get(key);
     if (!previous || record.generated_at >= previous.generated_at) {
@@ -208,6 +208,14 @@ function latestGalleryEntries(
   return [...latest.values()]
     .sort((a, b) => b.generated_at.localeCompare(a.generated_at))
     .map(entryFromEvidenceRecord);
+}
+
+function isGalleryEvidenceRecord(record: RuntimeEvidenceRecord): boolean {
+  return (
+    record.kind === "dogfood-check" ||
+    record.kind === "benchmark-report" ||
+    record.kind === "benchmark-compare"
+  );
 }
 
 function entryFromEvidenceRecord(

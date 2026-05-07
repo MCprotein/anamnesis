@@ -32,6 +32,11 @@ Use these reports to compare static-only, bootstrapped, and enriched project
 context over time. Public README claims should be based on reports that avoid
 proprietary source snippets and credential-bearing details.
 
+Model-dependent task outcomes live in
+[`docs/AGENT-TASK-BENCHMARKS.md`](AGENT-TASK-BENCHMARKS.md) via
+`anamnesis benchmark task`. Do not merge those scores into deterministic
+scorecards or generated benchmark-gallery README claims.
+
 Use `benchmark compare` for before/after adoption evidence. It reads two
 `benchmark report --json` files and reports raw scorecard deltas rather than
 collapsing the result into a single opaque score.

@@ -56,6 +56,12 @@ import {
   type BenchmarkGalleryResult,
 } from "./commands/benchmark_gallery.js";
 import {
+  agentTaskBenchmark,
+  agentTaskBenchmarkTemplate,
+  AgentTaskBenchmarkError,
+  type AgentTaskBenchmarkResult,
+} from "./commands/benchmark_task.js";
+import {
   migrateAgentfile,
   MigrateError,
   type MigrateAgentfileResult,
@@ -210,6 +216,8 @@ Commands:
                                   and optionally append a delta report
   benchmark gallery            Generate or validate docs/BENCHMARK-GALLERY.md
                                   from runtime evidence
+  benchmark task               Record a model-dependent agent task benchmark
+                                  separately from deterministic scorecards
   migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
@@ -276,6 +284,14 @@ Flags (benchmark gallery):
   --validate                    Fail when generated gallery differs on disk
   --source <path[,path]>        Extra evidence JSONL source(s)
   --output <path>               Override gallery path
+
+Flags (benchmark task):
+  --project-root <path>         Target directory (default: cwd)
+  --input <path>                Agent task benchmark JSON input
+  --template                    Print a JSON input template
+  --json                        Print structured JSON
+  --append                      Append markdown to docs/AGENT-TASK-BENCHMARKS.md
+  --output <path>               Override agent task benchmark log path
 
 Flags (migrate agentfile):
   --project-root <path>         Target directory (default: cwd)
@@ -726,6 +742,32 @@ function reportBenchmarkGallery(result: BenchmarkGalleryResult): void {
   }
 }
 
+function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
+  console.log(`anamnesis benchmark task — ${result.input.project.name}`);
+  console.log(`  task: ${result.input.task.id}`);
+  console.log(`  run: ${result.input.run.id}`);
+  console.log(
+    `  agent/model: ${result.input.run.agent} / ${result.input.run.model}`,
+  );
+  console.log(`  context state: ${result.input.run.context_state}`);
+  console.log(`  score: ${result.score.points}/${result.score.total}`);
+  console.log(
+    `  metrics: questions=${result.input.metrics.questions_before_action}, tool_turns=${result.input.metrics.tool_turns_to_context}, elapsed_ms=${result.input.metrics.elapsed_ms}`,
+  );
+  console.log(
+    `  first correct action: ${result.input.metrics.first_correct_action ? "yes" : "no"}`,
+  );
+  console.log(
+    `  handoff recovered: ${result.input.metrics.handoff_recovered ? "yes" : "no"}`,
+  );
+  if (result.appendedPath) {
+    console.log(`  appended: ${result.appendedPath}`);
+  }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
+}
+
 function reportMigrate(result: MigrateAgentfileResult): void {
   const verdict = result.changed
     ? result.applied
@@ -944,7 +986,12 @@ async function main(argv: string[]): Promise<number> {
 
     case "benchmark": {
       const sub = positional[0];
-      if (sub !== "report" && sub !== "compare" && sub !== "gallery") {
+      if (
+        sub !== "report" &&
+        sub !== "compare" &&
+        sub !== "gallery" &&
+        sub !== "task"
+      ) {
         console.error(
           `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
         );
@@ -957,9 +1004,42 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis benchmark gallery [--json] [--write] [--validate] [--output=<path>]`,
         );
+        console.error(
+          `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
+        );
         return 1;
       }
       try {
+        if (sub === "task") {
+          if (flags["template"] === true) {
+            console.log(JSON.stringify(agentTaskBenchmarkTemplate(), null, 2));
+            return 0;
+          }
+          const inputPath = flags["input"];
+          if (typeof inputPath !== "string") {
+            console.error(
+              `usage: anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
+            );
+            console.error(
+              `       anamnesis benchmark task --template`,
+            );
+            return 1;
+          }
+          const result = agentTaskBenchmark({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            inputPath,
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportAgentTaskBenchmark(result);
+          }
+          return 0;
+        }
+
         if (sub === "gallery") {
           const result = benchmarkGallery({
             projectRoot:
@@ -1017,7 +1097,11 @@ async function main(argv: string[]): Promise<number> {
         }
         return 0;
       } catch (e) {
-        if (e instanceof BenchmarkError || e instanceof BenchmarkGalleryError) {
+        if (
+          e instanceof BenchmarkError ||
+          e instanceof BenchmarkGalleryError ||
+          e instanceof AgentTaskBenchmarkError
+        ) {
           console.error(`error: ${e.message}`);
           return 1;
         }

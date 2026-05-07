@@ -22,6 +22,9 @@ could include breaking changes.
 - Added sanitized public-shape benchmark evidence for a fresh Next.js
   frontend, a NestJS/Kubernetes backend, an existing Python/uv repo, and
   before/after adoption paths.
+- Added `anamnesis benchmark task --template|--input` for explicitly
+  model-dependent agent task benchmark runs, stored separately from
+  deterministic context-quality scorecards.
 
 ## [1.1.1] — 2026-05-07
 
