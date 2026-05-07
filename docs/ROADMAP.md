@@ -513,7 +513,7 @@ Progress:
 
 ---
 
-## v1.1 — *in progress*
+## v1.1 — *release candidate*
 
 > **Theme: remove avoidable fallback-only gaps after the v1 surface freeze**
 
@@ -534,13 +534,13 @@ External review input, 2026-05-04:
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Codex native SessionStart continuity** | implemented; pending release | Add a Codex native SessionStart wrapper for the base ontology + handoff continuity path. `--allow-exec-adapters` installs `.anamnesis/codex-native-hooks/session-start.mjs`, enables `.codex/config.toml` `[features].codex_hooks = true`, and merges `.codex/hooks.json` while preserving user hook entries. AGENTS.md fallback instructions remain for environments without native hook installation. |
-| 2 | **Codex native hook surface refresh** | in progress | Refresh the Codex adapter against the current official hook vocabulary instead of treating Codex as SessionStart-only. Model `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and `Stop` as event-aware render targets with explicit fallback notes for unsupported or version-gated behavior. |
-| 3 | **Prompt-time and stop-time continuity** | partial | Use Codex `UserPromptSubmit` for compact, budgeted context deltas when ontology/handoff state changed after session start, and use Codex `Stop` for the same dirty-work / handoff reminder role Claude Code already gets. Avoid noisy repeated context injection; prefer delta-only summaries and deterministic caps. |
-| 4 | **Native executable-hook bridge for Codex** | in progress | Where Codex `PreToolUse`, `PermissionRequest`, and `PostToolUse` support useful matchers (`Bash`, `apply_patch`/`Edit`/`Write`, MCP tool names), render safe fragment hooks natively before falling back to AGENTS.md instructions or the Git pre-commit bridge. Keep supply-chain gating under `--allow-exec-adapters`. |
+| 2 | **Codex native hook surface refresh** | implemented; pending release | Refreshed the Codex adapter against the current official hook vocabulary instead of treating Codex as SessionStart-only. `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and `Stop` are modeled as event-aware render targets with explicit fallback notes for unsupported or version-gated behavior. |
+| 3 | **Prompt-time and stop-time continuity** | stop-time implemented; prompt-time deferred | Codex `Stop` now handles the same dirty-work / handoff reminder role Claude Code already gets. `UserPromptSubmit` transport is supported and smoke-proven, but compact prompt-time context delta injection is deferred until a real dogfood gap justifies budget policy, dedupe rules, and noise controls. |
+| 4 | **Native executable-hook bridge for Codex** | implemented; pending release | Where Codex `PreToolUse`, `PermissionRequest`, and `PostToolUse` support useful matchers (`Bash`, `apply_patch`/`Edit`/`Write`, MCP tool names), safe fragment hooks render natively before falling back to AGENTS.md instructions or the Git pre-commit bridge. `Stop` and `UserPromptSubmit` also use matcherless native wrappers when installed. Supply-chain gating stays under `--allow-exec-adapters`. |
 | 5 | **Shared Codex hook ownership diagnostics** | implemented; pending release | Teach `status` / `doctor` to explain active Codex hook sources and ownership: user config, project config, anamnesis-managed entries, OMX-managed entries, plugin-provided lifecycle config, duplicate handlers, relative-path fragility, and project-trust gating. Preserve unrelated hook entries during every update. |
 | 6 | **Real native-hook smoke tests** | implemented; pending release | Add reproducible smoke tests that prove native Codex hook behavior, not just rendered files. Dogfood now separates synthetic Codex JSON dispatch from opt-in real Codex CLI execution, proves both isolated `CODEX_HOME/hooks.json` and trusted project-local `.codex/hooks.json` SessionStart discovery, proves real `UserPromptSubmit` additional-context output before model transport completes, and proves authenticated Bash tool-turn `PreToolUse`/`PostToolUse` execution through the CLI. |
 | 7 | **Codex plugin packaging research** | researched; implementation deferred | [`docs/CODEX-PLUGIN-PACKAGING.md`](CODEX-PLUGIN-PACKAGING.md) records the v1.1 decision: do not emit a Codex plugin by default yet. Keep required runtime hooks in config-layer `.codex/hooks.json`; treat future plugin output as optional packaging for skills, examples, or MCP/app metadata until plugin-local hook execution and trust semantics are verified in real Codex. |
-| 8 | **Runtime inspiration from OMX, not dependency** | partial | Add a small anamnesis-owned runtime evidence layer inspired by OMX `.omx/` state/log patterns; see [`docs/RUNTIME-EVIDENCE.md`](RUNTIME-EVIDENCE.md). `dogfood check --append` and `benchmark report --append` now write machine-readable records to `.anamnesis/evidence/events.jsonl`, and `status` reports the latest record. Remaining scope: hook-log events, install/update/doctor evidence, benchmark trace rollups, and public README evidence surfacing. Do not add task orchestration, HUD, team runtime, or OMX as a dependency. |
+| 8 | **Runtime inspiration from OMX, not dependency** | v1.1 slice implemented; expansion deferred | Added a small anamnesis-owned runtime evidence layer inspired by OMX `.omx/` state/log patterns; see [`docs/RUNTIME-EVIDENCE.md`](RUNTIME-EVIDENCE.md). `dogfood check --append` and `benchmark report --append` now write machine-readable records to `.anamnesis/evidence/events.jsonl`, and `status` reports the latest record. Later scope: hook-log events, install/update/doctor evidence, benchmark trace rollups, and public README evidence surfacing. Do not add task orchestration, HUD, team runtime, or OMX as a dependency. |
 
 Progress:
 - 2026-05-05: Started the Codex hook surface refresh by adding native
@@ -581,6 +581,12 @@ Progress:
   `.codex/hooks.json` and reserve optional plugin packaging for skills,
   examples, and integration metadata until plugin-local lifecycle hooks have
   real Codex CLI smoke evidence.
+- 2026-05-07: Locked the v1.1 Codex hook surface as a release candidate.
+  Renderer tests now cover event-aware native wrapper registration for
+  `PreToolUse`, `PermissionRequest`, and `UserPromptSubmit`, in addition to
+  the existing `SessionStart`, `PostToolUse`, and `Stop` coverage. Prompt-time
+  delta injection and broader runtime evidence collection are explicitly
+  deferred beyond the v1.1 release cut.
 
 Exit criteria:
 - Fresh `--tools codex --allow-exec-adapters` install gets automatic

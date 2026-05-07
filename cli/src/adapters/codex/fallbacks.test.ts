@@ -239,6 +239,88 @@ describe("codex executable_hook fallback", () => {
     }
   });
 
+  it("registers current Codex lifecycle shell hooks with event-aware matchers", () => {
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/x.sh"),
+      "#!/bin/bash\necho lifecycle\n",
+    );
+    const fragment: FragmentDefinition = {
+      id: "myfrag",
+      version: 1,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+
+    const cases = [
+      {
+        event: "PreToolUse:Bash",
+        wrapperPath:
+          ".anamnesis/codex-native-hooks/myfrag-PreToolUse-Bash-x.mjs",
+        codexHook: {
+          event: "PreToolUse",
+          matcher: "Bash",
+          command: codexNativeNodeCommand(
+            ".anamnesis/codex-native-hooks/myfrag-PreToolUse-Bash-x.mjs",
+          ),
+          statusMessage: "Running anamnesis PreToolUse hook",
+        },
+      },
+      {
+        event: "PermissionRequest:apply_patch",
+        wrapperPath:
+          ".anamnesis/codex-native-hooks/myfrag-PermissionRequest-apply_patch-x.mjs",
+        codexHook: {
+          event: "PermissionRequest",
+          matcher: "apply_patch",
+          command: codexNativeNodeCommand(
+            ".anamnesis/codex-native-hooks/myfrag-PermissionRequest-apply_patch-x.mjs",
+          ),
+          statusMessage: "Running anamnesis PermissionRequest hook",
+        },
+      },
+      {
+        event: "UserPromptSubmit",
+        wrapperPath:
+          ".anamnesis/codex-native-hooks/myfrag-UserPromptSubmit-x.mjs",
+        codexHook: {
+          event: "UserPromptSubmit",
+          command: codexNativeNodeCommand(
+            ".anamnesis/codex-native-hooks/myfrag-UserPromptSubmit-x.mjs",
+          ),
+          statusMessage: "Running anamnesis UserPromptSubmit hook",
+        },
+      },
+    ];
+
+    for (const c of cases) {
+      const actions = executableHookRenderer.plan(
+        {
+          type: "executable_hook",
+          event: c.event,
+          source: "adapters/claude-code/hooks/x.sh",
+          adapters_supported: ["codex"],
+        },
+        makeContext(fragmentDir, fragment),
+      );
+
+      const wrapper = actions.find(
+        (a) => a.kind === "file" && a.path === c.wrapperPath,
+      );
+      expect(wrapper?.kind).toBe("file");
+      if (wrapper?.kind === "file") {
+        expect(wrapper.codexHook).toEqual(c.codexHook);
+        expect(wrapper.content).toContain(`"event": "${c.codexHook.event}"`);
+      }
+      const region = actions.find((a) => a.kind === "region");
+      expect(region?.kind).toBe("region");
+      if (region?.kind === "region") {
+        expect(region.content).toContain("Codex native path");
+      }
+    }
+  });
+
   it("adapts apply_patch targets for native Codex shell wrappers", () => {
     const projectRoot = tmpDir("anamnesis-codex-native-wrapper-");
     fs.writeFileSync(

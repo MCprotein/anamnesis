@@ -20,7 +20,7 @@ The table below is generated from the canonical fixture in
 |---|---|---|---|---|
 | `project_memory` | Always-loaded project context and operating rules | **native**<br>`AGENTS.md` region plus `CLAUDE.md` entrypoint<br>tested: continuity acceptance, claude_md renderer | **native**<br>`AGENTS.md` region<br>tested: continuity acceptance, codex registry | **native**<br>`AGENTS.md` region read by Cursor<br>tested: continuity acceptance, cursor registry |
 | `ontology` | Structured project facts and ontology slices | **native**<br>`.anamnesis/ontology/*.yaml` plus SessionStart injection<br>tested: continuity acceptance, dogfood check | **native**<br>`.anamnesis/ontology/*.yaml` plus native SessionStart wrapper when exec adapters are allowed; `AGENTS.md` fallback remains<br>tested: continuity acceptance, codex native hook tests | **fallback**<br>`.anamnesis/ontology/*.yaml` plus Cursor rules<br>tested: continuity acceptance, dogfood check |
-| `executable_hook` | Event-triggered automation and operational reminders | **native**<br>`.claude/hooks/*.sh` registered in `.claude/settings.json`<br>tested: continuity acceptance, hook renderer tests | **fallback**<br>native wrappers for Codex-supported events (`SessionStart`, `PostToolUse`, `Stop`, and other event-aware shell hooks where installed); `AGENTS.md` hook region plus optional Git pre-commit bridge remain as fallback<br>tested: codex native hook tests, codex fallback tests | **fallback**<br>`.cursor/rules/*.mdc` instruction fallback<br>tested: cursor MDC tests, registry coverage |
+| `executable_hook` | Event-triggered automation and operational reminders | **native**<br>`.claude/hooks/*.sh` registered in `.claude/settings.json`<br>tested: continuity acceptance, hook renderer tests | **fallback**<br>native wrappers for Codex-supported events (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop`) where installed; `AGENTS.md` hook region plus optional Git pre-commit bridge remain as fallback<br>tested: codex native hook tests, event coverage tests, codex fallback tests | **fallback**<br>`.cursor/rules/*.mdc` instruction fallback<br>tested: cursor MDC tests, registry coverage |
 | `skill` | Reusable agent procedure | **native**<br>`.claude/skills/<name>/SKILL.md`<br>tested: continuity acceptance, skill renderer tests | **fallback**<br>`AGENTS.md` skill region<br>tested: continuity acceptance, codex fallback tests | **fallback**<br>`.cursor/rules/<name>.mdc`<br>tested: continuity acceptance, cursor MDC tests |
 | `slash_command` | User-invoked command procedure | **native**<br>`.claude/commands/<name>.md`<br>tested: continuity acceptance, slash command renderer tests | **fallback**<br>`AGENTS.md` command region<br>tested: continuity acceptance, codex fallback tests | **fallback**<br>`.cursor/rules/<name>-cmd.mdc`<br>tested: continuity acceptance, cursor MDC tests |
 <!-- adapter-parity:matrix:end -->
@@ -38,9 +38,10 @@ Known implications:
 - Claude Code has the richest native surface today: hooks, slash commands,
   skills, and SessionStart ontology injection are first-class.
 - Codex now has native wrappers for SessionStart continuity plus supported
-  shell-hook events such as PostToolUse and Stop when executable adapters are
-  allowed. Commands and skills still keep explicit fallback surfaces because
-  the user-facing goal is continuity, not identical UI.
+  shell-hook events (`UserPromptSubmit`, `PreToolUse`, `PermissionRequest`,
+  `PostToolUse`, and `Stop`) when executable adapters are allowed. Commands
+  and skills still keep explicit fallback surfaces because the user-facing goal
+  is continuity, not identical UI.
 - Dogfood now records Codex hook evidence in two lanes: synthetic wrapper JSON
   dispatch and opt-in real Codex CLI execution. The real lane proves
   SessionStart discovery from both isolated `CODEX_HOME/hooks.json` and trusted

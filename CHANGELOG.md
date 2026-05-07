@@ -17,8 +17,9 @@ could include breaking changes.
 - Added Codex native lifecycle shell-hook wrappers for supported
   non-SessionStart events. Fragment shell hooks can now be adapted through
   `.anamnesis/codex-native-hooks/*.mjs` and registered in `.codex/hooks.json`
-  for Codex-supported events such as `PostToolUse` and `Stop`, while keeping
-  AGENTS.md and git pre-commit fallbacks.
+  for Codex-supported events such as `UserPromptSubmit`, `PreToolUse`,
+  `PermissionRequest`, `PostToolUse`, and `Stop`, while keeping AGENTS.md and
+  git pre-commit fallbacks.
 - Added shared Codex hook ownership diagnostics. `status` now summarizes
   `.codex/hooks.json` entries by anamnesis, OMX, plugin, user, and invalid
   ownership, and `doctor` warns about duplicated commands, malformed entries,
@@ -43,6 +44,9 @@ could include breaking changes.
 
 - Updated `status` / `doctor` continuity checks and adapter parity docs so
   Codex SessionStart is no longer documented as fallback-only.
+- Updated adapter parity docs and tests so the v1.1 Codex executable-hook
+  surface explicitly covers `SessionStart`, `UserPromptSubmit`, `PreToolUse`,
+  `PermissionRequest`, `PostToolUse`, and `Stop`.
 - Updated the base fragment to v10 so Codex installs native dirty-work and
   handoff reminder hooks when executable adapters are allowed.
 

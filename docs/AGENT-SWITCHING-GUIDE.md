@@ -137,10 +137,12 @@ What to look for:
 
 - Claude Code has the richest native surface today. Hooks, commands, skills,
   and SessionStart injection are first-class there.
-- Codex now has native SessionStart continuity and selected native lifecycle
-  hook wrappers when executable adapters are allowed, but still relies on
-  explicit fallback instructions for commands, skills, and unsupported hook
-  surfaces. Cursor relies on fallback rules and startup instructions.
+- Codex now has native SessionStart continuity and native wrappers for
+  supported lifecycle shell hooks when executable adapters are allowed,
+  including `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`,
+  `PostToolUse`, and `Stop`. It still relies on explicit fallback
+  instructions for commands, skills, and unsupported hook surfaces. Cursor
+  relies on fallback rules and startup instructions.
 - Real external agent sessions can still fail if the target agent ignores
   installed startup instructions. `status`, `doctor`, switching fixtures, and
   dogfood checks reduce this risk but do not control third-party agent
