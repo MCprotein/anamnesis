@@ -8,6 +8,7 @@ import {
   agentTaskBenchmark,
   agentTaskBenchmarkTemplate,
 } from "./benchmark_task.js";
+import { promptDeltaGate } from "./benchmark_prompt_gate.js";
 import { init } from "./init.js";
 
 function tmpDir(prefix: string): string {
@@ -448,5 +449,102 @@ describe("benchmarkReport", () => {
     expect(gallery.warnings).toContain(
       "No current benchmark scorecard evidence found.",
     );
+  });
+
+  it("defers prompt-time context deltas when evidence is insufficient", () => {
+    const { project, library } = setupBenchmarkProject();
+
+    const result = promptDeltaGate({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-05-07T09:00:00.000Z"),
+    });
+
+    expect(result.decision).toMatchObject({
+      recommendation: "defer",
+      shouldImplementPromptDelta: false,
+    });
+    expect(result.evidence).toMatchObject({
+      records: 0,
+      benchmarkReports: 0,
+      agentTaskBenchmarks: 0,
+    });
+    expect(result.contextBudget.files.length).toBeGreaterThan(0);
+    expect(result.markdown).toContain("Prompt-Time Delta Gate");
+    expect(result.markdown).toContain("Implement prompt-time delta: no");
+  });
+
+  it("allows only a non-default prompt-time prototype for repeated continuity failures", () => {
+    const { project, library } = setupBenchmarkProject();
+    fs.rmSync(path.join(project, ".codex", "hooks.json"));
+
+    const evidencePath = path.join(project, ".anamnesis", "evidence", "events.jsonl");
+    fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
+    const failingTaskRecord = (id: string, generatedAt: string) => ({
+      schema_version: "anamnesis.evidence.v1",
+      kind: "agent-task-benchmark",
+      generated_at: generatedAt,
+      command: ["anamnesis", "benchmark", "task"],
+      project: { name: "anamnesis-project" },
+      summary: {
+        schema_version: "anamnesis.agent_task_benchmark.v1",
+        task_id: "handoff-recovery",
+        run_id: id,
+        agent: "codex",
+        model: "gpt-5.5",
+        context_state: "handoff",
+        score: { points: 2, total: 5 },
+        metrics: {
+          questions_before_action: 2,
+          tool_turns_to_context: 4,
+          first_correct_action: false,
+          handoff_recovered: false,
+          elapsed_ms: 240000,
+        },
+      },
+    });
+    fs.writeFileSync(
+      evidencePath,
+      [
+        JSON.stringify(failingTaskRecord("handoff-recovery-codex-001", "2026-05-07T09:01:00.000Z")),
+        JSON.stringify(failingTaskRecord("handoff-recovery-codex-002", "2026-05-07T09:02:00.000Z")),
+      ].join("\n") + "\n",
+      "utf8",
+    );
+
+    const result = promptDeltaGate({
+      projectRoot: project,
+      libraryRoot: library,
+      maxPromptDeltaTokens: 100000,
+      append: true,
+      now: () => new Date("2026-05-07T09:03:00.000Z"),
+    });
+
+    expect(result.decision).toMatchObject({
+      recommendation: "prototype",
+      shouldImplementPromptDelta: true,
+    });
+    expect(result.evidence).toMatchObject({
+      records: 2,
+      agentTaskBenchmarks: 2,
+      taskFailures: 2,
+    });
+    expect(result.contextBudget.duplicateContextRisk).not.toBe("high");
+    expect(result.appendedPath).toBe("docs/BENCHMARKS.md");
+    expect(result.evidenceRecordPath).toBe(".anamnesis/evidence/events.jsonl");
+
+    const evidenceLines = fs
+      .readFileSync(evidencePath, "utf8")
+      .trim()
+      .split(/\r?\n/);
+    expect(evidenceLines).toHaveLength(3);
+    const gateEvidence = JSON.parse(evidenceLines[2]!) as {
+      kind: string;
+      summary: { recommendation?: string };
+    };
+    expect(gateEvidence).toMatchObject({
+      kind: "prompt-delta-gate",
+      summary: { recommendation: "prototype" },
+    });
   });
 });

@@ -62,6 +62,11 @@ import {
   type AgentTaskBenchmarkResult,
 } from "./commands/benchmark_task.js";
 import {
+  promptDeltaGate,
+  PromptDeltaGateError,
+  type PromptDeltaGateResult,
+} from "./commands/benchmark_prompt_gate.js";
+import {
   migrateAgentfile,
   MigrateError,
   type MigrateAgentfileResult,
@@ -174,6 +179,21 @@ function parsePositiveIntFlag(
   return parsed;
 }
 
+function parseOptionalPositiveIntegerFlag(
+  value: string | boolean | undefined,
+  flagName: string,
+): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new PromptDeltaGateError(`${flagName} requires a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new PromptDeltaGateError(`${flagName} requires a positive integer`);
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Library root discovery
 // ---------------------------------------------------------------------------
@@ -218,6 +238,8 @@ Commands:
                                   from runtime evidence
   benchmark task               Record a model-dependent agent task benchmark
                                   separately from deterministic scorecards
+  benchmark prompt-gate        Decide whether prompt-time context delta
+                                  injection is justified by evidence
   migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
@@ -292,6 +314,16 @@ Flags (benchmark task):
   --json                        Print structured JSON
   --append                      Append markdown to docs/AGENT-TASK-BENCHMARKS.md
   --output <path>               Override agent task benchmark log path
+
+Flags (benchmark prompt-gate):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --json                        Print structured JSON
+  --append                      Append markdown to docs/BENCHMARKS.md
+  --output <path>               Override prompt gate log path
+  --source <path[,path]>        Extra evidence JSONL source(s)
+  --max-tokens <n>              Max estimated prompt delta token budget
+                                  (default: 800)
 
 Flags (migrate agentfile):
   --project-root <path>         Target directory (default: cwd)
@@ -768,6 +800,32 @@ function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
   }
 }
 
+function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
+  console.log(
+    `anamnesis benchmark prompt-gate — ${result.status.agentfile.project.name}`,
+  );
+  console.log(`  decision: ${result.decision.recommendation}`);
+  console.log(
+    `  implement prompt delta: ${result.decision.shouldImplementPromptDelta ? "yes" : "no"}`,
+  );
+  console.log(`  reason: ${result.decision.reason}`);
+  console.log(
+    `  evidence: ${result.evidence.records} valid, ${result.evidence.invalidRecords} invalid`,
+  );
+  console.log(
+    `  context budget: ~${result.contextBudget.estimatedTokens}/${result.contextBudget.maxPromptDeltaTokens} tokens, duplicate risk ${result.contextBudget.duplicateContextRisk}`,
+  );
+  for (const signal of result.signals) {
+    console.log(`  ${signal.status.padEnd(4)} ${signal.label}: ${signal.detail}`);
+  }
+  if (result.appendedPath) {
+    console.log(`  appended: ${result.appendedPath}`);
+  }
+  if (result.evidenceRecordPath) {
+    console.log(`  evidence: ${result.evidenceRecordPath}`);
+  }
+}
+
 function reportMigrate(result: MigrateAgentfileResult): void {
   const verdict = result.changed
     ? result.applied
@@ -990,7 +1048,8 @@ async function main(argv: string[]): Promise<number> {
         sub !== "report" &&
         sub !== "compare" &&
         sub !== "gallery" &&
-        sub !== "task"
+        sub !== "task" &&
+        sub !== "prompt-gate"
       ) {
         console.error(
           `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
@@ -1007,9 +1066,35 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
         );
+        console.error(
+          `       anamnesis benchmark prompt-gate [--json] [--append] [--output=<path>]`,
+        );
         return 1;
       }
       try {
+        if (sub === "prompt-gate") {
+          const maxTokens = parseOptionalPositiveIntegerFlag(
+            flags["max-tokens"],
+            "--max-tokens",
+          );
+          const result = promptDeltaGate({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            libraryRoot:
+              (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+            sources: parseCommaListFlag(flags["source"]),
+            ...(maxTokens !== undefined ? { maxPromptDeltaTokens: maxTokens } : {}),
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportPromptDeltaGate(result);
+          }
+          return 0;
+        }
+
         if (sub === "task") {
           if (flags["template"] === true) {
             console.log(JSON.stringify(agentTaskBenchmarkTemplate(), null, 2));
@@ -1100,7 +1185,8 @@ async function main(argv: string[]): Promise<number> {
         if (
           e instanceof BenchmarkError ||
           e instanceof BenchmarkGalleryError ||
-          e instanceof AgentTaskBenchmarkError
+          e instanceof AgentTaskBenchmarkError ||
+          e instanceof PromptDeltaGateError
         ) {
           console.error(`error: ${e.message}`);
           return 1;

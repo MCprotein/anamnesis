@@ -15,11 +15,12 @@ human-readable report.
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
 - `anamnesis benchmark task --append`
+- `anamnesis benchmark prompt-gate --append`
 
 Each record includes:
 
-- `kind`: `dogfood-check`, `benchmark-report`, `benchmark-compare`, or
-  `agent-task-benchmark`
+- `kind`: `dogfood-check`, `benchmark-report`, `benchmark-compare`,
+  `agent-task-benchmark`, or `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -40,6 +41,12 @@ Agent task benchmark records use kind `agent-task-benchmark` and summary
 schema `anamnesis.agent_task_benchmark.v1`. These records are explicitly
 model-dependent and stay separate from deterministic benchmark scorecards.
 
+Prompt delta gate records use kind `prompt-delta-gate` and summary schema
+`anamnesis.prompt_delta_gate.v1`. They capture the decision to defer, collect
+more evidence, or prototype Codex `UserPromptSubmit` context delta injection
+based on continuity evidence, model-dependent task friction, estimated token
+overhead, and duplicate-context risk.
+
 ## Reader
 
 `anamnesis status` reads the evidence log and reports:
@@ -55,7 +62,7 @@ lists current evidence entries, README claim candidates, and release warnings
 such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
-`agent-task-benchmark` records.
+`agent-task-benchmark` and `prompt-delta-gate` records.
 
 ## Boundary
 

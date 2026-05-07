@@ -124,6 +124,7 @@ anamnesis benchmark gallery --write  # refresh evidence-backed README claim cand
 anamnesis benchmark gallery --validate  # fail when gallery evidence is stale
 anamnesis benchmark task --template  # create a model-dependent task benchmark input
 anamnesis benchmark task --input task-run.json --append  # record an agent task run separately
+anamnesis benchmark prompt-gate  # decide whether prompt-time context delta is justified
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 

@@ -25,6 +25,9 @@ could include breaking changes.
 - Added `anamnesis benchmark task --template|--input` for explicitly
   model-dependent agent task benchmark runs, stored separately from
   deterministic context-quality scorecards.
+- Added `anamnesis benchmark prompt-gate` to keep Codex prompt-time context
+  delta injection behind evidence checks for continuity gaps, token overhead,
+  duplicate-context risk, and model-dependent task friction.
 
 ## [1.1.1] — 2026-05-07
 

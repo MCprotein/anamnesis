@@ -18,7 +18,9 @@ anamnesis benchmark task --input task-run.json --append
 Append runs write markdown here and an `agent-task-benchmark` record to
 `.anamnesis/evidence/events.jsonl`. The generated benchmark gallery
 intentionally ignores this evidence kind so deterministic README claims do not
-mix product surface quality with model behavior.
+mix product surface quality with model behavior. `anamnesis benchmark
+prompt-gate` may consume these records as one signal when deciding whether
+Codex prompt-time context delta injection is justified.
 
 ## Schema
 

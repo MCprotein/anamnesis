@@ -12,6 +12,7 @@ anamnesis benchmark report --json > after.json
 anamnesis benchmark compare --baseline before.json --after after.json --append
 anamnesis benchmark gallery --write
 anamnesis benchmark gallery --validate
+anamnesis benchmark prompt-gate
 ```
 
 Append runs also write a machine-readable evidence record to
@@ -36,6 +37,17 @@ Model-dependent task outcomes live in
 [`docs/AGENT-TASK-BENCHMARKS.md`](AGENT-TASK-BENCHMARKS.md) via
 `anamnesis benchmark task`. Do not merge those scores into deterministic
 scorecards or generated benchmark-gallery README claims.
+
+Use `benchmark prompt-gate` before adding any Codex `UserPromptSubmit`
+context delta injection. The gate reads deterministic and model-dependent
+evidence, estimates duplicate ontology/handoff prompt overhead, checks
+duplicate-context risk, and returns one of three decisions:
+
+- `defer`: keep prompt-time context delta disabled.
+- `collect-more-evidence`: a gap exists, but repeated-gap evidence or
+  token/noise controls are not sufficient.
+- `prototype`: a bounded non-default experiment is justified; default shipping
+  still needs dedupe and smoke evidence.
 
 Use `benchmark compare` for before/after adoption evidence. It reads two
 `benchmark report --json` files and reports raw scorecard deltas rather than

@@ -278,6 +278,8 @@ anamnesis promote ./.claude/hooks/my-custom-validate.sh
 - `anamnesis doctor` — 설치 무결성 검사 (누락 파일, 해시 불일치, 어댑터 지원 누락)
 - `anamnesis benchmark report` — static/bootstrap/enriched context surface 와
   continuity readiness 를 markdown/json 으로 기록
+- `anamnesis benchmark prompt-gate` — Codex prompt-time context delta 를
+  기본 동작으로 켜기 전에 evidence, token budget, duplicate risk 를 판정
 
 v0.1 에서 `status` 는 필수, `doctor` 는 선택.
 

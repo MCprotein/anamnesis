@@ -8,7 +8,8 @@ export type EvidenceKind =
   | "dogfood-check"
   | "benchmark-report"
   | "benchmark-compare"
-  | "agent-task-benchmark";
+  | "agent-task-benchmark"
+  | "prompt-delta-gate";
 
 export interface RuntimeEvidenceRecord {
   schema_version: typeof EVIDENCE_SCHEMA_VERSION;
@@ -98,7 +99,8 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
     (record.kind === "dogfood-check" ||
       record.kind === "benchmark-report" ||
       record.kind === "benchmark-compare" ||
-      record.kind === "agent-task-benchmark") &&
+      record.kind === "agent-task-benchmark" ||
+      record.kind === "prompt-delta-gate") &&
     typeof record.generated_at === "string" &&
     Array.isArray(record.command) &&
     record.command.every((part) => typeof part === "string") &&
