@@ -538,7 +538,7 @@ External review input, 2026-05-04:
 | 3 | **Prompt-time and stop-time continuity** | partial | Use Codex `UserPromptSubmit` for compact, budgeted context deltas when ontology/handoff state changed after session start, and use Codex `Stop` for the same dirty-work / handoff reminder role Claude Code already gets. Avoid noisy repeated context injection; prefer delta-only summaries and deterministic caps. |
 | 4 | **Native executable-hook bridge for Codex** | in progress | Where Codex `PreToolUse`, `PermissionRequest`, and `PostToolUse` support useful matchers (`Bash`, `apply_patch`/`Edit`/`Write`, MCP tool names), render safe fragment hooks natively before falling back to AGENTS.md instructions or the Git pre-commit bridge. Keep supply-chain gating under `--allow-exec-adapters`. |
 | 5 | **Shared Codex hook ownership diagnostics** | implemented; pending release | Teach `status` / `doctor` to explain active Codex hook sources and ownership: user config, project config, anamnesis-managed entries, OMX-managed entries, plugin-provided lifecycle config, duplicate handlers, relative-path fragility, and project-trust gating. Preserve unrelated hook entries during every update. |
-| 6 | **Real native-hook smoke tests** | partial | Add reproducible smoke tests that prove native Codex hook behavior, not just rendered files. Dogfood now separates synthetic Codex JSON dispatch from opt-in real Codex CLI execution, proves both isolated `CODEX_HOME/hooks.json` and trusted project-local `.codex/hooks.json` SessionStart discovery, and proves real `UserPromptSubmit` additional-context output before model transport completes. Remaining proof target: tool-scoped Pre/Post execution through an actual CLI tool turn. |
+| 6 | **Real native-hook smoke tests** | implemented; pending release | Add reproducible smoke tests that prove native Codex hook behavior, not just rendered files. Dogfood now separates synthetic Codex JSON dispatch from opt-in real Codex CLI execution, proves both isolated `CODEX_HOME/hooks.json` and trusted project-local `.codex/hooks.json` SessionStart discovery, proves real `UserPromptSubmit` additional-context output before model transport completes, and proves authenticated Bash tool-turn `PreToolUse`/`PostToolUse` execution through the CLI. |
 | 7 | **Codex plugin packaging research** | planned | Investigate whether anamnesis should emit an optional Codex plugin bundle for skills, commands, MCP/app metadata, or examples. Keep runtime hooks in config-layer `.codex/hooks.json` until plugin hook execution and trust semantics are verified in real Codex. |
 | 8 | **Runtime inspiration from OMX, not dependency** | planned | Consider a small anamnesis-owned runtime evidence layer for lifecycle reports, hook logs, and benchmark traces inspired by OMX `.omx/` state/log patterns. Scope it to install/update/status/doctor/benchmark evidence; do not add task orchestration, HUD, team runtime, or OMX as a dependency. |
 
@@ -566,7 +566,11 @@ Progress:
 - 2026-05-07: Added real `UserPromptSubmit` smoke coverage. The opt-in real
   dogfood path now verifies Codex invokes `UserPromptSubmit` before model
   transport completes and accepts the `hookSpecificOutput.additionalContext`
-  output shape. Tool-scoped Pre/Post still needs a real tool-turn smoke.
+  output shape.
+- 2026-05-07: Added authenticated Codex tool-turn smoke coverage. When
+  `ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1` is set, dogfood asks Codex to run a
+  safe Bash `printf` command inside an isolated temp project and verifies both
+  `PreToolUse` and `PostToolUse` hook payloads are emitted for `tool: Bash`.
 
 Exit criteria:
 - Fresh `--tools codex --allow-exec-adapters` install gets automatic

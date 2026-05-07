@@ -51,6 +51,7 @@ function setupDogfoodProject(): { project: string; library: string } {
 describe("dogfoodCheck", () => {
   beforeEach(() => {
     delete process.env.ANAMNESIS_REAL_CODEX_SMOKE;
+    delete process.env.ANAMNESIS_REAL_CODEX_TOOL_SMOKE;
   });
 
   it("scores a fully rendered cross-agent project and appends markdown", () => {
@@ -95,6 +96,10 @@ describe("dogfoodCheck", () => {
           name: "anamnesis dogfood real-codex-user-prompt-smoke",
           outcome: "skipped",
         }),
+        expect.objectContaining({
+          name: "anamnesis dogfood real-codex-tool-turn-smoke",
+          outcome: "skipped",
+        }),
       ]),
     );
 
@@ -111,6 +116,7 @@ describe("dogfoodCheck", () => {
     expect(text).toContain("`anamnesis dogfood real-codex-native-smoke`");
     expect(text).toContain("`anamnesis dogfood real-codex-project-hook-smoke`");
     expect(text).toContain("`anamnesis dogfood real-codex-user-prompt-smoke`");
+    expect(text).toContain("`anamnesis dogfood real-codex-tool-turn-smoke`");
     expect(text).toContain("active.md and latest archive injected");
     expect(text).toContain("status and doctor detect active.md");
     expect(text).toContain("synthetic Codex JSON dispatch");

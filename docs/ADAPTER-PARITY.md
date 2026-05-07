@@ -45,8 +45,9 @@ Known implications:
   dispatch and opt-in real Codex CLI execution. The real lane proves
   SessionStart discovery from both isolated `CODEX_HOME/hooks.json` and trusted
   project-local `.codex/hooks.json`, plus `UserPromptSubmit`
-  additional-context output before model transport completes. Tool-scoped CLI
-  smokes remain a separate v1.1 follow-up.
+  additional-context output before model transport completes. The authenticated
+  tool-turn lane proves Bash `PreToolUse` and `PostToolUse` execution through
+  the actual CLI.
 - If a future adapter cannot preserve project memory, ontology access, or
   handoff continuity, it should be marked as unsupported instead of silently
   rendering partial instructions.

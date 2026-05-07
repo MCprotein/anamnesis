@@ -179,6 +179,7 @@ function runVerificationChecks(
     runRealCodexNativeSmokeIfEnabled(),
     runRealCodexProjectHookSmokeIfEnabled(),
     runRealCodexUserPromptSmokeIfEnabled(),
+    runRealCodexToolTurnSmokeIfEnabled(),
     runNpmScript(projectRoot, "typecheck", ["npm", "run", "typecheck"], runner),
     runNpmScript(projectRoot, "test", ["npm", "test"], runner),
   ];
@@ -985,6 +986,150 @@ function runRealCodexUserPromptSmokeIfEnabled(): CommandCheck {
   }
 }
 
+function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
+  const command = ["anamnesis", "dogfood", "real-codex-tool-turn-smoke"];
+  const start = Date.now();
+  if (process.env.ANAMNESIS_REAL_CODEX_TOOL_SMOKE !== "1") {
+    return commandResult(
+      command,
+      start,
+      "skipped",
+      "set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke",
+    );
+  }
+
+  let project: string | undefined;
+  try {
+    project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-tool-"));
+    const sentinel = path.join(project, "codex-tool-turn-sentinel.log");
+    const outputFile = path.join(project, "tool-output.txt");
+    const hookPath = path.join(project, "codex-tool-turn-smoke.mjs");
+    fs.mkdirSync(path.join(project, ".codex"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, ".codex", "config.toml"),
+      "[features]\ncodex_hooks = true\n",
+      "utf8",
+    );
+    fs.writeFileSync(hookPath, realCodexToolSmokeHookScript(), "utf8");
+    fs.writeFileSync(
+      path.join(project, ".codex", "hooks.json"),
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: "Bash",
+                hooks: [
+                  {
+                    type: "command",
+                    command: `node "${hookPath}"`,
+                  },
+                ],
+              },
+            ],
+            PostToolUse: [
+              {
+                matcher: "Bash",
+                hooks: [
+                  {
+                    type: "command",
+                    command: `node "${hookPath}"`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = spawnSync(
+      "codex",
+      [
+        "exec",
+        "-C",
+        project,
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "--sandbox",
+        "workspace-write",
+        "--json",
+        "-c",
+        "features.codex_hooks=true",
+        "-c",
+        `projects.${JSON.stringify(project)}.trust_level="trusted"`,
+        "Use the shell tool to run exactly: printf ANAMNESIS_TOOL_SMOKE > tool-output.txt. Then answer with done.",
+      ],
+      {
+        cwd: project,
+        env: {
+          ...process.env,
+          ANAMNESIS_CODEX_TOOL_SMOKE_SENTINEL: sentinel,
+        },
+        input: "",
+        encoding: "utf8",
+        timeout: 120_000,
+      },
+    );
+
+    if (!fs.existsSync(sentinel)) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        hookFailureDetail(result) ||
+          "Codex CLI did not invoke tool-scoped PreToolUse/PostToolUse hooks",
+      );
+    }
+    const sentinelText = fs.readFileSync(sentinel, "utf8");
+    if (
+      !sentinelText.includes('"event":"PreToolUse"') ||
+      !sentinelText.includes('"event":"PostToolUse"') ||
+      !sentinelText.includes('"tool":"Bash"')
+    ) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        "Codex CLI tool turn did not record both Bash PreToolUse and PostToolUse hook payloads",
+      );
+    }
+    if (
+      result.status !== 0 ||
+      !fs.existsSync(outputFile) ||
+      fs.readFileSync(outputFile, "utf8") !== "ANAMNESIS_TOOL_SMOKE"
+    ) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        hookFailureDetail(result) ||
+          "Codex CLI did not complete the expected shell tool command",
+      );
+    }
+    return commandResult(
+      command,
+      start,
+      "pass",
+      "real Codex CLI Bash tool turn invoked PreToolUse and PostToolUse hooks",
+    );
+  } catch (e) {
+    return commandResult(
+      command,
+      start,
+      "fail",
+      e instanceof Error ? e.message : String(e),
+    );
+  } finally {
+    if (project !== undefined) {
+      fs.rmSync(project, { recursive: true, force: true });
+    }
+  }
+}
+
 function initializeGitRepo(project: string): void {
   const result = spawnSync("git", ["init"], {
     cwd: project,
@@ -1180,6 +1325,36 @@ process.stdout.write(JSON.stringify(output) + "\\n");
 `;
 }
 
+function realCodexToolSmokeHookScript(): string {
+  return `import fs from "node:fs";
+
+const chunks = [];
+for await (const chunk of process.stdin) {
+  chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+}
+const raw = Buffer.concat(chunks).toString("utf8");
+let payload = {};
+try {
+  payload = JSON.parse(raw || "{}");
+} catch {}
+const sentinel = process.env.ANAMNESIS_CODEX_TOOL_SMOKE_SENTINEL;
+if (sentinel) {
+  fs.appendFileSync(
+    sentinel,
+    JSON.stringify({
+      event: payload.hook_event_name,
+      tool: payload.tool_name,
+      input: payload.tool_input,
+      response: payload.tool_response,
+    }) + "\\n",
+  );
+}
+process.stdout.write(JSON.stringify({
+  systemMessage: "ANAMNESIS_TOOL_HOOK_" + payload.hook_event_name,
+}) + "\\n");
+`;
+}
+
 function requiredHandoffEvidence(archivePath: string): string[] {
   return [
     "Source: .anamnesis/handoff/active.md",
@@ -1273,6 +1448,7 @@ function withoutRecursiveDogfoodEnv(
 ): NodeJS.ProcessEnv {
   const next = { ...env };
   delete next.ANAMNESIS_REAL_CODEX_SMOKE;
+  delete next.ANAMNESIS_REAL_CODEX_TOOL_SMOKE;
   return next;
 }
 

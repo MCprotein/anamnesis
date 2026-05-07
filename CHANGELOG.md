@@ -31,6 +31,9 @@ could include breaking changes.
   enables opt-in real Codex CLI SessionStart smokes for both isolated
   `CODEX_HOME/hooks.json` and trusted project-local `.codex/hooks.json`, plus
   a real `UserPromptSubmit` additional-context output smoke.
+- Added an authenticated Codex tool-turn dogfood smoke gated by
+  `ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1`; it verifies a real Bash tool turn
+  invokes both `PreToolUse` and `PostToolUse` hooks.
 
 ### Changed
 
