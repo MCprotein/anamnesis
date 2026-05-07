@@ -178,6 +178,7 @@ function runVerificationChecks(
     runCodexNativeDispatchSimulation(libraryRoot),
     runRealCodexNativeSmokeIfEnabled(),
     runRealCodexProjectHookSmokeIfEnabled(),
+    runRealCodexUserPromptSmokeIfEnabled(),
     runNpmScript(projectRoot, "typecheck", ["npm", "run", "typecheck"], runner),
     runNpmScript(projectRoot, "test", ["npm", "test"], runner),
   ];
@@ -854,6 +855,136 @@ function runRealCodexProjectHookSmokeIfEnabled(): CommandCheck {
   }
 }
 
+function runRealCodexUserPromptSmokeIfEnabled(): CommandCheck {
+  const command = ["anamnesis", "dogfood", "real-codex-user-prompt-smoke"];
+  const start = Date.now();
+  if (process.env.ANAMNESIS_REAL_CODEX_SMOKE !== "1") {
+    return commandResult(
+      command,
+      start,
+      "skipped",
+      "set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke",
+    );
+  }
+
+  let codexHome: string | undefined;
+  let project: string | undefined;
+  try {
+    codexHome = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-home-"));
+    project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-prompt-"));
+    const sentinel = path.join(project, "codex-user-prompt-sentinel.log");
+    const hookPath = path.join(project, "codex-user-prompt-smoke.mjs");
+    fs.mkdirSync(path.join(project, ".codex"), { recursive: true });
+    fs.writeFileSync(
+      path.join(codexHome, "config.toml"),
+      [
+        "[features]",
+        "codex_hooks = true",
+        "",
+        `[projects.${JSON.stringify(project)}]`,
+        'trust_level = "trusted"',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(project, ".codex", "config.toml"),
+      "[features]\ncodex_hooks = true\n",
+      "utf8",
+    );
+    fs.writeFileSync(hookPath, realCodexSmokeHookScript(), "utf8");
+    fs.writeFileSync(
+      path.join(project, ".codex", "hooks.json"),
+      JSON.stringify(
+        {
+          hooks: {
+            UserPromptSubmit: [
+              {
+                hooks: [
+                  {
+                    type: "command",
+                    command: `node "${hookPath}"`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = spawnSync(
+      "codex",
+      [
+        "exec",
+        "-C",
+        project,
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "--sandbox",
+        "workspace-write",
+        "Return exactly OK.",
+      ],
+      {
+        cwd: project,
+        env: {
+          ...process.env,
+          CODEX_HOME: codexHome,
+          ANAMNESIS_CODEX_SMOKE_SENTINEL: sentinel,
+        },
+        input: "",
+        encoding: "utf8",
+        timeout: 20_000,
+      },
+    );
+
+    if (!fs.existsSync(sentinel)) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        hookFailureDetail(result) ||
+          "Codex CLI did not invoke the UserPromptSubmit hook",
+      );
+    }
+    const sentinelText = fs.readFileSync(sentinel, "utf8");
+    if (
+      !sentinelText.includes("UserPromptSubmit") ||
+      !sentinelText.includes("ANAMNESIS_REAL_CODEX_HOOK_SMOKE_UserPromptSubmit")
+    ) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        "Codex CLI invoked UserPromptSubmit but did not receive the additionalContext-shaped hook output",
+      );
+    }
+    return commandResult(
+      command,
+      start,
+      "pass",
+      `real Codex CLI invoked UserPromptSubmit hook with additionalContext output ${codexExitSuffix(result)}`,
+    );
+  } catch (e) {
+    return commandResult(
+      command,
+      start,
+      "fail",
+      e instanceof Error ? e.message : String(e),
+    );
+  } finally {
+    if (project !== undefined) {
+      fs.rmSync(project, { recursive: true, force: true });
+    }
+    if (codexHome !== undefined) {
+      fs.rmSync(codexHome, { recursive: true, force: true });
+    }
+  }
+}
+
 function initializeGitRepo(project: string): void {
   const result = spawnSync("git", ["init"], {
     cwd: project,
@@ -1025,16 +1156,27 @@ for await (const chunk of process.stdin) {
   chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
 }
 const raw = Buffer.concat(chunks).toString("utf8");
+let eventName = "unknown";
+try {
+  const payload = JSON.parse(raw || "{}");
+  eventName = typeof payload.hook_event_name === "string"
+    ? payload.hook_event_name
+    : eventName;
+} catch {}
+const output = {
+  hookSpecificOutput: {
+    hookEventName: eventName,
+    additionalContext: "ANAMNESIS_REAL_CODEX_HOOK_SMOKE_" + eventName,
+  },
+};
 const sentinel = process.env.ANAMNESIS_CODEX_SMOKE_SENTINEL;
 if (sentinel) {
-  fs.appendFileSync(sentinel, (raw || "{}") + "\\n---\\n");
+  fs.appendFileSync(
+    sentinel,
+    JSON.stringify({ input: raw || "{}", output }) + "\\n---\\n",
+  );
 }
-process.stdout.write(JSON.stringify({
-  hookSpecificOutput: {
-    hookEventName: "SessionStart",
-    additionalContext: "ANAMNESIS_REAL_CODEX_HOOK_SMOKE",
-  },
-}) + "\\n");
+process.stdout.write(JSON.stringify(output) + "\\n");
 `;
 }
 

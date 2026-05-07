@@ -44,8 +44,9 @@ Known implications:
 - Dogfood now records Codex hook evidence in two lanes: synthetic wrapper JSON
   dispatch and opt-in real Codex CLI execution. The real lane proves
   SessionStart discovery from both isolated `CODEX_HOME/hooks.json` and trusted
-  project-local `.codex/hooks.json`; prompt-time and tool-scoped CLI smokes
-  remain separate v1.1 follow-ups.
+  project-local `.codex/hooks.json`, plus `UserPromptSubmit`
+  additional-context output before model transport completes. Tool-scoped CLI
+  smokes remain a separate v1.1 follow-up.
 - If a future adapter cannot preserve project memory, ontology access, or
   handoff continuity, it should be marked as unsupported instead of silently
   rendering partial instructions.
