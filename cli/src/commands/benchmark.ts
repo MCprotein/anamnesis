@@ -114,6 +114,55 @@ export interface BenchmarkOptions {
   now?: () => Date;
 }
 
+export type BenchmarkDeltaDirection = "higher-is-better" | "lower-is-better";
+export type BenchmarkDeltaVerdict = "improved" | "regressed" | "unchanged";
+
+export interface BenchmarkDelta {
+  id: string;
+  label: string;
+  direction: BenchmarkDeltaDirection;
+  before: number;
+  after: number;
+  delta: number;
+  verdict: BenchmarkDeltaVerdict;
+  unit?: string;
+}
+
+export interface BenchmarkCompareResult {
+  projectRoot: string;
+  generatedAt: string;
+  baselinePath: string;
+  afterPath: string;
+  baseline: {
+    projectName: string;
+    generatedAt: string;
+    scorecard: BenchmarkScorecard;
+  };
+  after: {
+    projectName: string;
+    generatedAt: string;
+    scorecard: BenchmarkScorecard;
+  };
+  deltas: BenchmarkDelta[];
+  summary: {
+    improved: number;
+    regressed: number;
+    unchanged: number;
+  };
+  markdown: string;
+  appendedPath?: string;
+  evidencePath?: string;
+}
+
+export interface BenchmarkCompareOptions {
+  projectRoot: string;
+  baselinePath: string;
+  afterPath: string;
+  append?: boolean;
+  outputPath?: string;
+  now?: () => Date;
+}
+
 export class BenchmarkError extends Error {
   constructor(message: string) {
     super(message);
@@ -213,6 +262,77 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
   };
 }
 
+export function benchmarkCompare(
+  opts: BenchmarkCompareOptions,
+): BenchmarkCompareResult {
+  const projectRoot = path.resolve(opts.projectRoot);
+  const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+  const baselinePath = path.resolve(projectRoot, opts.baselinePath);
+  const afterPath = path.resolve(projectRoot, opts.afterPath);
+  const baseline = readBenchmarkResultFile(baselinePath, "baseline");
+  const after = readBenchmarkResultFile(afterPath, "after");
+  const deltas = compareScorecards(baseline.scorecard, after.scorecard);
+  const summary = {
+    improved: deltas.filter((delta) => delta.verdict === "improved").length,
+    regressed: deltas.filter((delta) => delta.verdict === "regressed").length,
+    unchanged: deltas.filter((delta) => delta.verdict === "unchanged").length,
+  };
+  const baselineDisplayPath = displayPathFromProject(projectRoot, baselinePath);
+  const afterDisplayPath = displayPathFromProject(projectRoot, afterPath);
+  const markdown = renderCompareMarkdown({
+    generatedAt,
+    baselinePath: baselineDisplayPath,
+    afterPath: afterDisplayPath,
+    baseline,
+    after,
+    deltas,
+    summary,
+  });
+
+  let appendedPath: string | undefined;
+  let evidencePath: string | undefined;
+  if (opts.append === true) {
+    const outputPath = path.resolve(
+      projectRoot,
+      opts.outputPath ?? path.join("docs", "BENCHMARKS.md"),
+    );
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    const prefix =
+      fs.existsSync(outputPath) && fs.readFileSync(outputPath, "utf8").trim() !== ""
+        ? "\n\n"
+        : "";
+    fs.appendFileSync(outputPath, `${prefix}${markdown}\n`, "utf8");
+    appendedPath = displayPathFromProject(projectRoot, outputPath);
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      benchmarkCompareEvidenceRecord({
+        generatedAt,
+        baselinePath: baselineDisplayPath,
+        afterPath: afterDisplayPath,
+        baseline,
+        after,
+        deltas,
+        summary,
+        appendedPath,
+      }),
+    );
+  }
+
+  return {
+    projectRoot,
+    generatedAt,
+    baselinePath: baselineDisplayPath,
+    afterPath: afterDisplayPath,
+    baseline,
+    after,
+    deltas,
+    summary,
+    markdown,
+    appendedPath,
+    evidencePath,
+  };
+}
+
 function benchmarkEvidenceRecord(input: {
   generatedAt: string;
   st: StatusResult;
@@ -256,6 +376,245 @@ function benchmarkEvidenceRecord(input: {
     artifacts: {
       markdown: input.appendedPath,
     },
+  };
+}
+
+function benchmarkCompareEvidenceRecord(input: {
+  generatedAt: string;
+  baselinePath: string;
+  afterPath: string;
+  baseline: BenchmarkCompareResult["baseline"];
+  after: BenchmarkCompareResult["after"];
+  deltas: BenchmarkDelta[];
+  summary: BenchmarkCompareResult["summary"];
+  appendedPath: string;
+}): RuntimeEvidenceRecord {
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "benchmark-compare",
+    generated_at: input.generatedAt,
+    command: ["anamnesis", "benchmark", "compare"],
+    project: { name: input.after.projectName },
+    summary: {
+      baseline: {
+        project: input.baseline.projectName,
+        generated_at: input.baseline.generatedAt,
+        path: input.baselinePath,
+      },
+      after: {
+        project: input.after.projectName,
+        generated_at: input.after.generatedAt,
+        path: input.afterPath,
+      },
+      improved: input.summary.improved,
+      regressed: input.summary.regressed,
+      unchanged: input.summary.unchanged,
+    },
+    details: {
+      deltas: input.deltas,
+    },
+    artifacts: {
+      markdown: input.appendedPath,
+    },
+  };
+}
+
+function readBenchmarkResultFile(
+  filePath: string,
+  label: "baseline" | "after",
+): BenchmarkCompareResult["baseline"] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      throw new BenchmarkError(`${label} benchmark JSON is invalid: ${filePath}`);
+    }
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new BenchmarkError(`${label} benchmark JSON not found: ${filePath}`);
+    }
+    throw e;
+  }
+  return parseBenchmarkSnapshot(parsed, label, filePath);
+}
+
+function parseBenchmarkSnapshot(
+  value: unknown,
+  label: "baseline" | "after",
+  filePath: string,
+): BenchmarkCompareResult["baseline"] {
+  if (!isObject(value)) {
+    throw new BenchmarkError(`${label} benchmark JSON must be an object: ${filePath}`);
+  }
+  const scorecard = value.scorecard;
+  if (!isBenchmarkScorecard(scorecard)) {
+    throw new BenchmarkError(
+      `${label} benchmark JSON is missing scorecard schema ${BENCHMARK_SCORECARD_SCHEMA_VERSION}: ${filePath}`,
+    );
+  }
+
+  return {
+    projectName: readProjectName(value),
+    generatedAt:
+      typeof value.generatedAt === "string" ? value.generatedAt : "(unknown)",
+    scorecard,
+  };
+}
+
+function readProjectName(value: Record<string, unknown>): string {
+  const status = value.status;
+  if (!isObject(status)) return "(unknown)";
+  const agentfile = status.agentfile;
+  if (!isObject(agentfile)) return "(unknown)";
+  const project = agentfile.project;
+  if (!isObject(project)) return "(unknown)";
+  return typeof project.name === "string" ? project.name : "(unknown)";
+}
+
+function isBenchmarkScorecard(value: unknown): value is BenchmarkScorecard {
+  if (!isObject(value)) return false;
+  return (
+    value.schema_version === BENCHMARK_SCORECARD_SCHEMA_VERSION &&
+    isScore(value.ready_layers, "ready", "total") &&
+    isObject(value.continuity) &&
+    typeof value.continuity.ready === "boolean" &&
+    isNumber(value.continuity.passed) &&
+    isNumber(value.continuity.total) &&
+    isObject(value.ontology_gaps) &&
+    isNumber(value.ontology_gaps.warnings) &&
+    isNumber(value.ontology_gaps.enrichment_missing) &&
+    isObject(value.diagnostics) &&
+    isNumber(value.diagnostics.doctor_errors) &&
+    isNumber(value.diagnostics.doctor_warnings) &&
+    isNumber(value.diagnostics.codex_hook_warnings) &&
+    isObject(value.adapter_surfaces) &&
+    typeof value.adapter_surfaces.ready === "boolean" &&
+    isNumber(value.adapter_surfaces.score) &&
+    isNumber(value.adapter_surfaces.total) &&
+    isObject(value.evidence) &&
+    isNumber(value.evidence.records) &&
+    isNumber(value.evidence.invalid_records)
+  );
+}
+
+function isScore(
+  value: unknown,
+  scoreKey: string,
+  totalKey: string,
+): value is Record<string, number> {
+  return (
+    isObject(value) &&
+    isNumber(value[scoreKey]) &&
+    isNumber(value[totalKey])
+  );
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function compareScorecards(
+  baseline: BenchmarkScorecard,
+  after: BenchmarkScorecard,
+): BenchmarkDelta[] {
+  return [
+    numericDelta({
+      id: "ready-layers",
+      label: "Ready layers",
+      direction: "higher-is-better",
+      before: baseline.ready_layers.ready,
+      after: after.ready_layers.ready,
+      unit: `/${after.ready_layers.total}`,
+    }),
+    numericDelta({
+      id: "continuity-checks",
+      label: "Continuity checks",
+      direction: "higher-is-better",
+      before: baseline.continuity.passed,
+      after: after.continuity.passed,
+      unit: `/${after.continuity.total}`,
+    }),
+    numericDelta({
+      id: "ontology-warnings",
+      label: "Ontology warnings",
+      direction: "lower-is-better",
+      before: baseline.ontology_gaps.warnings,
+      after: after.ontology_gaps.warnings,
+    }),
+    numericDelta({
+      id: "enrichment-missing",
+      label: "Layer B enrichment missing",
+      direction: "lower-is-better",
+      before: baseline.ontology_gaps.enrichment_missing,
+      after: after.ontology_gaps.enrichment_missing,
+    }),
+    numericDelta({
+      id: "doctor-errors",
+      label: "Doctor errors",
+      direction: "lower-is-better",
+      before: baseline.diagnostics.doctor_errors,
+      after: after.diagnostics.doctor_errors,
+    }),
+    numericDelta({
+      id: "doctor-warnings",
+      label: "Doctor warnings",
+      direction: "lower-is-better",
+      before: baseline.diagnostics.doctor_warnings,
+      after: after.diagnostics.doctor_warnings,
+    }),
+    numericDelta({
+      id: "codex-hook-warnings",
+      label: "Codex hook warnings",
+      direction: "lower-is-better",
+      before: baseline.diagnostics.codex_hook_warnings,
+      after: after.diagnostics.codex_hook_warnings,
+    }),
+    numericDelta({
+      id: "adapter-surfaces",
+      label: "Adapter surfaces",
+      direction: "higher-is-better",
+      before: baseline.adapter_surfaces.score,
+      after: after.adapter_surfaces.score,
+      unit: `/${after.adapter_surfaces.total}`,
+    }),
+    numericDelta({
+      id: "evidence-records",
+      label: "Evidence records",
+      direction: "higher-is-better",
+      before: baseline.evidence.records,
+      after: after.evidence.records,
+    }),
+  ];
+}
+
+function numericDelta(input: {
+  id: string;
+  label: string;
+  direction: BenchmarkDeltaDirection;
+  before: number;
+  after: number;
+  unit?: string;
+}): BenchmarkDelta {
+  const delta = input.after - input.before;
+  let verdict: BenchmarkDeltaVerdict = "unchanged";
+  if (delta !== 0) {
+    const improved =
+      input.direction === "higher-is-better" ? delta > 0 : delta < 0;
+    verdict = improved ? "improved" : "regressed";
+  }
+  return {
+    id: input.id,
+    label: input.label,
+    direction: input.direction,
+    before: input.before,
+    after: input.after,
+    delta,
+    verdict,
+    ...(input.unit ? { unit: input.unit } : {}),
   };
 }
 
@@ -502,6 +861,45 @@ function renderBenchmarkMarkdown(input: {
     `Codex hook warnings: ${input.st.codexHooks.summary.warnings}`,
     `Evidence records: ${input.scorecard.evidence.records} valid, ${input.scorecard.evidence.invalid_records} invalid`,
   ].join("\n");
+}
+
+function renderCompareMarkdown(input: {
+  generatedAt: string;
+  baselinePath: string;
+  afterPath: string;
+  baseline: BenchmarkCompareResult["baseline"];
+  after: BenchmarkCompareResult["after"];
+  deltas: BenchmarkDelta[];
+  summary: BenchmarkCompareResult["summary"];
+}): string {
+  const rows = input.deltas
+    .map(
+      (delta) =>
+        `| ${delta.label} | ${formatDeltaValue(delta.before, delta.unit)} | ${formatDeltaValue(delta.after, delta.unit)} | ${formatSignedDelta(delta.delta)} | ${delta.verdict} |`,
+    )
+    .join("\n");
+  return [
+    `## Benchmark Compare — ${input.generatedAt}`,
+    "",
+    `Baseline: ${input.baseline.projectName} (${input.baseline.generatedAt})`,
+    `After: ${input.after.projectName} (${input.after.generatedAt})`,
+    `Baseline file: ${input.baselinePath}`,
+    `After file: ${input.afterPath}`,
+    `Summary: ${input.summary.improved} improved, ${input.summary.regressed} regressed, ${input.summary.unchanged} unchanged`,
+    "",
+    "| Dimension | Baseline | After | Delta | Verdict |",
+    "|---|---:|---:|---:|---|",
+    rows,
+  ].join("\n");
+}
+
+function formatDeltaValue(value: number, unit: string | undefined): string {
+  return `${value}${unit ?? ""}`;
+}
+
+function formatSignedDelta(value: number): string {
+  if (value > 0) return `+${value}`;
+  return String(value);
 }
 
 function renderScorecardRows(scorecard: BenchmarkScorecard): string {

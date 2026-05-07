@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { benchmarkReport } from "./benchmark.js";
+import { benchmarkCompare, benchmarkReport } from "./benchmark.js";
 import { init } from "./init.js";
 
 function tmpDir(prefix: string): string {
@@ -170,5 +170,75 @@ describe("benchmarkReport", () => {
 
     expect(result.appendedPath).toBe(outputPath);
     expect(fs.existsSync(outputPath)).toBe(true);
+  });
+
+  it("compares two benchmark scorecards and appends evidence", () => {
+    const { project, library } = setupBenchmarkProject();
+    const after = benchmarkReport({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-05-03T14:00:00.000Z"),
+    });
+    const baseline = JSON.parse(JSON.stringify(after)) as typeof after;
+    baseline.generatedAt = "2026-05-03T13:00:00.000Z";
+    baseline.scorecard.ready_layers.ready = 1;
+    baseline.scorecard.continuity.passed = 4;
+    baseline.scorecard.ontology_gaps.warnings = 2;
+    baseline.scorecard.ontology_gaps.enrichment_missing = 2;
+    baseline.scorecard.diagnostics.doctor_errors = 1;
+    baseline.scorecard.diagnostics.doctor_warnings = 3;
+    baseline.scorecard.diagnostics.codex_hook_warnings = 1;
+    baseline.scorecard.adapter_surfaces.score = 0;
+    baseline.scorecard.adapter_surfaces.ready = false;
+    baseline.scorecard.evidence.records = 0;
+
+    const baselinePath = path.join(project, "baseline.json");
+    const afterPath = path.join(project, "after.json");
+    fs.writeFileSync(baselinePath, JSON.stringify(baseline), "utf8");
+    fs.writeFileSync(afterPath, JSON.stringify(after), "utf8");
+
+    const result = benchmarkCompare({
+      projectRoot: project,
+      baselinePath,
+      afterPath,
+      append: true,
+      now: () => new Date("2026-05-03T15:00:00.000Z"),
+    });
+
+    expect(result.summary).toEqual({
+      improved: 8,
+      regressed: 0,
+      unchanged: 1,
+    });
+    expect(result.markdown).toContain("Benchmark Compare");
+    expect(result.markdown).toContain("| Ready layers | 1/5 | 5/5 | +4 | improved |");
+    expect(result.markdown).toContain("| Doctor errors | 1 | 0 | -1 | improved |");
+    expect(result.appendedPath).toBe("docs/BENCHMARKS.md");
+    expect(result.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
+
+    const evidenceLines = fs
+      .readFileSync(
+        path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+        "utf8",
+      )
+      .trim()
+      .split(/\r?\n/);
+    expect(evidenceLines).toHaveLength(1);
+    const evidence = JSON.parse(evidenceLines[0]!) as {
+      kind: string;
+      summary: {
+        improved?: number;
+        regressed?: number;
+        unchanged?: number;
+      };
+    };
+    expect(evidence).toMatchObject({
+      kind: "benchmark-compare",
+      summary: {
+        improved: 8,
+        regressed: 0,
+        unchanged: 1,
+      },
+    });
   });
 });

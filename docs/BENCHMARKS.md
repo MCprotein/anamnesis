@@ -7,6 +7,9 @@ Run:
 
 ```bash
 anamnesis benchmark report --append
+anamnesis benchmark report --json > before.json
+anamnesis benchmark report --json > after.json
+anamnesis benchmark compare --baseline before.json --after after.json --append
 ```
 
 Append runs also write a machine-readable evidence record to
@@ -26,6 +29,10 @@ The report measures concrete surfaces on disk, not model intelligence:
 Use these reports to compare static-only, bootstrapped, and enriched project
 context over time. Public README claims should be based on reports that avoid
 proprietary source snippets and credential-bearing details.
+
+Use `benchmark compare` for before/after adoption evidence. It reads two
+`benchmark report --json` files and reports raw scorecard deltas rather than
+collapsing the result into a single opaque score.
 
 Public-safe summaries and claim boundaries live in
 [`docs/BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md).

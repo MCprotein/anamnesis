@@ -13,10 +13,11 @@ human-readable report.
 
 - `anamnesis dogfood check --append`
 - `anamnesis benchmark report --append`
+- `anamnesis benchmark compare --append`
 
 Each record includes:
 
-- `kind`: `dogfood-check` or `benchmark-report`
+- `kind`: `dogfood-check`, `benchmark-report`, or `benchmark-compare`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -29,6 +30,9 @@ Benchmark evidence records include `summary.scorecard` under schema
 instead of reducing benchmark claims to an opaque aggregate: ready layers,
 continuity checks, ontology gaps, doctor issues, Codex hook warnings, adapter
 surfaces, and evidence freshness.
+
+Benchmark compare evidence records include before/after scorecard deltas and
+summary counts for improved, regressed, and unchanged dimensions.
 
 ## Reader
 

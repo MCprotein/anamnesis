@@ -119,6 +119,7 @@ anamnesis doctor    # read-only installation integrity + continuity/ontology dia
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup
 anamnesis dogfood check --append  # score and record self-check continuity evidence
 anamnesis benchmark report --append  # record deterministic context-quality scorecard evidence
+anamnesis benchmark compare --baseline before.json --after after.json --append  # record before/after deltas
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 

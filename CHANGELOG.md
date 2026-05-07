@@ -13,6 +13,9 @@ could include breaking changes.
   including ready layers, continuity checks, ontology gaps, doctor issues,
   Codex hook warnings, adapter surfaces, and runtime evidence freshness in
   markdown, JSON, CLI output, and evidence records.
+- Added `anamnesis benchmark compare --baseline <json> --after <json>` for
+  before/after scorecard deltas, with markdown, JSON, append, and runtime
+  evidence output.
 
 ## [1.1.1] — 2026-05-07
 

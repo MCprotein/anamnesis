@@ -4,7 +4,10 @@ import * as path from "node:path";
 export const EVIDENCE_LOG_PATH = ".anamnesis/evidence/events.jsonl";
 export const EVIDENCE_SCHEMA_VERSION = "anamnesis.evidence.v1";
 
-export type EvidenceKind = "dogfood-check" | "benchmark-report";
+export type EvidenceKind =
+  | "dogfood-check"
+  | "benchmark-report"
+  | "benchmark-compare";
 
 export interface RuntimeEvidenceRecord {
   schema_version: typeof EVIDENCE_SCHEMA_VERSION;
@@ -67,7 +70,9 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
   const record = value as Partial<RuntimeEvidenceRecord>;
   return (
     record.schema_version === EVIDENCE_SCHEMA_VERSION &&
-    (record.kind === "dogfood-check" || record.kind === "benchmark-report") &&
+    (record.kind === "dogfood-check" ||
+      record.kind === "benchmark-report" ||
+      record.kind === "benchmark-compare") &&
     typeof record.generated_at === "string" &&
     Array.isArray(record.command) &&
     record.command.every((part) => typeof part === "string") &&

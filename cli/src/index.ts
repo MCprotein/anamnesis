@@ -44,8 +44,10 @@ import {
   type DogfoodResult,
 } from "./commands/dogfood.js";
 import {
+  benchmarkCompare,
   benchmarkReport,
   BenchmarkError,
+  type BenchmarkCompareResult,
   type BenchmarkResult,
 } from "./commands/benchmark.js";
 import {
@@ -189,6 +191,8 @@ Commands:
                                   a record to docs/DOGFOOD.md
   benchmark report             Generate a deterministic context-quality
                                   benchmark report for docs/BENCHMARKS.md
+  benchmark compare            Compare two benchmark report JSON snapshots
+                                  and optionally append a delta report
   migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
@@ -236,6 +240,14 @@ Flags (dogfood check):
 Flags (benchmark report):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
+  --json                        Print structured JSON
+  --append                      Append markdown result to docs/BENCHMARKS.md
+  --output <path>               Override benchmark log path
+
+Flags (benchmark compare):
+  --project-root <path>         Target directory (default: cwd)
+  --baseline <path>             Baseline benchmark report JSON file
+  --after <path>                After benchmark report JSON file
   --json                        Print structured JSON
   --append                      Append markdown result to docs/BENCHMARKS.md
   --output <path>               Override benchmark log path
@@ -644,6 +656,28 @@ function reportBenchmark(result: BenchmarkResult): void {
   }
 }
 
+function reportBenchmarkCompare(result: BenchmarkCompareResult): void {
+  console.log(`anamnesis benchmark compare — ${result.after.projectName}`);
+  console.log(`  baseline: ${result.baselinePath}`);
+  console.log(`  after: ${result.afterPath}`);
+  console.log(
+    `  summary: ${result.summary.improved} improved, ${result.summary.regressed} regressed, ${result.summary.unchanged} unchanged`,
+  );
+  for (const delta of result.deltas) {
+    const unit = delta.unit ?? "";
+    const signed = delta.delta > 0 ? `+${delta.delta}` : String(delta.delta);
+    console.log(
+      `  ${delta.verdict.padEnd(9)} ${delta.label}: ${delta.before}${unit} -> ${delta.after}${unit} (${signed})`,
+    );
+  }
+  if (result.appendedPath) {
+    console.log(`  appended: ${result.appendedPath}`);
+  }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
+}
+
 function reportMigrate(result: MigrateAgentfileResult): void {
   const verdict = result.changed
     ? result.applied
@@ -862,16 +896,44 @@ async function main(argv: string[]): Promise<number> {
 
     case "benchmark": {
       const sub = positional[0];
-      if (sub !== "report") {
+      if (sub !== "report" && sub !== "compare") {
         console.error(
           `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
         );
         console.error(
           `usage: anamnesis benchmark report [--json] [--append] [--output=<path>]`,
         );
+        console.error(
+          `       anamnesis benchmark compare --baseline <path> --after <path> [--json] [--append] [--output=<path>]`,
+        );
         return 1;
       }
       try {
+        if (sub === "compare") {
+          const baselinePath = flags["baseline"];
+          const afterPath = flags["after"];
+          if (typeof baselinePath !== "string" || typeof afterPath !== "string") {
+            console.error(
+              `usage: anamnesis benchmark compare --baseline <path> --after <path> [--json] [--append] [--output=<path>]`,
+            );
+            return 1;
+          }
+          const result = benchmarkCompare({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            baselinePath,
+            afterPath,
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportBenchmarkCompare(result);
+          }
+          return 0;
+        }
+
         const result = benchmarkReport({
           projectRoot:
             (flags["project-root"] as string | undefined) ?? process.cwd(),
