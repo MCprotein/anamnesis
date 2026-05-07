@@ -55,6 +55,10 @@ could include breaking changes.
   continuity, shared hook ownership diagnostics, real native-hook smokes,
   Codex plugin packaging research, and OMX-compatible runtime evidence
   boundaries.
+- Added `docs/CODEX-PLUGIN-PACKAGING.md`, documenting the v1.1 decision to
+  keep required Codex lifecycle hooks in config-layer `.codex/hooks.json` and
+  defer optional plugin bundle emission until plugin-local hook execution has
+  real Codex CLI smoke evidence.
 
 ## [1.0.0] — 2026-05-04
 

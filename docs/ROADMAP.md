@@ -539,7 +539,7 @@ External review input, 2026-05-04:
 | 4 | **Native executable-hook bridge for Codex** | in progress | Where Codex `PreToolUse`, `PermissionRequest`, and `PostToolUse` support useful matchers (`Bash`, `apply_patch`/`Edit`/`Write`, MCP tool names), render safe fragment hooks natively before falling back to AGENTS.md instructions or the Git pre-commit bridge. Keep supply-chain gating under `--allow-exec-adapters`. |
 | 5 | **Shared Codex hook ownership diagnostics** | implemented; pending release | Teach `status` / `doctor` to explain active Codex hook sources and ownership: user config, project config, anamnesis-managed entries, OMX-managed entries, plugin-provided lifecycle config, duplicate handlers, relative-path fragility, and project-trust gating. Preserve unrelated hook entries during every update. |
 | 6 | **Real native-hook smoke tests** | implemented; pending release | Add reproducible smoke tests that prove native Codex hook behavior, not just rendered files. Dogfood now separates synthetic Codex JSON dispatch from opt-in real Codex CLI execution, proves both isolated `CODEX_HOME/hooks.json` and trusted project-local `.codex/hooks.json` SessionStart discovery, proves real `UserPromptSubmit` additional-context output before model transport completes, and proves authenticated Bash tool-turn `PreToolUse`/`PostToolUse` execution through the CLI. |
-| 7 | **Codex plugin packaging research** | planned | Investigate whether anamnesis should emit an optional Codex plugin bundle for skills, commands, MCP/app metadata, or examples. Keep runtime hooks in config-layer `.codex/hooks.json` until plugin hook execution and trust semantics are verified in real Codex. |
+| 7 | **Codex plugin packaging research** | researched; implementation deferred | [`docs/CODEX-PLUGIN-PACKAGING.md`](CODEX-PLUGIN-PACKAGING.md) records the v1.1 decision: do not emit a Codex plugin by default yet. Keep required runtime hooks in config-layer `.codex/hooks.json`; treat future plugin output as optional packaging for skills, examples, or MCP/app metadata until plugin-local hook execution and trust semantics are verified in real Codex. |
 | 8 | **Runtime inspiration from OMX, not dependency** | partial | Add a small anamnesis-owned runtime evidence layer inspired by OMX `.omx/` state/log patterns; see [`docs/RUNTIME-EVIDENCE.md`](RUNTIME-EVIDENCE.md). `dogfood check --append` and `benchmark report --append` now write machine-readable records to `.anamnesis/evidence/events.jsonl`, and `status` reports the latest record. Remaining scope: hook-log events, install/update/doctor evidence, benchmark trace rollups, and public README evidence surfacing. Do not add task orchestration, HUD, team runtime, or OMX as a dependency. |
 
 Progress:
@@ -575,6 +575,12 @@ Progress:
   and benchmark append runs now write versioned JSONL records under
   `.anamnesis/evidence/events.jsonl`, and `status` reports total/invalid
   evidence counts plus the latest record kind and timestamp.
+- 2026-05-07: Closed Codex plugin packaging research for v1.1 with
+  [`docs/CODEX-PLUGIN-PACKAGING.md`](CODEX-PLUGIN-PACKAGING.md). The current
+  decision is to keep required continuity hooks in config-layer
+  `.codex/hooks.json` and reserve optional plugin packaging for skills,
+  examples, and integration metadata until plugin-local lifecycle hooks have
+  real Codex CLI smoke evidence.
 
 Exit criteria:
 - Fresh `--tools codex --allow-exec-adapters` install gets automatic
@@ -592,6 +598,9 @@ Exit criteria:
 - Markdown dogfood and benchmark reports have a machine-readable evidence
   counterpart that future status, benchmark gallery, and README-claims
   surfaces can consume without scraping prose.
+- Codex plugin packaging has a documented boundary: optional UX packaging may
+  follow later, but no core continuity promise depends on plugin install state
+  or unverified plugin-local hooks.
 - OMX remains compatible as a co-installed runtime, but anamnesis does not
   require OMX to provide its context/ontology/handoff continuity promise.
 
