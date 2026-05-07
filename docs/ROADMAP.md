@@ -591,6 +591,12 @@ Progress:
   hard-coded CLI / ontology-generator version metadata. The v1.1 patch line
   now reads package metadata from `package.json`, adds regression coverage,
   and treats published CLI version mismatches as release blockers.
+- 2026-05-07: Published `@mcprotein/anamnesis@1.1.1` as the v1.1 patch.
+  npmjs.org version lookup returned `1.1.1`, published CLI execution from
+  `/private/tmp` returned `1.1.1`, and a fresh Prisma fixture initialized
+  with `--tools all --allow-exec-adapters` reached continuity `ready (6/6)`,
+  Codex hook warnings `0`, and doctor `0 error(s)` with only the expected
+  agent-required `.enriched.yaml` warning.
 
 Exit criteria:
 - Fresh `--tools codex --allow-exec-adapters` install gets automatic
