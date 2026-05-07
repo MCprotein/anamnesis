@@ -643,7 +643,7 @@ limitations.
 | 4 | **Evidence gallery automation** | implemented; unreleased | Generate or validate `docs/BENCHMARK-GALLERY.md` and README claim candidates from `.anamnesis/evidence/events.jsonl` plus sanitized benchmark artifacts. Claims without matching evidence should be flagged before release. |
 | 5 | **Public-safe multi-shape collection** | implemented; unreleased | Collect at least three public-safe benchmark shapes: a frontend app, a backend plus infra repo, and a Python/API repo. Each entry must include fragment set, raw score dimensions, before/after or fresh-install state, and limitations. |
 | 6 | **Prompt-time context delta decision gate** | implemented; unreleased | Revisit Codex `UserPromptSubmit` context delta injection only through `anamnesis benchmark prompt-gate`. The gate reads benchmark/task evidence, estimates duplicate ontology/handoff prompt overhead, reports duplicate-context risk, and keeps injection disabled unless repeated continuity failures justify a bounded non-default prototype. |
-| 7 | **Runtime evidence expansion** | partial; unreleased | Expand runtime evidence beyond dogfood and benchmark append runs. `anamnesis doctor --append` now records install integrity diagnostics as `doctor-check` evidence, and `status` reports per-kind evidence counts/freshness. Hook-log summaries, install/update evidence, and benchmark trace rollups remain follow-up. |
+| 7 | **Runtime evidence expansion** | partial; unreleased | Expand runtime evidence beyond dogfood and benchmark append runs. `anamnesis doctor --append` now records install integrity diagnostics as `doctor-check` evidence, `anamnesis update --apply` records write-path evidence as `update-apply`, and `status` reports per-kind evidence counts/freshness. Hook-log summaries, init/install evidence, and benchmark trace rollups remain follow-up. |
 
 Progress:
 - 2026-05-07: Implemented benchmark scorecard v2 for
@@ -681,6 +681,11 @@ Progress:
 - 2026-05-07: Expanded `anamnesis status` runtime evidence output from a
   single latest record to a kind-level freshness rollup with per-kind counts,
   latest timestamps, age, and stale flags for both CLI and JSON consumers.
+- 2026-05-07: Added automatic `update-apply` runtime evidence for
+  `anamnesis update --apply`. Dry-runs remain side-effect free, while apply
+  records summarize planned change counts, backup/prune counts,
+  Claude/Codex hook registration outcomes, suggested fragments, and apply
+  flags.
 
 Exit criteria:
 - `anamnesis benchmark report` exposes stable numeric raw dimensions and a

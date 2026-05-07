@@ -34,6 +34,8 @@ could include breaking changes.
 - Added kind-level runtime evidence freshness to `anamnesis status`, including
   per-kind record counts, latest timestamps, age, and stale flags in CLI/JSON
   output.
+- Added automatic `update-apply` runtime evidence for `anamnesis update
+  --apply`; dry-runs remain read-only and do not write evidence.
 
 ## [1.1.1] — 2026-05-07
 

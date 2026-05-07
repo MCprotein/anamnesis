@@ -7,6 +7,10 @@ import { init } from "./init.js";
 import { readAgentfile, writeAgentfile } from "../core/agentfile.js";
 import { readManifest } from "../core/manifest.js";
 import { findRegion, upsertRegion } from "../core/regions.js";
+import {
+  EVIDENCE_LOG_PATH,
+  readEvidenceRecords,
+} from "../core/evidence.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -259,6 +263,8 @@ describe("update — library version bump", () => {
       apply: false,
       allowExecAdapters: false,
     });
+    expect(dry.evidencePath).toBeUndefined();
+    expect(fs.existsSync(path.join(project, EVIDENCE_LOG_PATH))).toBe(false);
     const prismaChange = dry.changes.find(
       (c) => c.target === "region" && c.status === "update",
     );
@@ -270,8 +276,10 @@ describe("update — library version bump", () => {
       libraryRoot: v2Lib,
       apply: true,
       allowExecAdapters: false,
+      now: () => new Date("2026-05-07T12:34:56.000Z"),
     });
     expect(applied.writtenToDisk).toBe(true);
+    expect(applied.evidencePath).toBe(EVIDENCE_LOG_PATH);
 
     const af = readAgentfile(project);
     const prismaEntry = af.fragments.find((f) => f.id === "prisma")!;
@@ -279,6 +287,48 @@ describe("update — library version bump", () => {
 
     const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
     expect(agentsMd).toContain("v2 — use prisma generate after edits");
+
+    const evidence = readEvidenceRecords(project);
+    expect(evidence.total).toBe(1);
+    expect(evidence.records[0]).toMatchObject({
+      kind: "update-apply",
+      generated_at: "2026-05-07T12:34:56.000Z",
+      command: ["anamnesis", "update", "--apply"],
+      project: { name: path.basename(project) },
+      summary: {
+        schema_version: "anamnesis.update_apply.v1",
+        written_to_disk: true,
+        changes: {
+          update: 1,
+          blocked: 0,
+          user_modified: 0,
+        },
+        suggested_count: 0,
+        backup: {
+          created: true,
+          files: 1,
+          pruned: 0,
+        },
+        flags: {
+          allow_exec_adapters: false,
+          bump_pinned: false,
+        },
+      },
+      details: {
+        backup: {
+          files: ["AGENTS.md"],
+        },
+      },
+    });
+    expect(evidence.records[0]!.details?.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_type: "region",
+          target: "AGENTS.md#prisma",
+          status: "update",
+        }),
+      ]),
+    );
   });
 
   it("renders pinned fragments from archived versions and preserves Agentfile version", () => {

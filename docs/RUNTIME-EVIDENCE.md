@@ -1,7 +1,7 @@
 # Runtime Evidence
 
-anamnesis records durable runtime evidence for checks that already append a
-human-readable report.
+anamnesis records durable runtime evidence for checks and write paths that
+need machine-readable proof beyond terminal output.
 
 ## Store
 
@@ -13,6 +13,7 @@ human-readable report.
 
 - `anamnesis dogfood check --append`
 - `anamnesis doctor --append`
+- `anamnesis update --apply`
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
 - `anamnesis benchmark task --append`
@@ -20,8 +21,9 @@ human-readable report.
 
 Each record includes:
 
-- `kind`: `dogfood-check`, `doctor-check`, `benchmark-report`,
-  `benchmark-compare`, `agent-task-benchmark`, or `prompt-delta-gate`
+- `kind`: `dogfood-check`, `doctor-check`, `update-apply`,
+  `benchmark-report`, `benchmark-compare`, `agent-task-benchmark`, or
+  `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -39,6 +41,11 @@ Doctor evidence records use kind `doctor-check`. They capture the same
 installation integrity, managed-drift, adapter wiring, Codex hook ownership,
 continuity, and ontology-gap diagnostics that `anamnesis doctor` prints, with
 summary error/warning counts and issue details.
+
+Update evidence records use kind `update-apply` and are written automatically
+only for `anamnesis update --apply`. Dry-runs stay read-only and do not touch
+the evidence log. The record captures change counts, suggested fragment count,
+backup/prune counts, Claude/Codex hook registration outcomes, and apply flags.
 
 Benchmark compare evidence records include before/after scorecard deltas and
 summary counts for improved, regressed, and unchanged dimensions.
@@ -73,10 +80,11 @@ lists current evidence entries, README claim candidates, and release warnings
 such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
-`doctor-check`, `agent-task-benchmark`, and `prompt-delta-gate` records.
+non-gallery records such as `doctor-check`, `update-apply`,
+`agent-task-benchmark`, and `prompt-delta-gate`.
 
 ## Boundary
 
 This evidence layer is not a task runtime, HUD, queue, or orchestrator. It is
-repo-local proof that dogfood and benchmark claims can consume without scraping
-markdown prose.
+repo-local proof that lifecycle, dogfood, and benchmark claims can consume
+without scraping markdown prose.

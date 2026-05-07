@@ -68,6 +68,11 @@ import {
   type CodexHookRegistration,
   type CodexHookSyncResult,
 } from "../core/codex_native.js";
+import {
+  appendEvidenceRecord,
+  EVIDENCE_SCHEMA_VERSION,
+  type RuntimeEvidenceRecord,
+} from "../core/evidence.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,6 +85,7 @@ export interface UpdateOptions {
   allowExecAdapters: boolean;
   /** Explicitly move pinned entries to the library-current version. */
   bumpPinned?: boolean;
+  now?: () => Date;
 }
 
 export interface UpdateResult {
@@ -99,6 +105,8 @@ export interface UpdateResult {
   hookRegistrations: HookSyncResult[];
   /** Per-registration outcome of post-apply Codex native hook sync. */
   codexHookRegistrations: CodexHookSyncResult[];
+  /** Runtime evidence JSONL path written on apply. Dry-runs never set this. */
+  evidencePath?: string;
 }
 
 export class UpdateError extends Error {
@@ -415,6 +423,7 @@ export function update(opts: UpdateOptions): UpdateResult {
   let prunedBackupDirs: string[] | undefined;
   let hookRegistrations: HookSyncResult[] = [];
   let codexHookRegistrations: CodexHookSyncResult[] = [];
+  let evidencePath: string | undefined;
   if (opts.apply) {
     backupDir = path.join(
       projectRoot,
@@ -434,6 +443,24 @@ export function update(opts: UpdateOptions): UpdateResult {
     const hookSync = syncWrittenHooks(changes, projectRoot);
     hookRegistrations = hookSync.claude;
     codexHookRegistrations = hookSync.codex;
+    const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      updateApplyEvidenceRecord({
+        generatedAt,
+        projectRoot,
+        projectName: updatedAgentfile.project.name,
+        changes,
+        suggested,
+        backupDir,
+        backedUpFiles,
+        prunedBackupDirs,
+        hookRegistrations,
+        codexHookRegistrations,
+        allowExecAdapters: opts.allowExecAdapters,
+        bumpPinned: opts.bumpPinned === true,
+      }),
+    );
   }
 
   return {
@@ -447,7 +474,143 @@ export function update(opts: UpdateOptions): UpdateResult {
     prunedBackupDirs: opts.apply ? prunedBackupDirs : undefined,
     hookRegistrations,
     codexHookRegistrations,
+    evidencePath,
   };
+}
+
+function updateApplyEvidenceRecord(input: {
+  generatedAt: string;
+  projectRoot: string;
+  projectName: string;
+  changes: readonly PlannedChange[];
+  suggested: readonly Rule[];
+  backupDir?: string;
+  backedUpFiles?: readonly string[];
+  prunedBackupDirs?: readonly string[];
+  hookRegistrations: readonly HookSyncResult[];
+  codexHookRegistrations: readonly CodexHookSyncResult[];
+  allowExecAdapters: boolean;
+  bumpPinned: boolean;
+}): RuntimeEvidenceRecord {
+  const changeSummary = summarizePlannedChanges(input.changes);
+  const backedUpFiles = input.backedUpFiles ?? [];
+  const prunedBackupDirs = input.prunedBackupDirs ?? [];
+  const command = ["anamnesis", "update", "--apply"];
+  if (input.allowExecAdapters) command.push("--allow-exec-adapters");
+  if (input.bumpPinned) command.push("--bump-pinned");
+
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "update-apply",
+    generated_at: input.generatedAt,
+    command,
+    project: { name: input.projectName },
+    summary: {
+      schema_version: "anamnesis.update_apply.v1",
+      written_to_disk: true,
+      changes: changeSummary,
+      suggested_count: input.suggested.length,
+      backup: {
+        created: backedUpFiles.length > 0,
+        files: backedUpFiles.length,
+        pruned: prunedBackupDirs.length,
+      },
+      hook_sync: {
+        claude: summarizeSyncStatuses(input.hookRegistrations),
+        codex: summarizeSyncStatuses(input.codexHookRegistrations),
+      },
+      flags: {
+        allow_exec_adapters: input.allowExecAdapters,
+        bump_pinned: input.bumpPinned,
+      },
+    },
+    details: {
+      changes: input.changes.map(changeEvidenceDetail),
+      suggested: input.suggested.map((rule) => ({
+        id: rule.id,
+        suggest: rule.suggest,
+      })),
+      backup: {
+        ...(input.backupDir && backedUpFiles.length > 0
+          ? { dir: projectRelativePath(input.projectRoot, input.backupDir) }
+          : {}),
+        files: backedUpFiles,
+        pruned_dirs: prunedBackupDirs,
+      },
+      hook_registrations: input.hookRegistrations.map((result) => ({
+        status: result.status,
+        event: result.registration.event,
+        ...(result.registration.matcher
+          ? { matcher: result.registration.matcher }
+          : {}),
+        command: result.registration.command,
+      })),
+      codex_hook_registrations: input.codexHookRegistrations.map((result) => ({
+        status: result.status,
+        event: result.registration.event,
+        ...(result.registration.matcher
+          ? { matcher: result.registration.matcher }
+          : {}),
+        command: result.registration.command,
+      })),
+    },
+  };
+}
+
+function summarizePlannedChanges(
+  changes: readonly PlannedChange[],
+): {
+  create: number;
+  update: number;
+  noop: number;
+  blocked: number;
+  user_modified: number;
+} {
+  const summary = {
+    create: 0,
+    update: 0,
+    noop: 0,
+    blocked: 0,
+    user_modified: 0,
+  };
+  for (const change of changes) {
+    if (change.status === "create") summary.create++;
+    else if (change.status === "update") summary.update++;
+    else if (change.status === "noop") summary.noop++;
+    else if (change.status === "blocked") summary.blocked++;
+    else if (change.status === "user-modified") summary.user_modified++;
+  }
+  return summary;
+}
+
+function summarizeSyncStatuses(
+  results: ReadonlyArray<{ status: string }>,
+): { total: number; create: number; noop: number } {
+  return {
+    total: results.length,
+    create: results.filter((result) => result.status === "create").length,
+    noop: results.filter((result) => result.status === "noop").length,
+  };
+}
+
+function changeEvidenceDetail(change: PlannedChange): Record<string, unknown> {
+  const target =
+    change.target === "region"
+      ? `${change.file}#${change.regionId}`
+      : change.path;
+  return {
+    target_type: change.target,
+    target,
+    fragment_id: change.fragmentId,
+    fragment_version: change.fragmentVersion,
+    status: change.status,
+    ...(change.reason ? { reason: change.reason } : {}),
+  };
+}
+
+function projectRelativePath(projectRoot: string, filePath: string): string {
+  const relative = path.relative(projectRoot, filePath).replace(/\\/g, "/");
+  return relative === "" || relative.startsWith("..") ? filePath : relative;
 }
 
 function pruneBackups(opts: {

@@ -112,7 +112,7 @@ your-project/
 
 ```bash
 anamnesis init      # first-time setup
-anamnesis update    # library updates + drift detection (dry-run by default; --apply to write)
+anamnesis update    # library updates + drift detection (dry-run by default; --apply writes evidence)
 anamnesis update --bump-pinned  # explicitly move pinned fragments to current
 anamnesis status    # fragments, drift, ontology gaps, continuity, evidence freshness (--json for tools)
 anamnesis doctor    # read-only installation integrity + continuity/ontology diagnostics
