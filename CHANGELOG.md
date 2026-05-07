@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-05-07
+
 ### Added
 
 - Added Codex native SessionStart continuity for the base ontology and
