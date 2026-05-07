@@ -3,6 +3,7 @@ import * as path from "node:path";
 
 export const EVIDENCE_LOG_PATH = ".anamnesis/evidence/events.jsonl";
 export const EVIDENCE_SCHEMA_VERSION = "anamnesis.evidence.v1";
+export const EVIDENCE_STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type EvidenceKind =
   | "dogfood-check"
@@ -30,6 +31,9 @@ export interface RuntimeEvidenceSummary {
   total: number;
   invalid: number;
   latest?: RuntimeEvidenceRecord;
+  latest_age_ms?: number;
+  latest_stale?: boolean;
+  byKind: RuntimeEvidenceKindSummary[];
 }
 
 export interface RuntimeEvidenceLog {
@@ -37,6 +41,19 @@ export interface RuntimeEvidenceLog {
   total: number;
   invalid: number;
   records: RuntimeEvidenceRecord[];
+}
+
+export interface RuntimeEvidenceKindSummary {
+  kind: EvidenceKind;
+  total: number;
+  latest: RuntimeEvidenceRecord;
+  latest_age_ms: number;
+  stale: boolean;
+}
+
+export interface RuntimeEvidenceSummaryOptions {
+  now?: Date;
+  staleAfterMs?: number;
 }
 
 export function appendEvidenceRecord(
@@ -49,13 +66,27 @@ export function appendEvidenceRecord(
   return EVIDENCE_LOG_PATH;
 }
 
-export function readEvidenceSummary(projectRoot: string): RuntimeEvidenceSummary {
+export function readEvidenceSummary(
+  projectRoot: string,
+  opts: RuntimeEvidenceSummaryOptions = {},
+): RuntimeEvidenceSummary {
   const log = readEvidenceRecords(projectRoot);
+  const now = opts.now ?? new Date();
+  const staleAfterMs = opts.staleAfterMs ?? EVIDENCE_STALE_AFTER_MS;
+  const latest = log.records.at(-1);
+  const latestAgeMs = latest ? evidenceAgeMs(now, latest.generated_at) : undefined;
   return {
     path: log.path,
     total: log.total,
     invalid: log.invalid,
-    latest: log.records.at(-1),
+    latest,
+    ...(latestAgeMs !== undefined
+      ? {
+          latest_age_ms: latestAgeMs,
+          latest_stale: latestAgeMs > staleAfterMs,
+        }
+      : {}),
+    byKind: evidenceKindSummary(log.records, now, staleAfterMs),
   };
 }
 
@@ -113,4 +144,48 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
     typeof record.summary === "object" &&
     !Array.isArray(record.summary)
   );
+}
+
+function evidenceKindSummary(
+  records: readonly RuntimeEvidenceRecord[],
+  now: Date,
+  staleAfterMs: number,
+): RuntimeEvidenceKindSummary[] {
+  const byKind = new Map<EvidenceKind, RuntimeEvidenceRecord[]>();
+  for (const record of records) {
+    const list = byKind.get(record.kind) ?? [];
+    list.push(record);
+    byKind.set(record.kind, list);
+  }
+  return [...byKind.entries()]
+    .map(([kind, kindRecords]) => {
+      const latest = latestEvidenceRecord(kindRecords);
+      const ageMs = evidenceAgeMs(now, latest.generated_at);
+      return {
+        kind,
+        total: kindRecords.length,
+        latest,
+        latest_age_ms: ageMs,
+        stale: ageMs > staleAfterMs,
+      };
+    })
+    .sort((a, b) => a.kind.localeCompare(b.kind));
+}
+
+function latestEvidenceRecord(
+  records: readonly RuntimeEvidenceRecord[],
+): RuntimeEvidenceRecord {
+  let latest = records[0]!;
+  for (const record of records.slice(1)) {
+    if (record.generated_at >= latest.generated_at) {
+      latest = record;
+    }
+  }
+  return latest;
+}
+
+function evidenceAgeMs(now: Date, generatedAt: string): number {
+  const generated = Date.parse(generatedAt);
+  if (!Number.isFinite(generated)) return 0;
+  return Math.max(0, now.getTime() - generated);
 }

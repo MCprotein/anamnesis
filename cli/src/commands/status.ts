@@ -187,6 +187,7 @@ export class StatusError extends Error {
 export interface StatusOptions {
   projectRoot: string;
   libraryRoot: string;
+  now?: () => Date;
 }
 
 // ---------------------------------------------------------------------------
@@ -344,7 +345,9 @@ export function status(opts: StatusOptions): StatusResult {
     registry: makeBuiltinIntrospectorRegistry(),
   });
   const codexHooks = analyzeProjectCodexHookOwnership(projectRoot);
-  const evidence = readEvidenceSummary(projectRoot);
+  const evidence = readEvidenceSummary(projectRoot, {
+    now: (opts.now ?? (() => new Date()))(),
+  });
 
   // Summary counts.
   const summary = {

@@ -60,6 +60,11 @@ overhead, and duplicate-context risk.
 - total valid records
 - invalid line count
 - latest valid record kind and timestamp
+- latest record age and stale state
+- per-kind record counts, latest timestamps, age, and stale state
+
+Evidence is marked stale after 7 days without a newer record for that latest
+record or kind.
 
 `anamnesis benchmark gallery --write` reads the same JSONL log plus any
 sanitized `docs/benchmark-evidence/*.jsonl` artifacts and refreshes the

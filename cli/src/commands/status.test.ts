@@ -463,30 +463,59 @@ describe("status — continuity readiness", () => {
 // ---------------------------------------------------------------------------
 
 describe("status — runtime evidence", () => {
-  it("reports the latest append evidence record", () => {
+  it("reports evidence freshness by kind", () => {
     const { project, library } = setupContinuityProject();
     const evidencePath = path.join(project, EVIDENCE_LOG_PATH);
     fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
     fs.writeFileSync(
       evidencePath,
-      `${JSON.stringify({
-        schema_version: EVIDENCE_SCHEMA_VERSION,
-        kind: "dogfood-check",
-        generated_at: "2026-05-07T00:00:00.000Z",
-        command: ["anamnesis", "dogfood", "check"],
-        project: { name: "test-project" },
-        summary: { ok: true, score: "5/5" },
-      })}\n`,
+      [
+        JSON.stringify({
+          schema_version: EVIDENCE_SCHEMA_VERSION,
+          kind: "dogfood-check",
+          generated_at: "2026-05-07T00:00:00.000Z",
+          command: ["anamnesis", "dogfood", "check"],
+          project: { name: "test-project" },
+          summary: { ok: true, score: "5/5" },
+        }),
+        JSON.stringify({
+          schema_version: EVIDENCE_SCHEMA_VERSION,
+          kind: "doctor-check",
+          generated_at: "2026-05-14T00:00:00.000Z",
+          command: ["anamnesis", "doctor"],
+          project: { name: "test-project" },
+          summary: { ok: true, errors: 0, warnings: 0 },
+        }),
+      ].join("\n") + "\n",
       "utf8",
     );
 
-    const r = status({ projectRoot: project, libraryRoot: library });
+    const r = status({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-05-14T00:00:01.000Z"),
+    });
 
     expect(r.evidence.path).toBe(EVIDENCE_LOG_PATH);
-    expect(r.evidence.total).toBe(1);
+    expect(r.evidence.total).toBe(2);
     expect(r.evidence.invalid).toBe(0);
-    expect(r.evidence.latest?.kind).toBe("dogfood-check");
-    expect(r.summary.evidenceRecords).toBe(1);
+    expect(r.evidence.latest?.kind).toBe("doctor-check");
+    expect(r.evidence.latest_age_ms).toBe(1000);
+    expect(r.evidence.latest_stale).toBe(false);
+    expect(r.evidence.byKind).toEqual([
+      expect.objectContaining({
+        kind: "doctor-check",
+        total: 1,
+        latest_age_ms: 1000,
+        stale: false,
+      }),
+      expect.objectContaining({
+        kind: "dogfood-check",
+        total: 1,
+        stale: true,
+      }),
+    ]);
+    expect(r.summary.evidenceRecords).toBe(2);
     expect(r.summary.evidenceInvalidRecords).toBe(0);
   });
 });

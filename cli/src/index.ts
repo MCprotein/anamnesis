@@ -538,9 +538,18 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   }
   const evidence = result.evidence;
   if (evidence.latest) {
+    const freshness =
+      evidence.latest_age_ms !== undefined
+        ? ` (${formatAge(evidence.latest_age_ms)} old${evidence.latest_stale ? "; stale" : ""})`
+        : "";
     console.log(
-      `  evidence: ${evidence.total} record(s), latest ${evidence.latest.kind} at ${evidence.latest.generated_at}`,
+      `  evidence: ${evidence.total} record(s), latest ${evidence.latest.kind} at ${evidence.latest.generated_at}${freshness}`,
     );
+    for (const kind of evidence.byKind) {
+      console.log(
+        `    ${kind.kind}: ${kind.total} record(s), latest ${kind.latest.generated_at} (${formatAge(kind.latest_age_ms)} old${kind.stale ? "; stale" : ""})`,
+      );
+    }
     if (evidence.invalid > 0) {
       console.log(`    invalid evidence line(s): ${evidence.invalid}`);
     }
@@ -589,6 +598,16 @@ function reportDoctor(result: DoctorResult): void {
     console.log(line);
   }
   reportAppendEvidence(result.appendedPath, result.evidencePath);
+}
+
+function formatAge(ms: number): string {
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (ms < minute) return `${Math.floor(ms / 1000)}s`;
+  if (ms < hour) return `${Math.floor(ms / minute)}m`;
+  if (ms < day) return `${Math.floor(ms / hour)}h`;
+  return `${Math.floor(ms / day)}d`;
 }
 
 function reportAppendEvidence(

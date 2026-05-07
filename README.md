@@ -114,7 +114,7 @@ your-project/
 anamnesis init      # first-time setup
 anamnesis update    # library updates + drift detection (dry-run by default; --apply to write)
 anamnesis update --bump-pinned  # explicitly move pinned fragments to current
-anamnesis status    # fragments, drift, ontology gaps, continuity readiness (--json for tools)
+anamnesis status    # fragments, drift, ontology gaps, continuity, evidence freshness (--json for tools)
 anamnesis doctor    # read-only installation integrity + continuity/ontology diagnostics
 anamnesis doctor --append  # record doctor diagnostics as runtime evidence
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup

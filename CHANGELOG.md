@@ -31,6 +31,9 @@ could include breaking changes.
 - Added `anamnesis doctor --append` and a `doctor:check` release script so
   install integrity diagnostics can be stored as `doctor-check` runtime
   evidence instead of living only in terminal output.
+- Added kind-level runtime evidence freshness to `anamnesis status`, including
+  per-kind record counts, latest timestamps, age, and stale flags in CLI/JSON
+  output.
 
 ## [1.1.1] — 2026-05-07
 
