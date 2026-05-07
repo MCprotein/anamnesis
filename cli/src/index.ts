@@ -51,6 +51,11 @@ import {
   type BenchmarkResult,
 } from "./commands/benchmark.js";
 import {
+  benchmarkGallery,
+  BenchmarkGalleryError,
+  type BenchmarkGalleryResult,
+} from "./commands/benchmark_gallery.js";
+import {
   migrateAgentfile,
   MigrateError,
   type MigrateAgentfileResult,
@@ -193,6 +198,8 @@ Commands:
                                   benchmark report for docs/BENCHMARKS.md
   benchmark compare            Compare two benchmark report JSON snapshots
                                   and optionally append a delta report
+  benchmark gallery            Generate or validate docs/BENCHMARK-GALLERY.md
+                                  from runtime evidence
   migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
@@ -251,6 +258,13 @@ Flags (benchmark compare):
   --json                        Print structured JSON
   --append                      Append markdown result to docs/BENCHMARKS.md
   --output <path>               Override benchmark log path
+
+Flags (benchmark gallery):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write docs/BENCHMARK-GALLERY.md
+  --validate                    Fail when generated gallery differs on disk
+  --output <path>               Override gallery path
 
 Flags (migrate agentfile):
   --project-root <path>         Target directory (default: cwd)
@@ -678,6 +692,29 @@ function reportBenchmarkCompare(result: BenchmarkCompareResult): void {
   }
 }
 
+function reportBenchmarkGallery(result: BenchmarkGalleryResult): void {
+  console.log("anamnesis benchmark gallery");
+  console.log(
+    `  evidence: ${result.evidenceRecords} valid, ${result.invalidEvidenceLines} invalid`,
+  );
+  console.log(`  entries: ${result.entries.length}`);
+  console.log(`  claim candidates: ${result.claimCandidates.length}`);
+  if (result.warnings.length > 0) {
+    console.log(`  warnings: ${result.warnings.length}`);
+    for (const warning of result.warnings) {
+      console.log(`    - ${warning}`);
+    }
+  }
+  if (result.writtenPath) {
+    console.log(`  written: ${result.writtenPath}`);
+  }
+  if (result.validation) {
+    console.log(
+      `  validation: ${result.validation.ok ? "ok" : "stale"} (${result.validation.checkedPath})`,
+    );
+  }
+}
+
 function reportMigrate(result: MigrateAgentfileResult): void {
   const verdict = result.changed
     ? result.applied
@@ -896,7 +933,7 @@ async function main(argv: string[]): Promise<number> {
 
     case "benchmark": {
       const sub = positional[0];
-      if (sub !== "report" && sub !== "compare") {
+      if (sub !== "report" && sub !== "compare" && sub !== "gallery") {
         console.error(
           `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
         );
@@ -906,9 +943,28 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis benchmark compare --baseline <path> --after <path> [--json] [--append] [--output=<path>]`,
         );
+        console.error(
+          `       anamnesis benchmark gallery [--json] [--write] [--validate] [--output=<path>]`,
+        );
         return 1;
       }
       try {
+        if (sub === "gallery") {
+          const result = benchmarkGallery({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            outputPath: flags["output"] as string | undefined,
+            write: flags["write"] === true,
+            validate: flags["validate"] === true,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportBenchmarkGallery(result);
+          }
+          return result.ok ? 0 : 1;
+        }
+
         if (sub === "compare") {
           const baselinePath = flags["baseline"];
           const afterPath = flags["after"];
@@ -949,7 +1005,7 @@ async function main(argv: string[]): Promise<number> {
         }
         return 0;
       } catch (e) {
-        if (e instanceof BenchmarkError) {
+        if (e instanceof BenchmarkError || e instanceof BenchmarkGalleryError) {
           console.error(`error: ${e.message}`);
           return 1;
         }

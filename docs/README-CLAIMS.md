@@ -6,6 +6,13 @@ README claims should stay traceable to deterministic tests, dogfood records,
 switching fixtures, or public-safe benchmark reports. This file records the
 allowed claim surface before v1.0 publish.
 
+The generated evidence region in
+[`docs/BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md) is refreshed by
+`anamnesis benchmark gallery --write` and checked by
+`anamnesis benchmark gallery --validate`. If the generated region lacks a
+matching claim candidate or emits a release warning, keep README wording at
+the narrower manually evidenced boundary.
+
 ## Current README Claims
 
 | README claim | Evidence | Boundary |

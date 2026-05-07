@@ -29,6 +29,13 @@ export interface RuntimeEvidenceSummary {
   latest?: RuntimeEvidenceRecord;
 }
 
+export interface RuntimeEvidenceLog {
+  path: string;
+  total: number;
+  invalid: number;
+  records: RuntimeEvidenceRecord[];
+}
+
 export function appendEvidenceRecord(
   projectRoot: string,
   record: RuntimeEvidenceRecord,
@@ -40,21 +47,31 @@ export function appendEvidenceRecord(
 }
 
 export function readEvidenceSummary(projectRoot: string): RuntimeEvidenceSummary {
+  const log = readEvidenceRecords(projectRoot);
+  return {
+    path: log.path,
+    total: log.total,
+    invalid: log.invalid,
+    latest: log.records.at(-1),
+  };
+}
+
+export function readEvidenceRecords(projectRoot: string): RuntimeEvidenceLog {
   const abs = path.join(projectRoot, EVIDENCE_LOG_PATH);
   if (!fs.existsSync(abs)) {
-    return { path: EVIDENCE_LOG_PATH, total: 0, invalid: 0 };
+    return { path: EVIDENCE_LOG_PATH, total: 0, invalid: 0, records: [] };
   }
 
   let total = 0;
   let invalid = 0;
-  let latest: RuntimeEvidenceRecord | undefined;
+  const records: RuntimeEvidenceRecord[] = [];
   for (const line of fs.readFileSync(abs, "utf8").split(/\r?\n/)) {
     if (line.trim() === "") continue;
     try {
       const parsed = JSON.parse(line) as unknown;
       if (isEvidenceRecord(parsed)) {
         total++;
-        latest = parsed;
+        records.push(parsed);
       } else {
         invalid++;
       }
@@ -62,7 +79,7 @@ export function readEvidenceSummary(projectRoot: string): RuntimeEvidenceSummary
       invalid++;
     }
   }
-  return { path: EVIDENCE_LOG_PATH, total, invalid, latest };
+  return { path: EVIDENCE_LOG_PATH, total, invalid, records };
 }
 
 function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {

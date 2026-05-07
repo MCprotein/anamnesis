@@ -42,6 +42,13 @@ summary counts for improved, regressed, and unchanged dimensions.
 - invalid line count
 - latest valid record kind and timestamp
 
+`anamnesis benchmark gallery --write` reads the same JSONL log and refreshes
+the generated evidence region in `docs/BENCHMARK-GALLERY.md`. The generated
+region lists current evidence entries, README claim candidates, and release
+warnings such as missing before/after comparisons or insufficient public-safe
+repo shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
+generated region is missing or stale.
+
 ## Boundary
 
 This evidence layer is not a task runtime, HUD, queue, or orchestrator. It is

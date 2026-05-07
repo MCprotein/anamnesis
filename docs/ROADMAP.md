@@ -640,7 +640,7 @@ limitations.
 | 1 | **Benchmark scorecard v2** | implemented; unreleased | Extend `anamnesis benchmark report` with a stable numeric scorecard that keeps raw dimensions visible: ready layers `/5`, continuity `/6`, ontology warning/error counts, doctor error/warning counts, Codex hook warning counts, adapter parity, and evidence freshness. Composite scores are allowed only as a convenience summary, not as the source of truth. |
 | 2 | **Before/after adoption harness** | implemented; unreleased | Add a repeatable workflow for sanitized snapshots: baseline report -> install/update/bootstrap/enrich -> follow-up report -> delta summary. Report the numeric movement for ready layers, continuity, ontology gaps, doctor issues, adapter surfaces, generated files, and evidence records. |
 | 3 | **Agent-effectiveness task benchmark** | planned | Introduce an optional, explicitly model-dependent harness for controlled tasks. Candidate metrics: prompts/questions needed before work starts, tool turns to locate key context, first-correct-action success, handoff recovery success, and elapsed time. Store this separately from deterministic `benchmark-report` evidence so README claims do not confuse product surfaces with model capability. |
-| 4 | **Evidence gallery automation** | planned | Generate or validate `docs/BENCHMARK-GALLERY.md` and README claim candidates from `.anamnesis/evidence/events.jsonl` plus sanitized benchmark artifacts. Claims without matching evidence should be flagged before release. |
+| 4 | **Evidence gallery automation** | implemented; unreleased | Generate or validate `docs/BENCHMARK-GALLERY.md` and README claim candidates from `.anamnesis/evidence/events.jsonl` plus sanitized benchmark artifacts. Claims without matching evidence should be flagged before release. |
 | 5 | **Public-safe multi-shape collection** | planned | Collect at least three public-safe benchmark shapes: a frontend app, a backend plus infra repo, and a Python/API repo. Each entry must include fragment set, raw score dimensions, before/after or fresh-install state, and limitations. |
 | 6 | **Prompt-time context delta decision gate** | planned | Revisit Codex `UserPromptSubmit` context delta injection only if benchmark evidence shows a continuity gap that SessionStart + handoff cannot cover. Measure token overhead, duplicate-context risk, and noise before shipping any prompt-time injection. |
 | 7 | **Runtime evidence expansion** | planned | Expand runtime evidence beyond dogfood and benchmark append runs: hook-log summaries, install/update/doctor evidence, benchmark trace rollups, and status surfaces that show trend/freshness without scraping markdown. |
@@ -655,6 +655,10 @@ Progress:
   adoption evidence. It reads two `benchmark report --json` snapshots, reports
   raw scorecard deltas, and can append markdown plus `benchmark-compare`
   runtime evidence.
+- 2026-05-07: Implemented `anamnesis benchmark gallery --write|--validate`.
+  The command refreshes a generated evidence region in
+  `docs/BENCHMARK-GALLERY.md`, derives README claim candidates from runtime
+  evidence, and fails validation when the generated region is stale.
 
 Exit criteria:
 - `anamnesis benchmark report` exposes stable numeric raw dimensions and a

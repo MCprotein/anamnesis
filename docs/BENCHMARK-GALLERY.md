@@ -1,10 +1,42 @@
 # Public Benchmark Gallery
 
-Status: v1.0 evidence surface. This page summarizes public-safe benchmark
-evidence and separates headline-ready claims from evidence still needing more
-repo shapes.
+Status: v1.2 evidence surface. This page summarizes public-safe benchmark
+evidence, generated runtime evidence, and headline-ready claims from evidence
+still needing more repo shapes.
 
 README claim wording is tracked in [`docs/README-CLAIMS.md`](README-CLAIMS.md).
+
+<!-- anamnesis:benchmark-gallery:start -->
+## Generated Evidence
+
+This section is generated from runtime evidence. It separates README-ready
+claim candidates from evidence that still needs more repo shapes or manual
+review.
+
+Generated: 2026-05-07T06:30:43.697Z
+Source: `.anamnesis/evidence/events.jsonl` (7 valid, 0 invalid)
+
+## Evidence Entries
+
+| Project | Kind | Generated | Evidence | Result | Claim candidate |
+|---|---|---|---|---|---|
+| anamnesis | dogfood-check | 2026-05-07T06:30:43.697Z | docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl | dogfood 5/5; tools claude-code, codex, cursor | anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor. |
+| anamnesis | benchmark-report | 2026-05-07T05:25:00.700Z | docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl | ready layers 3/5; continuity 6/6; doctor 0 errors, 0 warnings | anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0. |
+
+## README Claim Candidates
+
+- **dogfood-check-anamnesis**: anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor.
+  Evidence: docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl
+  Boundary: Self-check evidence for this managed repo; skipped external smokes must stay disclosed.
+- **benchmark-report-anamnesis**: anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0.
+  Evidence: docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl
+  Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
+
+## Release Warnings
+
+- No before/after benchmark comparison evidence found.
+- Only 1 public-safe project shape(s) represented; do not claim ecosystem coverage.
+<!-- /anamnesis:benchmark-gallery -->
 
 ## Claim Policy
 

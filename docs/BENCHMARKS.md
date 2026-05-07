@@ -10,6 +10,8 @@ anamnesis benchmark report --append
 anamnesis benchmark report --json > before.json
 anamnesis benchmark report --json > after.json
 anamnesis benchmark compare --baseline before.json --after after.json --append
+anamnesis benchmark gallery --write
+anamnesis benchmark gallery --validate
 ```
 
 Append runs also write a machine-readable evidence record to
@@ -36,6 +38,9 @@ collapsing the result into a single opaque score.
 
 Public-safe summaries and claim boundaries live in
 [`docs/BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md).
+`benchmark gallery --write` refreshes the generated evidence region from the
+runtime evidence log, and `benchmark gallery --validate` fails when that
+generated region is stale before release.
 
 ## Current Sanitized Fixture Comparison
 

@@ -37,9 +37,11 @@ Every version bump must end in one of two explicit states:
 
    ```bash
    npm run dogfood
+   npm run benchmark:gallery
    ```
 
-   Commit the appended `docs/DOGFOOD.md` entry with the release prep
+   Commit the appended `docs/DOGFOOD.md` entry and refreshed generated
+   `docs/BENCHMARK-GALLERY.md` evidence region with the release prep
    changes. The score should not regress unless the release notes explain
    the tradeoff.
 

@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { benchmarkCompare, benchmarkReport } from "./benchmark.js";
+import { benchmarkGallery } from "./benchmark_gallery.js";
 import { init } from "./init.js";
 
 function tmpDir(prefix: string): string {
@@ -18,6 +19,7 @@ function setupBenchmarkProject(): { project: string; library: string } {
     dryRun: false,
     allowExecAdapters: true,
     noBootstrap: true,
+    projectName: "anamnesis-project",
     tools: ["claude-code", "codex", "cursor"],
   });
 
@@ -240,5 +242,92 @@ describe("benchmarkReport", () => {
         unchanged: 1,
       },
     });
+  });
+
+  it("generates and validates a benchmark gallery from runtime evidence", () => {
+    const { project, library } = setupBenchmarkProject();
+    const after = benchmarkReport({
+      projectRoot: project,
+      libraryRoot: library,
+      append: true,
+      now: () => new Date("2026-05-03T16:00:00.000Z"),
+    });
+    const baseline = JSON.parse(JSON.stringify(after)) as typeof after;
+    baseline.generatedAt = "2026-05-03T15:00:00.000Z";
+    baseline.scorecard.ready_layers.ready = 1;
+    baseline.scorecard.continuity.passed = 4;
+    baseline.scorecard.ontology_gaps.warnings = 2;
+    baseline.scorecard.diagnostics.doctor_errors = 1;
+
+    const baselinePath = path.join(project, "baseline.json");
+    const afterPath = path.join(project, "after.json");
+    fs.writeFileSync(baselinePath, JSON.stringify(baseline), "utf8");
+    fs.writeFileSync(afterPath, JSON.stringify(after), "utf8");
+    benchmarkCompare({
+      projectRoot: project,
+      baselinePath,
+      afterPath,
+      append: true,
+      now: () => new Date("2026-05-03T17:00:00.000Z"),
+    });
+
+    const result = benchmarkGallery({
+      projectRoot: project,
+      write: true,
+    });
+
+    expect(result.writtenPath).toBe("docs/BENCHMARK-GALLERY.md");
+    expect(result.evidenceRecords).toBe(2);
+    expect(result.invalidEvidenceLines).toBe(0);
+    expect(result.entries.map((entry) => entry.kind).sort()).toEqual([
+      "benchmark-compare",
+      "benchmark-report",
+    ]);
+    expect(result.claimCandidates.map((candidate) => candidate.id).sort()).toEqual([
+      "benchmark-compare-anamnesis-project",
+      "benchmark-report-anamnesis-project",
+    ]);
+    expect(result.markdown).toContain("README Claim Candidates");
+    expect(result.markdown).toContain(
+      "anamnesis-project before/after benchmark improved",
+    );
+    expect(result.warnings).toContain(
+      "Only 1 public-safe project shape(s) represented; do not claim ecosystem coverage.",
+    );
+
+    const galleryPath = path.join(project, "docs", "BENCHMARK-GALLERY.md");
+    expect(fs.readFileSync(galleryPath, "utf8")).toContain(
+      "Source: `.anamnesis/evidence/events.jsonl` (2 valid, 0 invalid)",
+    );
+
+    const valid = benchmarkGallery({
+      projectRoot: project,
+      validate: true,
+    });
+    expect(valid.validation).toMatchObject({
+      checkedPath: "docs/BENCHMARK-GALLERY.md",
+      exists: true,
+      stale: false,
+      ok: true,
+    });
+    expect(valid.ok).toBe(true);
+
+    fs.writeFileSync(
+      galleryPath,
+      fs.readFileSync(galleryPath, "utf8").replace(
+        "Source: `.anamnesis/evidence/events.jsonl`",
+        "Source: `stale.jsonl`",
+      ),
+      "utf8",
+    );
+    const stale = benchmarkGallery({
+      projectRoot: project,
+      validate: true,
+    });
+    expect(stale.validation).toMatchObject({
+      stale: true,
+      ok: false,
+    });
+    expect(stale.ok).toBe(false);
   });
 });

@@ -16,6 +16,9 @@ could include breaking changes.
 - Added `anamnesis benchmark compare --baseline <json> --after <json>` for
   before/after scorecard deltas, with markdown, JSON, append, and runtime
   evidence output.
+- Added `anamnesis benchmark gallery --write|--validate` to generate and
+  verify the evidence-backed `docs/BENCHMARK-GALLERY.md` region and README
+  claim candidates from runtime evidence.
 
 ## [1.1.1] — 2026-05-07
 
