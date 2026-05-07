@@ -7,6 +7,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { status, StatusError, type StatusResult } from "./status.js";
+import { doctor, DoctorError, type DoctorResult } from "./doctor.js";
 import {
   bootstrap,
   OntologyBootstrapError,
@@ -43,14 +44,59 @@ export interface BenchmarkOntologyFiles {
   enriched: string[];
 }
 
+export const BENCHMARK_SCORECARD_SCHEMA_VERSION =
+  "anamnesis.benchmark.scorecard.v1";
+
+export interface BenchmarkScorecard {
+  schema_version: typeof BENCHMARK_SCORECARD_SCHEMA_VERSION;
+  ready_layers: {
+    ready: number;
+    total: number;
+  };
+  continuity: {
+    ready: boolean;
+    passed: number;
+    total: number;
+  };
+  ontology_gaps: {
+    warnings: number;
+    info: number;
+    static_missing: number;
+    bootstrap_missing: number;
+    bootstrap_stale: number;
+    enrichment_missing: number;
+  };
+  diagnostics: {
+    doctor_errors: number;
+    doctor_warnings: number;
+    codex_hook_warnings: number;
+    codex_hook_duplicates: number;
+    codex_hook_invalid: number;
+  };
+  adapter_surfaces: {
+    ready: boolean;
+    score: number;
+    total: number;
+  };
+  evidence: {
+    records: number;
+    invalid_records: number;
+    latest_kind?: string;
+    latest_generated_at?: string;
+    latest_age_ms?: number;
+  };
+}
+
 export interface BenchmarkResult {
   projectRoot: string;
   libraryRoot: string;
   generatedAt: string;
   status: StatusResult;
+  doctor: DoctorResult;
   bootstrap: BootstrapResult;
   ontologyFiles: BenchmarkOntologyFiles;
   layers: BenchmarkLayer[];
+  scorecard: BenchmarkScorecard;
   summary: {
     ready: number;
     total: number;
@@ -81,12 +127,18 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
   const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
 
   let st: StatusResult;
+  let doc: DoctorResult;
   let boot: BootstrapResult;
   try {
     st = status({ projectRoot, libraryRoot });
+    doc = doctor({ projectRoot, libraryRoot });
     boot = bootstrap({ projectRoot, dryRun: true });
   } catch (e) {
-    if (e instanceof StatusError || e instanceof OntologyBootstrapError) {
+    if (
+      e instanceof StatusError ||
+      e instanceof DoctorError ||
+      e instanceof OntologyBootstrapError
+    ) {
       throw new BenchmarkError(e.message);
     }
     throw e;
@@ -95,12 +147,22 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
   const ontologyFiles = collectOntologyFiles(projectRoot);
   const layers = benchmarkLayers(st, ontologyFiles);
   const ready = layers.filter((layer) => layer.status === "ready").length;
+  const scorecard = buildBenchmarkScorecard({
+    generatedAt,
+    st,
+    doc,
+    layers,
+    ready,
+    willAppendEvidence: opts.append === true,
+  });
   const markdown = renderBenchmarkMarkdown({
     generatedAt,
     st,
+    doc,
     boot,
     ontologyFiles,
     layers,
+    scorecard,
     ready,
   });
 
@@ -123,9 +185,11 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
       benchmarkEvidenceRecord({
         generatedAt,
         st,
+        doc,
         boot,
         ontologyFiles,
         layers,
+        scorecard,
         ready,
         appendedPath,
       }),
@@ -137,9 +201,11 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
     libraryRoot,
     generatedAt,
     status: st,
+    doctor: doc,
     bootstrap: boot,
     ontologyFiles,
     layers,
+    scorecard,
     summary: { ready, total: layers.length },
     markdown,
     appendedPath,
@@ -150,9 +216,11 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
 function benchmarkEvidenceRecord(input: {
   generatedAt: string;
   st: StatusResult;
+  doc: DoctorResult;
   boot: BootstrapResult;
   ontologyFiles: BenchmarkOntologyFiles;
   layers: BenchmarkLayer[];
+  scorecard: BenchmarkScorecard;
   ready: number;
   appendedPath: string;
 }): RuntimeEvidenceRecord {
@@ -174,6 +242,7 @@ function benchmarkEvidenceRecord(input: {
       },
       ontology_gaps: input.st.ontology.summary,
       bootstrap_outcomes: bootstrapOutcomeCounts(input.boot),
+      scorecard: input.scorecard,
     },
     details: {
       layers: input.layers.map((layer) => ({
@@ -286,6 +355,70 @@ function benchmarkLayers(
   ];
 }
 
+function buildBenchmarkScorecard(input: {
+  generatedAt: string;
+  st: StatusResult;
+  doc: DoctorResult;
+  layers: BenchmarkLayer[];
+  ready: number;
+  willAppendEvidence: boolean;
+}): BenchmarkScorecard {
+  const adapterLayer = input.layers.find((layer) => layer.id === "adapter-surfaces");
+  const latest = input.willAppendEvidence
+    ? {
+        kind: "benchmark-report",
+        generated_at: input.generatedAt,
+      }
+    : input.st.evidence.latest;
+  const latestAgeMs = latest
+    ? Math.max(0, Date.parse(input.generatedAt) - Date.parse(latest.generated_at))
+    : undefined;
+
+  return {
+    schema_version: BENCHMARK_SCORECARD_SCHEMA_VERSION,
+    ready_layers: {
+      ready: input.ready,
+      total: input.layers.length,
+    },
+    continuity: {
+      ready: input.st.continuity.ready,
+      passed: input.st.continuity.passed,
+      total: input.st.continuity.total,
+    },
+    ontology_gaps: {
+      warnings: input.st.ontology.summary.warnings,
+      info: input.st.ontology.summary.info,
+      static_missing: input.st.ontology.summary.staticMissing,
+      bootstrap_missing: input.st.ontology.summary.bootstrapMissing,
+      bootstrap_stale: input.st.ontology.summary.bootstrapStale,
+      enrichment_missing: input.st.ontology.summary.enrichmentMissing,
+    },
+    diagnostics: {
+      doctor_errors: input.doc.summary.errors,
+      doctor_warnings: input.doc.summary.warnings,
+      codex_hook_warnings: input.st.codexHooks.summary.warnings,
+      codex_hook_duplicates: input.st.codexHooks.summary.duplicates,
+      codex_hook_invalid: input.st.codexHooks.summary.invalid,
+    },
+    adapter_surfaces: {
+      ready: adapterLayer?.status === "ready",
+      score: adapterLayer?.score ?? 0,
+      total: adapterLayer?.total ?? 1,
+    },
+    evidence: {
+      records: input.st.evidence.total + (input.willAppendEvidence ? 1 : 0),
+      invalid_records: input.st.evidence.invalid,
+      ...(latest
+        ? {
+            latest_kind: latest.kind,
+            latest_generated_at: latest.generated_at,
+            latest_age_ms: latestAgeMs,
+          }
+        : {}),
+    },
+  };
+}
+
 function collectOntologyFiles(projectRoot: string): BenchmarkOntologyFiles {
   const out: BenchmarkOntologyFiles = { static: [], bootstrap: [], enriched: [] };
   visit(projectRoot, (file) => {
@@ -324,9 +457,11 @@ function visit(dir: string, onFile: (file: string) => void): void {
 function renderBenchmarkMarkdown(input: {
   generatedAt: string;
   st: StatusResult;
+  doc: DoctorResult;
   boot: BootstrapResult;
   ontologyFiles: BenchmarkOntologyFiles;
   layers: BenchmarkLayer[];
+  scorecard: BenchmarkScorecard;
   ready: number;
 }): string {
   const rows = input.layers
@@ -335,6 +470,7 @@ function renderBenchmarkMarkdown(input: {
         `| ${layer.label} | ${layer.status} | ${layer.score}/${layer.total} | ${escapeCell(layer.detail)} |`,
     )
     .join("\n");
+  const scorecardRows = renderScorecardRows(input.scorecard);
   const bootstrapSummary = summarizeBootstrap(input.boot);
   return [
     `## Benchmark Report — ${input.generatedAt}`,
@@ -343,6 +479,12 @@ function renderBenchmarkMarkdown(input: {
     `Tools: ${input.st.agentfile.tools.join(", ")}`,
     `Fragments: ${input.st.fragments.map((f) => `${f.id}@${f.installedVersion}:${f.status}`).join(", ")}`,
     `Ready layers: ${input.ready}/${input.layers.length}`,
+    "",
+    "Scorecard:",
+    "",
+    "| Dimension | Value |",
+    "|---|---:|",
+    scorecardRows,
     "",
     "| Layer | Status | Score | Detail |",
     "|---|---|---:|---|",
@@ -356,6 +498,22 @@ function renderBenchmarkMarkdown(input: {
     `Bootstrap dry-run outcomes: ${bootstrapSummary}`,
     `Continuity: ${input.st.continuity.ready ? "ready" : "issues"} (${input.st.continuity.passed}/${input.st.continuity.total})`,
     `Ontology gaps: ${input.st.ontology.summary.warnings} warning(s), ${input.st.ontology.summary.info} info`,
+    `Doctor: ${input.doc.ok ? "ok" : "issues"} (${input.doc.summary.errors} error(s), ${input.doc.summary.warnings} warning(s))`,
+    `Codex hook warnings: ${input.st.codexHooks.summary.warnings}`,
+    `Evidence records: ${input.scorecard.evidence.records} valid, ${input.scorecard.evidence.invalid_records} invalid`,
+  ].join("\n");
+}
+
+function renderScorecardRows(scorecard: BenchmarkScorecard): string {
+  return [
+    `| Ready layers | ${scorecard.ready_layers.ready}/${scorecard.ready_layers.total} |`,
+    `| Continuity checks | ${scorecard.continuity.passed}/${scorecard.continuity.total} |`,
+    `| Ontology warnings | ${scorecard.ontology_gaps.warnings} |`,
+    `| Doctor errors | ${scorecard.diagnostics.doctor_errors} |`,
+    `| Doctor warnings | ${scorecard.diagnostics.doctor_warnings} |`,
+    `| Codex hook warnings | ${scorecard.diagnostics.codex_hook_warnings} |`,
+    `| Adapter surfaces | ${scorecard.adapter_surfaces.score}/${scorecard.adapter_surfaces.total} |`,
+    `| Evidence records | ${scorecard.evidence.records} valid / ${scorecard.evidence.invalid_records} invalid |`,
   ].join("\n");
 }
 

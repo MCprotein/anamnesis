@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added benchmark scorecard v2 metrics to `anamnesis benchmark report`,
+  including ready layers, continuity checks, ontology gaps, doctor issues,
+  Codex hook warnings, adapter surfaces, and runtime evidence freshness in
+  markdown, JSON, CLI output, and evidence records.
+
 ## [1.1.1] — 2026-05-07
 
 ### Fixed

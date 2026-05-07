@@ -47,6 +47,24 @@ describe("benchmarkReport", () => {
     });
 
     expect(result.summary.ready).toBe(5);
+    expect(result.scorecard).toMatchObject({
+      schema_version: "anamnesis.benchmark.scorecard.v1",
+      ready_layers: { ready: 5, total: 5 },
+      continuity: {
+        ready: true,
+        passed: result.status.continuity.passed,
+        total: result.status.continuity.total,
+      },
+      diagnostics: {
+        doctor_errors: 0,
+        codex_hook_warnings: 0,
+      },
+      adapter_surfaces: {
+        ready: true,
+        score: 1,
+        total: 1,
+      },
+    });
     expect(result.layers.map((layer) => layer.id)).toEqual([
       "static-ontology",
       "bootstrap-ontology",
@@ -70,6 +88,9 @@ describe("benchmarkReport", () => {
     expect(result.markdown).toContain(
       `| Context continuity | ready | ${result.status.continuity.passed}/${result.status.continuity.total} |`,
     );
+    expect(result.markdown).toContain("Scorecard:");
+    expect(result.markdown).toContain("| Doctor errors | 0 |");
+    expect(result.markdown).toContain("| Codex hook warnings | 0 |");
   });
 
   it("appends markdown to docs/BENCHMARKS.md by default", () => {
@@ -103,7 +124,14 @@ describe("benchmarkReport", () => {
       schema_version: string;
       kind: string;
       generated_at: string;
-      summary: Record<string, unknown>;
+      summary: {
+        ready?: number;
+        total?: number;
+        scorecard?: {
+          schema_version?: string;
+          evidence?: { records?: number; invalid_records?: number };
+        };
+      };
       artifacts: Record<string, string>;
     };
     expect(evidence).toMatchObject({
@@ -116,6 +144,13 @@ describe("benchmarkReport", () => {
       },
       artifacts: {
         markdown: "docs/BENCHMARKS.md",
+      },
+    });
+    expect(evidence.summary.scorecard).toMatchObject({
+      schema_version: "anamnesis.benchmark.scorecard.v1",
+      evidence: {
+        records: 1,
+        invalid_records: 0,
       },
     });
   });

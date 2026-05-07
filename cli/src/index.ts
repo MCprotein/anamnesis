@@ -619,6 +619,18 @@ function reportBenchmark(result: BenchmarkResult): void {
   );
   console.log(`  tools: ${result.status.agentfile.tools.join(", ")}`);
   console.log(`  ready layers: ${result.summary.ready}/${result.summary.total}`);
+  console.log(
+    `  continuity: ${result.scorecard.continuity.passed}/${result.scorecard.continuity.total}`,
+  );
+  console.log(
+    `  doctor: ${result.doctor.ok ? "ok" : "issues"} (${result.scorecard.diagnostics.doctor_errors} errors, ${result.scorecard.diagnostics.doctor_warnings} warnings)`,
+  );
+  console.log(
+    `  codex hook warnings: ${result.scorecard.diagnostics.codex_hook_warnings}`,
+  );
+  console.log(
+    `  evidence: ${result.scorecard.evidence.records} valid, ${result.scorecard.evidence.invalid_records} invalid`,
+  );
   for (const layer of result.layers) {
     console.log(
       `  ${layer.status.padEnd(7)} ${layer.label}: ${layer.score}/${layer.total}`,

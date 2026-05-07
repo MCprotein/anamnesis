@@ -19,6 +19,9 @@ The report measures concrete surfaces on disk, not model intelligence:
 - Layer B `.enriched.yaml` semantics
 - continuity readiness
 - adapter surface readiness
+- scorecard v2 raw metrics: ready layers, continuity checks, ontology gaps,
+  doctor issues, Codex hook warnings, adapter surfaces, and runtime evidence
+  freshness
 
 Use these reports to compare static-only, bootstrapped, and enriched project
 context over time. Public README claims should be based on reports that avoid
@@ -139,3 +142,44 @@ Ontology files:
 Bootstrap dry-run outcomes: skipped-no-introspector=1
 Continuity: ready (6/6)
 Ontology gaps: 0 warning(s), 1 info
+
+
+## Benchmark Report — 2026-05-07T05:25:00.700Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@10:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 6 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 6 valid, 0 invalid

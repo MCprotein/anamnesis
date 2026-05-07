@@ -24,6 +24,12 @@ Each record includes:
 - `details`: optional structured check/layer details
 - `artifacts`: related markdown report paths
 
+Benchmark evidence records include `summary.scorecard` under schema
+`anamnesis.benchmark.scorecard.v1`. The scorecard keeps raw dimensions visible
+instead of reducing benchmark claims to an opaque aggregate: ready layers,
+continuity checks, ontology gaps, doctor issues, Codex hook warnings, adapter
+surfaces, and evidence freshness.
+
 ## Reader
 
 `anamnesis status` reads the evidence log and reports:
