@@ -55,7 +55,8 @@ benchmark headline evidence until they are rerun through
 
 ## Next Collection Targets
 
-Collect at least two more public-safe benchmark entries before v1.0:
+Collect at least three public-safe benchmark entries during the v1.2 evidence
+work:
 
 1. **Frontend app**: Next.js, SvelteKit, Remix, or Nuxt.
    - Goal: show all-adapter continuity and frontend-specific static ontology.
@@ -84,9 +85,11 @@ For each candidate repo:
 ## Acceptance Criteria
 
 - At least three public-safe repo shapes are represented before broad README
-  claims are made.
+  benchmark claims are made.
 - At least one entry is a before/after adoption comparison.
 - At least one entry is a fresh install path.
 - At least one entry includes Layer A bootstrap facts.
 - Any Layer B enrichment claim points to agent-authored `.enriched.yaml`
   evidence or states that enrichment is still missing.
+- Numeric scorecards keep raw dimensions visible instead of reducing evidence
+  to an opaque aggregate.

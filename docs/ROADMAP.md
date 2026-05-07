@@ -622,6 +622,44 @@ Exit criteria:
 
 ---
 
+## v1.2 — *planned*
+
+> **Theme: numeric evidence for context quality and agent-switch continuity**
+
+Benchmarking is useful here only when the metric is honest about what it
+measures. anamnesis can measure deterministic context surfaces numerically:
+ready layers, continuity checks, ontology gap counts, adapter/hook diagnostics,
+doctor errors, evidence freshness, and before/after deltas on the same repo
+snapshot. It should not pretend those are raw model-intelligence scores.
+Model-dependent outcomes such as "time to first correct action" need a
+separate controlled task harness with repeated runs, fixed prompts, and clear
+limitations.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Benchmark scorecard v2** | planned | Extend `anamnesis benchmark report` with a stable numeric scorecard that keeps raw dimensions visible: ready layers `/5`, continuity `/6`, ontology warning/error counts, doctor error/warning counts, Codex hook warning counts, adapter parity, and evidence freshness. Composite scores are allowed only as a convenience summary, not as the source of truth. |
+| 2 | **Before/after adoption harness** | planned | Add a repeatable workflow for sanitized snapshots: baseline report -> install/update/bootstrap/enrich -> follow-up report -> delta summary. Report the numeric movement for ready layers, continuity, ontology gaps, doctor issues, adapter surfaces, generated files, and evidence records. |
+| 3 | **Agent-effectiveness task benchmark** | planned | Introduce an optional, explicitly model-dependent harness for controlled tasks. Candidate metrics: prompts/questions needed before work starts, tool turns to locate key context, first-correct-action success, handoff recovery success, and elapsed time. Store this separately from deterministic `benchmark-report` evidence so README claims do not confuse product surfaces with model capability. |
+| 4 | **Evidence gallery automation** | planned | Generate or validate `docs/BENCHMARK-GALLERY.md` and README claim candidates from `.anamnesis/evidence/events.jsonl` plus sanitized benchmark artifacts. Claims without matching evidence should be flagged before release. |
+| 5 | **Public-safe multi-shape collection** | planned | Collect at least three public-safe benchmark shapes: a frontend app, a backend plus infra repo, and a Python/API repo. Each entry must include fragment set, raw score dimensions, before/after or fresh-install state, and limitations. |
+| 6 | **Prompt-time context delta decision gate** | planned | Revisit Codex `UserPromptSubmit` context delta injection only if benchmark evidence shows a continuity gap that SessionStart + handoff cannot cover. Measure token overhead, duplicate-context risk, and noise before shipping any prompt-time injection. |
+| 7 | **Runtime evidence expansion** | planned | Expand runtime evidence beyond dogfood and benchmark append runs: hook-log summaries, install/update/doctor evidence, benchmark trace rollups, and status surfaces that show trend/freshness without scraping markdown. |
+
+Exit criteria:
+- `anamnesis benchmark report` exposes stable numeric raw dimensions and a
+  clear scorecard schema that can be compared over time.
+- At least one before/after adoption benchmark and at least three public-safe
+  repo shapes are represented in the benchmark gallery.
+- Any README benchmark claim points to raw evidence and states limitations.
+- Model-dependent task metrics are separated from deterministic context-quality
+  metrics in both schema and documentation.
+- Prompt-time context injection is either justified by benchmark evidence and
+  bounded by token/noise rules, or explicitly kept deferred.
+- Runtime evidence records are usable by `status`, benchmark gallery, and
+  README-claims workflows without markdown scraping.
+
+---
+
 ## Cross-cutting items (no specific version yet)
 
 These have been discussed but lack concrete version assignment:
