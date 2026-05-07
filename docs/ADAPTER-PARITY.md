@@ -42,9 +42,10 @@ Known implications:
   allowed. Commands and skills still keep explicit fallback surfaces because
   the user-facing goal is continuity, not identical UI.
 - Dogfood now records Codex hook evidence in two lanes: synthetic wrapper JSON
-  dispatch and opt-in real Codex CLI execution. Project-local
-  `.codex/hooks.json` discovery still needs its own real trusted-project
-  smoke before README or benchmark claims depend on that exact path.
+  dispatch and opt-in real Codex CLI execution. The real lane proves
+  SessionStart discovery from both isolated `CODEX_HOME/hooks.json` and trusted
+  project-local `.codex/hooks.json`; prompt-time and tool-scoped CLI smokes
+  remain separate v1.1 follow-ups.
 - If a future adapter cannot preserve project memory, ontology access, or
   handoff continuity, it should be marked as unsupported instead of silently
   rendering partial instructions.

@@ -177,6 +177,7 @@ function runVerificationChecks(
     runStaleHandoffSimulation(libraryRoot),
     runCodexNativeDispatchSimulation(libraryRoot),
     runRealCodexNativeSmokeIfEnabled(),
+    runRealCodexProjectHookSmokeIfEnabled(),
     runNpmScript(projectRoot, "typecheck", ["npm", "run", "typecheck"], runner),
     runNpmScript(projectRoot, "test", ["npm", "test"], runner),
   ];
@@ -702,20 +703,139 @@ function runRealCodexNativeSmokeIfEnabled(): CommandCheck {
         "Codex CLI invoked the hook but did not pass a SessionStart payload",
       );
     }
-    const authFailed = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.includes(
-      "401 Unauthorized",
-    );
-    const suffix =
-      result.status === 0
-        ? "and completed the model turn"
-        : authFailed
-          ? "before expected isolated-CODEX_HOME auth failure"
-          : `before Codex exited ${result.status ?? "unknown"}`;
     return commandResult(
       command,
       start,
       "pass",
-      `real Codex CLI invoked SessionStart hook ${suffix}`,
+      `real Codex CLI invoked SessionStart hook ${codexExitSuffix(result)}`,
+    );
+  } catch (e) {
+    return commandResult(
+      command,
+      start,
+      "fail",
+      e instanceof Error ? e.message : String(e),
+    );
+  } finally {
+    if (project !== undefined) {
+      fs.rmSync(project, { recursive: true, force: true });
+    }
+    if (codexHome !== undefined) {
+      fs.rmSync(codexHome, { recursive: true, force: true });
+    }
+  }
+}
+
+function runRealCodexProjectHookSmokeIfEnabled(): CommandCheck {
+  const command = ["anamnesis", "dogfood", "real-codex-project-hook-smoke"];
+  const start = Date.now();
+  if (process.env.ANAMNESIS_REAL_CODEX_SMOKE !== "1") {
+    return commandResult(
+      command,
+      start,
+      "skipped",
+      "set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke",
+    );
+  }
+
+  let codexHome: string | undefined;
+  let project: string | undefined;
+  try {
+    codexHome = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-home-"));
+    project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-project-"));
+    const sentinel = path.join(project, "codex-project-hook-sentinel.log");
+    const hookPath = path.join(project, "codex-project-session-start-smoke.mjs");
+    fs.mkdirSync(path.join(project, ".codex"), { recursive: true });
+    fs.writeFileSync(
+      path.join(codexHome, "config.toml"),
+      [
+        "[features]",
+        "codex_hooks = true",
+        "",
+        `[projects.${JSON.stringify(project)}]`,
+        'trust_level = "trusted"',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(project, ".codex", "config.toml"),
+      "[features]\ncodex_hooks = true\n",
+      "utf8",
+    );
+    fs.writeFileSync(hookPath, realCodexSmokeHookScript(), "utf8");
+    fs.writeFileSync(
+      path.join(project, ".codex", "hooks.json"),
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                matcher: "startup|resume|clear",
+                hooks: [
+                  {
+                    type: "command",
+                    command: `node "${hookPath}"`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = spawnSync(
+      "codex",
+      [
+        "exec",
+        "-C",
+        project,
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "--sandbox",
+        "workspace-write",
+        "Return exactly OK.",
+      ],
+      {
+        cwd: project,
+        env: {
+          ...process.env,
+          CODEX_HOME: codexHome,
+          ANAMNESIS_CODEX_SMOKE_SENTINEL: sentinel,
+        },
+        input: "",
+        encoding: "utf8",
+        timeout: 20_000,
+      },
+    );
+
+    if (!fs.existsSync(sentinel)) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        hookFailureDetail(result) ||
+          "Codex CLI did not invoke the project-local SessionStart hook",
+      );
+    }
+    const sentinelText = fs.readFileSync(sentinel, "utf8");
+    if (!sentinelText.includes("SessionStart")) {
+      return commandResult(
+        command,
+        start,
+        "fail",
+        "Codex CLI invoked the project hook but did not pass a SessionStart payload",
+      );
+    }
+    return commandResult(
+      command,
+      start,
+      "pass",
+      `real Codex CLI discovered project-local .codex/hooks.json SessionStart hook ${codexExitSuffix(result)}`,
     );
   } catch (e) {
     return commandResult(
@@ -876,6 +996,25 @@ function hookFailureDetail(result: {
       ? `exit ${result.status}`
       : "")
   );
+}
+
+function codexExitSuffix(result: {
+  status?: number | null;
+  stdout?: string | Buffer | null;
+  stderr?: string | Buffer | null;
+  error?: Error;
+}): string {
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+  if (result.status === 0 && result.error === undefined) {
+    return "and completed the model turn";
+  }
+  if (output.includes("401 Unauthorized")) {
+    return "before expected isolated-CODEX_HOME auth failure";
+  }
+  if (result.error?.message.includes("ETIMEDOUT")) {
+    return "before expected isolated-CODEX_HOME network timeout";
+  }
+  return `before Codex exited ${result.status ?? "unknown"}`;
 }
 
 function realCodexSmokeHookScript(): string {

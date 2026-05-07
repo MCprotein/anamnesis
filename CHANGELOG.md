@@ -28,7 +28,8 @@ could include breaking changes.
 - Added dogfood native-hook evidence for Codex. The default self-check now
   runs a synthetic Codex JSON dispatch over generated SessionStart,
   PostToolUse, and Stop wrappers, while `ANAMNESIS_REAL_CODEX_SMOKE=1`
-  enables an opt-in real Codex CLI SessionStart smoke.
+  enables opt-in real Codex CLI SessionStart smokes for both isolated
+  `CODEX_HOME/hooks.json` and trusted project-local `.codex/hooks.json`.
 
 ### Changed
 

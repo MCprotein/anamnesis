@@ -87,6 +87,10 @@ describe("dogfoodCheck", () => {
           name: "anamnesis dogfood real-codex-native-smoke",
           outcome: "skipped",
         }),
+        expect.objectContaining({
+          name: "anamnesis dogfood real-codex-project-hook-smoke",
+          outcome: "skipped",
+        }),
       ]),
     );
 
@@ -101,6 +105,7 @@ describe("dogfoodCheck", () => {
     expect(text).toContain("`anamnesis dogfood simulate-stale-handoff`");
     expect(text).toContain("`anamnesis dogfood simulate-codex-native-dispatch`");
     expect(text).toContain("`anamnesis dogfood real-codex-native-smoke`");
+    expect(text).toContain("`anamnesis dogfood real-codex-project-hook-smoke`");
     expect(text).toContain("active.md and latest archive injected");
     expect(text).toContain("status and doctor detect active.md");
     expect(text).toContain("synthetic Codex JSON dispatch");
