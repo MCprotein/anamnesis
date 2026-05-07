@@ -83,12 +83,41 @@ describe("benchmarkReport", () => {
     });
 
     expect(result.appendedPath).toBe("docs/BENCHMARKS.md");
+    expect(result.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
     const text = fs.readFileSync(
       path.join(project, "docs", "BENCHMARKS.md"),
       "utf8",
     );
     expect(text).toContain("Benchmark Report — 2026-05-03T13:00:00.000Z");
     expect(text).toContain("Ready layers: 5/5");
+
+    const evidenceLines = fs
+      .readFileSync(
+        path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+        "utf8",
+      )
+      .trim()
+      .split(/\r?\n/);
+    expect(evidenceLines).toHaveLength(1);
+    const evidence = JSON.parse(evidenceLines[0]!) as {
+      schema_version: string;
+      kind: string;
+      generated_at: string;
+      summary: Record<string, unknown>;
+      artifacts: Record<string, string>;
+    };
+    expect(evidence).toMatchObject({
+      schema_version: "anamnesis.evidence.v1",
+      kind: "benchmark-report",
+      generated_at: "2026-05-03T13:00:00.000Z",
+      summary: {
+        ready: 5,
+        total: 5,
+      },
+      artifacts: {
+        markdown: "docs/BENCHMARKS.md",
+      },
+    });
   });
 
   it("reports an absolute append path when output is outside the project", () => {

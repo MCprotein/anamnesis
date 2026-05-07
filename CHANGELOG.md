@@ -34,6 +34,10 @@ could include breaking changes.
 - Added an authenticated Codex tool-turn dogfood smoke gated by
   `ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1`; it verifies a real Bash tool turn
   invokes both `PreToolUse` and `PostToolUse` hooks.
+- Added a runtime evidence JSONL store at
+  `.anamnesis/evidence/events.jsonl`. `dogfood check --append` and
+  `benchmark report --append` now record machine-readable evidence alongside
+  the markdown reports, and `status` reports the latest evidence record.
 
 ### Changed
 

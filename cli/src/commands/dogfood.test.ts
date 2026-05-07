@@ -73,6 +73,7 @@ describe("dogfoodCheck", () => {
       trend: "new-baseline",
     });
     expect(result.appendedPath).toBe("docs/DOGFOOD.md");
+    expect(result.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
     expect(result.checks.map((c) => c.name)).toContain(
       "anamnesis dogfood simulate-handoff",
     );
@@ -120,6 +121,35 @@ describe("dogfoodCheck", () => {
     expect(text).toContain("active.md and latest archive injected");
     expect(text).toContain("status and doctor detect active.md");
     expect(text).toContain("synthetic Codex JSON dispatch");
+
+    const evidenceLines = fs
+      .readFileSync(
+        path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+        "utf8",
+      )
+      .trim()
+      .split(/\r?\n/);
+    expect(evidenceLines).toHaveLength(1);
+    const evidence = JSON.parse(evidenceLines[0]!) as {
+      schema_version: string;
+      kind: string;
+      generated_at: string;
+      summary: Record<string, unknown>;
+      artifacts: Record<string, string>;
+    };
+    expect(evidence).toMatchObject({
+      schema_version: "anamnesis.evidence.v1",
+      kind: "dogfood-check",
+      generated_at: "2026-04-30T08:00:00.000Z",
+      summary: {
+        ok: true,
+        score: "5/5",
+        trend: "new-baseline",
+      },
+      artifacts: {
+        markdown: "docs/DOGFOOD.md",
+      },
+    });
   });
 
   it("compares the score with the previous appended result", () => {

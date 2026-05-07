@@ -10,6 +10,10 @@ import {
   readAgentfile,
   type ToolName,
 } from "../core/agentfile.js";
+import {
+  EVIDENCE_LOG_PATH,
+  EVIDENCE_SCHEMA_VERSION,
+} from "../core/evidence.js";
 import { upsertRegion } from "../core/regions.js";
 
 function tmpDir(prefix: string): string {
@@ -453,6 +457,37 @@ describe("status — continuity readiness", () => {
     expect(r.continuity.ready).toBe(false);
     expect(active?.status).toBe("fail");
     expect(active?.detail).toContain(newArchive);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("status — runtime evidence", () => {
+  it("reports the latest append evidence record", () => {
+    const { project, library } = setupContinuityProject();
+    const evidencePath = path.join(project, EVIDENCE_LOG_PATH);
+    fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
+    fs.writeFileSync(
+      evidencePath,
+      `${JSON.stringify({
+        schema_version: EVIDENCE_SCHEMA_VERSION,
+        kind: "dogfood-check",
+        generated_at: "2026-05-07T00:00:00.000Z",
+        command: ["anamnesis", "dogfood", "check"],
+        project: { name: "test-project" },
+        summary: { ok: true, score: "5/5" },
+      })}\n`,
+      "utf8",
+    );
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.evidence.path).toBe(EVIDENCE_LOG_PATH);
+    expect(r.evidence.total).toBe(1);
+    expect(r.evidence.invalid).toBe(0);
+    expect(r.evidence.latest?.kind).toBe("dogfood-check");
+    expect(r.summary.evidenceRecords).toBe(1);
+    expect(r.summary.evidenceInvalidRecords).toBe(0);
   });
 });
 

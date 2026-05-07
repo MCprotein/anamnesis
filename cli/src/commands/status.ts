@@ -52,6 +52,10 @@ import {
   codexNativeNodeCommand,
   type CodexHookOwnershipReport,
 } from "../core/codex_native.js";
+import {
+  readEvidenceSummary,
+  type RuntimeEvidenceSummary,
+} from "../core/evidence.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -150,6 +154,8 @@ export interface StatusResult {
   codexHooks: CodexHookOwnershipReport;
   /** Ontology lifecycle gaps across static, bootstrap, and enriched layers. */
   ontology: OntologyGapStatus;
+  /** Durable runtime evidence emitted by append-style checks. */
+  evidence: RuntimeEvidenceSummary;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -163,6 +169,8 @@ export interface StatusResult {
     entriesMissing: number;
     ontologyGapWarnings: number;
     ontologyGapInfo: number;
+    evidenceRecords: number;
+    evidenceInvalidRecords: number;
     suggestedCount: number;
     declinedCount: number;
     declinedStaleCount: number;
@@ -336,6 +344,7 @@ export function status(opts: StatusOptions): StatusResult {
     registry: makeBuiltinIntrospectorRegistry(),
   });
   const codexHooks = analyzeProjectCodexHookOwnership(projectRoot);
+  const evidence = readEvidenceSummary(projectRoot);
 
   // Summary counts.
   const summary = {
@@ -353,6 +362,8 @@ export function status(opts: StatusOptions): StatusResult {
     entriesMissing: entries.filter((e) => e.drift === "missing").length,
     ontologyGapWarnings: ontology.summary.warnings,
     ontologyGapInfo: ontology.summary.info,
+    evidenceRecords: evidence.total,
+    evidenceInvalidRecords: evidence.invalid,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
     declinedStaleCount: declined.filter((d) => !d.matched).length,
@@ -372,6 +383,7 @@ export function status(opts: StatusOptions): StatusResult {
     continuity,
     codexHooks,
     ontology,
+    evidence,
     suggested,
     declined,
     summary,

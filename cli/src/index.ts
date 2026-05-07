@@ -445,6 +445,19 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
     console.log(`      ${gap.detail}`);
     console.log(`      next: ${gap.next}`);
   }
+  const evidence = result.evidence;
+  if (evidence.latest) {
+    console.log(
+      `  evidence: ${evidence.total} record(s), latest ${evidence.latest.kind} at ${evidence.latest.generated_at}`,
+    );
+    if (evidence.invalid > 0) {
+      console.log(`    invalid evidence line(s): ${evidence.invalid}`);
+    }
+  } else {
+    const suffix =
+      evidence.invalid > 0 ? ` (${evidence.invalid} invalid line(s))` : "";
+    console.log(`  evidence: none${suffix}`);
+  }
   for (const line of formatGenerationBoundaryLines(
     collectGenerationBoundaryStatus(projectRoot),
   )) {
@@ -594,6 +607,9 @@ function reportDogfood(result: DogfoodResult): void {
   if (result.appendedPath) {
     console.log(`  appended: ${result.appendedPath}`);
   }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
 }
 
 function reportBenchmark(result: BenchmarkResult): void {
@@ -609,6 +625,9 @@ function reportBenchmark(result: BenchmarkResult): void {
   }
   if (result.appendedPath) {
     console.log(`  appended: ${result.appendedPath}`);
+  }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
   }
 }
 

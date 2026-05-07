@@ -12,6 +12,11 @@ import {
   OntologyBootstrapError,
   type BootstrapResult,
 } from "./ontology.js";
+import {
+  appendEvidenceRecord,
+  EVIDENCE_SCHEMA_VERSION,
+  type RuntimeEvidenceRecord,
+} from "../core/evidence.js";
 
 export type BenchmarkLayerId =
   | "static-ontology"
@@ -52,6 +57,7 @@ export interface BenchmarkResult {
   };
   markdown: string;
   appendedPath?: string;
+  evidencePath?: string;
 }
 
 export interface BenchmarkOptions {
@@ -99,6 +105,7 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
   });
 
   let appendedPath: string | undefined;
+  let evidencePath: string | undefined;
   if (opts.append === true) {
     const outputPath = path.resolve(
       projectRoot,
@@ -111,6 +118,18 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
         : "";
     fs.appendFileSync(outputPath, `${prefix}${markdown}\n`, "utf8");
     appendedPath = displayPathFromProject(projectRoot, outputPath);
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      benchmarkEvidenceRecord({
+        generatedAt,
+        st,
+        boot,
+        ontologyFiles,
+        layers,
+        ready,
+        appendedPath,
+      }),
+    );
   }
 
   return {
@@ -124,6 +143,50 @@ export function benchmarkReport(opts: BenchmarkOptions): BenchmarkResult {
     summary: { ready, total: layers.length },
     markdown,
     appendedPath,
+    evidencePath,
+  };
+}
+
+function benchmarkEvidenceRecord(input: {
+  generatedAt: string;
+  st: StatusResult;
+  boot: BootstrapResult;
+  ontologyFiles: BenchmarkOntologyFiles;
+  layers: BenchmarkLayer[];
+  ready: number;
+  appendedPath: string;
+}): RuntimeEvidenceRecord {
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "benchmark-report",
+    generated_at: input.generatedAt,
+    command: ["anamnesis", "benchmark", "report"],
+    project: { name: input.st.agentfile.project.name },
+    summary: {
+      ready: input.ready,
+      total: input.layers.length,
+      tools: input.st.agentfile.tools,
+      ontology_files: input.ontologyFiles,
+      continuity: {
+        ready: input.st.continuity.ready,
+        passed: input.st.continuity.passed,
+        total: input.st.continuity.total,
+      },
+      ontology_gaps: input.st.ontology.summary,
+      bootstrap_outcomes: bootstrapOutcomeCounts(input.boot),
+    },
+    details: {
+      layers: input.layers.map((layer) => ({
+        id: layer.id,
+        status: layer.status,
+        score: layer.score,
+        total: layer.total,
+        detail: layer.detail,
+      })),
+    },
+    artifacts: {
+      markdown: input.appendedPath,
+    },
   };
 }
 
@@ -297,14 +360,19 @@ function renderBenchmarkMarkdown(input: {
 }
 
 function summarizeBootstrap(result: BootstrapResult): string {
+  const counts = bootstrapOutcomeCounts(result);
+  if (Object.keys(counts).length === 0) return "none";
+  return Object.entries(counts)
+    .map(([kind, count]) => `${kind}=${count}`)
+    .join(", ");
+}
+
+function bootstrapOutcomeCounts(result: BootstrapResult): Record<string, number> {
   const counts = new Map<string, number>();
   for (const entry of result.entries) {
     counts.set(entry.outcome, (counts.get(entry.outcome) ?? 0) + 1);
   }
-  if (counts.size === 0) return "none";
-  return Array.from(counts.entries())
-    .map(([kind, count]) => `${kind}=${count}`)
-    .join(", ");
+  return Object.fromEntries(counts.entries());
 }
 
 function formatList(items: string[]): string {

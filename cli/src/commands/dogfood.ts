@@ -18,6 +18,11 @@ import {
 } from "./ontology.js";
 import { init } from "./init.js";
 import type { ToolName } from "../core/agentfile.js";
+import {
+  appendEvidenceRecord,
+  EVIDENCE_SCHEMA_VERSION,
+  type RuntimeEvidenceRecord,
+} from "../core/evidence.js";
 
 export type CriterionId =
   | "context-continuity"
@@ -61,6 +66,7 @@ export interface DogfoodResult {
     trend: "improved" | "regressed" | "unchanged" | "new-baseline";
   };
   appendedPath?: string;
+  evidencePath?: string;
   ok: boolean;
   markdown: string;
 }
@@ -141,6 +147,7 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
   });
 
   let appendedPath: string | undefined;
+  let evidencePath: string | undefined;
   if (opts.append === true) {
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     const prefix =
@@ -149,6 +156,22 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
         : "";
     fs.appendFileSync(outputPath, `${prefix}${markdown}`, "utf8");
     appendedPath = path.relative(projectRoot, outputPath);
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      dogfoodEvidenceRecord({
+        generatedAt,
+        st,
+        doc,
+        boot,
+        checks,
+        criteria,
+        passed,
+        total,
+        previous,
+        trend,
+        appendedPath,
+      }),
+    );
   }
 
   return {
@@ -162,8 +185,72 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
     criteria,
     score: { passed, total, previous, trend },
     appendedPath,
+    evidencePath,
     ok: passed === total,
     markdown,
+  };
+}
+
+function dogfoodEvidenceRecord(input: {
+  generatedAt: string;
+  st: StatusResult;
+  doc: DoctorResult;
+  boot: BootstrapResult;
+  checks: CommandCheck[];
+  criteria: DogfoodCriterion[];
+  passed: number;
+  total: number;
+  previous: number | null;
+  trend: DogfoodResult["score"]["trend"];
+  appendedPath: string;
+}): RuntimeEvidenceRecord {
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "dogfood-check",
+    generated_at: input.generatedAt,
+    command: ["anamnesis", "dogfood", "check"],
+    project: { name: input.st.agentfile.project.name },
+    summary: {
+      ok: input.passed === input.total,
+      score: `${input.passed}/${input.total}`,
+      passed: input.passed,
+      total: input.total,
+      previous: input.previous,
+      trend: input.trend,
+      tools: input.st.agentfile.tools,
+      fragments: input.st.fragments.map(
+        (f) => `${f.id}@${f.installedVersion}:${f.status}`,
+      ),
+      drift: {
+        clean: input.st.summary.entriesClean,
+        modified: input.st.summary.entriesUserModified,
+        missing: input.st.summary.entriesMissing,
+      },
+      doctor: {
+        ok: input.doc.ok,
+        errors: input.doc.summary.errors,
+        warnings: input.doc.summary.warnings,
+      },
+      codex_hook_warnings: input.st.codexHooks.summary.warnings,
+      ontology_gaps: input.st.ontology.summary,
+      bootstrap_outcomes: bootstrapOutcomeCounts(input.boot),
+    },
+    details: {
+      criteria: input.criteria.map((criterion) => ({
+        id: criterion.id,
+        status: criterion.status,
+        detail: criterion.detail,
+      })),
+      checks: input.checks.map((check) => ({
+        name: check.name,
+        outcome: check.outcome,
+        duration_ms: check.durationMs,
+        detail: check.detail,
+      })),
+    },
+    artifacts: {
+      markdown: input.appendedPath,
+    },
   };
 }
 
@@ -1597,13 +1684,18 @@ function renderMarkdown(input: {
 }
 
 function summarizeBootstrap(result: BootstrapResult): string {
+  const counts = bootstrapOutcomeCounts(result);
+  return Object.entries(counts)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(", ");
+}
+
+function bootstrapOutcomeCounts(result: BootstrapResult): Record<string, number> {
   const counts = new Map<string, number>();
   for (const entry of result.entries) {
     counts.set(entry.outcome, (counts.get(entry.outcome) ?? 0) + 1);
   }
-  return Array.from(counts.entries())
-    .map(([k, v]) => `${k}=${v}`)
-    .join(", ");
+  return Object.fromEntries(counts.entries());
 }
 
 function escapeCell(text: string): string {

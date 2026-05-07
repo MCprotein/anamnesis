@@ -9,6 +9,9 @@ Run:
 anamnesis benchmark report --append
 ```
 
+Append runs also write a machine-readable evidence record to
+`.anamnesis/evidence/events.jsonl`.
+
 The report measures concrete surfaces on disk, not model intelligence:
 
 - static ontology slices
@@ -109,5 +112,30 @@ Ontology files:
 - enriched: `.anamnesis/ontology/nestjs.enriched.yaml`, `.anamnesis/ontology/prisma.enriched.yaml`
 
 Bootstrap dry-run outcomes: skipped-no-introspector=1, unchanged=2
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+
+
+## Benchmark Report — 2026-05-07T01:35:28.236Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@10:in-sync
+Ready layers: 3/5
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
 Continuity: ready (6/6)
 Ontology gaps: 0 warning(s), 1 info
