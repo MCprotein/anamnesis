@@ -330,4 +330,52 @@ describe("benchmarkReport", () => {
     });
     expect(stale.ok).toBe(false);
   });
+
+  it("includes public benchmark evidence JSONL sources by default", () => {
+    const { project, library } = setupBenchmarkProject();
+    const current = benchmarkReport({
+      projectRoot: project,
+      libraryRoot: library,
+      append: true,
+      now: () => new Date("2026-05-03T18:00:00.000Z"),
+    });
+    const external = JSON.parse(JSON.stringify(current)) as typeof current;
+    external.generatedAt = "2026-05-03T18:30:00.000Z";
+    external.status.agentfile.project.name = "public-next-fixture";
+    external.scorecard.ready_layers.ready = 4;
+    external.scorecard.continuity.passed = 6;
+    external.scorecard.diagnostics.doctor_errors = 0;
+
+    const evidenceDir = path.join(project, "docs", "benchmark-evidence");
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(evidenceDir, "public-shapes.jsonl"),
+      `${JSON.stringify({
+        schema_version: "anamnesis.evidence.v1",
+        kind: "benchmark-report",
+        generated_at: "2026-05-03T18:30:00.000Z",
+        command: ["anamnesis", "benchmark", "report"],
+        project: { name: "public-next-fixture" },
+        summary: {
+          scorecard: external.scorecard,
+        },
+        artifacts: {
+          markdown: "docs/BENCHMARKS.md",
+        },
+      })}\n`,
+      "utf8",
+    );
+
+    const result = benchmarkGallery({ projectRoot: project });
+
+    expect(result.evidenceRecords).toBe(2);
+    expect(result.evidencePath).toBe(
+      ".anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl",
+    );
+    expect(result.entries.map((entry) => entry.projectName).sort()).toEqual([
+      "anamnesis-project",
+      "public-next-fixture",
+    ]);
+    expect(result.markdown).toContain("public-next-fixture current benchmark");
+  });
 });

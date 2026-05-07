@@ -2,7 +2,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {
   EVIDENCE_LOG_PATH,
+  readEvidenceFile,
   readEvidenceRecords,
+  type RuntimeEvidenceLog,
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
 
@@ -51,6 +53,7 @@ export interface BenchmarkGalleryOptions {
   outputPath?: string;
   write?: boolean;
   validate?: boolean;
+  sources?: string[];
   now?: () => Date;
 }
 
@@ -72,7 +75,7 @@ export function benchmarkGallery(
     projectRoot,
     opts.outputPath ?? path.join("docs", "BENCHMARK-GALLERY.md"),
   );
-  const log = readEvidenceRecords(projectRoot);
+  const log = readGalleryEvidenceRecords(projectRoot, opts.sources ?? []);
   const generatedAt =
     latestGeneratedAt(log.records) ??
     (opts.now ?? (() => new Date()))().toISOString();
@@ -141,6 +144,42 @@ export function benchmarkGallery(
     validation,
     ok,
   };
+}
+
+function readGalleryEvidenceRecords(
+  projectRoot: string,
+  explicitSources: readonly string[],
+): RuntimeEvidenceLog {
+  const logs = [readEvidenceRecords(projectRoot)];
+  for (const source of defaultGalleryEvidenceSources(projectRoot)) {
+    logs.push(readEvidenceFile(source.absPath, source.displayPath));
+  }
+  for (const source of explicitSources) {
+    const absPath = path.resolve(projectRoot, source);
+    logs.push(readEvidenceFile(absPath, displayPathFromProject(projectRoot, absPath)));
+  }
+  return {
+    path: logs.map((log) => log.path).join("; "),
+    total: logs.reduce((sum, log) => sum + log.total, 0),
+    invalid: logs.reduce((sum, log) => sum + log.invalid, 0),
+    records: logs.flatMap((log) => log.records),
+  };
+}
+
+function defaultGalleryEvidenceSources(
+  projectRoot: string,
+): { absPath: string; displayPath: string }[] {
+  const dir = path.join(projectRoot, "docs", "benchmark-evidence");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl"))
+    .map((entry) => path.join(dir, entry.name))
+    .sort()
+    .map((absPath) => ({
+      absPath,
+      displayPath: displayPathFromProject(projectRoot, absPath),
+    }));
 }
 
 function latestGeneratedAt(
@@ -445,7 +484,8 @@ function stableEntryId(record: RuntimeEvidenceRecord): string {
 
 function evidencePath(record: RuntimeEvidenceRecord): string {
   const markdown = record.artifacts?.markdown;
-  return markdown ? `${markdown}; ${EVIDENCE_LOG_PATH}` : EVIDENCE_LOG_PATH;
+  const evidence = record.artifacts?.evidence ?? EVIDENCE_LOG_PATH;
+  return markdown ? `${markdown}; ${evidence}` : evidence;
 }
 
 function displayPathFromProject(projectRoot: string, targetPath: string): string {

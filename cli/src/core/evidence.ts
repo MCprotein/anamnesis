@@ -58,14 +58,21 @@ export function readEvidenceSummary(projectRoot: string): RuntimeEvidenceSummary
 
 export function readEvidenceRecords(projectRoot: string): RuntimeEvidenceLog {
   const abs = path.join(projectRoot, EVIDENCE_LOG_PATH);
-  if (!fs.existsSync(abs)) {
-    return { path: EVIDENCE_LOG_PATH, total: 0, invalid: 0, records: [] };
+  return readEvidenceFile(abs, EVIDENCE_LOG_PATH);
+}
+
+export function readEvidenceFile(
+  filePath: string,
+  displayPath?: string,
+): RuntimeEvidenceLog {
+  if (!fs.existsSync(filePath)) {
+    return { path: displayPath ?? filePath, total: 0, invalid: 0, records: [] };
   }
 
   let total = 0;
   let invalid = 0;
   const records: RuntimeEvidenceRecord[] = [];
-  for (const line of fs.readFileSync(abs, "utf8").split(/\r?\n/)) {
+  for (const line of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
     if (line.trim() === "") continue;
     try {
       const parsed = JSON.parse(line) as unknown;
@@ -79,7 +86,7 @@ export function readEvidenceRecords(projectRoot: string): RuntimeEvidenceLog {
       invalid++;
     }
   }
-  return { path: EVIDENCE_LOG_PATH, total, invalid, records };
+  return { path: displayPath ?? filePath, total, invalid, records };
 }
 
 function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {

@@ -41,6 +41,10 @@ Public-safe summaries and claim boundaries live in
 `benchmark gallery --write` refreshes the generated evidence region from the
 runtime evidence log, and `benchmark gallery --validate` fails when that
 generated region is stale before release.
+Sanitized public-shape machine evidence is stored in
+[`docs/benchmark-evidence/public-shapes.jsonl`](benchmark-evidence/public-shapes.jsonl)
+so the generated gallery can consume repo snapshots without exposing temp
+paths or source snippets.
 
 ## Current Sanitized Fixture Comparison
 
@@ -195,3 +199,168 @@ Ontology gaps: 0 warning(s), 1 info
 Doctor: ok (0 error(s), 0 warning(s))
 Codex hook warnings: 0
 Evidence records: 6 valid, 0 invalid
+
+
+## Benchmark Compare — 2026-05-07T07:14:46.317Z
+
+Baseline: sanitized-nest-prisma (2026-05-07T07:08:59.701Z)
+After: sanitized-nest-prisma (2026-05-07T07:14:34.835Z)
+Baseline file: sanitized sanitized-nest-prisma before snapshot
+After file: sanitized sanitized-nest-prisma after snapshot
+Summary: 3 improved, 1 regressed, 5 unchanged
+
+| Dimension | Baseline | After | Delta | Verdict |
+|---|---:|---:|---:|---|
+| Ready layers | 1/5 | 2/5 | +1 | improved |
+| Continuity checks | 4/6 | 5/6 | +1 | improved |
+| Ontology warnings | 2 | 2 | 0 | unchanged |
+| Layer B enrichment missing | 0 | 2 | +2 | regressed |
+| Doctor errors | 3 | 3 | 0 | unchanged |
+| Doctor warnings | 6 | 3 | -3 | improved |
+| Codex hook warnings | 0 | 0 | 0 | unchanged |
+| Adapter surfaces | 0/1 | 0/1 | 0 | unchanged |
+| Evidence records | 0 | 0 | 0 | unchanged |
+
+
+## Benchmark Report — 2026-05-07T07:15:06.340Z
+
+Project: public-next-frontend
+Tools: claude-code, codex, cursor
+Fragments: base@10:in-sync, nextjs@1:in-sync
+Ready layers: 4/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 4/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 1 |
+| Doctor errors | 0 |
+| Doctor warnings | 1 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 1 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 2/2 | 2 static ontology file(s) found |
+| Layer A bootstrap | ready | 1/1 | 1 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | missing | 0/1 | 1 semantic enrichment file(s) missing |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`, `.anamnesis/ontology/nextjs.yaml`
+- bootstrap: `.anamnesis/ontology/nextjs.bootstrap.yaml`
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1, unchanged=1
+Continuity: ready (6/6)
+Ontology gaps: 1 warning(s), 1 info
+Doctor: ok (0 error(s), 1 warning(s))
+Codex hook warnings: 0
+Evidence records: 1 valid, 0 invalid
+
+
+## Benchmark Report — 2026-05-07T07:15:06.340Z
+
+Project: public-nest-k8s-backend
+Tools: claude-code, codex, cursor
+Fragments: base@10:in-sync, k8s@2:in-sync, nestjs@1:in-sync, docker-compose@1:in-sync
+Ready layers: 4/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 4/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 2 |
+| Doctor errors | 0 |
+| Doctor warnings | 2 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 1 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 4/4 | 4 static ontology file(s) found |
+| Layer A bootstrap | ready | 2/2 | 2 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | missing | 0/2 | 2 semantic enrichment file(s) missing |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`, `.anamnesis/ontology/docker-compose.yaml`, `.anamnesis/ontology/k8s.yaml`, `.anamnesis/ontology/nestjs.yaml`
+- bootstrap: `.anamnesis/ontology/k8s.bootstrap.yaml`, `.anamnesis/ontology/nestjs.bootstrap.yaml`
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=2, unchanged=2
+Continuity: ready (6/6)
+Ontology gaps: 2 warning(s), 2 info
+Doctor: ok (0 error(s), 2 warning(s))
+Codex hook warnings: 0
+Evidence records: 1 valid, 0 invalid
+
+
+## Benchmark Report — 2026-05-07T07:15:19.092Z
+
+Project: sanitized-python-api
+Tools: claude-code, codex, cursor
+Fragments: base@10:in-sync, fastapi@1:in-sync, python-uv@1:in-sync
+Ready layers: 2/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 2/5 |
+| Continuity checks | 5/6 |
+| Ontology warnings | 1 |
+| Doctor errors | 0 |
+| Doctor warnings | 2 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 0/1 |
+| Evidence records | 1 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 3/3 | 3 static ontology file(s) found |
+| Layer A bootstrap | ready | 1/1 | 1 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | missing | 0/1 | 1 semantic enrichment file(s) missing |
+| Context continuity | partial | 5/6 | 5/6 continuity checks passing |
+| Adapter surfaces | missing | 0/1 | missing or drifted surfaces: .claude/skills/load-context/SKILL.md |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`, `.anamnesis/ontology/fastapi.yaml`, `.anamnesis/ontology/python-uv.yaml`
+- bootstrap: `.anamnesis/ontology/fastapi.bootstrap.yaml`
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=2, unchanged=1
+Continuity: issues (5/6)
+Ontology gaps: 1 warning(s), 2 info
+Doctor: ok (0 error(s), 2 warning(s))
+Codex hook warnings: 0
+Evidence records: 1 valid, 0 invalid
+
+
+## Benchmark Compare — 2026-05-07T07:19:25.533Z
+
+Baseline: public-next-frontend-adoption (2026-05-07T07:18:14.861Z)
+After: public-next-frontend-adoption (2026-05-07T07:19:13.815Z)
+Baseline file: sanitized public Next.js baseline snapshot
+After file: sanitized public Next.js after snapshot
+Summary: 3 improved, 0 regressed, 6 unchanged
+
+| Dimension | Baseline | After | Delta | Verdict |
+|---|---:|---:|---:|---|
+| Ready layers | 3/5 | 5/5 | +2 | improved |
+| Continuity checks | 6/6 | 6/6 | 0 | unchanged |
+| Ontology warnings | 1 | 0 | -1 | improved |
+| Layer B enrichment missing | 0 | 0 | 0 | unchanged |
+| Doctor errors | 0 | 0 | 0 | unchanged |
+| Doctor warnings | 1 | 0 | -1 | improved |
+| Codex hook warnings | 0 | 0 | 0 | unchanged |
+| Adapter surfaces | 1/1 | 1/1 | 0 | unchanged |
+| Evidence records | 0 | 0 | 0 | unchanged |

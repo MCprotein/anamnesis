@@ -218,9 +218,10 @@ In all four cases, the user-modified protection correctly preserved hand-authore
 Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 Public-safe benchmark evidence lives in
 [`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md): the current
-sanitized backend snapshot improved ready layers from `1/5` to `5/5`, while
-the anamnesis self repo keeps cross-agent continuity at `6/6`. Broader README
-claims stay intentionally limited until more public repo shapes are collected;
+generated gallery contains frontend, backend/infra, Python/uv, self-dogfood,
+and before/after adoption evidence. The strongest current generated claim is
+a sanitized Next.js adoption path improving 3 scorecard dimensions with 0
+regressions, while broader ecosystem claims stay intentionally disallowed;
 the claim ledger is [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md).
 
 ---

@@ -19,6 +19,9 @@ could include breaking changes.
 - Added `anamnesis benchmark gallery --write|--validate` to generate and
   verify the evidence-backed `docs/BENCHMARK-GALLERY.md` region and README
   claim candidates from runtime evidence.
+- Added sanitized public-shape benchmark evidence for a fresh Next.js
+  frontend, a NestJS/Kubernetes backend, an existing Python/uv repo, and
+  before/after adoption paths.
 
 ## [1.1.1] — 2026-05-07
 

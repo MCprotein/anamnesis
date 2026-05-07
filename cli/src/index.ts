@@ -143,6 +143,16 @@ function parseToolsFlag(value: string | boolean | undefined): ToolName[] | undef
   return tools;
 }
 
+function parseCommaListFlag(value: string | boolean | undefined): string[] | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) return undefined;
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  return parts.length > 0 ? parts : undefined;
+}
+
 function parsePositiveIntFlag(
   value: string | boolean | undefined,
   flagName: string,
@@ -264,6 +274,7 @@ Flags (benchmark gallery):
   --json                        Print structured JSON
   --write                       Write docs/BENCHMARK-GALLERY.md
   --validate                    Fail when generated gallery differs on disk
+  --source <path[,path]>        Extra evidence JSONL source(s)
   --output <path>               Override gallery path
 
 Flags (migrate agentfile):
@@ -956,6 +967,7 @@ async function main(argv: string[]): Promise<number> {
             outputPath: flags["output"] as string | undefined,
             write: flags["write"] === true,
             validate: flags["validate"] === true,
+            sources: parseCommaListFlag(flags["source"]),
           });
           if (flags["json"] === true) {
             console.log(JSON.stringify(result, null, 2));
