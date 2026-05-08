@@ -7,6 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Documentation
+
+- Planned v1.3 around fragment dependency resolution and local fragment
+  update event hooks, while parking project templates and WebUI work outside
+  the accepted roadmap.
+- Recorded a `sanitized-nest-prisma` before/after benchmark comparison after
+  applying the current fragments and generating Layer A/B ontology files.
+
 ## [1.2.1] — 2026-05-08
 
 ### Fixed

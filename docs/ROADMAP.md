@@ -726,14 +726,50 @@ Exit criteria:
 
 ---
 
-## Cross-cutting items (no specific version yet)
+## v1.3 — *planned*
 
-These have been discussed but lack concrete version assignment:
+> **Theme: fragment lifecycle intelligence**
+
+v1.3 should make installed fragments behave less like manually curated
+snippets and more like a small dependency graph with observable update
+signals. The scope stays narrow: resolve fragment dependencies and version
+constraints before rendering, then expose local update events that future
+automation can consume. This is still configuration lifecycle management, not
+project scaffolding or a hosted control plane.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Fragment dependency resolution** | planned | Replace the current `requires` behavior from simple topological ordering with explicit dependency resolution. A selected fragment should be able to require another fragment id plus a minimum integer version. `init`, `update`, `status`, and `doctor` should report missing dependencies, unsatisfied minimum versions, pinned fragments that block a requirement, and dependency cycles before rendering managed files. |
+| 2 | **Fragment update event hooks** | planned | Add a local update notification surface for fragment lifecycle changes. Start with deterministic event records for installed, updated, pinned-blocked, yanked/invalid, and dependency-blocked fragments; keep external webhook delivery optional and disabled until the local event schema and trust boundary are stable. |
+
+Progress:
+- 2026-05-08: Promoted `Fragment dependency resolution` and fragment update
+  notifications from cross-cutting backlog to the v1.3 planned scope. Deferred
+  project templates and WebUI work so v1.3 stays focused on fragment lifecycle
+  correctness and observable update signals.
+
+Exit criteria:
+- Fragment dependency requirements are parsed from fragment metadata without
+  changing existing Agentfile v1 installed-fragment entries.
+- `init` and `update` can auto-include or clearly report required dependency
+  fragments before rendering.
+- `status` and `doctor` explain missing, incompatible, pinned-blocked, and
+  cyclic fragment dependencies with actionable next steps.
+- Update/apply flows write local machine-readable fragment lifecycle events
+  without sending data to any external service by default.
+- README and release claims do not mention external webhook delivery unless a
+  real opt-in delivery smoke exists.
+
+---
+
+## Parked ideas (outside the accepted roadmap)
+
+These have been discussed, but they are not active roadmap work. Bring them
+back only if repeated dogfood evidence shows they directly improve the core
+goal: automatic context/ontology continuity across agent tools.
 
 - **Project type templates** — `init --template react-app` style scaffolding for first-time users
-- **Fragment dependency resolution** — current `requires` is just topo sort; could grow to semver constraint solving
 - **WebUI for Agentfile editing** — visual editor for non-CLI users
-- **Webhook on fragment update** — notify projects when their installed fragments have library updates
 
 ---
 

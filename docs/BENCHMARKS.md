@@ -386,3 +386,29 @@ Summary: 3 improved, 0 regressed, 6 unchanged
 | Codex hook warnings | 0 | 0 | 0 | unchanged |
 | Adapter surfaces | 1/1 | 1/1 | 0 | unchanged |
 | Evidence records | 0 | 0 | 0 | unchanged |
+
+
+## Benchmark Compare — 2026-05-08T04:39:52.456Z
+
+Baseline: sanitized-nest-prisma (2026-05-08T04:12:25.648Z)
+After: sanitized-nest-prisma (2026-05-08T04:39:41.055Z)
+Baseline file: /private/tmp/sanitized-nest-prisma-before-v13.json
+After file: /private/tmp/sanitized-nest-prisma-after-v13.json
+Summary: 6 improved, 0 regressed, 3 unchanged
+
+| Dimension | Baseline | After | Delta | Verdict |
+|---|---:|---:|---:|---|
+| Ready layers | 0/5 | 3/5 | +3 | improved |
+| Continuity checks | 2/6 | 5/6 | +3 | improved |
+| Ontology warnings | 5 | 0 | -5 | improved |
+| Layer B enrichment missing | 0 | 0 | 0 | unchanged |
+| Doctor errors | 6 | 3 | -3 | improved |
+| Doctor warnings | 11 | 1 | -10 | improved |
+| Codex hook warnings | 0 | 0 | 0 | unchanged |
+| Adapter surfaces | 0/1 | 0/1 | 0 | unchanged |
+| Evidence records | 0 | 1 | +1 | improved |
+
+Note: adapter surfaces stayed unchanged because `sanitized-nest-prisma` already has
+project-specific Claude hook and `/load-context` content. The dogfood apply
+preserved those user-owned surfaces instead of overwriting them to force a clean
+managed hash.
