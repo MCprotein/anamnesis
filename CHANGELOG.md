@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-05-08
+
+### Fixed
+
+- Fixed the published README status badges for the v1.2 line and recorded
+  the v1.2.0 post-publish smoke in tracked docs.
+
 ## [1.2.0] — 2026-05-08
 
 ### Added
