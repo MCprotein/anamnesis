@@ -18,6 +18,7 @@ need machine-readable proof beyond terminal output.
 - `anamnesis update --apply`
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
+- `anamnesis benchmark trace --append`
 - `anamnesis benchmark task --append`
 - `anamnesis benchmark prompt-gate --append`
 
@@ -25,7 +26,7 @@ Each record includes:
 
 - `kind`: `dogfood-check`, `doctor-check`, `hook-log-summary`,
   `init-install`, `update-apply`, `benchmark-report`, `benchmark-compare`,
-  `agent-task-benchmark`, or `prompt-delta-gate`
+  `benchmark-trace-rollup`, `agent-task-benchmark`, or `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -65,6 +66,13 @@ backup/prune counts, Claude/Codex hook registration outcomes, and apply flags.
 Benchmark compare evidence records include before/after scorecard deltas and
 summary counts for improved, regressed, and unchanged dimensions.
 
+Benchmark trace rollup records use kind `benchmark-trace-rollup` and summary
+schema `anamnesis.benchmark_trace_rollup.v1`. They read
+`.anamnesis/logs/benchmark-traces.jsonl` by default, aggregate benchmark
+trace records by phase/status, sum numeric metrics, append markdown to
+`docs/BENCHMARK-TRACES.md`, and keep this runtime timing/trace evidence
+separate from deterministic context-quality scorecards.
+
 Agent task benchmark records use kind `agent-task-benchmark` and summary
 schema `anamnesis.agent_task_benchmark.v1`. These records are explicitly
 model-dependent and stay separate from deterministic benchmark scorecards.
@@ -96,8 +104,8 @@ such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
 non-gallery records such as `doctor-check`, `hook-log-summary`,
-`init-install`, `update-apply`, `agent-task-benchmark`, and
-`prompt-delta-gate`.
+`init-install`, `update-apply`, `benchmark-trace-rollup`,
+`agent-task-benchmark`, and `prompt-delta-gate`.
 
 ## Boundary
 

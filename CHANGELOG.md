@@ -28,6 +28,9 @@ could include breaking changes.
 - Added `anamnesis benchmark prompt-gate` to keep Codex prompt-time context
   delta injection behind evidence checks for continuity gaps, token overhead,
   duplicate-context risk, and model-dependent task friction.
+- Added `anamnesis benchmark trace --append` to roll up benchmark trace logs
+  from `.anamnesis/logs/benchmark-traces.jsonl` and store
+  `benchmark-trace-rollup` runtime evidence.
 - Added `anamnesis doctor --append` and a `doctor:check` release script so
   install integrity diagnostics can be stored as `doctor-check` runtime
   evidence instead of living only in terminal output.

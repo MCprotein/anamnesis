@@ -643,7 +643,7 @@ limitations.
 | 4 | **Evidence gallery automation** | implemented; unreleased | Generate or validate `docs/BENCHMARK-GALLERY.md` and README claim candidates from `.anamnesis/evidence/events.jsonl` plus sanitized benchmark artifacts. Claims without matching evidence should be flagged before release. |
 | 5 | **Public-safe multi-shape collection** | implemented; unreleased | Collect at least three public-safe benchmark shapes: a frontend app, a backend plus infra repo, and a Python/API repo. Each entry must include fragment set, raw score dimensions, before/after or fresh-install state, and limitations. |
 | 6 | **Prompt-time context delta decision gate** | implemented; unreleased | Revisit Codex `UserPromptSubmit` context delta injection only through `anamnesis benchmark prompt-gate`. The gate reads benchmark/task evidence, estimates duplicate ontology/handoff prompt overhead, reports duplicate-context risk, and keeps injection disabled unless repeated continuity failures justify a bounded non-default prototype. |
-| 7 | **Runtime evidence expansion** | partial; unreleased | Expand runtime evidence beyond dogfood and benchmark append runs. `anamnesis doctor --append` records install integrity diagnostics as `doctor-check`, `anamnesis hooks summary --append` records hook runtime summaries as `hook-log-summary`, `anamnesis init` records first-install evidence as `init-install`, `anamnesis update --apply` records write-path evidence as `update-apply`, and `status` reports per-kind evidence counts/freshness. Benchmark trace rollups remain follow-up. |
+| 7 | **Runtime evidence expansion** | implemented; unreleased | Expand runtime evidence beyond dogfood and benchmark append runs. `anamnesis doctor --append` records install integrity diagnostics as `doctor-check`, `anamnesis hooks summary --append` records hook runtime summaries as `hook-log-summary`, `anamnesis init` records first-install evidence as `init-install`, `anamnesis update --apply` records write-path evidence as `update-apply`, `anamnesis benchmark trace --append` records trace rollups as `benchmark-trace-rollup`, and `status` reports per-kind evidence counts/freshness. |
 
 Progress:
 - 2026-05-07: Implemented benchmark scorecard v2 for
@@ -695,6 +695,11 @@ Progress:
   summaries. It reads `.anamnesis/logs/hooks.jsonl`, reports valid/invalid
   hook runtime records by event and status, appends `docs/HOOKS.md`, and
   records `hook-log-summary` runtime evidence.
+- 2026-05-08: Added `anamnesis benchmark trace --append` for benchmark trace
+  rollups. It reads `.anamnesis/logs/benchmark-traces.jsonl`, aggregates
+  trace records by phase/status plus numeric metrics, appends
+  `docs/BENCHMARK-TRACES.md`, and records `benchmark-trace-rollup` runtime
+  evidence.
 
 Exit criteria:
 - `anamnesis benchmark report` exposes stable numeric raw dimensions and a

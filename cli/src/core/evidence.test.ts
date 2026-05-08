@@ -26,6 +26,7 @@ function record(
     "update-apply": ["anamnesis", "update", "--apply"],
     "benchmark-report": ["anamnesis", "benchmark", "report"],
     "benchmark-compare": ["anamnesis", "benchmark", "compare"],
+    "benchmark-trace-rollup": ["anamnesis", "benchmark", "trace"],
     "agent-task-benchmark": ["anamnesis", "benchmark", "task"],
     "prompt-delta-gate": ["anamnesis", "benchmark", "prompt-gate"],
   };
@@ -161,6 +162,30 @@ describe("runtime evidence", () => {
     });
     expect(summary.byKind[0]).toMatchObject({
       kind: "hook-log-summary",
+      total: 1,
+      stale: false,
+    });
+  });
+
+  it("accepts benchmark trace rollup evidence records", () => {
+    const project = tmpDir("anamnesis-evidence-trace-");
+
+    appendEvidenceRecord(
+      project,
+      record("benchmark-trace-rollup", "2026-05-07T05:00:00.000Z"),
+    );
+
+    const summary = readEvidenceSummary(project, {
+      now: new Date("2026-05-07T05:00:01.000Z"),
+    });
+
+    expect(summary.total).toBe(1);
+    expect(summary.latest).toMatchObject({
+      kind: "benchmark-trace-rollup",
+      command: ["anamnesis", "benchmark", "trace"],
+    });
+    expect(summary.byKind[0]).toMatchObject({
+      kind: "benchmark-trace-rollup",
       total: 1,
       stale: false,
     });

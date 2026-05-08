@@ -12,6 +12,7 @@ anamnesis benchmark report --json > after.json
 anamnesis benchmark compare --baseline before.json --after after.json --append
 anamnesis benchmark gallery --write
 anamnesis benchmark gallery --validate
+anamnesis benchmark trace --append
 anamnesis benchmark prompt-gate
 ```
 
@@ -58,6 +59,10 @@ Public-safe summaries and claim boundaries live in
 `benchmark gallery --write` refreshes the generated evidence region from the
 runtime evidence log, and `benchmark gallery --validate` fails when that
 generated region is stale before release.
+`benchmark trace --append` rolls up runtime trace records from
+`.anamnesis/logs/benchmark-traces.jsonl`. Trace rollups are operational
+evidence for benchmark phase timing and numeric metrics; they do not replace
+deterministic context-quality scorecards.
 Sanitized public-shape machine evidence is stored in
 [`docs/benchmark-evidence/public-shapes.jsonl`](benchmark-evidence/public-shapes.jsonl)
 so the generated gallery can consume repo snapshots without exposing temp

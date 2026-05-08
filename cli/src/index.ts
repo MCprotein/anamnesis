@@ -56,6 +56,11 @@ import {
   type BenchmarkResult,
 } from "./commands/benchmark.js";
 import {
+  benchmarkTraceRollup,
+  BenchmarkTraceError,
+  type BenchmarkTraceRollupResult,
+} from "./commands/benchmark_trace.js";
+import {
   benchmarkGallery,
   BenchmarkGalleryError,
   type BenchmarkGalleryResult,
@@ -243,6 +248,8 @@ Commands:
                                   and optionally append a delta report
   benchmark gallery            Generate or validate docs/BENCHMARK-GALLERY.md
                                   from runtime evidence
+  benchmark trace              Roll up benchmark trace JSONL and optionally
+                                  record runtime evidence
   benchmark task               Record a model-dependent agent task benchmark
                                   separately from deterministic scorecards
   benchmark prompt-gate        Decide whether prompt-time context delta
@@ -327,6 +334,15 @@ Flags (benchmark gallery):
   --validate                    Fail when generated gallery differs on disk
   --source <path[,path]>        Extra evidence JSONL source(s)
   --output <path>               Override gallery path
+
+Flags (benchmark trace):
+  --project-root <path>         Target directory (default: cwd)
+  --source <path>               Trace JSONL path (default:
+                                  .anamnesis/logs/benchmark-traces.jsonl)
+  --json                        Print structured JSON
+  --append                      Append markdown to docs/BENCHMARK-TRACES.md
+                                  and record runtime evidence
+  --output <path>               Override trace rollup markdown path
 
 Flags (benchmark task):
   --project-root <path>         Target directory (default: cwd)
@@ -857,6 +873,43 @@ function reportBenchmarkGallery(result: BenchmarkGalleryResult): void {
   }
 }
 
+function reportBenchmarkTrace(result: BenchmarkTraceRollupResult): void {
+  console.log(`anamnesis benchmark trace — ${result.projectName}`);
+  console.log(`  source: ${result.sourcePath}`);
+  console.log(`  records: ${result.total} valid, ${result.invalid} invalid`);
+  if (result.latest) {
+    console.log(
+      `  latest: ${result.latest.phase} ${result.latest.status} at ${result.latest.generated_at}`,
+    );
+  } else {
+    console.log("  latest: none");
+  }
+  if (result.byStatus.length > 0) {
+    console.log(
+      `  status: ${result.byStatus.map((s) => `${s.status}=${s.total}`).join(", ")}`,
+    );
+  }
+  for (const phase of result.byPhase) {
+    const statuses = Object.entries(phase.byStatus)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([status, count]) => `${status}=${count}`)
+      .join(", ");
+    const duration =
+      phase.duration_ms.count > 0
+        ? `, duration=${phase.duration_ms.total}ms`
+        : "";
+    console.log(`    ${phase.phase}: ${phase.total} (${statuses}${duration})`);
+  }
+  if (Object.keys(result.metrics).length > 0) {
+    console.log(
+      `  metrics: ${Object.entries(result.metrics)
+        .map(([name, total]) => `${name}=${total}`)
+        .join(", ")}`,
+    );
+  }
+  reportAppendEvidence(result.appendedPath, result.evidencePath);
+}
+
 function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
   console.log(`anamnesis benchmark task — ${result.input.project.name}`);
   console.log(`  task: ${result.input.task.id}`);
@@ -1170,6 +1223,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "report" &&
         sub !== "compare" &&
         sub !== "gallery" &&
+        sub !== "trace" &&
         sub !== "task" &&
         sub !== "prompt-gate"
       ) {
@@ -1184,6 +1238,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis benchmark gallery [--json] [--write] [--validate] [--output=<path>]`,
+        );
+        console.error(
+          `       anamnesis benchmark trace [--json] [--append] [--output=<path>] [--source=<path>]`,
         );
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
@@ -1247,6 +1304,22 @@ async function main(argv: string[]): Promise<number> {
           return 0;
         }
 
+        if (sub === "trace") {
+          const result = benchmarkTraceRollup({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            sourcePath: flags["source"] as string | undefined,
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportBenchmarkTrace(result);
+          }
+          return result.ok ? 0 : 1;
+        }
+
         if (sub === "gallery") {
           const result = benchmarkGallery({
             projectRoot:
@@ -1307,6 +1380,7 @@ async function main(argv: string[]): Promise<number> {
         if (
           e instanceof BenchmarkError ||
           e instanceof BenchmarkGalleryError ||
+          e instanceof BenchmarkTraceError ||
           e instanceof AgentTaskBenchmarkError ||
           e instanceof PromptDeltaGateError
         ) {

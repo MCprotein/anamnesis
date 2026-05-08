@@ -124,6 +124,7 @@ anamnesis benchmark report --append  # record deterministic context-quality scor
 anamnesis benchmark compare --baseline before.json --after after.json --append  # record before/after deltas
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates
 anamnesis benchmark gallery --validate  # fail when gallery evidence is stale
+anamnesis benchmark trace --append  # roll up benchmark trace logs as runtime evidence
 anamnesis benchmark task --template  # create a model-dependent task benchmark input
 anamnesis benchmark task --input task-run.json --append  # record an agent task run separately
 anamnesis benchmark prompt-gate  # decide whether prompt-time context delta is justified
