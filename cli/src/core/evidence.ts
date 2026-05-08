@@ -8,6 +8,7 @@ export const EVIDENCE_STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 export type EvidenceKind =
   | "dogfood-check"
   | "doctor-check"
+  | "hook-log-summary"
   | "init-install"
   | "update-apply"
   | "benchmark-report"
@@ -132,6 +133,7 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
     record.schema_version === EVIDENCE_SCHEMA_VERSION &&
     (record.kind === "dogfood-check" ||
       record.kind === "doctor-check" ||
+      record.kind === "hook-log-summary" ||
       record.kind === "init-install" ||
       record.kind === "update-apply" ||
       record.kind === "benchmark-report" ||

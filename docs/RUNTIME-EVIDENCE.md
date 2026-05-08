@@ -13,6 +13,7 @@ need machine-readable proof beyond terminal output.
 
 - `anamnesis dogfood check --append`
 - `anamnesis doctor --append`
+- `anamnesis hooks summary --append`
 - `anamnesis init`
 - `anamnesis update --apply`
 - `anamnesis benchmark report --append`
@@ -22,9 +23,9 @@ need machine-readable proof beyond terminal output.
 
 Each record includes:
 
-- `kind`: `dogfood-check`, `doctor-check`, `init-install`, `update-apply`,
-  `benchmark-report`, `benchmark-compare`, `agent-task-benchmark`, or
-  `prompt-delta-gate`
+- `kind`: `dogfood-check`, `doctor-check`, `hook-log-summary`,
+  `init-install`, `update-apply`, `benchmark-report`, `benchmark-compare`,
+  `agent-task-benchmark`, or `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -42,6 +43,13 @@ Doctor evidence records use kind `doctor-check`. They capture the same
 installation integrity, managed-drift, adapter wiring, Codex hook ownership,
 continuity, and ontology-gap diagnostics that `anamnesis doctor` prints, with
 summary error/warning counts and issue details.
+
+Hook log summary records use kind `hook-log-summary`. They read
+`.anamnesis/logs/hooks.jsonl` by default, summarize valid/invalid hook runtime
+records by event and status, append markdown to `docs/HOOKS.md`, and write
+machine-readable summary evidence. Valid hook log lines use
+`schema_version: anamnesis.hook_log.v1` and must include `generated_at`,
+`event`, and `status`.
 
 Init evidence records use kind `init-install` and are written automatically
 only when `anamnesis init` writes files. `anamnesis init --dry-run` stays
@@ -87,8 +95,9 @@ lists current evidence entries, README claim candidates, and release warnings
 such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
-non-gallery records such as `doctor-check`, `init-install`, `update-apply`,
-`agent-task-benchmark`, and `prompt-delta-gate`.
+non-gallery records such as `doctor-check`, `hook-log-summary`,
+`init-install`, `update-apply`, `agent-task-benchmark`, and
+`prompt-delta-gate`.
 
 ## Boundary
 

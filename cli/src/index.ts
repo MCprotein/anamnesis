@@ -44,6 +44,11 @@ import {
   type DogfoodResult,
 } from "./commands/dogfood.js";
 import {
+  hookSummary,
+  HookSummaryError,
+  type HookSummaryResult,
+} from "./commands/hooks.js";
+import {
   benchmarkCompare,
   benchmarkReport,
   BenchmarkError,
@@ -228,6 +233,8 @@ Commands:
   update                        Re-apply library state (dry-run by default)
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
+  hooks summary                 Summarize hook execution logs and optionally
+                                  record runtime evidence
   dogfood check                 Run continuity self-check and optionally append
                                   a record to docs/DOGFOOD.md
   benchmark report             Generate a deterministic context-quality
@@ -282,6 +289,15 @@ Flags (doctor):
 
 Flags (status):
   --json                        Print structured JSON for CI/tools
+
+Flags (hooks summary):
+  --project-root <path>         Target directory (default: cwd)
+  --source <path>               Hook JSONL path (default:
+                                  .anamnesis/logs/hooks.jsonl)
+  --json                        Print structured JSON
+  --append                      Append markdown to docs/HOOKS.md and record
+                                  runtime evidence
+  --output <path>               Override hook summary log path
 
 Flags (dogfood check):
   --project-root <path>         Target directory (default: cwd)
@@ -623,6 +639,32 @@ function reportAppendEvidence(
   if (evidencePath) {
     console.log(`  evidence: ${evidencePath}`);
   }
+}
+
+function reportHookSummary(result: HookSummaryResult): void {
+  console.log(`anamnesis hooks summary — ${result.projectName}`);
+  console.log(`  source: ${result.sourcePath}`);
+  console.log(`  records: ${result.total} valid, ${result.invalid} invalid`);
+  if (result.latest) {
+    console.log(
+      `  latest: ${result.latest.event} ${result.latest.status} at ${result.latest.generated_at}`,
+    );
+  } else {
+    console.log("  latest: none");
+  }
+  if (result.byStatus.length > 0) {
+    console.log(
+      `  status: ${result.byStatus.map((s) => `${s.status}=${s.total}`).join(", ")}`,
+    );
+  }
+  for (const event of result.byEvent) {
+    const statuses = Object.entries(event.byStatus)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([status, count]) => `${status}=${count}`)
+      .join(", ");
+    console.log(`    ${event.event}: ${event.total} (${statuses})`);
+  }
+  reportAppendEvidence(result.appendedPath, result.evidencePath);
 }
 
 function formatFragmentLine(
@@ -1056,6 +1098,40 @@ async function main(argv: string[]): Promise<number> {
         }
         throw e;
       }
+
+    case "hooks": {
+      const sub = positional[0];
+      if (sub !== "summary") {
+        console.error(
+          `error: unknown 'hooks' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(
+          `usage: anamnesis hooks summary [--json] [--append] [--output=<path>] [--source=<path>]`,
+        );
+        return 1;
+      }
+      try {
+        const result = hookSummary({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          sourcePath: flags["source"] as string | undefined,
+          append: flags["append"] === true,
+          outputPath: flags["output"] as string | undefined,
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportHookSummary(result);
+        }
+        return result.ok ? 0 : 1;
+      } catch (e) {
+        if (e instanceof HookSummaryError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
 
     case "dogfood": {
       const sub = positional[0];

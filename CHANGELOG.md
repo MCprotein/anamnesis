@@ -38,6 +38,8 @@ could include breaking changes.
   --apply`; dry-runs remain read-only and do not write evidence.
 - Added automatic `init-install` runtime evidence for `anamnesis init`;
   `init --dry-run` remains read-only and does not write evidence.
+- Added `anamnesis hooks summary --append` to summarize hook runtime logs from
+  `.anamnesis/logs/hooks.jsonl` and store `hook-log-summary` evidence.
 
 ## [1.1.1] — 2026-05-07
 

@@ -117,6 +117,7 @@ anamnesis update --bump-pinned  # explicitly move pinned fragments to current
 anamnesis status    # fragments, drift, ontology gaps, continuity, evidence freshness (--json for tools)
 anamnesis doctor    # read-only installation integrity + continuity/ontology diagnostics
 anamnesis doctor --append  # record doctor diagnostics as runtime evidence
+anamnesis hooks summary --append  # summarize hook logs and record runtime evidence
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup
 anamnesis dogfood check --append  # score and record self-check continuity evidence
 anamnesis benchmark report --append  # record deterministic context-quality scorecard evidence
