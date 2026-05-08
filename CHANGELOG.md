@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-05-08
+
 ### Added
 
 - Added fragment dependency resolution for `requires` entries with optional

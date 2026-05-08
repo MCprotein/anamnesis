@@ -726,7 +726,7 @@ Exit criteria:
 
 ---
 
-## v1.3 — *planned*
+## v1.3 — *shipped 2026-05-08*
 
 > **Theme: fragment lifecycle intelligence**
 
