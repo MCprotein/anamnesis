@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-05-08
+
 ### Added
 
 - Added benchmark scorecard v2 metrics to `anamnesis benchmark report`,

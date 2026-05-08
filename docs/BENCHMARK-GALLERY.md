@@ -13,23 +13,26 @@ This section is generated from runtime evidence. It separates README-ready
 claim candidates from evidence that still needs more repo shapes or manual
 review.
 
-Generated: 2026-05-07T07:19:25.533Z
-Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (12 valid, 0 invalid)
+Generated: 2026-05-08T02:14:23.659Z
+Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (13 valid, 0 invalid)
 
 ## Evidence Entries
 
 | Project | Kind | Generated | Evidence | Result | Claim candidate |
 |---|---|---|---|---|---|
+| anamnesis | dogfood-check | 2026-05-08T02:14:23.659Z | docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl | dogfood 5/5; tools claude-code, codex, cursor | anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor. |
 | public-next-frontend-adoption | benchmark-compare | 2026-05-07T07:19:25.533Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | 3 improved, 0 regressed, 6 unchanged | public-next-frontend-adoption before/after benchmark improved 3 scorecard dimension(s) with 0 regressions. |
 | sanitized-python-api | benchmark-report | 2026-05-07T07:15:19.092Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 2/5; continuity 5/6; doctor 0 errors, 2 warnings | No readiness claim until continuity and doctor diagnostics are clean. |
 | public-next-frontend | benchmark-report | 2026-05-07T07:15:06.340Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 4/5; continuity 6/6; doctor 0 errors, 1 warnings | public-next-frontend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0. |
 | public-nest-k8s-backend | benchmark-report | 2026-05-07T07:15:06.340Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 4/5; continuity 6/6; doctor 0 errors, 2 warnings | public-nest-k8s-backend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0. |
 | sanitized-nest-prisma | benchmark-compare | 2026-05-07T07:14:46.317Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | 3 improved, 1 regressed, 5 unchanged | No public improvement claim until regressions are reviewed. |
-| anamnesis | dogfood-check | 2026-05-07T06:30:43.697Z | docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl | dogfood 5/5; tools claude-code, codex, cursor | anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor. |
 | anamnesis | benchmark-report | 2026-05-07T05:25:00.700Z | docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl | ready layers 3/5; continuity 6/6; doctor 0 errors, 0 warnings | anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0. |
 
 ## README Claim Candidates
 
+- **dogfood-check-anamnesis**: anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor.
+  Evidence: docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl
+  Boundary: Self-check evidence for this managed repo; skipped external smokes must stay disclosed.
 - **benchmark-compare-public-next-frontend-adoption**: public-next-frontend-adoption before/after benchmark improved 3 scorecard dimension(s) with 0 regressions.
   Evidence: docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl
   Boundary: Same-repo deterministic scorecard delta only; not a model-intelligence benchmark.
@@ -39,9 +42,6 @@ Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes
 - **benchmark-report-public-nest-k8s-backend**: public-nest-k8s-backend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0.
   Evidence: docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl
   Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
-- **dogfood-check-anamnesis**: anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor.
-  Evidence: docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl
-  Boundary: Self-check evidence for this managed repo; skipped external smokes must stay disclosed.
 - **benchmark-report-anamnesis**: anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0.
   Evidence: docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl
   Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
