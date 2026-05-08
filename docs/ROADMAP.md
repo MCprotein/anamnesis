@@ -753,6 +753,12 @@ Progress:
 - 2026-05-08: Added local `fragment-lifecycle` evidence records for
   first-install and update/apply fragment events. External webhook delivery
   remains intentionally absent until there is an opt-in delivery smoke.
+- 2026-05-08: Published `@mcprotein/anamnesis@1.3.0` from the tag-triggered
+  workflow. npmjs.org `@mcprotein/anamnesis@1.3.0` returned `1.3.0`,
+  published CLI execution from `/private/tmp` returned `1.3.0`, and a fresh
+  Prisma fixture reached continuity `ready (6/6)` with both `init-install`
+  and `fragment-lifecycle` evidence records plus the expected Layer B
+  enrichment follow-up.
 
 Exit criteria:
 - Fragment dependency requirements are parsed from fragment metadata without

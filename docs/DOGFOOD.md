@@ -324,6 +324,44 @@ Interpretation:
 - A fresh all-adapter Prisma project installed from npmjs.org still reaches
   the v1.2 continuity target and surfaces the semantic enrichment follow-up.
 
+## Published Package Smoke — v1.3.0
+
+Recorded: 2026-05-08
+
+Purpose: verify the npm-published minor release, not the local TypeScript
+source or local release tarball.
+
+Package:
+
+```bash
+npm view @mcprotein/anamnesis@1.3.0 version \
+  --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@1.3.0 -- anamnesis --version
+```
+
+Results:
+
+- npmjs.org `@mcprotein/anamnesis@1.3.0` returned `1.3.0`.
+- Published CLI execution from `/private/tmp` returned `1.3.0`.
+- GitHub Actions publish run `25537927179` completed successfully.
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh Prisma fixture | published package `init --tools all --allow-exec-adapters` -> `status` -> `doctor` | init completed; fragments `base@10` and `prisma@2` in sync; continuity `ready (6/6)`; `init-install` and `fragment-lifecycle` evidence written; doctor `0` errors and expected Layer B enrichment warning |
+
+Interpretation:
+
+- The tag-triggered publish workflow produced an npmjs.org package visible as
+  `@mcprotein/anamnesis@1.3.0`.
+- The published CLI runs from a fresh temp directory and reports `1.3.0`.
+- A fresh all-adapter Prisma project installed from npmjs.org now records the
+  v1.3 fragment lifecycle evidence while preserving the v1.2 continuity
+  target and semantic enrichment follow-up.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03
