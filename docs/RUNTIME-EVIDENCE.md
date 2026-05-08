@@ -13,6 +13,7 @@ need machine-readable proof beyond terminal output.
 
 - `anamnesis dogfood check --append`
 - `anamnesis doctor --append`
+- `anamnesis init`
 - `anamnesis update --apply`
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
@@ -21,7 +22,7 @@ need machine-readable proof beyond terminal output.
 
 Each record includes:
 
-- `kind`: `dogfood-check`, `doctor-check`, `update-apply`,
+- `kind`: `dogfood-check`, `doctor-check`, `init-install`, `update-apply`,
   `benchmark-report`, `benchmark-compare`, `agent-task-benchmark`, or
   `prompt-delta-gate`
 - `generated_at`: ISO timestamp
@@ -41,6 +42,12 @@ Doctor evidence records use kind `doctor-check`. They capture the same
 installation integrity, managed-drift, adapter wiring, Codex hook ownership,
 continuity, and ontology-gap diagnostics that `anamnesis doctor` prints, with
 summary error/warning counts and issue details.
+
+Init evidence records use kind `init-install` and are written automatically
+only when `anamnesis init` writes files. `anamnesis init --dry-run` stays
+read-only and does not touch the evidence log. The record captures selected
+fragments, installed tools, planned change counts, monorepo detection,
+post-install bootstrap outcomes, hook registration outcomes, and install flags.
 
 Update evidence records use kind `update-apply` and are written automatically
 only for `anamnesis update --apply`. Dry-runs stay read-only and do not touch
@@ -80,7 +87,7 @@ lists current evidence entries, README claim candidates, and release warnings
 such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
-non-gallery records such as `doctor-check`, `update-apply`,
+non-gallery records such as `doctor-check`, `init-install`, `update-apply`,
 `agent-task-benchmark`, and `prompt-delta-gate`.
 
 ## Boundary

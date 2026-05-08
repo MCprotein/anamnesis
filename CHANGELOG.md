@@ -36,6 +36,8 @@ could include breaking changes.
   output.
 - Added automatic `update-apply` runtime evidence for `anamnesis update
   --apply`; dry-runs remain read-only and do not write evidence.
+- Added automatic `init-install` runtime evidence for `anamnesis init`;
+  `init --dry-run` remains read-only and does not write evidence.
 
 ## [1.1.1] — 2026-05-07
 

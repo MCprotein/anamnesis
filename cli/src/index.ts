@@ -413,6 +413,9 @@ function reportInit(result: InitResult): void {
       `  ontology bootstrap: ${wrote} fragment(s) populated, ${skipped} skipped`,
     );
   }
+  if (result.writtenToDisk && result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
   console.log("  generation boundary:");
   console.log(
     "    cli-generated: AGENTS.md managed context, static ontology slices, and any .bootstrap.yaml facts above",

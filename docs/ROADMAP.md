@@ -643,7 +643,7 @@ limitations.
 | 4 | **Evidence gallery automation** | implemented; unreleased | Generate or validate `docs/BENCHMARK-GALLERY.md` and README claim candidates from `.anamnesis/evidence/events.jsonl` plus sanitized benchmark artifacts. Claims without matching evidence should be flagged before release. |
 | 5 | **Public-safe multi-shape collection** | implemented; unreleased | Collect at least three public-safe benchmark shapes: a frontend app, a backend plus infra repo, and a Python/API repo. Each entry must include fragment set, raw score dimensions, before/after or fresh-install state, and limitations. |
 | 6 | **Prompt-time context delta decision gate** | implemented; unreleased | Revisit Codex `UserPromptSubmit` context delta injection only through `anamnesis benchmark prompt-gate`. The gate reads benchmark/task evidence, estimates duplicate ontology/handoff prompt overhead, reports duplicate-context risk, and keeps injection disabled unless repeated continuity failures justify a bounded non-default prototype. |
-| 7 | **Runtime evidence expansion** | partial; unreleased | Expand runtime evidence beyond dogfood and benchmark append runs. `anamnesis doctor --append` now records install integrity diagnostics as `doctor-check` evidence, `anamnesis update --apply` records write-path evidence as `update-apply`, and `status` reports per-kind evidence counts/freshness. Hook-log summaries, init/install evidence, and benchmark trace rollups remain follow-up. |
+| 7 | **Runtime evidence expansion** | partial; unreleased | Expand runtime evidence beyond dogfood and benchmark append runs. `anamnesis doctor --append` records install integrity diagnostics as `doctor-check`, `anamnesis init` records first-install evidence as `init-install`, `anamnesis update --apply` records write-path evidence as `update-apply`, and `status` reports per-kind evidence counts/freshness. Hook-log summaries and benchmark trace rollups remain follow-up. |
 
 Progress:
 - 2026-05-07: Implemented benchmark scorecard v2 for
@@ -686,6 +686,11 @@ Progress:
   records summarize planned change counts, backup/prune counts,
   Claude/Codex hook registration outcomes, suggested fragments, and apply
   flags.
+- 2026-05-08: Added automatic `init-install` runtime evidence for
+  `anamnesis init`. `init --dry-run` remains side-effect free, while first
+  install records summarize selected fragments, installed tools, planned
+  change counts, monorepo detection, post-install bootstrap outcomes,
+  Claude/Codex hook registration outcomes, and install flags.
 
 Exit criteria:
 - `anamnesis benchmark report` exposes stable numeric raw dimensions and a

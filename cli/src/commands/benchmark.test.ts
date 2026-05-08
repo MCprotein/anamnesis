@@ -126,8 +126,11 @@ describe("benchmarkReport", () => {
       )
       .trim()
       .split(/\r?\n/);
-    expect(evidenceLines).toHaveLength(1);
-    const evidence = JSON.parse(evidenceLines[0]!) as {
+    expect(evidenceLines).toHaveLength(2);
+    expect(JSON.parse(evidenceLines[0]!) as { kind: string }).toMatchObject({
+      kind: "init-install",
+    });
+    const evidence = JSON.parse(evidenceLines.at(-1)!) as {
       schema_version: string;
       kind: string;
       generated_at: string;
@@ -156,7 +159,7 @@ describe("benchmarkReport", () => {
     expect(evidence.summary.scorecard).toMatchObject({
       schema_version: "anamnesis.benchmark.scorecard.v1",
       evidence: {
-        records: 1,
+        records: 2,
         invalid_records: 0,
       },
     });
@@ -213,9 +216,9 @@ describe("benchmarkReport", () => {
     });
 
     expect(result.summary).toEqual({
-      improved: 8,
+      improved: 9,
       regressed: 0,
-      unchanged: 1,
+      unchanged: 0,
     });
     expect(result.markdown).toContain("Benchmark Compare");
     expect(result.markdown).toContain("| Ready layers | 1/5 | 5/5 | +4 | improved |");
@@ -230,8 +233,11 @@ describe("benchmarkReport", () => {
       )
       .trim()
       .split(/\r?\n/);
-    expect(evidenceLines).toHaveLength(1);
-    const evidence = JSON.parse(evidenceLines[0]!) as {
+    expect(evidenceLines).toHaveLength(2);
+    expect(JSON.parse(evidenceLines[0]!) as { kind: string }).toMatchObject({
+      kind: "init-install",
+    });
+    const evidence = JSON.parse(evidenceLines.at(-1)!) as {
       kind: string;
       summary: {
         improved?: number;
@@ -242,9 +248,9 @@ describe("benchmarkReport", () => {
     expect(evidence).toMatchObject({
       kind: "benchmark-compare",
       summary: {
-        improved: 8,
+        improved: 9,
         regressed: 0,
-        unchanged: 1,
+        unchanged: 0,
       },
     });
   });
@@ -282,7 +288,7 @@ describe("benchmarkReport", () => {
     });
 
     expect(result.writtenPath).toBe("docs/BENCHMARK-GALLERY.md");
-    expect(result.evidenceRecords).toBe(2);
+    expect(result.evidenceRecords).toBe(3);
     expect(result.invalidEvidenceLines).toBe(0);
     expect(result.entries.map((entry) => entry.kind).sort()).toEqual([
       "benchmark-compare",
@@ -302,7 +308,7 @@ describe("benchmarkReport", () => {
 
     const galleryPath = path.join(project, "docs", "BENCHMARK-GALLERY.md");
     expect(fs.readFileSync(galleryPath, "utf8")).toContain(
-      "Source: `.anamnesis/evidence/events.jsonl` (2 valid, 0 invalid)",
+      "Source: `.anamnesis/evidence/events.jsonl` (3 valid, 0 invalid)",
     );
 
     const valid = benchmarkGallery({
@@ -373,7 +379,7 @@ describe("benchmarkReport", () => {
 
     const result = benchmarkGallery({ projectRoot: project });
 
-    expect(result.evidenceRecords).toBe(2);
+    expect(result.evidenceRecords).toBe(3);
     expect(result.evidencePath).toBe(
       ".anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl",
     );
@@ -465,7 +471,7 @@ describe("benchmarkReport", () => {
       shouldImplementPromptDelta: false,
     });
     expect(result.evidence).toMatchObject({
-      records: 0,
+      records: 1,
       benchmarkReports: 0,
       agentTaskBenchmarks: 0,
     });

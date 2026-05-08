@@ -64,6 +64,18 @@ import {
   OntologyBootstrapError,
   type BootstrapResult,
 } from "./ontology.js";
+import {
+  appendEvidenceRecord,
+  EVIDENCE_SCHEMA_VERSION,
+  type RuntimeEvidenceRecord,
+} from "../core/evidence.js";
+import {
+  codexHookSyncDetails,
+  hookSyncDetails,
+  lifecycleChangeDetails,
+  summarizeLifecycleChanges,
+  summarizeLifecycleSyncStatuses,
+} from "../core/lifecycle_evidence.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,6 +106,7 @@ export interface InitOptions {
    * would be noisy or incorrect for a specific project.
    */
   noBootstrap?: boolean;
+  now?: () => Date;
 }
 
 export interface InitResult {
@@ -126,6 +139,8 @@ export interface InitResult {
    */
   bootstrapResult?: BootstrapResult;
   bootstrapError?: string;
+  /** Runtime evidence JSONL path written on non-dry-run init. */
+  evidencePath?: string;
 }
 
 export class InitError extends Error {
@@ -372,6 +387,30 @@ export function init(opts: InitOptions): InitResult {
     }
   }
 
+  let evidencePath: string | undefined;
+  if (!opts.dryRun) {
+    const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      initInstallEvidenceRecord({
+        generatedAt,
+        agentfile,
+        selectedFragments: rootOrdered,
+        changes,
+        monorepoRequested: opts.monorepo === true,
+        monorepoDetection,
+        hookRegistrations,
+        codexHookRegistrations,
+        bootstrapResult,
+        bootstrapError,
+        allowExecAdapters: opts.allowExecAdapters,
+        noBootstrap: opts.noBootstrap === true,
+        projectNameOverride: opts.projectName,
+        toolsOverride: opts.tools,
+      }),
+    );
+  }
+
   return {
     agentfile,
     selectedFragments: rootOrdered,
@@ -383,7 +422,125 @@ export function init(opts: InitOptions): InitResult {
     bootstrapResult,
     bootstrapError,
     codexHookRegistrations,
+    evidencePath,
   };
+}
+
+function initInstallEvidenceRecord(input: {
+  generatedAt: string;
+  agentfile: Agentfile;
+  selectedFragments: readonly FragmentDefinition[];
+  changes: readonly PlannedChange[];
+  monorepoRequested: boolean;
+  monorepoDetection?: MonorepoDetection;
+  hookRegistrations: readonly HookSyncResult[];
+  codexHookRegistrations: readonly CodexHookSyncResult[];
+  bootstrapResult?: BootstrapResult;
+  bootstrapError?: string;
+  allowExecAdapters: boolean;
+  noBootstrap: boolean;
+  projectNameOverride?: string;
+  toolsOverride?: readonly ToolName[];
+}): RuntimeEvidenceRecord {
+  const command = ["anamnesis", "init"];
+  if (input.allowExecAdapters) command.push("--allow-exec-adapters");
+  if (input.monorepoRequested) command.push("--monorepo");
+  if (input.noBootstrap) command.push("--no-bootstrap");
+  if (input.projectNameOverride) {
+    command.push("--project-name", input.projectNameOverride);
+  }
+  if (input.toolsOverride && input.toolsOverride.length > 0) {
+    command.push("--tools", input.toolsOverride.join(","));
+  }
+
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "init-install",
+    generated_at: input.generatedAt,
+    command,
+    project: { name: input.agentfile.project.name },
+    summary: {
+      schema_version: "anamnesis.init_install.v1",
+      written_to_disk: true,
+      changes: summarizeLifecycleChanges(input.changes),
+      selected_fragment_count: input.selectedFragments.length,
+      selected_fragments: input.selectedFragments.map((fragment) => fragment.id),
+      tools: input.agentfile.tools,
+      monorepo: {
+        requested: input.monorepoRequested,
+        detected: input.monorepoDetection?.isMonorepo ?? false,
+        scopes: input.monorepoDetection?.scopes.length ?? 0,
+        empty_scopes: input.monorepoDetection?.emptyScopes.length ?? 0,
+      },
+      bootstrap: bootstrapSummary(input.bootstrapResult, input.bootstrapError),
+      hook_sync: {
+        claude: summarizeLifecycleSyncStatuses(input.hookRegistrations),
+        codex: summarizeLifecycleSyncStatuses(input.codexHookRegistrations),
+      },
+      flags: {
+        allow_exec_adapters: input.allowExecAdapters,
+        no_bootstrap: input.noBootstrap,
+      },
+    },
+    details: {
+      fragments: input.selectedFragments.map((fragment) => ({
+        id: fragment.id,
+        version: fragment.version,
+      })),
+      scopes: agentfileScopeDetails(input.agentfile),
+      changes: lifecycleChangeDetails(input.changes),
+      bootstrap: {
+        ...(input.bootstrapError ? { error: input.bootstrapError } : {}),
+        entries: input.bootstrapResult?.entries.map((entry) => ({
+          scope_path: entry.scopePath,
+          fragment_id: entry.fragmentId,
+          outcome: entry.outcome,
+          ...(entry.path ? { path: entry.path } : {}),
+        })) ?? [],
+      },
+      hook_registrations: hookSyncDetails(input.hookRegistrations),
+      codex_hook_registrations: codexHookSyncDetails(
+        input.codexHookRegistrations,
+      ),
+    },
+  };
+}
+
+function bootstrapSummary(
+  result: BootstrapResult | undefined,
+  error: string | undefined,
+): Record<string, unknown> {
+  const summary = {
+    skipped: result === undefined && error === undefined,
+    written: 0,
+    unchanged: 0,
+    skipped_not_applicable: 0,
+    skipped_no_introspector: 0,
+    error: error ?? null,
+  };
+  for (const entry of result?.entries ?? []) {
+    if (entry.outcome === "written") summary.written++;
+    else if (entry.outcome === "unchanged") summary.unchanged++;
+    else if (entry.outcome === "skipped-not-applicable") {
+      summary.skipped_not_applicable++;
+    } else if (entry.outcome === "skipped-no-introspector") {
+      summary.skipped_no_introspector++;
+    }
+  }
+  return summary;
+}
+
+function agentfileScopeDetails(
+  agentfile: Agentfile,
+): Array<Record<string, unknown>> {
+  return (agentfile.project.scopes ?? [{ path: "." }]).map((scope) => ({
+    path: scope.path,
+    ...(scope.extends ? { extends: scope.extends } : {}),
+    fragments_add: (scope.overrides?.fragments_add ?? []).map((fragment) => ({
+      id: fragment.id,
+      version: fragment.version,
+    })),
+  }));
 }
 
 /**

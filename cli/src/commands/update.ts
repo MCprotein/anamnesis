@@ -73,6 +73,14 @@ import {
   EVIDENCE_SCHEMA_VERSION,
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
+import {
+  codexHookSyncDetails,
+  hookSyncDetails,
+  lifecycleChangeDetails,
+  projectRelativePath,
+  summarizeLifecycleChanges,
+  summarizeLifecycleSyncStatuses,
+} from "../core/lifecycle_evidence.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -492,7 +500,7 @@ function updateApplyEvidenceRecord(input: {
   allowExecAdapters: boolean;
   bumpPinned: boolean;
 }): RuntimeEvidenceRecord {
-  const changeSummary = summarizePlannedChanges(input.changes);
+  const changeSummary = summarizeLifecycleChanges(input.changes);
   const backedUpFiles = input.backedUpFiles ?? [];
   const prunedBackupDirs = input.prunedBackupDirs ?? [];
   const command = ["anamnesis", "update", "--apply"];
@@ -516,8 +524,8 @@ function updateApplyEvidenceRecord(input: {
         pruned: prunedBackupDirs.length,
       },
       hook_sync: {
-        claude: summarizeSyncStatuses(input.hookRegistrations),
-        codex: summarizeSyncStatuses(input.codexHookRegistrations),
+        claude: summarizeLifecycleSyncStatuses(input.hookRegistrations),
+        codex: summarizeLifecycleSyncStatuses(input.codexHookRegistrations),
       },
       flags: {
         allow_exec_adapters: input.allowExecAdapters,
@@ -525,7 +533,7 @@ function updateApplyEvidenceRecord(input: {
       },
     },
     details: {
-      changes: input.changes.map(changeEvidenceDetail),
+      changes: lifecycleChangeDetails(input.changes),
       suggested: input.suggested.map((rule) => ({
         id: rule.id,
         suggest: rule.suggest,
@@ -537,80 +545,12 @@ function updateApplyEvidenceRecord(input: {
         files: backedUpFiles,
         pruned_dirs: prunedBackupDirs,
       },
-      hook_registrations: input.hookRegistrations.map((result) => ({
-        status: result.status,
-        event: result.registration.event,
-        ...(result.registration.matcher
-          ? { matcher: result.registration.matcher }
-          : {}),
-        command: result.registration.command,
-      })),
-      codex_hook_registrations: input.codexHookRegistrations.map((result) => ({
-        status: result.status,
-        event: result.registration.event,
-        ...(result.registration.matcher
-          ? { matcher: result.registration.matcher }
-          : {}),
-        command: result.registration.command,
-      })),
+      hook_registrations: hookSyncDetails(input.hookRegistrations),
+      codex_hook_registrations: codexHookSyncDetails(
+        input.codexHookRegistrations,
+      ),
     },
   };
-}
-
-function summarizePlannedChanges(
-  changes: readonly PlannedChange[],
-): {
-  create: number;
-  update: number;
-  noop: number;
-  blocked: number;
-  user_modified: number;
-} {
-  const summary = {
-    create: 0,
-    update: 0,
-    noop: 0,
-    blocked: 0,
-    user_modified: 0,
-  };
-  for (const change of changes) {
-    if (change.status === "create") summary.create++;
-    else if (change.status === "update") summary.update++;
-    else if (change.status === "noop") summary.noop++;
-    else if (change.status === "blocked") summary.blocked++;
-    else if (change.status === "user-modified") summary.user_modified++;
-  }
-  return summary;
-}
-
-function summarizeSyncStatuses(
-  results: ReadonlyArray<{ status: string }>,
-): { total: number; create: number; noop: number } {
-  return {
-    total: results.length,
-    create: results.filter((result) => result.status === "create").length,
-    noop: results.filter((result) => result.status === "noop").length,
-  };
-}
-
-function changeEvidenceDetail(change: PlannedChange): Record<string, unknown> {
-  const target =
-    change.target === "region"
-      ? `${change.file}#${change.regionId}`
-      : change.path;
-  return {
-    target_type: change.target,
-    target,
-    fragment_id: change.fragmentId,
-    fragment_version: change.fragmentVersion,
-    status: change.status,
-    ...(change.reason ? { reason: change.reason } : {}),
-  };
-}
-
-function projectRelativePath(projectRoot: string, filePath: string): string {
-  const relative = path.relative(projectRoot, filePath).replace(/\\/g, "/");
-  return relative === "" || relative.startsWith("..") ? filePath : relative;
 }
 
 function pruneBackups(opts: {

@@ -21,6 +21,7 @@ function record(
   const command: Record<RuntimeEvidenceRecord["kind"], string[]> = {
     "dogfood-check": ["anamnesis", "dogfood", "check"],
     "doctor-check": ["anamnesis", "doctor"],
+    "init-install": ["anamnesis", "init"],
     "update-apply": ["anamnesis", "update", "--apply"],
     "benchmark-report": ["anamnesis", "benchmark", "report"],
     "benchmark-compare": ["anamnesis", "benchmark", "compare"],
@@ -111,6 +112,30 @@ describe("runtime evidence", () => {
     expect(summary.byKind).toHaveLength(1);
     expect(summary.byKind[0]).toMatchObject({
       kind: "update-apply",
+      total: 1,
+      stale: false,
+    });
+  });
+
+  it("accepts init install evidence records", () => {
+    const project = tmpDir("anamnesis-evidence-init-");
+
+    appendEvidenceRecord(
+      project,
+      record("init-install", "2026-05-07T03:00:00.000Z"),
+    );
+
+    const summary = readEvidenceSummary(project, {
+      now: new Date("2026-05-07T03:00:01.000Z"),
+    });
+
+    expect(summary.total).toBe(1);
+    expect(summary.latest).toMatchObject({
+      kind: "init-install",
+      command: ["anamnesis", "init"],
+    });
+    expect(summary.byKind[0]).toMatchObject({
+      kind: "init-install",
       total: 1,
       stale: false,
     });

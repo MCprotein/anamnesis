@@ -204,8 +204,11 @@ describe("doctor — installation integrity", () => {
       )
       .trim()
       .split(/\r?\n/);
-    expect(evidenceLines).toHaveLength(1);
-    const evidence = JSON.parse(evidenceLines[0]!) as {
+    expect(evidenceLines).toHaveLength(2);
+    expect(JSON.parse(evidenceLines[0]!) as { kind: string }).toMatchObject({
+      kind: "init-install",
+    });
+    const evidence = JSON.parse(evidenceLines.at(-1)!) as {
       kind: string;
       generated_at: string;
       summary: { ok?: boolean; errors?: number; warnings?: number };

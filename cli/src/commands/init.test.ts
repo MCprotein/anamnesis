@@ -6,6 +6,10 @@ import { init, InitError, summarizeChanges } from "./init.js";
 import { readAgentfile } from "../core/agentfile.js";
 import { readManifest } from "../core/manifest.js";
 import { findRegion } from "../core/regions.js";
+import {
+  EVIDENCE_LOG_PATH,
+  readEvidenceRecords,
+} from "../core/evidence.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -169,11 +173,13 @@ describe("init", () => {
       libraryRoot: library,
       dryRun: false,
       allowExecAdapters: false,
+      now: () => new Date("2026-05-08T00:00:00.000Z"),
     });
 
     expect(result.selectedFragments).toHaveLength(1);
     expect(result.selectedFragments[0]!.id).toBe("prisma");
     expect(result.writtenToDisk).toBe(true);
+    expect(result.evidencePath).toBe(EVIDENCE_LOG_PATH);
 
     // Agentfile has the installed fragment.
     const af = readAgentfile(project);
@@ -196,6 +202,40 @@ describe("init", () => {
     const m = readManifest(project);
     expect(m.regions).toHaveLength(2);
     expect(m.regions[0]!.fragment_id).toBe("prisma");
+
+    const evidence = readEvidenceRecords(project);
+    expect(evidence.total).toBe(1);
+    expect(evidence.records[0]).toMatchObject({
+      kind: "init-install",
+      generated_at: "2026-05-08T00:00:00.000Z",
+      command: ["anamnesis", "init"],
+      project: { name: path.basename(project) },
+      summary: {
+        schema_version: "anamnesis.init_install.v1",
+        written_to_disk: true,
+        changes: {
+          create: 2,
+          blocked: 0,
+          user_modified: 0,
+        },
+        selected_fragment_count: 1,
+        selected_fragments: ["prisma"],
+        tools: ["claude-code"],
+        flags: {
+          allow_exec_adapters: false,
+          no_bootstrap: false,
+        },
+      },
+    });
+    expect(evidence.records[0]!.details?.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target_type: "region",
+          target: "AGENTS.md#prisma",
+          status: "create",
+        }),
+      ]),
+    );
   });
 
   it("adds the Claude Code entrypoint without overwriting existing CLAUDE.md prose", () => {
@@ -244,6 +284,8 @@ describe("init", () => {
     expect(
       fs.existsSync(path.join(project, ".anamnesis/manifest.json")),
     ).toBe(false);
+    expect(fs.existsSync(path.join(project, EVIDENCE_LOG_PATH))).toBe(false);
+    expect(result.evidencePath).toBeUndefined();
   });
 
   it("refuses when Agentfile already exists", () => {

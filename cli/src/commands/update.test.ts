@@ -256,6 +256,7 @@ describe("update — library version bump", () => {
     });
     // The project keeps using base from v1Lib via an explicit library path,
     // so we simply re-point update at v2Lib (single library root model).
+    const evidenceBeforeDryRun = readEvidenceRecords(project);
 
     const dry = update({
       projectRoot: project,
@@ -264,7 +265,7 @@ describe("update — library version bump", () => {
       allowExecAdapters: false,
     });
     expect(dry.evidencePath).toBeUndefined();
-    expect(fs.existsSync(path.join(project, EVIDENCE_LOG_PATH))).toBe(false);
+    expect(readEvidenceRecords(project).total).toBe(evidenceBeforeDryRun.total);
     const prismaChange = dry.changes.find(
       (c) => c.target === "region" && c.status === "update",
     );
@@ -289,8 +290,9 @@ describe("update — library version bump", () => {
     expect(agentsMd).toContain("v2 — use prisma generate after edits");
 
     const evidence = readEvidenceRecords(project);
-    expect(evidence.total).toBe(1);
-    expect(evidence.records[0]).toMatchObject({
+    expect(evidence.total).toBe(evidenceBeforeDryRun.total + 1);
+    const updateEvidence = evidence.records.at(-1)!;
+    expect(updateEvidence).toMatchObject({
       kind: "update-apply",
       generated_at: "2026-05-07T12:34:56.000Z",
       command: ["anamnesis", "update", "--apply"],
@@ -320,7 +322,7 @@ describe("update — library version bump", () => {
         },
       },
     });
-    expect(evidence.records[0]!.details?.changes).toEqual(
+    expect(updateEvidence.details?.changes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           target_type: "region",
