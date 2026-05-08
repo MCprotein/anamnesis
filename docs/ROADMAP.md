@@ -700,6 +700,11 @@ Progress:
   trace records by phase/status plus numeric metrics, appends
   `docs/BENCHMARK-TRACES.md`, and records `benchmark-trace-rollup` runtime
   evidence.
+- 2026-05-08: Published `@mcprotein/anamnesis@1.2.0` from the tag-triggered
+  workflow. npmjs.org `latest` returned `1.2.0`, published CLI execution
+  from `/private/tmp` returned `1.2.0`, and a fresh Prisma fixture initialized
+  with continuity `ready (6/6)`, `init-install` evidence, and the expected
+  Layer B enrichment follow-up.
 
 Exit criteria:
 - `anamnesis benchmark report` exposes stable numeric raw dimensions and a
