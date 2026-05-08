@@ -12,6 +12,8 @@ could include breaking changes.
 - Added fragment dependency resolution for `requires` entries with optional
   minimum integer versions, including dependency auto-inclusion during
   `init`/`update` and dependency diagnostics in `status`/`doctor`.
+- Added local `fragment-lifecycle` runtime evidence for fragment installs,
+  updates, pinned update blocks, and yanked/invalid library references.
 
 ### Documentation
 

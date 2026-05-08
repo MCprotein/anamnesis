@@ -204,8 +204,11 @@ describe("init", () => {
     expect(m.regions[0]!.fragment_id).toBe("prisma");
 
     const evidence = readEvidenceRecords(project);
-    expect(evidence.total).toBe(1);
-    expect(evidence.records[0]).toMatchObject({
+    expect(evidence.total).toBe(2);
+    const initEvidence = evidence.records.find(
+      (record) => record.kind === "init-install",
+    )!;
+    expect(initEvidence).toMatchObject({
       kind: "init-install",
       generated_at: "2026-05-08T00:00:00.000Z",
       command: ["anamnesis", "init"],
@@ -227,7 +230,7 @@ describe("init", () => {
         },
       },
     });
-    expect(evidence.records[0]!.details?.changes).toEqual(
+    expect(initEvidence.details?.changes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           target_type: "region",
@@ -236,6 +239,17 @@ describe("init", () => {
         }),
       ]),
     );
+    expect(evidence.records.at(-1)).toMatchObject({
+      kind: "fragment-lifecycle",
+      generated_at: "2026-05-08T00:00:00.000Z",
+      summary: {
+        schema_version: "anamnesis.fragment_lifecycle.v1",
+        total: 1,
+        counts: {
+          installed: 1,
+        },
+      },
+    });
   });
 
   it("auto-includes required dependency fragments before rendering", () => {

@@ -266,6 +266,22 @@ capabilities:
           change.status === "create",
       ),
     ).toBe(true);
+    const lifecycle = readEvidenceRecords(project).records.at(-1)!;
+    expect(lifecycle).toMatchObject({
+      kind: "fragment-lifecycle",
+      summary: {
+        counts: {
+          installed: 1,
+        },
+      },
+    });
+    expect(lifecycle.details?.events).toEqual([
+      expect.objectContaining({
+        event: "installed",
+        fragment_id: "platform",
+        reason: "dependency-auto-include",
+      }),
+    ]);
   });
 
   it("dry-run does not modify Agentfile / manifest / files", () => {
@@ -348,8 +364,12 @@ describe("update — library version bump", () => {
     expect(agentsMd).toContain("v2 — use prisma generate after edits");
 
     const evidence = readEvidenceRecords(project);
-    expect(evidence.total).toBe(evidenceBeforeDryRun.total + 1);
-    const updateEvidence = evidence.records.at(-1)!;
+    expect(evidence.total).toBe(evidenceBeforeDryRun.total + 2);
+    const updateEvidence = evidence.records.find(
+      (record) =>
+        record.kind === "update-apply" &&
+        record.generated_at === "2026-05-07T12:34:56.000Z",
+    )!;
     expect(updateEvidence).toMatchObject({
       kind: "update-apply",
       generated_at: "2026-05-07T12:34:56.000Z",
@@ -389,6 +409,27 @@ describe("update — library version bump", () => {
         }),
       ]),
     );
+    const lifecycleEvidence = evidence.records.at(-1)!;
+    expect(lifecycleEvidence).toMatchObject({
+      kind: "fragment-lifecycle",
+      generated_at: "2026-05-07T12:34:56.000Z",
+      summary: {
+        schema_version: "anamnesis.fragment_lifecycle.v1",
+        total: 1,
+        counts: {
+          updated: 1,
+        },
+      },
+    });
+    expect(lifecycleEvidence.details?.events).toEqual([
+      expect.objectContaining({
+        event: "updated",
+        fragment_id: "prisma",
+        scope_path: ".",
+        from_version: 1,
+        to_version: 2,
+      }),
+    ]);
   });
 
   it("renders pinned fragments from archived versions and preserves Agentfile version", () => {

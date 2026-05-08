@@ -25,8 +25,9 @@ need machine-readable proof beyond terminal output.
 Each record includes:
 
 - `kind`: `dogfood-check`, `doctor-check`, `hook-log-summary`,
-  `init-install`, `update-apply`, `benchmark-report`, `benchmark-compare`,
-  `benchmark-trace-rollup`, `agent-task-benchmark`, or `prompt-delta-gate`
+  `init-install`, `update-apply`, `fragment-lifecycle`, `benchmark-report`,
+  `benchmark-compare`, `benchmark-trace-rollup`, `agent-task-benchmark`, or
+  `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -62,6 +63,13 @@ Update evidence records use kind `update-apply` and are written automatically
 only for `anamnesis update --apply`. Dry-runs stay read-only and do not touch
 the evidence log. The record captures change counts, suggested fragment count,
 backup/prune counts, Claude/Codex hook registration outcomes, and apply flags.
+
+Fragment lifecycle records use kind `fragment-lifecycle` and are written
+alongside successful `init` and `update --apply` runs. Summary schema
+`anamnesis.fragment_lifecycle.v1` counts local events such as `installed`,
+`updated`, `pinned-blocked`, `yanked-invalid`, and `dependency-blocked`.
+Current runs do not send webhook traffic; the JSONL record is the local update
+notification surface.
 
 Benchmark compare evidence records include before/after scorecard deltas and
 summary counts for improved, regressed, and unchanged dimensions.

@@ -11,6 +11,7 @@ export type EvidenceKind =
   | "hook-log-summary"
   | "init-install"
   | "update-apply"
+  | "fragment-lifecycle"
   | "benchmark-report"
   | "benchmark-compare"
   | "benchmark-trace-rollup"
@@ -137,6 +138,7 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
       record.kind === "hook-log-summary" ||
       record.kind === "init-install" ||
       record.kind === "update-apply" ||
+      record.kind === "fragment-lifecycle" ||
       record.kind === "benchmark-report" ||
       record.kind === "benchmark-compare" ||
       record.kind === "benchmark-trace-rollup" ||

@@ -77,11 +77,13 @@ import {
 } from "../core/evidence.js";
 import {
   codexHookSyncDetails,
+  fragmentLifecycleEvidenceRecord,
   hookSyncDetails,
   lifecycleChangeDetails,
   projectRelativePath,
   summarizeLifecycleChanges,
   summarizeLifecycleSyncStatuses,
+  updateFragmentEvents,
 } from "../core/lifecycle_evidence.js";
 
 // ---------------------------------------------------------------------------
@@ -612,10 +614,15 @@ export function update(opts: UpdateOptions): UpdateResult {
     hookRegistrations = hookSync.claude;
     codexHookRegistrations = hookSync.codex;
     const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+    const command = updateEvidenceCommand({
+      allowExecAdapters: opts.allowExecAdapters,
+      bumpPinned: opts.bumpPinned === true,
+    });
     evidencePath = appendEvidenceRecord(
       projectRoot,
       updateApplyEvidenceRecord({
         generatedAt,
+        command,
         projectRoot,
         projectName: updatedAgentfile.project.name,
         changes,
@@ -627,6 +634,21 @@ export function update(opts: UpdateOptions): UpdateResult {
         codexHookRegistrations,
         allowExecAdapters: opts.allowExecAdapters,
         bumpPinned: opts.bumpPinned === true,
+      }),
+    );
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      fragmentLifecycleEvidenceRecord({
+        generatedAt,
+        command,
+        projectName: updatedAgentfile.project.name,
+        events: updateFragmentEvents({
+          before: agentfile,
+          after: updatedAgentfile,
+          libraryVersions: currentFragmentVersions(base, fragments),
+          autoDependenciesByScope: autoDependencyEntriesByScope,
+          bumpPinned: opts.bumpPinned === true,
+        }),
       }),
     );
   }
@@ -648,6 +670,7 @@ export function update(opts: UpdateOptions): UpdateResult {
 
 function updateApplyEvidenceRecord(input: {
   generatedAt: string;
+  command: string[];
   projectRoot: string;
   projectName: string;
   changes: readonly PlannedChange[];
@@ -663,15 +686,12 @@ function updateApplyEvidenceRecord(input: {
   const changeSummary = summarizeLifecycleChanges(input.changes);
   const backedUpFiles = input.backedUpFiles ?? [];
   const prunedBackupDirs = input.prunedBackupDirs ?? [];
-  const command = ["anamnesis", "update", "--apply"];
-  if (input.allowExecAdapters) command.push("--allow-exec-adapters");
-  if (input.bumpPinned) command.push("--bump-pinned");
 
   return {
     schema_version: EVIDENCE_SCHEMA_VERSION,
     kind: "update-apply",
     generated_at: input.generatedAt,
-    command,
+    command: input.command,
     project: { name: input.projectName },
     summary: {
       schema_version: "anamnesis.update_apply.v1",
@@ -711,6 +731,16 @@ function updateApplyEvidenceRecord(input: {
       ),
     },
   };
+}
+
+function updateEvidenceCommand(input: {
+  allowExecAdapters: boolean;
+  bumpPinned: boolean;
+}): string[] {
+  const command = ["anamnesis", "update", "--apply"];
+  if (input.allowExecAdapters) command.push("--allow-exec-adapters");
+  if (input.bumpPinned) command.push("--bump-pinned");
+  return command;
 }
 
 function pruneBackups(opts: {

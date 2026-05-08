@@ -126,9 +126,12 @@ describe("benchmarkReport", () => {
       )
       .trim()
       .split(/\r?\n/);
-    expect(evidenceLines).toHaveLength(2);
+    expect(evidenceLines).toHaveLength(3);
     expect(JSON.parse(evidenceLines[0]!) as { kind: string }).toMatchObject({
       kind: "init-install",
+    });
+    expect(JSON.parse(evidenceLines[1]!) as { kind: string }).toMatchObject({
+      kind: "fragment-lifecycle",
     });
     const evidence = JSON.parse(evidenceLines.at(-1)!) as {
       schema_version: string;
@@ -159,7 +162,7 @@ describe("benchmarkReport", () => {
     expect(evidence.summary.scorecard).toMatchObject({
       schema_version: "anamnesis.benchmark.scorecard.v1",
       evidence: {
-        records: 2,
+        records: 3,
         invalid_records: 0,
       },
     });
@@ -233,9 +236,12 @@ describe("benchmarkReport", () => {
       )
       .trim()
       .split(/\r?\n/);
-    expect(evidenceLines).toHaveLength(2);
+    expect(evidenceLines).toHaveLength(3);
     expect(JSON.parse(evidenceLines[0]!) as { kind: string }).toMatchObject({
       kind: "init-install",
+    });
+    expect(JSON.parse(evidenceLines[1]!) as { kind: string }).toMatchObject({
+      kind: "fragment-lifecycle",
     });
     const evidence = JSON.parse(evidenceLines.at(-1)!) as {
       kind: string;
@@ -288,7 +294,7 @@ describe("benchmarkReport", () => {
     });
 
     expect(result.writtenPath).toBe("docs/BENCHMARK-GALLERY.md");
-    expect(result.evidenceRecords).toBe(3);
+    expect(result.evidenceRecords).toBe(4);
     expect(result.invalidEvidenceLines).toBe(0);
     expect(result.entries.map((entry) => entry.kind).sort()).toEqual([
       "benchmark-compare",
@@ -308,7 +314,7 @@ describe("benchmarkReport", () => {
 
     const galleryPath = path.join(project, "docs", "BENCHMARK-GALLERY.md");
     expect(fs.readFileSync(galleryPath, "utf8")).toContain(
-      "Source: `.anamnesis/evidence/events.jsonl` (3 valid, 0 invalid)",
+      "Source: `.anamnesis/evidence/events.jsonl` (4 valid, 0 invalid)",
     );
 
     const valid = benchmarkGallery({
@@ -379,7 +385,7 @@ describe("benchmarkReport", () => {
 
     const result = benchmarkGallery({ projectRoot: project });
 
-    expect(result.evidenceRecords).toBe(3);
+    expect(result.evidenceRecords).toBe(4);
     expect(result.evidencePath).toBe(
       ".anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl",
     );
@@ -471,7 +477,7 @@ describe("benchmarkReport", () => {
       shouldImplementPromptDelta: false,
     });
     expect(result.evidence).toMatchObject({
-      records: 1,
+      records: 2,
       benchmarkReports: 0,
       agentTaskBenchmarks: 0,
     });

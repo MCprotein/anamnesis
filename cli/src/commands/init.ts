@@ -71,7 +71,9 @@ import {
 } from "../core/evidence.js";
 import {
   codexHookSyncDetails,
+  fragmentLifecycleEvidenceRecord,
   hookSyncDetails,
+  installedFragmentEvents,
   lifecycleChangeDetails,
   summarizeLifecycleChanges,
   summarizeLifecycleSyncStatuses,
@@ -402,10 +404,18 @@ export function init(opts: InitOptions): InitResult {
   let evidencePath: string | undefined;
   if (!opts.dryRun) {
     const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+    const command = initEvidenceCommand({
+      allowExecAdapters: opts.allowExecAdapters,
+      monorepoRequested: opts.monorepo === true,
+      noBootstrap: opts.noBootstrap === true,
+      projectNameOverride: opts.projectName,
+      toolsOverride: opts.tools,
+    });
     evidencePath = appendEvidenceRecord(
       projectRoot,
       initInstallEvidenceRecord({
         generatedAt,
+        command,
         agentfile,
         selectedFragments: rootOrdered,
         changes,
@@ -419,6 +429,15 @@ export function init(opts: InitOptions): InitResult {
         noBootstrap: opts.noBootstrap === true,
         projectNameOverride: opts.projectName,
         toolsOverride: opts.tools,
+      }),
+    );
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      fragmentLifecycleEvidenceRecord({
+        generatedAt,
+        command,
+        projectName: agentfile.project.name,
+        events: installedFragmentEvents(agentfile),
       }),
     );
   }
@@ -440,6 +459,7 @@ export function init(opts: InitOptions): InitResult {
 
 function initInstallEvidenceRecord(input: {
   generatedAt: string;
+  command: string[];
   agentfile: Agentfile;
   selectedFragments: readonly FragmentDefinition[];
   changes: readonly PlannedChange[];
@@ -454,22 +474,11 @@ function initInstallEvidenceRecord(input: {
   projectNameOverride?: string;
   toolsOverride?: readonly ToolName[];
 }): RuntimeEvidenceRecord {
-  const command = ["anamnesis", "init"];
-  if (input.allowExecAdapters) command.push("--allow-exec-adapters");
-  if (input.monorepoRequested) command.push("--monorepo");
-  if (input.noBootstrap) command.push("--no-bootstrap");
-  if (input.projectNameOverride) {
-    command.push("--project-name", input.projectNameOverride);
-  }
-  if (input.toolsOverride && input.toolsOverride.length > 0) {
-    command.push("--tools", input.toolsOverride.join(","));
-  }
-
   return {
     schema_version: EVIDENCE_SCHEMA_VERSION,
     kind: "init-install",
     generated_at: input.generatedAt,
-    command,
+    command: input.command,
     project: { name: input.agentfile.project.name },
     summary: {
       schema_version: "anamnesis.init_install.v1",
@@ -516,6 +525,26 @@ function initInstallEvidenceRecord(input: {
       ),
     },
   };
+}
+
+function initEvidenceCommand(input: {
+  allowExecAdapters: boolean;
+  monorepoRequested: boolean;
+  noBootstrap: boolean;
+  projectNameOverride?: string;
+  toolsOverride?: readonly ToolName[];
+}): string[] {
+  const command = ["anamnesis", "init"];
+  if (input.allowExecAdapters) command.push("--allow-exec-adapters");
+  if (input.monorepoRequested) command.push("--monorepo");
+  if (input.noBootstrap) command.push("--no-bootstrap");
+  if (input.projectNameOverride) {
+    command.push("--project-name", input.projectNameOverride);
+  }
+  if (input.toolsOverride && input.toolsOverride.length > 0) {
+    command.push("--tools", input.toolsOverride.join(","));
+  }
+  return command;
 }
 
 function bootstrapSummary(

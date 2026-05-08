@@ -24,6 +24,7 @@ function record(
     "hook-log-summary": ["anamnesis", "hooks", "summary"],
     "init-install": ["anamnesis", "init"],
     "update-apply": ["anamnesis", "update", "--apply"],
+    "fragment-lifecycle": ["anamnesis", "update", "--apply"],
     "benchmark-report": ["anamnesis", "benchmark", "report"],
     "benchmark-compare": ["anamnesis", "benchmark", "compare"],
     "benchmark-trace-rollup": ["anamnesis", "benchmark", "trace"],
@@ -114,6 +115,30 @@ describe("runtime evidence", () => {
     expect(summary.byKind).toHaveLength(1);
     expect(summary.byKind[0]).toMatchObject({
       kind: "update-apply",
+      total: 1,
+      stale: false,
+    });
+  });
+
+  it("accepts fragment lifecycle evidence records", () => {
+    const project = tmpDir("anamnesis-evidence-fragment-lifecycle-");
+
+    appendEvidenceRecord(
+      project,
+      record("fragment-lifecycle", "2026-05-07T02:30:00.000Z"),
+    );
+
+    const summary = readEvidenceSummary(project, {
+      now: new Date("2026-05-07T02:30:01.000Z"),
+    });
+
+    expect(summary.total).toBe(1);
+    expect(summary.latest).toMatchObject({
+      kind: "fragment-lifecycle",
+      command: ["anamnesis", "update", "--apply"],
+    });
+    expect(summary.byKind[0]).toMatchObject({
+      kind: "fragment-lifecycle",
       total: 1,
       stale: false,
     });
