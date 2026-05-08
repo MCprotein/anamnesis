@@ -286,6 +286,44 @@ Interpretation:
 - A fresh all-adapter Prisma project installed from npmjs.org reaches the
   v1.2 continuity target and surfaces the semantic enrichment follow-up.
 
+## Published Package Smoke — v1.2.1
+
+Recorded: 2026-05-08
+
+Purpose: verify the npm-published patch package, not the local TypeScript
+source or local release tarball.
+
+Package:
+
+```bash
+npm view @mcprotein/anamnesis version \
+  --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@1.2.1 -- anamnesis --version
+```
+
+Results:
+
+- npmjs.org `latest` returned `1.2.1`.
+- Published CLI execution from `/private/tmp` returned `1.2.1`.
+- npmjs.org package README shows the `500 passing` and `v1.2 stable` badges.
+- GitHub Actions publish run `25534959017` completed successfully.
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh Prisma fixture | published package `init --tools all --allow-exec-adapters` -> `status` -> `doctor` | init completed; continuity `ready (6/6)`; `init-install` evidence written; doctor `0` errors and expected Layer B enrichment warning |
+
+Interpretation:
+
+- The v1.2.1 patch fixes the package-facing README metadata that lagged in
+  the `1.2.0` tarball.
+- The published CLI runs from a fresh temp directory and reports `1.2.1`.
+- A fresh all-adapter Prisma project installed from npmjs.org still reaches
+  the v1.2 continuity target and surfaces the semantic enrichment follow-up.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03

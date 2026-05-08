@@ -705,6 +705,11 @@ Progress:
   from `/private/tmp` returned `1.2.0`, and a fresh Prisma fixture initialized
   with continuity `ready (6/6)`, `init-install` evidence, and the expected
   Layer B enrichment follow-up.
+- 2026-05-08: Published `@mcprotein/anamnesis@1.2.1` as a package-facing
+  README patch after the `1.2.0` tarball still showed the old status badges.
+  npmjs.org `latest` returned `1.2.1`, the package README showed
+  `500 passing` and `v1.2 stable`, published CLI execution returned `1.2.1`,
+  and the fresh Prisma fixture smoke remained continuity `ready (6/6)`.
 
 Exit criteria:
 - `anamnesis benchmark report` exposes stable numeric raw dimensions and a
