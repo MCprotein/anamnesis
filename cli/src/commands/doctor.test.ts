@@ -241,6 +241,40 @@ describe("doctor — installation integrity", () => {
     );
   });
 
+  it("reports fragment dependency problems as errors", () => {
+    const { project, library } = installProject();
+    fs.writeFileSync(
+      path.join(library, "base", "fragment.yaml"),
+      `id: base
+version: 1
+requires:
+  - id: platform
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/test-hook.sh
+    adapters_supported: [claude-code]
+`,
+    );
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "error",
+          code: "fragment-dependency-missing",
+          fragmentId: "base",
+          target: "base -> platform",
+        }),
+      ]),
+    );
+  });
+
   it("reports tracked region edits as warnings", () => {
     const { project, library } = installProject();
     const agentsPath = path.join(project, "AGENTS.md");

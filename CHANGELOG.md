@@ -7,6 +7,12 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added fragment dependency resolution for `requires` entries with optional
+  minimum integer versions, including dependency auto-inclusion during
+  `init`/`update` and dependency diagnostics in `status`/`doctor`.
+
 ### Documentation
 
 - Planned v1.3 around fragment dependency resolution and local fragment

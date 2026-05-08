@@ -211,6 +211,52 @@ describe("status — fresh-install state", () => {
     expect(r.summary.entriesMissing).toBe(0);
     expect(r.summary.suggestedCount).toBe(0);
   });
+
+  it("reports fragment dependency graph problems", () => {
+    const { project, library } = setupFreshlyInstalled();
+    const platformDir = path.join(library, "fragments", "platform");
+    fs.mkdirSync(path.join(platformDir, "content"), { recursive: true });
+    fs.writeFileSync(
+      path.join(platformDir, "fragment.yaml"),
+      `id: platform
+version: 1
+capabilities:
+  - type: ontology
+    source: content/ontology.snippet.yaml
+`,
+    );
+    fs.writeFileSync(
+      path.join(platformDir, "content", "ontology.snippet.yaml"),
+      "platform:\n  source: test\n",
+    );
+    fs.writeFileSync(
+      path.join(library, "fragments", "prisma", "fragment.yaml"),
+      `id: prisma
+version: 1
+requires:
+  - id: platform
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: prisma
+  - type: ontology
+    source: content/ontology.snippet.yaml
+`,
+    );
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.dependencies.ready).toBe(false);
+    expect(r.summary.dependencyProblems).toBe(1);
+    expect(r.dependencies.problems).toEqual([
+      expect.objectContaining({
+        scopePath: ".",
+        kind: "missing",
+        fragmentId: "prisma",
+        dependencyId: "platform",
+      }),
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------

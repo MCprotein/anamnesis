@@ -528,6 +528,24 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
     }
   }
 
+  if (!result.dependencies.ready) {
+    console.log(`  dependencies: issues (${result.dependencies.summary.total})`);
+    for (const problem of result.dependencies.problems.slice(0, 5)) {
+      if (problem.kind === "cycle") {
+        console.log(
+          `    cycle ${problem.scopePath}: ${problem.cycle?.join(" -> ")}`,
+        );
+      } else {
+        const min = problem.requiredMinVersion
+          ? `>=${problem.requiredMinVersion}`
+          : "";
+        console.log(
+          `    ${problem.kind} ${problem.scopePath}: ${problem.fragmentId} -> ${problem.dependencyId}${min}`,
+        );
+      }
+    }
+  }
+
   const continuity = result.continuity;
   console.log(
     `  continuity: ${continuity.ready ? "ready" : "issues"} (${continuity.passed}/${continuity.total})`,

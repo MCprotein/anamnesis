@@ -210,6 +210,64 @@ describe("update — fresh-install re-run", () => {
     expect(result.writtenToDisk).toBe(false);
   });
 
+  it("auto-adds newly required dependency fragments", () => {
+    const library = makeLibrary();
+    const { project } = setupPrismaProject(library);
+
+    const platformDir = path.join(library, "fragments", "platform");
+    fs.mkdirSync(path.join(platformDir, "content"), { recursive: true });
+    fs.writeFileSync(
+      path.join(platformDir, "fragment.yaml"),
+      `id: platform
+version: 2
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: platform
+`,
+    );
+    fs.writeFileSync(
+      path.join(platformDir, "content", "agents.snippet.md"),
+      "## Platform\n\nshared runtime guidance.\n",
+    );
+    fs.writeFileSync(
+      path.join(library, "fragments", "prisma", "fragment.yaml"),
+      `id: prisma
+version: 1
+requires:
+  - id: platform
+    min_version: 2
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: prisma
+`,
+    );
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    expect(result.writtenToDisk).toBe(true);
+    expect(readAgentfile(project).fragments).toEqual([
+      { id: "base", version: 1 },
+      { id: "prisma", version: 1 },
+      { id: "platform", version: 2 },
+    ]);
+    expect(
+      result.changes.some(
+        (change) =>
+          change.target === "region" &&
+          change.file === "AGENTS.md" &&
+          change.regionId === "platform" &&
+          change.status === "create",
+      ),
+    ).toBe(true);
+  });
+
   it("dry-run does not modify Agentfile / manifest / files", () => {
     const library = makeLibrary();
     const { project } = setupPrismaProject(library);

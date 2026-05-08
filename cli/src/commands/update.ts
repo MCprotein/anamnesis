@@ -36,10 +36,12 @@ import {
   loadFragment,
   archivedFragmentDirOf,
   fragmentDirOf,
+  requirementLabel,
   topologicalSort,
   detectConflicts,
   type Capability,
   type FragmentDefinition,
+  type FragmentRequirement,
 } from "../core/fragments.js";
 import { effectiveScopes } from "../core/scope.js";
 import { ProjectContext } from "../core/triggers.js";
@@ -136,6 +138,11 @@ interface ResolvedFragment {
   fragmentDir: string;
 }
 
+interface DependencyExpansionResult {
+  resolved: ResolvedFragment[];
+  autoAdded: Fragment[];
+}
+
 function timestampedBackupName(): string {
   // Filesystem-safe ISO 8601 — colons and dots are out.
   return new Date().toISOString().replace(/[:.]/g, "-");
@@ -190,6 +197,99 @@ function resolveInstalledFragment(opts: {
     : undefined;
 }
 
+function latestLibraryFragment(opts: {
+  id: string;
+  base: FragmentDefinition | null;
+  fragments: Map<string, FragmentDefinition>;
+  libraryRoot: string;
+}): ResolvedFragment | undefined {
+  const entry = opts.id === "base" ? opts.base : opts.fragments.get(opts.id);
+  if (!entry) return undefined;
+  return {
+    entry: { id: entry.id, version: entry.version },
+    fragment: entry,
+    fragmentDir: fragmentDirOf(opts.libraryRoot, entry.id),
+  };
+}
+
+function assertResolvedRequirement(opts: {
+  scopePath: string;
+  parent: ResolvedFragment;
+  req: FragmentRequirement;
+  dep: ResolvedFragment;
+}): void {
+  const min = opts.req.min_version;
+  if (min === undefined || opts.dep.fragment.version >= min) return;
+  const pinned = opts.dep.entry.pinned === true ? "pinned " : "";
+  throw new UpdateError(
+    `scope '${opts.scopePath}': fragment '${opts.parent.fragment.id}' requires ` +
+      `${requirementLabel(opts.req)}, but ${pinned}installed version is ` +
+      `${opts.dep.fragment.version}`,
+  );
+}
+
+function expandResolvedDependencies(opts: {
+  scopePath: string;
+  resolved: ResolvedFragment[];
+  base: FragmentDefinition | null;
+  fragments: Map<string, FragmentDefinition>;
+  libraryRoot: string;
+}): DependencyExpansionResult {
+  const byId = new Map(
+    opts.resolved.map((resolved) => [resolved.fragment.id, resolved] as const),
+  );
+  const initialIds = new Set(byId.keys());
+  const autoAdded: Fragment[] = [];
+  const state = new Map<string, "gray" | "black">();
+
+  function visit(current: ResolvedFragment, stack: string[]): void {
+    const stateKey = current.fragment.id;
+    const currentState = state.get(stateKey);
+    if (currentState === "black") return;
+    if (currentState === "gray") {
+      throw new UpdateError(
+        `scope '${opts.scopePath}': fragment dependency cycle: ` +
+          `${[...stack, current.fragment.id].join(" -> ")}`,
+      );
+    }
+
+    state.set(stateKey, "gray");
+    for (const req of current.fragment.requires) {
+      let dep = byId.get(req.id);
+      if (!dep) {
+        dep = latestLibraryFragment({
+          id: req.id,
+          base: opts.base,
+          fragments: opts.fragments,
+          libraryRoot: opts.libraryRoot,
+        });
+        if (!dep) {
+          throw new UpdateError(
+            `scope '${opts.scopePath}': fragment '${current.fragment.id}' ` +
+              `requires unknown fragment '${req.id}'`,
+          );
+        }
+        byId.set(dep.fragment.id, dep);
+        if (!initialIds.has(dep.fragment.id)) {
+          autoAdded.push(dep.entry);
+        }
+      }
+
+      assertResolvedRequirement({
+        scopePath: opts.scopePath,
+        parent: current,
+        req,
+        dep,
+      });
+      visit(dep, [...stack, current.fragment.id]);
+    }
+    state.set(stateKey, "black");
+  }
+
+  for (const fragment of opts.resolved) visit(fragment, []);
+  return { resolved: [...byId.values()], autoAdded };
+}
+
 function pathExists(fp: string): boolean {
   try {
     return fs.existsSync(fp);
@@ -221,6 +321,48 @@ function bumpFragmentEntries<T extends { id: string; version: number; pinned?: b
     if (entry.pinned === true && !bumpPinned) return entry;
     return { ...entry, version: current };
   });
+}
+
+function appendMissingFragmentEntries<T extends { id: string }>(
+  entries: T[],
+  additions: T[],
+): T[] {
+  const seen = new Set(entries.map((entry) => entry.id));
+  const next = [...entries];
+  for (const addition of additions) {
+    if (seen.has(addition.id)) continue;
+    next.push(addition);
+    seen.add(addition.id);
+  }
+  return next;
+}
+
+function withAutoDependencyEntries(
+  agentfile: Agentfile,
+  autoByScope: Map<string, Fragment[]>,
+): Agentfile {
+  const rootAdditions = autoByScope.get(".") ?? [];
+  const scopes = agentfile.project.scopes?.map((scope) => {
+    const additions = autoByScope.get(scope.path) ?? [];
+    if (additions.length === 0 || scope.path === ".") return scope;
+    const overrides = scope.overrides ?? {};
+    return {
+      ...scope,
+      overrides: {
+        ...overrides,
+        fragments_add: appendMissingFragmentEntries(
+          overrides.fragments_add ?? [],
+          additions,
+        ),
+      },
+    };
+  });
+
+  return {
+    ...agentfile,
+    fragments: appendMissingFragmentEntries(agentfile.fragments, rootAdditions),
+    project: scopes ? { ...agentfile.project, scopes } : agentfile.project,
+  };
 }
 
 function bumpScopeFragmentEntries(
@@ -292,6 +434,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     tools: ToolName[];
     ordered: ResolvedFragment[];
   }> = [];
+  const autoDependencyEntriesByScope = new Map<string, Fragment[]>();
 
   for (const scope of scopes) {
     const resolved: ResolvedFragment[] = [];
@@ -320,12 +463,25 @@ export function update(opts: UpdateOptions): UpdateResult {
       tools: scope.tools,
       ordered: [],
     });
+    const expanded = expandResolvedDependencies({
+      scopePath: scope.path,
+      resolved,
+      base,
+      fragments,
+      libraryRoot,
+    });
+    if (expanded.autoAdded.length > 0) {
+      autoDependencyEntriesByScope.set(scope.path, expanded.autoAdded);
+      for (const entry of expanded.autoAdded) {
+        allInstalledIds.add(entry.id);
+      }
+    }
     // Topo + conflict per scope (different scopes may share fragment ids).
     const resolvedById = new Map(
-      resolved.map((r) => [r.fragment.id, r] as const),
+      expanded.resolved.map((r) => [r.fragment.id, r] as const),
     );
     const orderedFragments = topologicalSort(
-      resolved.map((r) => r.fragment),
+      expanded.resolved.map((r) => r.fragment),
     );
     const ordered = orderedFragments.map(
       (fragment) => resolvedById.get(fragment.id)!,
@@ -411,15 +567,19 @@ export function update(opts: UpdateOptions): UpdateResult {
   // 8. Build a post-update Agentfile that reflects library-current versions.
   //    Pinned entries stay at their pinned version unless --bump-pinned was
   //    provided, in which case they move to current while remaining pinned.
+  const expandedAgentfileForResolution = withAutoDependencyEntries(
+    agentfileForResolution,
+    autoDependencyEntriesByScope,
+  );
   const updatedAgentfile: Agentfile = {
-    ...agentfile,
+    ...expandedAgentfileForResolution,
     fragments: bumpFragmentEntries(
-      agentfileForResolution.fragments,
+      expandedAgentfileForResolution.fragments,
       currentFragmentVersions(base, fragments),
       opts.bumpPinned === true,
     ),
     project: bumpScopeFragmentEntries(
-      agentfile.project,
+      expandedAgentfileForResolution.project,
       currentFragmentVersions(base, fragments),
       opts.bumpPinned === true,
     ),

@@ -58,16 +58,30 @@ const ownsEntrySchema = z.union([
   z.object({ file: z.string() }),
 ]);
 
+const fragmentRequirementSchema: z.ZodType<{
+  id: string;
+  min_version?: number;
+}> = z.union([
+  z.string().min(1).transform((id) => ({ id })),
+  z
+    .object({
+      id: z.string().min(1),
+      min_version: z.number().int().positive().optional(),
+    })
+    .strict(),
+]);
+
 export const fragmentSchema = z.object({
   id: z.string().min(1),
   version: z.number().int().positive(),
   description: z.string().optional(),
-  requires: z.array(z.string()).default([]),
+  requires: z.array(fragmentRequirementSchema).default([]),
   conflicts: z.array(z.string()).default([]),
   capabilities: z.array(capabilitySchema),
   owns: z.array(ownsEntrySchema).default([]),
 });
 
+export type FragmentRequirement = z.infer<typeof fragmentRequirementSchema>;
 export type Capability = z.infer<typeof capabilitySchema>;
 export type FragmentDefinition = z.infer<typeof fragmentSchema>;
 
@@ -211,9 +225,87 @@ export function loadBaseFragment(
 // Dependency resolution
 // ---------------------------------------------------------------------------
 
+export interface FragmentDependencyProblem {
+  kind:
+    | "missing"
+    | "version-unsatisfied"
+    | "pinned-version-unsatisfied"
+    | "cycle";
+  fragmentId: string;
+  dependencyId?: string;
+  requiredMinVersion?: number;
+  installedVersion?: number;
+  libraryVersion?: number;
+  cycle?: string[];
+}
+
+export function requirementLabel(req: FragmentRequirement): string {
+  return req.min_version === undefined
+    ? req.id
+    : `${req.id}>=${req.min_version}`;
+}
+
+function assertRequirementSatisfied(
+  parent: FragmentDefinition,
+  req: FragmentRequirement,
+  dep: FragmentDefinition,
+): void {
+  if (req.min_version !== undefined && dep.version < req.min_version) {
+    throw new FragmentParseError(
+      `fragment '${parent.id}' requires fragment '${req.id}' >=${req.min_version}, ` +
+        `but selected version is ${dep.version}`,
+    );
+  }
+}
+
+/**
+ * Expand a selected fragment set by recursively adding required dependencies
+ * from the available fragment library. Dependencies are returned before their
+ * dependents through `topologicalSort`.
+ */
+export function expandFragmentDependencies(
+  selected: FragmentDefinition[],
+  available: Map<string, FragmentDefinition>,
+): FragmentDefinition[] {
+  const byId = new Map(selected.map((fragment) => [fragment.id, fragment]));
+
+  function visit(fragment: FragmentDefinition, stack: string[]): void {
+    if (stack.includes(fragment.id)) {
+      throw new FragmentParseError(
+        `fragment dependency cycle: ${[...stack, fragment.id].join(" -> ")}`,
+      );
+    }
+
+    for (const req of fragment.requires) {
+      let dep = byId.get(req.id);
+      if (!dep) {
+        dep = available.get(req.id);
+        if (!dep) {
+          throw new FragmentParseError(
+            `fragment '${fragment.id}' requires unknown fragment '${req.id}'`,
+          );
+        }
+        if (req.min_version !== undefined && dep.version < req.min_version) {
+          throw new FragmentParseError(
+            `fragment '${fragment.id}' requires fragment '${req.id}' >=${req.min_version}, ` +
+              `but library version is ${dep.version}`,
+          );
+        }
+        byId.set(dep.id, dep);
+      }
+      assertRequirementSatisfied(fragment, req, dep);
+      visit(dep, [...stack, fragment.id]);
+    }
+  }
+
+  for (const fragment of selected) visit(fragment, []);
+  return topologicalSort([...byId.values()]);
+}
+
 /**
  * Topologically sort fragments by `requires`. Dependencies come before
- * dependents in the output. Throws on cycles or missing dependencies.
+ * dependents in the output. Throws on cycles, missing dependencies, or
+ * unsatisfied minimum dependency versions.
  */
 export function topologicalSort(
   fragments: FragmentDefinition[],
@@ -231,13 +323,14 @@ export function topologicalSort(
       );
     }
     state.set(f.id, "gray");
-    for (const depId of f.requires) {
-      const dep = byId.get(depId);
+    for (const req of f.requires) {
+      const dep = byId.get(req.id);
       if (!dep) {
         throw new FragmentParseError(
-          `fragment '${f.id}' requires unknown fragment '${depId}'`,
+          `fragment '${f.id}' requires unknown fragment '${req.id}'`,
         );
       }
+      assertRequirementSatisfied(f, req, dep);
       visit(dep, [...stack, f.id]);
     }
     state.set(f.id, "black");
@@ -246,6 +339,69 @@ export function topologicalSort(
 
   for (const f of fragments) visit(f, []);
   return sorted;
+}
+
+export function collectDependencyProblems(input: {
+  fragments: FragmentDefinition[];
+  entries?: Map<
+    string,
+    { version: number; pinned?: boolean; libraryVersion?: number }
+  >;
+}): FragmentDependencyProblem[] {
+  const byId = new Map(
+    input.fragments.map((fragment) => [fragment.id, fragment]),
+  );
+  const problems: FragmentDependencyProblem[] = [];
+
+  for (const fragment of input.fragments) {
+    for (const req of fragment.requires) {
+      const dep = byId.get(req.id);
+      if (!dep) {
+        problems.push({
+          kind: "missing",
+          fragmentId: fragment.id,
+          dependencyId: req.id,
+          requiredMinVersion: req.min_version,
+        });
+        continue;
+      }
+      if (req.min_version !== undefined && dep.version < req.min_version) {
+        const entry = input.entries?.get(dep.id);
+        problems.push({
+          kind: entry?.pinned === true
+            ? "pinned-version-unsatisfied"
+            : "version-unsatisfied",
+          fragmentId: fragment.id,
+          dependencyId: dep.id,
+          requiredMinVersion: req.min_version,
+          installedVersion: dep.version,
+          libraryVersion: entry?.libraryVersion,
+        });
+      }
+    }
+  }
+
+  try {
+    topologicalSort(input.fragments);
+  } catch (e) {
+    const message = (e as Error).message;
+    const match = message.match(/fragment dependency cycle: (.+)$/);
+    if (match) {
+      const cycle = match[1]!.split(" -> ");
+      problems.push({
+        kind: "cycle",
+        fragmentId: cycle[0] ?? "<unknown>",
+        cycle,
+      });
+    } else if (
+      !message.includes("requires unknown fragment") &&
+      !message.includes("requires fragment")
+    ) {
+      throw e;
+    }
+  }
+
+  return problems;
 }
 
 /**

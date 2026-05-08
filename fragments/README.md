@@ -52,7 +52,8 @@ coverage is added when dogfood usage shows that agents need more facts.
 1. Always include the `base` fragment (from `../base/`) if present.
 2. Evaluate every rule in `rulebook.md` against the project. Rules that match → suggest a fragment id.
 3. Look up each suggested id in this directory. Missing fragments → error.
-4. Topologically sort by `requires`. Detect `conflicts` pairs.
+4. Resolve `requires` dependencies, including optional minimum integer
+   versions, then topologically sort. Detect `conflicts` pairs.
 5. Render via the adapter for each tool listed in the project's `Agentfile`.
 
 The user has the final say. `Agentfile` is editable, declined fragments

@@ -739,7 +739,7 @@ project scaffolding or a hosted control plane.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Fragment dependency resolution** | planned | Replace the current `requires` behavior from simple topological ordering with explicit dependency resolution. A selected fragment should be able to require another fragment id plus a minimum integer version. `init`, `update`, `status`, and `doctor` should report missing dependencies, unsatisfied minimum versions, pinned fragments that block a requirement, and dependency cycles before rendering managed files. |
+| 1 | **Fragment dependency resolution** | done | Replace the current `requires` behavior from simple topological ordering with explicit dependency resolution. A selected fragment should be able to require another fragment id plus a minimum integer version. `init`, `update`, `status`, and `doctor` should report missing dependencies, unsatisfied minimum versions, pinned fragments that block a requirement, and dependency cycles before rendering managed files. |
 | 2 | **Fragment update event hooks** | planned | Add a local update notification surface for fragment lifecycle changes. Start with deterministic event records for installed, updated, pinned-blocked, yanked/invalid, and dependency-blocked fragments; keep external webhook delivery optional and disabled until the local event schema and trust boundary are stable. |
 
 Progress:
@@ -747,6 +747,9 @@ Progress:
   notifications from cross-cutting backlog to the v1.3 planned scope. Deferred
   project templates and WebUI work so v1.3 stays focused on fragment lifecycle
   correctness and observable update signals.
+- 2026-05-08: Implemented dependency parsing for `requires: [id]` and
+  `requires: [{ id, min_version }]`, auto-inclusion in `init`/`update`, and
+  dependency diagnostics in `status`/`doctor`.
 
 Exit criteria:
 - Fragment dependency requirements are parsed from fragment metadata without

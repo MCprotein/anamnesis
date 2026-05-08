@@ -23,9 +23,9 @@ import {
 } from "../core/manifest.js";
 import { loadRulebook, matchingRules } from "../core/rulebook.js";
 import {
+  expandFragmentDependencies,
   loadAllFragments,
   loadBaseFragment,
-  topologicalSort,
   detectConflicts,
   type FragmentDefinition,
 } from "../core/fragments.js";
@@ -192,6 +192,8 @@ export function init(opts: InitOptions): InitResult {
   const rules = loadRulebook(libraryRoot);
   const fragments = loadAllFragments(libraryRoot);
   const base = loadBaseFragment(libraryRoot);
+  const availableFragments = new Map(fragments);
+  if (base) availableFragments.set(base.id, base);
 
   // 3. Evaluate rules against project.
   const ctx = new ProjectContext(projectRoot);
@@ -221,13 +223,17 @@ export function init(opts: InitOptions): InitResult {
     );
   }
 
-  // 5. Order root + conflict check.
-  const rootOrdered = topologicalSort(rootSelected);
+  // 5. Expand dependencies, then order root + conflict check.
+  const rootOrdered = expandFragmentDependencies(
+    rootSelected,
+    availableFragments,
+  );
   const rootConflicts = detectConflicts(rootOrdered);
   if (rootConflicts.length > 0) {
     const pairs = rootConflicts.map(([a, b]) => `${a}↔${b}`).join(", ");
     throw new InitError(`conflicting fragments selected: ${pairs}`);
   }
+  const rootInstalledIds = new Set(rootOrdered.map((fragment) => fragment.id));
 
   // 6. Optional monorepo detection — adds extra scopes with their own fragments.
   let monorepoDetection: MonorepoDetection | undefined;
@@ -246,7 +252,7 @@ export function init(opts: InitOptions): InitResult {
       for (const rule of candidate.matchedRules) {
         if (seenInSub.has(rule.suggest)) continue;
         // Skip if already inherited from root (avoid double-install).
-        if (rootSeen.has(rule.suggest)) continue;
+        if (rootInstalledIds.has(rule.suggest)) continue;
         const frag = fragments.get(rule.suggest);
         if (frag) {
           subSelected.push(frag);
@@ -255,7 +261,13 @@ export function init(opts: InitOptions): InitResult {
           missing.push(`${candidate.path}/${rule.suggest}`);
         }
       }
-      const subOrdered = topologicalSort(subSelected);
+      const expanded = expandFragmentDependencies(
+        [...rootOrdered, ...subSelected],
+        availableFragments,
+      );
+      const subOrdered = expanded.filter(
+        (fragment) => !rootInstalledIds.has(fragment.id),
+      );
       const subConflicts = detectConflicts(subOrdered);
       if (subConflicts.length > 0) {
         const pairs = subConflicts.map(([a, b]) => `${a}↔${b}`).join(", ");

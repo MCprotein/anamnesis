@@ -238,6 +238,61 @@ describe("init", () => {
     );
   });
 
+  it("auto-includes required dependency fragments before rendering", () => {
+    const platformDir = path.join(library, "fragments", "platform");
+    fs.mkdirSync(path.join(platformDir, "content"), { recursive: true });
+    fs.writeFileSync(
+      path.join(platformDir, "fragment.yaml"),
+      `id: platform
+version: 2
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: platform
+`,
+    );
+    fs.writeFileSync(
+      path.join(platformDir, "content", "agents.snippet.md"),
+      "## Platform\n\nshared runtime guidance.\n",
+    );
+
+    const prismaFragment = path.join(library, "fragments", "prisma", "fragment.yaml");
+    fs.writeFileSync(
+      prismaFragment,
+      `id: prisma
+version: 1
+requires:
+  - id: platform
+    min_version: 2
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: prisma
+`,
+    );
+    fs.mkdirSync(path.join(project, "prisma"));
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+
+    const result = init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+    });
+
+    expect(result.selectedFragments.map((fragment) => fragment.id)).toEqual([
+      "platform",
+      "prisma",
+    ]);
+    expect(readAgentfile(project).fragments).toEqual([
+      { id: "platform", version: 2 },
+      { id: "prisma", version: 1 },
+    ]);
+    const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("region id=platform");
+    expect(agentsMd).toContain("region id=prisma");
+  });
+
   it("adds the Claude Code entrypoint without overwriting existing CLAUDE.md prose", () => {
     fs.mkdirSync(path.join(project, "prisma"));
     fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");

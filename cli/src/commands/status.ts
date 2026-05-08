@@ -24,8 +24,11 @@ import {
   type FileEntry,
 } from "../core/manifest.js";
 import {
+  collectDependencyProblems,
   loadAllFragments,
   loadBaseFragment,
+  loadFragmentAtVersion,
+  type FragmentDependencyProblem,
   type FragmentDefinition,
 } from "../core/fragments.js";
 import { effectiveScopes, type EffectiveScope } from "../core/scope.js";
@@ -136,6 +139,18 @@ export interface ContinuityStatus {
   checks: ContinuityCheck[];
 }
 
+export interface FragmentDependencyStatus {
+  ready: boolean;
+  problems: Array<FragmentDependencyProblem & { scopePath: string }>;
+  summary: {
+    total: number;
+    missing: number;
+    versionUnsatisfied: number;
+    pinnedVersionUnsatisfied: number;
+    cycles: number;
+  };
+}
+
 export interface StatusResult {
   agentfile: Agentfile;
   /** Flat union across all scopes — preserved for back-compat and quick overview. */
@@ -156,6 +171,8 @@ export interface StatusResult {
   ontology: OntologyGapStatus;
   /** Durable runtime evidence emitted by append-style checks. */
   evidence: RuntimeEvidenceSummary;
+  /** Fragment dependency graph health across effective scopes. */
+  dependencies: FragmentDependencyStatus;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -171,6 +188,7 @@ export interface StatusResult {
     ontologyGapInfo: number;
     evidenceRecords: number;
     evidenceInvalidRecords: number;
+    dependencyProblems: number;
     suggestedCount: number;
     declinedCount: number;
     declinedStaleCount: number;
@@ -266,6 +284,76 @@ function classifyFragment(
   };
 }
 
+function resolveDependencyFragment(
+  libraryRoot: string,
+  entry: { id: string; version: number; pinned?: boolean },
+  library: Map<string, FragmentDefinition>,
+): FragmentDefinition | undefined {
+  const current = library.get(entry.id);
+  if (!current) return undefined;
+  if (!entry.pinned && current.version === entry.version) return current;
+
+  try {
+    return loadFragmentAtVersion(libraryRoot, entry.id, entry.version) ?? current;
+  } catch {
+    // Broken archives are reported elsewhere as library/doctor issues. For the
+    // dependency graph, fall back to the current library fragment so status can
+    // still surface actionable dependency requirements.
+    return current;
+  }
+}
+
+function collectDependencyStatus(input: {
+  libraryRoot: string;
+  scopes: EffectiveScope[];
+  library: Map<string, FragmentDefinition>;
+}): FragmentDependencyStatus {
+  const problems: FragmentDependencyStatus["problems"] = [];
+
+  for (const scope of input.scopes) {
+    const fragments: FragmentDefinition[] = [];
+    const entries = new Map<
+      string,
+      { version: number; pinned?: boolean; libraryVersion?: number }
+    >();
+
+    for (const entry of scope.fragments) {
+      if (entries.has(entry.id)) continue;
+      entries.set(entry.id, {
+        version: entry.version,
+        pinned: entry.pinned,
+        libraryVersion: input.library.get(entry.id)?.version,
+      });
+      const fragment = resolveDependencyFragment(
+        input.libraryRoot,
+        entry,
+        input.library,
+      );
+      if (fragment) fragments.push(fragment);
+    }
+
+    for (const problem of collectDependencyProblems({ fragments, entries })) {
+      problems.push({ ...problem, scopePath: scope.path });
+    }
+  }
+
+  return {
+    ready: problems.length === 0,
+    problems,
+    summary: {
+      total: problems.length,
+      missing: problems.filter((p) => p.kind === "missing").length,
+      versionUnsatisfied: problems.filter(
+        (p) => p.kind === "version-unsatisfied",
+      ).length,
+      pinnedVersionUnsatisfied: problems.filter(
+        (p) => p.kind === "pinned-version-unsatisfied",
+      ).length,
+      cycles: problems.filter((p) => p.kind === "cycle").length,
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Entrypoint
 // ---------------------------------------------------------------------------
@@ -338,6 +426,11 @@ export function status(opts: StatusOptions): StatusResult {
     library,
     entries,
   );
+  const dependencies = collectDependencyStatus({
+    libraryRoot,
+    scopes: effectiveScopeList,
+    library,
+  });
   const ontology = collectOntologyGaps({
     projectRoot,
     scopes: effectiveScopeList,
@@ -367,6 +460,7 @@ export function status(opts: StatusOptions): StatusResult {
     ontologyGapInfo: ontology.summary.info,
     evidenceRecords: evidence.total,
     evidenceInvalidRecords: evidence.invalid,
+    dependencyProblems: dependencies.summary.total,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
     declinedStaleCount: declined.filter((d) => !d.matched).length,
@@ -387,6 +481,7 @@ export function status(opts: StatusOptions): StatusResult {
     codexHooks,
     ontology,
     evidence,
+    dependencies,
     suggested,
     declined,
     summary,

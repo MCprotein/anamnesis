@@ -6,10 +6,12 @@ import {
   loadFragment,
   loadFragmentAtVersion,
   loadAllFragments,
+  expandFragmentDependencies,
   topologicalSort,
   detectConflicts,
   FragmentParseError,
   type FragmentDefinition,
+  type FragmentRequirement,
 } from "./fragments.js";
 
 function tmpLib(): string {
@@ -79,6 +81,24 @@ capabilities:
       "skill",
       "slash_command",
     ]);
+  });
+
+  it("parses dependency requirements with minimum versions", () => {
+    const yaml = `
+id: app
+version: 1
+requires:
+  - id: platform
+    min_version: 2
+capabilities:
+  - type: ontology
+    source: o.yaml
+`;
+    const lib = tmpLib();
+    const dir = writeFragment(lib, "app", yaml);
+    const frag = loadFragment(dir);
+
+    expect(frag.requires).toEqual([{ id: "platform", min_version: 2 }]);
   });
 
   it("rejects when fragment.yaml is missing", () => {
@@ -187,7 +207,7 @@ describe("loadFragmentAtVersion", () => {
 // Helper for sort/conflict tests — skip disk round-trip.
 function frag(
   id: string,
-  requires: string[] = [],
+  requires: FragmentRequirement[] = [],
   conflicts: string[] = [],
 ): FragmentDefinition {
   return {
@@ -203,8 +223,8 @@ function frag(
 describe("topologicalSort", () => {
   it("orders dependencies before dependents", () => {
     const a = frag("a");
-    const b = frag("b", ["a"]);
-    const c = frag("c", ["b"]);
+    const b = frag("b", [{ id: "a" }]);
+    const c = frag("c", [{ id: "b" }]);
     const sorted = topologicalSort([c, b, a]);
     const ids = sorted.map((f) => f.id);
     expect(ids.indexOf("a")).toBeLessThan(ids.indexOf("b"));
@@ -212,22 +232,62 @@ describe("topologicalSort", () => {
   });
 
   it("detects a cycle", () => {
-    const a = frag("a", ["b"]);
-    const b = frag("b", ["a"]);
+    const a = frag("a", [{ id: "b" }]);
+    const b = frag("b", [{ id: "a" }]);
     expect(() => topologicalSort([a, b])).toThrow(/cycle/);
   });
 
   it("throws on missing dependency", () => {
-    const a = frag("a", ["missing"]);
+    const a = frag("a", [{ id: "missing" }]);
     expect(() => topologicalSort([a])).toThrow(/unknown fragment 'missing'/);
+  });
+
+  it("throws on an unsatisfied minimum dependency version", () => {
+    const dep = { ...frag("dep"), version: 1 };
+    const app = frag("app", [{ id: "dep", min_version: 2 }]);
+
+    expect(() => topologicalSort([app, dep])).toThrow(/dep' >=2/);
   });
 
   it("is idempotent on already-sorted input", () => {
     const a = frag("a");
-    const b = frag("b", ["a"]);
+    const b = frag("b", [{ id: "a" }]);
     const sorted1 = topologicalSort([a, b]);
     const sorted2 = topologicalSort(sorted1);
     expect(sorted1.map((f) => f.id)).toEqual(sorted2.map((f) => f.id));
+  });
+});
+
+describe("expandFragmentDependencies", () => {
+  it("auto-includes transitive dependencies from the available library", () => {
+    const base = frag("base");
+    const runtime = frag("runtime", [{ id: "base" }]);
+    const app = frag("app", [{ id: "runtime" }]);
+    const expanded = expandFragmentDependencies(
+      [app],
+      new Map([
+        ["base", base],
+        ["runtime", runtime],
+        ["app", app],
+      ]),
+    );
+
+    expect(expanded.map((f) => f.id)).toEqual(["base", "runtime", "app"]);
+  });
+
+  it("rejects unavailable dependency versions before rendering", () => {
+    const runtime = { ...frag("runtime"), version: 1 };
+    const app = frag("app", [{ id: "runtime", min_version: 2 }]);
+
+    expect(() =>
+      expandFragmentDependencies(
+        [app],
+        new Map([
+          ["runtime", runtime],
+          ["app", app],
+        ]),
+      ),
+    ).toThrow(/library version is 1/);
   });
 });
 

@@ -68,6 +68,9 @@ export type DoctorIssueCode =
   | "manifest-missing"
   | "manifest-invalid"
   | "fragment-library-missing"
+  | "fragment-dependency-missing"
+  | "fragment-dependency-version-unsatisfied"
+  | "fragment-dependency-cycle"
   | "fragment-update-available"
   | "tracked-entry-missing"
   | "tracked-entry-user-modified"
@@ -182,6 +185,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   if (manifestReadable) {
     const st = status({ projectRoot, libraryRoot });
     addStatusIssues(st.entries, st.fragments, issues);
+    addDependencyIssues(st.dependencies.problems, issues);
     addContinuityIssues(st.continuity.checks, issues);
     addOntologyGapIssues(st.ontology.gaps, issues);
     addDeclinedIssues(st.declined, issues);
@@ -308,6 +312,62 @@ function addStatusIssues(
         message: `tracked ${e.target} differs from last applied content: ${target}`,
         repair:
           "manual merge review required: compare the file against the latest rendered fragment output. If the local edit is intentional, keep it and accept the warning; otherwise merge the library content from the backup/update plan and re-run `anamnesis update --apply --allow-exec-adapters`.",
+      });
+    }
+  }
+}
+
+function addDependencyIssues(
+  problems: StatusResult["dependencies"]["problems"],
+  issues: DoctorIssue[],
+): void {
+  for (const problem of problems) {
+    if (problem.kind === "cycle") {
+      issues.push({
+        severity: "error",
+        code: "fragment-dependency-cycle",
+        scopePath: problem.scopePath,
+        fragmentId: problem.fragmentId,
+        target: problem.cycle?.join(" -> "),
+        message: `fragment dependency cycle in scope '${problem.scopePath}': ${problem.cycle?.join(" -> ")}`,
+        repair:
+          "Break the cycle in fragment.yaml `requires`; dependencies must form an acyclic graph before rendering.",
+      });
+      continue;
+    }
+
+    const target = `${problem.fragmentId} -> ${problem.dependencyId}`;
+    if (problem.kind === "missing") {
+      issues.push({
+        severity: "error",
+        code: "fragment-dependency-missing",
+        scopePath: problem.scopePath,
+        fragmentId: problem.fragmentId,
+        target,
+        message:
+          `fragment '${problem.fragmentId}' in scope '${problem.scopePath}' ` +
+          `requires missing fragment '${problem.dependencyId}'`,
+        repair:
+          "Run `anamnesis update --dry-run` to inspect the dependency addition, then `anamnesis update --apply` to add the required fragment to Agentfile.",
+      });
+    } else {
+      const pinned = problem.kind === "pinned-version-unsatisfied"
+        ? " pinned"
+        : "";
+      issues.push({
+        severity: "error",
+        code: "fragment-dependency-version-unsatisfied",
+        scopePath: problem.scopePath,
+        fragmentId: problem.fragmentId,
+        target,
+        message:
+          `fragment '${problem.fragmentId}' in scope '${problem.scopePath}' ` +
+          `requires '${problem.dependencyId}' >=${problem.requiredMinVersion}, ` +
+          `but${pinned} installed version is ${problem.installedVersion}`,
+        repair:
+          problem.kind === "pinned-version-unsatisfied"
+            ? "Unpin the dependency fragment or re-run update with `--bump-pinned` after reviewing the version change."
+            : "Run `anamnesis update --apply` to bump the dependency fragment to a compatible library version.",
       });
     }
   }

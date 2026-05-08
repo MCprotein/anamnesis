@@ -68,7 +68,10 @@ id: prisma
 version: 2
 description: >
   Prisma ORM operational guidelines and schema drift checks.
-requires: []
+requires:
+  - base
+  - id: runtime
+    min_version: 2
 conflicts: []
 capabilities:
   - type: project_memory
@@ -93,7 +96,9 @@ Rules:
 - `id` must match the directory name.
 - `version` is a positive integer. Increment it when generated output should
   change for existing projects.
-- `requires` lists fragment ids that must render first.
+- `requires` lists fragment ids that must render first. Use plain strings for
+  id-only dependencies, or `{ id, min_version }` when a dependency needs at
+  least a specific integer fragment version.
 - `conflicts` lists fragment ids that should not be selected together without
   a user decision.
 - `capabilities` describe what the fragment provides.
