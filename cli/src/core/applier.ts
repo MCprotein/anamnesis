@@ -335,6 +335,11 @@ function planFile(
 
   if (!exists && !manifestEntry) {
     status = "create";
+  } else if (exists && !manifestEntry && currentHash === newContentHash) {
+    // Adopt an already-identical generated file into the manifest. This lets
+    // projects recover from missing manifests or hand-copied managed surfaces
+    // without forcing a needless user-modified review.
+    status = "create";
   } else if (exists && !manifestEntry) {
     status = "user-modified";
     reason = "file exists on disk but not tracked in manifest";

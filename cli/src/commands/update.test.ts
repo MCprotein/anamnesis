@@ -210,6 +210,44 @@ describe("update — fresh-install re-run", () => {
     expect(result.writtenToDisk).toBe(false);
   });
 
+  it("preserves a project-specific load-context skill before installing the managed one", () => {
+    const library = makeLibrary();
+    const { project } = setupPrismaProject(library);
+    const skillDir = path.join(project, ".claude", "skills", "load-context");
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, "SKILL.md"),
+      "# Project Load Context\n\nRead local project memory first.\n",
+      "utf8",
+    );
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: process.cwd(),
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    expect(result.surfaceConflicts).toEqual([
+      expect.objectContaining({
+        path: ".claude/skills/load-context/SKILL.md",
+        preservedAs: ".claude/skills/project-load-context/SKILL.md",
+      }),
+    ]);
+    expect(
+      fs.readFileSync(
+        path.join(project, ".claude/skills/project-load-context/SKILL.md"),
+        "utf8",
+      ),
+    ).toContain("local project memory");
+    expect(
+      fs.readFileSync(
+        path.join(project, ".claude/skills/load-context/SKILL.md"),
+        "utf8",
+      ),
+    ).toContain(".anamnesis/ontology/");
+  });
+
   it("auto-adds newly required dependency fragments", () => {
     const library = makeLibrary();
     const { project } = setupPrismaProject(library);

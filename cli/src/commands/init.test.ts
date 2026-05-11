@@ -160,6 +160,74 @@ describe("init", () => {
     ).toBe(true);
   });
 
+  it("bootstraps project context and preserves a project-specific load-context skill", () => {
+    const skillDir = path.join(project, ".claude", "skills", "load-context");
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, "SKILL.md"),
+      "# Project Load Context\n\nRead dev/active/current-work.md.\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(project, "package.json"),
+      JSON.stringify({
+        name: "slack-rag",
+        description: "Slack RAG bot",
+        type: "module",
+        dependencies: {
+          "@slack/bolt": "^4.0.0",
+          "@supabase/supabase-js": "^2.0.0",
+          "groq-sdk": "^0.1.0",
+        },
+        devDependencies: { typescript: "^5.0.0" },
+      }),
+      "utf8",
+    );
+    fs.mkdirSync(path.join(project, "src", "slack"), { recursive: true });
+    fs.mkdirSync(path.join(project, "src", "vectordb"), { recursive: true });
+
+    const result = init({
+      projectRoot: project,
+      libraryRoot: process.cwd(),
+      dryRun: false,
+      allowExecAdapters: true,
+      tools: ["claude-code"],
+      noBootstrap: true,
+    });
+
+    expect(result.contextBootstrap).toMatchObject({
+      outcome: "written",
+      path: "system_graph.yaml",
+    });
+    expect(result.surfaceConflicts).toEqual([
+      expect.objectContaining({
+        path: ".claude/skills/load-context/SKILL.md",
+        preservedAs: ".claude/skills/project-load-context/SKILL.md",
+      }),
+    ]);
+    expect(
+      fs.readFileSync(path.join(project, "system_graph.yaml"), "utf8"),
+    ).toContain("slack-bot");
+    expect(
+      fs.readFileSync(
+        path.join(project, ".claude/skills/project-load-context/SKILL.md"),
+        "utf8",
+      ),
+    ).toContain("dev/active/current-work.md");
+    expect(
+      fs.readFileSync(
+        path.join(project, ".claude/skills/load-context/SKILL.md"),
+        "utf8",
+      ),
+    ).toContain(".anamnesis/ontology/");
+    const manifest = readManifest(project);
+    expect(
+      manifest.files.some(
+        (entry) => entry.path === ".claude/skills/load-context/SKILL.md",
+      ),
+    ).toBe(true);
+  });
+
   it("installs a matching fragment end-to-end", () => {
     // Make the project look like a prisma project.
     fs.mkdirSync(path.join(project, "prisma"));

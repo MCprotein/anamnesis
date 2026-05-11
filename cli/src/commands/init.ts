@@ -78,6 +78,12 @@ import {
   summarizeLifecycleChanges,
   summarizeLifecycleSyncStatuses,
 } from "../core/lifecycle_evidence.js";
+import {
+  bootstrapProjectContext,
+  resolveKnownSurfaceConflicts,
+  type ProjectContextBootstrapResult,
+  type SurfaceConflictResolution,
+} from "../core/adoption.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,6 +114,11 @@ export interface InitOptions {
    * would be noisy or incorrect for a specific project.
    */
   noBootstrap?: boolean;
+  /**
+   * Skip the conservative project-level `system_graph.yaml` draft. By default,
+   * init writes it only when absent and when safe local project signals exist.
+   */
+  noContextBootstrap?: boolean;
   now?: () => Date;
 }
 
@@ -143,6 +154,10 @@ export interface InitResult {
   bootstrapError?: string;
   /** Runtime evidence JSONL path written on non-dry-run init. */
   evidencePath?: string;
+  /** First-run project context draft outcome for `system_graph.yaml`. */
+  contextBootstrap?: ProjectContextBootstrapResult;
+  /** Existing project-specific agent surfaces preserved before writing ours. */
+  surfaceConflicts: SurfaceConflictResolution[];
 }
 
 export class InitError extends Error {
@@ -366,6 +381,12 @@ export function init(opts: InitOptions): InitResult {
   // adapter writes (every scope renders base's hooks → same .claude/hooks
   // path). Region/file dedup by target identity collapses these.
   const dedupedActions = dedupeActions(actions);
+  const surfaceConflicts = resolveKnownSurfaceConflicts({
+    projectRoot,
+    manifest: emptyManifest(),
+    actions: dedupedActions,
+    dryRun: opts.dryRun,
+  });
 
   // 10. Plan changes vs blank manifest (init always starts fresh).
   const { changes, nextManifest } = planChanges(dedupedActions, {
@@ -384,6 +405,14 @@ export function init(opts: InitOptions): InitResult {
     const hookSync = syncWrittenHooks(changes, projectRoot);
     hookRegistrations = hookSync.claude;
     codexHookRegistrations = hookSync.codex;
+  }
+
+  let contextBootstrap: ProjectContextBootstrapResult | undefined;
+  if (!opts.noContextBootstrap) {
+    contextBootstrap = bootstrapProjectContext({
+      projectRoot,
+      dryRun: opts.dryRun,
+    });
   }
 
   // 12. Post-install ontology bootstrap (Layer A). Failure does not
@@ -408,6 +437,7 @@ export function init(opts: InitOptions): InitResult {
       allowExecAdapters: opts.allowExecAdapters,
       monorepoRequested: opts.monorepo === true,
       noBootstrap: opts.noBootstrap === true,
+      noContextBootstrap: opts.noContextBootstrap === true,
       projectNameOverride: opts.projectName,
       toolsOverride: opts.tools,
     });
@@ -427,6 +457,9 @@ export function init(opts: InitOptions): InitResult {
         bootstrapError,
         allowExecAdapters: opts.allowExecAdapters,
         noBootstrap: opts.noBootstrap === true,
+        noContextBootstrap: opts.noContextBootstrap === true,
+        contextBootstrap,
+        surfaceConflicts,
         projectNameOverride: opts.projectName,
         toolsOverride: opts.tools,
       }),
@@ -454,6 +487,8 @@ export function init(opts: InitOptions): InitResult {
     bootstrapError,
     codexHookRegistrations,
     evidencePath,
+    contextBootstrap,
+    surfaceConflicts,
   };
 }
 
@@ -471,6 +506,9 @@ function initInstallEvidenceRecord(input: {
   bootstrapError?: string;
   allowExecAdapters: boolean;
   noBootstrap: boolean;
+  noContextBootstrap: boolean;
+  contextBootstrap?: ProjectContextBootstrapResult;
+  surfaceConflicts: readonly SurfaceConflictResolution[];
   projectNameOverride?: string;
   toolsOverride?: readonly ToolName[];
 }): RuntimeEvidenceRecord {
@@ -501,6 +539,20 @@ function initInstallEvidenceRecord(input: {
       flags: {
         allow_exec_adapters: input.allowExecAdapters,
         no_bootstrap: input.noBootstrap,
+        no_context_bootstrap: input.noContextBootstrap,
+      },
+      context_bootstrap: input.contextBootstrap
+        ? {
+            path: input.contextBootstrap.path,
+            outcome: input.contextBootstrap.outcome,
+            signals: input.contextBootstrap.signals.length,
+          }
+        : { outcome: "disabled" },
+      surface_conflicts: {
+        total: input.surfaceConflicts.length,
+        preserved: input.surfaceConflicts.filter(
+          (conflict) => conflict.outcome === "preserved",
+        ).length,
       },
     },
     details: {
@@ -523,6 +575,21 @@ function initInstallEvidenceRecord(input: {
       codex_hook_registrations: codexHookSyncDetails(
         input.codexHookRegistrations,
       ),
+      ...(input.contextBootstrap
+        ? {
+            context_bootstrap: {
+              path: input.contextBootstrap.path,
+              outcome: input.contextBootstrap.outcome,
+              signals: input.contextBootstrap.signals,
+            },
+          }
+        : {}),
+      surface_conflicts: input.surfaceConflicts.map((conflict) => ({
+        path: conflict.path,
+        preserved_as: conflict.preservedAs,
+        outcome: conflict.outcome,
+        reason: conflict.reason,
+      })),
     },
   };
 }
@@ -531,6 +598,7 @@ function initEvidenceCommand(input: {
   allowExecAdapters: boolean;
   monorepoRequested: boolean;
   noBootstrap: boolean;
+  noContextBootstrap?: boolean;
   projectNameOverride?: string;
   toolsOverride?: readonly ToolName[];
 }): string[] {
@@ -538,6 +606,7 @@ function initEvidenceCommand(input: {
   if (input.allowExecAdapters) command.push("--allow-exec-adapters");
   if (input.monorepoRequested) command.push("--monorepo");
   if (input.noBootstrap) command.push("--no-bootstrap");
+  if (input.noContextBootstrap) command.push("--no-context-bootstrap");
   if (input.projectNameOverride) {
     command.push("--project-name", input.projectNameOverride);
   }

@@ -276,6 +276,8 @@ Flags (init):
   --no-bootstrap                Skip the post-install 'ontology bootstrap'
                                   pass (fragments with introspectors auto-
                                   populate .anamnesis/ontology/<id>.bootstrap.yaml)
+  --no-context-bootstrap        Skip the first-run system_graph.yaml draft
+                                  generated from safe local project signals
 
 Flags (update):
   --project-root <path>         Target directory (default: cwd)
@@ -443,6 +445,25 @@ function reportInit(result: InitResult): void {
     ).length;
     console.log(
       `  ontology bootstrap: ${wrote} fragment(s) populated, ${skipped} skipped`,
+    );
+  }
+  if (result.contextBootstrap) {
+    const ctx = result.contextBootstrap;
+    if (ctx.outcome === "written" || ctx.outcome === "planned") {
+      console.log(
+        `  context bootstrap: ${ctx.outcome} ${ctx.path} (${ctx.signals.length} signal(s))`,
+      );
+    } else {
+      console.log(`  context bootstrap: ${ctx.outcome}`);
+    }
+  }
+  for (const conflict of result.surfaceConflicts) {
+    const label =
+      conflict.outcome === "planned-preserve"
+        ? "planned surface preserve"
+        : "preserved surface";
+    console.log(
+      `  ${label}: ${conflict.path} -> ${conflict.preservedAs}`,
     );
   }
   if (result.writtenToDisk && result.evidencePath) {
@@ -1047,6 +1068,15 @@ function reportUpdate(result: UpdateResult): void {
       "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
     );
   }
+  for (const conflict of result.surfaceConflicts) {
+    const label =
+      conflict.outcome === "planned-preserve"
+        ? "planned surface preserve"
+        : "preserved surface";
+    console.log(
+      `  ${label}: ${conflict.path} -> ${conflict.preservedAs}`,
+    );
+  }
   if (result.writtenToDisk) {
     if (result.backedUpFiles && result.backedUpFiles.length > 0) {
       console.log(`  backup: ${result.backupDir}`);
@@ -1096,6 +1126,7 @@ async function main(argv: string[]): Promise<number> {
           projectName: flags["project-name"] as string | undefined,
           monorepo: flags["monorepo"] === true,
           noBootstrap: flags["no-bootstrap"] === true,
+          noContextBootstrap: flags["no-context-bootstrap"] === true,
         });
         reportInit(result);
         return 0;

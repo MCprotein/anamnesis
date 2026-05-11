@@ -7,6 +7,20 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added first-run project context bootstrap: `init` now creates a conservative
+  `system_graph.yaml` draft from safe local project signals when the file is
+  absent.
+- Added existing `load-context` surface preservation so project-specific
+  Claude skills can be moved aside before the managed anamnesis
+  `load-context` skill is installed.
+
+### Changed
+
+- `init` and `update` evidence now record context-bootstrap and preserved
+  surface-conflict outcomes.
+
 ## [1.3.0] — 2026-05-08
 
 ### Added

@@ -85,6 +85,10 @@ import {
   summarizeLifecycleSyncStatuses,
   updateFragmentEvents,
 } from "../core/lifecycle_evidence.js";
+import {
+  resolveKnownSurfaceConflicts,
+  type SurfaceConflictResolution,
+} from "../core/adoption.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -119,6 +123,8 @@ export interface UpdateResult {
   codexHookRegistrations: CodexHookSyncResult[];
   /** Runtime evidence JSONL path written on apply. Dry-runs never set this. */
   evidencePath?: string;
+  /** Existing project-specific agent surfaces preserved before writing ours. */
+  surfaceConflicts: SurfaceConflictResolution[];
 }
 
 export class UpdateError extends Error {
@@ -559,6 +565,12 @@ export function update(opts: UpdateOptions): UpdateResult {
   // Dedupe identical actions (e.g., when both `claude-code` and `codex`
   // emit the same project_memory region action). Key by target identity.
   const dedupedActions = dedupeActions(actions);
+  const surfaceConflicts = resolveKnownSurfaceConflicts({
+    projectRoot,
+    manifest,
+    actions: dedupedActions,
+    dryRun: !opts.apply,
+  });
   // 7. Plan changes vs existing manifest.
   const { changes, nextManifest } = planChanges(dedupedActions, {
     projectRoot,
@@ -634,6 +646,7 @@ export function update(opts: UpdateOptions): UpdateResult {
         codexHookRegistrations,
         allowExecAdapters: opts.allowExecAdapters,
         bumpPinned: opts.bumpPinned === true,
+        surfaceConflicts,
       }),
     );
     evidencePath = appendEvidenceRecord(
@@ -665,6 +678,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     hookRegistrations,
     codexHookRegistrations,
     evidencePath,
+    surfaceConflicts,
   };
 }
 
@@ -682,6 +696,7 @@ function updateApplyEvidenceRecord(input: {
   codexHookRegistrations: readonly CodexHookSyncResult[];
   allowExecAdapters: boolean;
   bumpPinned: boolean;
+  surfaceConflicts: readonly SurfaceConflictResolution[];
 }): RuntimeEvidenceRecord {
   const changeSummary = summarizeLifecycleChanges(input.changes);
   const backedUpFiles = input.backedUpFiles ?? [];
@@ -711,6 +726,12 @@ function updateApplyEvidenceRecord(input: {
         allow_exec_adapters: input.allowExecAdapters,
         bump_pinned: input.bumpPinned,
       },
+      surface_conflicts: {
+        total: input.surfaceConflicts.length,
+        preserved: input.surfaceConflicts.filter(
+          (conflict) => conflict.outcome === "preserved",
+        ).length,
+      },
     },
     details: {
       changes: lifecycleChangeDetails(input.changes),
@@ -729,6 +750,12 @@ function updateApplyEvidenceRecord(input: {
       codex_hook_registrations: codexHookSyncDetails(
         input.codexHookRegistrations,
       ),
+      surface_conflicts: input.surfaceConflicts.map((conflict) => ({
+        path: conflict.path,
+        preserved_as: conflict.preservedAs,
+        outcome: conflict.outcome,
+        reason: conflict.reason,
+      })),
     },
   };
 }

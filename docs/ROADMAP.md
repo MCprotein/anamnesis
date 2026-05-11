@@ -774,6 +774,52 @@ Exit criteria:
 
 ---
 
+## v1.4 — *release candidate*
+
+> **Theme: adoption automation and project context bootstrap**
+
+v1.4 should reduce the manual work needed when anamnesis is first applied to
+an existing project. The product target is not more public proof; it is better
+first-run UX: install the cross-agent surfaces, preserve pre-existing local
+agent affordances safely, and create a useful project context draft even when
+no framework-specific fragment exists.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Generic project context bootstrap** | implemented on main | During `init`, create a conservative `system_graph.yaml` draft when one does not already exist. Use safe local signals such as `package.json`, README/CLAUDE/docs headings, common source directories, and dependency names. Do not read or emit secret values from env files, Terraform state, tfvars, PEM keys, logs, or credentials. |
+| 2 | **Existing surface conflict handling** | implemented on main | When a pre-existing project-specific `.claude/skills/load-context` blocks the managed base surface, preserve it under a project-specific name and install the standard anamnesis `load-context` surface so first-run continuity can reach `6/6` without manual rename work. Keep the behavior conservative and visible in CLI output/evidence. |
+| 3 | **Adoption UX report** | implemented on main | Make `init` output explain which context was generated, which local surfaces were preserved, and which follow-ups remain agent-required. The report should answer "what did this just do?" without forcing users to inspect manifest internals. |
+
+Progress:
+- 2026-05-11: Implemented the v1.4 adoption helpers in the CLI. `init`
+  now writes or plans `system_graph.yaml`, `init`/`update` preserve
+  conflicting project-specific `load-context` skills before installing the
+  managed surface, and runtime evidence records both outcomes.
+- 2026-05-11: Ran a sanitized TypeScript service-shaped CLI smoke from
+  `/private/tmp`. The smoke reached continuity `6/6`, doctor `0/0`, and
+  benchmark ready layers `3/5` without publishing any private-project
+  evidence.
+
+Private validation notes:
+- Use private sanitized-fixture dogfood only as internal validation evidence.
+  Do not add project-specific private evidence to README,
+  `docs/BENCHMARK-GALLERY.md`, public claim candidates, or public benchmark
+  fixtures unless it has been explicitly sanitized and approved later.
+
+Exit criteria:
+- Fresh adoption on a TypeScript TypeScript service-style repo can produce
+  cross-agent surfaces plus a useful `system_graph.yaml` draft without an
+  agent manually writing it.
+- Existing project-specific `load-context` content is preserved instead of
+  overwritten, while the standard anamnesis `load-context` surface becomes
+  cleanly managed.
+- `status` / `doctor` / `benchmark report` can reach continuity `6/6` and
+  doctor `0/0` on the target dogfood shape after init/apply.
+- Public docs describe the feature generically without exposing private repo
+  names, secrets, tokens, infra identifiers, or internal benchmark records.
+
+---
+
 ## Parked ideas (outside the accepted roadmap)
 
 These have been discussed, but they are not active roadmap work. Bring them
