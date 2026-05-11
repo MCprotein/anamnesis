@@ -808,6 +808,10 @@ Progress:
 - 2026-05-11: Prepared `1.4.1` to follow Codex CLI `0.130.0`'s renamed hook
   feature flag, replacing `[features].codex_hooks` with `[features].hooks`
   and removing the deprecated key during updates.
+- 2026-05-11: Published `@mcprotein/anamnesis@1.4.1`. npmjs.org returned
+  `1.4.1`, published CLI execution returned `1.4.1`, and a published-package
+  migration smoke verified a v1.4.0 install upgrades from `codex_hooks = true`
+  to `hooks = true` with doctor `0/0`.
 
 Private validation notes:
 - Use private sanitized-fixture dogfood only as internal validation evidence.

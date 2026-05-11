@@ -401,6 +401,42 @@ Interpretation:
   preserved instead of overwritten, and a conservative `system_graph.yaml`
   draft is created without reading or publishing private project evidence.
 
+## Published Package Smoke — v1.4.1
+
+Recorded: 2026-05-11
+
+Purpose: verify the npm-published patch release, not the local TypeScript
+source or local release tarball.
+
+Package:
+
+```bash
+npm view @mcprotein/anamnesis@1.4.1 version \
+  --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@1.4.1 -- anamnesis --version
+```
+
+Results:
+
+- npmjs.org `@mcprotein/anamnesis@1.4.1` returned `1.4.1`.
+- Published CLI execution from `/private/tmp` returned `1.4.1`.
+- GitHub Actions publish run `25658594590` completed successfully.
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh v1.4.0 all-adapter fixture upgraded with v1.4.1 | published package `1.4.0 init --tools all --allow-exec-adapters --no-bootstrap` -> `1.4.1 update --apply --allow-exec-adapters` -> `doctor` | `.codex/config.toml` changed from deprecated `codex_hooks = true` to `hooks = true`; doctor `0` errors and `0` warnings |
+
+Interpretation:
+
+- The v1.4.1 patch removes the Codex CLI 0.130.0 deprecation warning for the
+  native hook feature flag.
+- Existing v1.4.0 installs can be repaired with
+  `anamnesis update --apply --allow-exec-adapters`.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03
