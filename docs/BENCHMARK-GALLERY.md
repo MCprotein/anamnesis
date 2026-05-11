@@ -8,39 +8,36 @@ README claim wording is tracked in [`docs/README-CLAIMS.md`](README-CLAIMS.md).
 <!-- anamnesis:benchmark-gallery:start -->
 ## Generated Evidence
 
-This section is generated from runtime evidence. Public release candidates must
-not include private project names, organization repository identifiers, local source
-paths, hostnames, credentials, or proprietary domain details.
+This section is generated from runtime evidence. It separates README-ready
+claim candidates from evidence that still needs more repo shapes or manual
+review.
 
-Generated: 2026-05-11T08:15:52.132Z
-Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl`
+Generated: 2026-05-07T07:19:25.533Z
+Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (4 valid, 0 invalid)
 
 ## Evidence Entries
 
-| Project | Kind | Result | Claim candidate |
-|---|---|---|---|
-| anamnesis | dogfood-check | dogfood continuity checks passed across claude-code, codex, cursor | Self-dogfood continuity is passing for this repository. |
-| sanitized-nextjs-adoption | benchmark-compare | 3 improved, 0 regressed, 6 unchanged | Sanitized frontend adoption evidence improved deterministic context scorecard dimensions. |
-| sanitized-nextjs-frontend | benchmark-report | continuity 6/6; ready layers 4/5; doctor errors 0 | Sanitized frontend fixture keeps continuity ready with stated Layer B limitations. |
-| sanitized-nest-k8s-backend | benchmark-report | continuity 6/6; ready layers 4/5; doctor errors 0 | Sanitized backend/infra fixture keeps continuity ready with stated Layer B limitations. |
+| Project | Kind | Generated | Evidence | Result | Claim candidate |
+|---|---|---|---|---|---|
+| sanitized-nextjs-adoption | benchmark-compare | 2026-05-07T07:19:25.533Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | 3 improved, 0 regressed, 6 unchanged | sanitized-nextjs-adoption before/after benchmark improved 3 scorecard dimension(s) with 0 regressions. |
+| sanitized-nextjs-frontend | benchmark-report | 2026-05-07T07:15:06.340Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 4/5; continuity 6/6; doctor 0 errors, 1 warnings | sanitized-nextjs-frontend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0. |
+| sanitized-nest-k8s-backend | benchmark-report | 2026-05-07T07:15:06.340Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 4/5; continuity 6/6; doctor 0 errors, 2 warnings | sanitized-nest-k8s-backend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0. |
+| anamnesis | benchmark-report | 2026-05-07T05:25:00.700Z | docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl | ready layers 3/5; continuity 6/6; doctor 0 errors, 0 warnings | anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0. |
 
 ## README Claim Candidates
 
-- **dogfood-check-anamnesis**: anamnesis self-dogfood continuity is passing
-  across claude-code, codex, and cursor.
-  Evidence: docs/DOGFOOD.md; `.anamnesis/evidence/events.jsonl`
-  Boundary: Self-check evidence for this repository only.
-- **benchmark-compare-sanitized-nextjs-adoption**: a sanitized frontend
-  adoption fixture improved 3 deterministic scorecard dimensions with 0
-  regressions.
+- **benchmark-compare-sanitized-nextjs-adoption**: sanitized-nextjs-adoption before/after benchmark improved 3 scorecard dimension(s) with 0 regressions.
   Evidence: docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl
-  Boundary: Same-fixture deterministic scorecard delta only; not a
-  model-intelligence benchmark.
-- **benchmark-report-sanitized-fixtures**: sanitized frontend and backend/infra
-  fixtures reach continuity `6/6` with doctor errors `0`.
+  Boundary: Same-repo deterministic scorecard delta only; not a model-intelligence benchmark.
+- **benchmark-report-sanitized-nextjs-frontend**: sanitized-nextjs-frontend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0.
   Evidence: docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl
-  Boundary: Current deterministic context surface only; Layer B limitations
-  remain stated.
+  Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
+- **benchmark-report-sanitized-nest-k8s-backend**: sanitized-nest-k8s-backend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0.
+  Evidence: docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl
+  Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
+- **benchmark-report-anamnesis**: anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0.
+  Evidence: docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl
+  Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
 
 ## Release Warnings
 

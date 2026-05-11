@@ -7,6 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-05-11
+
+### Security
+
+- Removed private validation identifiers from public docs, benchmark evidence,
+  and rewritten git history. Public evidence now uses self-checks and
+  sanitized fixture names only.
+
 ## [1.4.1] — 2026-05-11
 
 ### Fixed
