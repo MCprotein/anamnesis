@@ -362,6 +362,45 @@ Interpretation:
   v1.3 fragment lifecycle evidence while preserving the v1.2 continuity
   target and semantic enrichment follow-up.
 
+## Published Package Smoke — v1.4.0
+
+Recorded: 2026-05-11
+
+Purpose: verify the npm-published minor release, not the local TypeScript
+source or local release tarball.
+
+Package:
+
+```bash
+npm view @mcprotein/anamnesis@1.4.0 version \
+  --@mcprotein:registry=https://registry.npmjs.org/
+cd "$(mktemp -d)"
+npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
+  --yes --package=@mcprotein/anamnesis@1.4.0 -- anamnesis --version
+```
+
+Results:
+
+- npmjs.org `@mcprotein/anamnesis@1.4.0` returned `1.4.0`.
+- Published CLI execution from `/private/tmp` returned `1.4.0`.
+- GitHub Actions publish run `25657547807` completed successfully.
+
+Smoke subjects:
+
+| Subject | Command path | Result |
+|---|---|---|
+| Fresh TypeScript service fixture with a pre-existing project `load-context` skill | published package `init --tools all --allow-exec-adapters --no-bootstrap` -> `status` -> `doctor` -> `benchmark report` | init wrote `system_graph.yaml` from 5 safe signals; preserved `.claude/skills/load-context` as `.claude/skills/project-load-context`; continuity `ready (6/6)`; doctor `0` errors and `0` warnings; benchmark ready layers `3/5`; generated graph contained `slack-bot`, `supabase`, `groq`, and `protect-secrets` |
+
+Interpretation:
+
+- The tag-triggered publish workflow produced an npmjs.org package visible as
+  `@mcprotein/anamnesis@1.4.0`.
+- The published CLI runs from a fresh temp directory and reports `1.4.0`.
+- A fresh adoption now automates the v1.4 manual steps: standard cross-agent
+  surfaces are installed, local project-specific `load-context` content is
+  preserved instead of overwritten, and a conservative `system_graph.yaml`
+  draft is created without reading or publishing private project evidence.
+
 ## Current Dogfood Baseline
 
 Recorded: 2026-05-03

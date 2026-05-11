@@ -801,6 +801,10 @@ Progress:
   evidence.
 - 2026-05-11: Cut the v1.4.0 release prep after `npm run release:check`
   passed locally.
+- 2026-05-11: Published `@mcprotein/anamnesis@1.4.0` from the tag-triggered
+  workflow. npmjs.org returned `1.4.0`, published CLI execution from
+  `/private/tmp` returned `1.4.0`, and a fresh sanitized TypeScript service
+  fixture verified context bootstrap plus load-context preservation.
 
 Private validation notes:
 - Use private sanitized-fixture dogfood only as internal validation evidence.
