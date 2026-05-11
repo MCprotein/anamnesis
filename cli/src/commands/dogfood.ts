@@ -724,7 +724,7 @@ function runRealCodexNativeSmokeIfEnabled(): CommandCheck {
     const hookPath = path.join(codexHome, "session-start-smoke.mjs");
     fs.writeFileSync(
       path.join(codexHome, "config.toml"),
-      "[features]\ncodex_hooks = true\n",
+      "[features]\nhooks = true\n",
       "utf8",
     );
     fs.writeFileSync(hookPath, realCodexSmokeHookScript(), "utf8");
@@ -839,7 +839,7 @@ function runRealCodexProjectHookSmokeIfEnabled(): CommandCheck {
       path.join(codexHome, "config.toml"),
       [
         "[features]",
-        "codex_hooks = true",
+        "hooks = true",
         "",
         `[projects.${JSON.stringify(project)}]`,
         'trust_level = "trusted"',
@@ -849,7 +849,7 @@ function runRealCodexProjectHookSmokeIfEnabled(): CommandCheck {
     );
     fs.writeFileSync(
       path.join(project, ".codex", "config.toml"),
-      "[features]\ncodex_hooks = true\n",
+      "[features]\nhooks = true\n",
       "utf8",
     );
     fs.writeFileSync(hookPath, realCodexSmokeHookScript(), "utf8");
@@ -967,7 +967,7 @@ function runRealCodexUserPromptSmokeIfEnabled(): CommandCheck {
       path.join(codexHome, "config.toml"),
       [
         "[features]",
-        "codex_hooks = true",
+        "hooks = true",
         "",
         `[projects.${JSON.stringify(project)}]`,
         'trust_level = "trusted"',
@@ -977,7 +977,7 @@ function runRealCodexUserPromptSmokeIfEnabled(): CommandCheck {
     );
     fs.writeFileSync(
       path.join(project, ".codex", "config.toml"),
-      "[features]\ncodex_hooks = true\n",
+      "[features]\nhooks = true\n",
       "utf8",
     );
     fs.writeFileSync(hookPath, realCodexSmokeHookScript(), "utf8");
@@ -1094,7 +1094,7 @@ function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
     fs.mkdirSync(path.join(project, ".codex"), { recursive: true });
     fs.writeFileSync(
       path.join(project, ".codex", "config.toml"),
-      "[features]\ncodex_hooks = true\n",
+      "[features]\nhooks = true\n",
       "utf8",
     );
     fs.writeFileSync(hookPath, realCodexToolSmokeHookScript(), "utf8");
@@ -1145,7 +1145,7 @@ function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
         "workspace-write",
         "--json",
         "-c",
-        "features.codex_hooks=true",
+        "features.hooks=true",
         "-c",
         `projects.${JSON.stringify(project)}.trust_level="trusted"`,
         "Use the shell tool to run exactly: printf ANAMNESIS_TOOL_SMOKE > tool-output.txt. Then answer with done.",

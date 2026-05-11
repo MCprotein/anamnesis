@@ -7,6 +7,15 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-05-11
+
+### Fixed
+
+- Updated generated Codex hook config from deprecated
+  `[features].codex_hooks = true` to current `[features].hooks = true`, and
+  made update/diagnostics remove the legacy flag so Codex no longer shows the
+  deprecation warning during hook review.
+
 ## [1.4.0] — 2026-05-11
 
 ### Added

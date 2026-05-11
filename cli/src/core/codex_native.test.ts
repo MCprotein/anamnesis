@@ -17,29 +17,42 @@ const sessionStartReg = {
 };
 
 describe("Codex native hook config helpers", () => {
-  it("enables codex_hooks in an existing [features] section", () => {
+  it("enables hooks in an existing [features] section", () => {
     const next = upsertCodexHooksFeatureFlag(
       "[features]\nchild_agents_md = true\n\n[env]\nFOO = \"bar\"\n",
     );
 
-    expect(next).toContain("[features]\nchild_agents_md = true\ncodex_hooks = true");
+    expect(next).toContain("[features]\nchild_agents_md = true\nhooks = true");
     expect(next).toContain("[env]\nFOO = \"bar\"");
     expect(codexHooksFeatureEnabled(next)).toBe(true);
   });
 
-  it("replaces a disabled codex_hooks flag", () => {
+  it("replaces a disabled hooks flag", () => {
     const next = upsertCodexHooksFeatureFlag(
-      "[features]\ncodex_hooks = false\n",
+      "[features]\nhooks = false\n",
     );
 
-    expect(next).toContain("codex_hooks = true");
-    expect(next).not.toContain("codex_hooks = false");
+    expect(next).toContain("hooks = true");
+    expect(next).not.toContain("hooks = false");
+  });
+
+  it("removes the deprecated codex_hooks flag when enabling hooks", () => {
+    const next = upsertCodexHooksFeatureFlag(
+      "[features]\ncodex_hooks = true\nchild_agents_md = true\n",
+    );
+
+    expect(next).toContain("hooks = true");
+    expect(next).toContain("child_agents_md = true");
+    expect(next).not.toContain("codex_hooks");
+    expect(codexHooksFeatureEnabled("[features]\ncodex_hooks = true\n")).toBe(
+      false,
+    );
   });
 
   it("adds a [features] section when absent", () => {
     const next = upsertCodexHooksFeatureFlag("[env]\nA = \"B\"\n");
 
-    expect(next).toContain("[env]\nA = \"B\"\n\n[features]\ncodex_hooks = true");
+    expect(next).toContain("[env]\nA = \"B\"\n\n[features]\nhooks = true");
     expect(codexHooksFeatureEnabled(next)).toBe(true);
   });
 

@@ -144,7 +144,7 @@ describe("init", () => {
     ).toBe(true);
     expect(
       fs.readFileSync(path.join(project, ".codex/config.toml"), "utf8"),
-    ).toContain("codex_hooks = true");
+    ).toContain("hooks = true");
     expect(
       fs.readFileSync(path.join(project, ".codex/hooks.json"), "utf8"),
     ).toContain(".anamnesis/codex-native-hooks/session-start.mjs");

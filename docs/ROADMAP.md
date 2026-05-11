@@ -533,7 +533,7 @@ External review input, 2026-05-04:
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Codex native SessionStart continuity** | shipped | Add a Codex native SessionStart wrapper for the base ontology + handoff continuity path. `--allow-exec-adapters` installs `.anamnesis/codex-native-hooks/session-start.mjs`, enables `.codex/config.toml` `[features].codex_hooks = true`, and merges `.codex/hooks.json` while preserving user hook entries. AGENTS.md fallback instructions remain for environments without native hook installation. |
+| 1 | **Codex native SessionStart continuity** | shipped | Add a Codex native SessionStart wrapper for the base ontology + handoff continuity path. `--allow-exec-adapters` installs `.anamnesis/codex-native-hooks/session-start.mjs`, enables `.codex/config.toml` `[features].hooks = true`, and merges `.codex/hooks.json` while preserving user hook entries. AGENTS.md fallback instructions remain for environments without native hook installation. |
 | 2 | **Codex native hook surface refresh** | shipped | Refreshed the Codex adapter against the current official hook vocabulary instead of treating Codex as SessionStart-only. `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, and `Stop` are modeled as event-aware render targets with explicit fallback notes for unsupported or version-gated behavior. |
 | 3 | **Prompt-time and stop-time continuity** | stop-time implemented; prompt-time deferred | Codex `Stop` now handles the same dirty-work / handoff reminder role Claude Code already gets. `UserPromptSubmit` transport is supported and smoke-proven, but compact prompt-time context delta injection is deferred until a real dogfood gap justifies budget policy, dedupe rules, and noise controls. |
 | 4 | **Native executable-hook bridge for Codex** | shipped | Where Codex `PreToolUse`, `PermissionRequest`, and `PostToolUse` support useful matchers (`Bash`, `apply_patch`/`Edit`/`Write`, MCP tool names), safe fragment hooks render natively before falling back to AGENTS.md instructions or the Git pre-commit bridge. `Stop` and `UserPromptSubmit` also use matcherless native wrappers when installed. Supply-chain gating stays under `--allow-exec-adapters`. |
@@ -805,6 +805,9 @@ Progress:
   workflow. npmjs.org returned `1.4.0`, published CLI execution from
   `/private/tmp` returned `1.4.0`, and a fresh sanitized TypeScript service
   fixture verified context bootstrap plus load-context preservation.
+- 2026-05-11: Prepared `1.4.1` to follow Codex CLI `0.130.0`'s renamed hook
+  feature flag, replacing `[features].codex_hooks` with `[features].hooks`
+  and removing the deprecated key during updates.
 
 Private validation notes:
 - Use private sanitized-fixture dogfood only as internal validation evidence.

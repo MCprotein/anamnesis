@@ -701,7 +701,7 @@ function addCodexHookIssues(
           severity: "error",
           code: "codex-config-invalid",
           target: CODEX_CONFIG_PATH,
-          message: `${CODEX_CONFIG_PATH} does not enable [features].codex_hooks = true`,
+          message: `${CODEX_CONFIG_PATH} does not enable [features].hooks = true`,
           repair:
             "Re-run `anamnesis update --apply --allow-exec-adapters` to merge the Codex native hook feature flag.",
         });

@@ -48,6 +48,7 @@ import {
 import { makeBuiltinIntrospectorRegistry } from "../introspectors/index.js";
 import {
   CODEX_CONFIG_PATH,
+  CODEX_HOOKS_FEATURE_TARGET,
   CODEX_HOOKS_PATH,
   analyzeCodexHookOwnership,
   codexHookRegistrationPresent,
@@ -778,7 +779,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
   if (tools.includes("codex")) {
     targets.push(
       ".anamnesis/codex-native-hooks/session-start.mjs",
-      `${CODEX_CONFIG_PATH} [features.codex_hooks=true]`,
+      CODEX_HOOKS_FEATURE_TARGET,
       `${CODEX_HOOKS_PATH} [hook:SessionStart:${codexNativeNodeCommand(".anamnesis/codex-native-hooks/session-start.mjs")}]`,
       `${CODEX_HOOKS_PATH} [hook:PostToolUse:${codexNativeNodeCommand(".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs")}]`,
       `${CODEX_HOOKS_PATH} [hook:Stop:${codexNativeNodeCommand(".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs")}]`,
@@ -804,7 +805,7 @@ function targetClean(
   entries: EntryStatus[],
   target: string,
 ): boolean {
-  if (target === `${CODEX_CONFIG_PATH} [features.codex_hooks=true]`) {
+  if (target === CODEX_HOOKS_FEATURE_TARGET) {
     return codexConfigTargetReady(projectRoot);
   }
   const codexHook = target.match(

@@ -1,7 +1,7 @@
 // Codex native hook registration helpers.
 //
 // Codex native hooks are configured through two project/user-owned files:
-//   * .codex/config.toml  -> enables [features].codex_hooks
+//   * .codex/config.toml  -> enables [features].hooks
 //   * .codex/hooks.json   -> registers command hooks
 //
 // anamnesis owns only the command entries that point at its generated wrapper
@@ -12,6 +12,8 @@ import * as path from "node:path";
 
 export const CODEX_CONFIG_PATH = ".codex/config.toml";
 export const CODEX_HOOKS_PATH = ".codex/hooks.json";
+export const CODEX_HOOKS_FEATURE_TARGET =
+  `${CODEX_CONFIG_PATH} [features.hooks=true]`;
 
 export interface CodexHookRegistration {
   event: string;
@@ -95,7 +97,7 @@ export function codexNativeNodeCommand(scriptPath: string): string {
 }
 
 export function codexHooksFeatureEnabled(content: string): boolean {
-  return /^\s*codex_hooks\s*=\s*true\s*(?:#.*)?$/m.test(
+  return /^\s*hooks\s*=\s*true\s*(?:#.*)?$/m.test(
     featureSection(content),
   );
 }
@@ -339,7 +341,7 @@ export function upsertCodexHooksFeatureFlag(content: string): string {
 
   if (sectionStart < 0) {
     const prefix = lines.length > 0 ? [...lines, ""] : [];
-    return [...prefix, "[features]", "codex_hooks = true", ""].join("\n");
+    return [...prefix, "[features]", "hooks = true", ""].join("\n");
   }
 
   let sectionEnd = lines.length;
@@ -350,18 +352,25 @@ export function upsertCodexHooksFeatureFlag(content: string): string {
     }
   }
 
+  for (let i = sectionEnd - 1; i > sectionStart; i -= 1) {
+    if (/^\s*codex_hooks\s*=/.test(lines[i]!)) {
+      lines.splice(i, 1);
+      sectionEnd -= 1;
+    }
+  }
+
   const existingFlagIndex = lines
     .slice(sectionStart + 1, sectionEnd)
-    .findIndex((line) => /^\s*codex_hooks\s*=/.test(line));
+    .findIndex((line) => /^\s*hooks\s*=/.test(line));
 
   if (existingFlagIndex >= 0) {
-    lines[sectionStart + 1 + existingFlagIndex] = "codex_hooks = true";
+    lines[sectionStart + 1 + existingFlagIndex] = "hooks = true";
   } else {
     let insertAt = sectionEnd;
     while (insertAt > sectionStart + 1 && lines[insertAt - 1]?.trim() === "") {
       insertAt -= 1;
     }
-    lines.splice(insertAt, 0, "codex_hooks = true");
+    lines.splice(insertAt, 0, "hooks = true");
   }
 
   return `${lines.join("\n")}\n`;

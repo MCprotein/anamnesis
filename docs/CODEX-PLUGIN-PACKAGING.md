@@ -10,7 +10,7 @@ anamnesis should not emit a Codex plugin bundle by default in v1.1.
 
 Keep lifecycle automation on the config-layer path already implemented:
 
-- `.codex/config.toml` enables `[features].codex_hooks = true`
+- `.codex/config.toml` enables `[features].hooks = true`
 - `.codex/hooks.json` registers lifecycle hook commands
 - `.anamnesis/codex-native-hooks/*.mjs` contains the generated wrappers
 - `--allow-exec-adapters` remains the supply-chain gate for executable output
@@ -35,7 +35,7 @@ plugin build documentation also describes manifest fields for `skills`,
 `mcpServers`, `apps`, and `hooks`, including plugin-root path rules.
 
 The official hooks documentation, separately, documents the config-layer hook
-shape under `[features].codex_hooks = true` and `hooks.<Event>` entries, with
+shape under `[features].hooks = true` and `hooks.<Event>` entries, with
 current lifecycle events and matcher behavior. That path is the one anamnesis
 already tests through synthetic dispatch and opt-in real Codex CLI smokes.
 

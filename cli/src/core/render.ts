@@ -45,7 +45,7 @@ export interface FileAction {
   /**
    * If set, the applier writes the file normally and the command layer then
    * ensures the file is registered in Codex native hook config:
-   *   .codex/config.toml -> [features].codex_hooks = true
+   *   .codex/config.toml -> [features].hooks = true
    *   .codex/hooks.json  -> hooks.<event>[] command entry
    *
    * The Codex config files are user-owned and structurally merged rather than
