@@ -26,8 +26,8 @@ Layer B enrichment.
 
 Today `ontology` capability ships static snippets shipped by the
 fragment library. They are generic and don't contain project-specific
-truth (real namespace names, ports, models, etc.). Users either edit by
-hand (current example-service `system_graph.yaml`) or skip the file entirely.
+truth (namespace names, ports, models, etc.). Users either edit
+`system_graph.yaml` by hand or skip the file entirely.
 
 Goal: a new project running `anamnesis init` ends up with an ontology
 that already reflects its real shape.
@@ -192,7 +192,7 @@ itself via `registerBuiltinIntrospectors(registry)`.
 
 facts:
   namespaces:
-    - sanitized-app
+    - app
     - zot
     - traefik
   services:
@@ -358,12 +358,11 @@ Stable enriched conventions:
 | 0.4.0 | core + k8s + prisma introspectors, bootstrap command, enrich skill, `init` auto-bootstrap | +27 | shipped |
 | 0.4.1 | nextjs + nestjs + fastapi introspectors, multi-scope bootstrap, `--scope` | +33 | shipped |
 | 0.5.x | context-continuity dogfood, adapter parity fixtures, session-start contract, and introspector API review | +14 | shipped |
-| 0.6.x | ontology drift reporting, Layer B re-run semantics, output schema stabilization, bounded Layer A discipline, and agent-assisted enrichment UX | 431 total | shipped; gap report, re-run semantics, bootstrap drift, schema conventions, agent-assisted UX, sanitized-fixture dogfood, and SSE route gap follow-up |
+| 0.6.x | ontology drift reporting, Layer B re-run semantics, output schema stabilization, bounded Layer A discipline, and agent-assisted enrichment UX | 431 total | shipped; gap report, re-run semantics, bootstrap drift, schema conventions, agent-assisted UX, sanitized dogfood, and SSE route gap follow-up |
 
 Phase 0.4.0 ships the architecture + 2 most-impactful built-ins
-(sanitized-k8s + sanitized-nest-prisma both immediately benefit). Later
-phases add coverage without API churn, but only after the broader
-agent-switching context story is verified. New framework introspectors
+(`k8s` + `prisma`). Later phases add coverage without API churn, but only
+after the broader agent-switching context story is verified. New framework introspectors
 should be evidence-driven, not added just to fill out a catalog.
 
 ---

@@ -47,11 +47,10 @@ version: 1
 project:
   name: example-service
   description: >
-    MicroK8s 단일 노드 홈서버 인프라 워크스페이스.
-    Zot 레지스트리, Traefik, GitHub ARC runner 운영.
+    Example workspace managed across multiple agent tools.
   scopes:
     - path: .
-    - path: k8s/tenant/overlays/jaemin
+    - path: apps/api
       extends: .
       overrides:
         tools: [claude-code]

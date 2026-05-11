@@ -210,7 +210,7 @@ project:
   name: example-service
   scopes:                      # monorepo 지원
     - path: .
-    - path: k8s/tenant/overlays/jaemin
+    - path: apps/api
       extends: .
 
 tools:                         # 활성화할 어댑터

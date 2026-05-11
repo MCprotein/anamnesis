@@ -47,8 +47,8 @@ could include breaking changes.
 - Planned v1.3 around fragment dependency resolution and local fragment
   update event hooks, while parking project templates and WebUI work outside
   the accepted roadmap.
-- Recorded a `sanitized-nest-prisma` before/after benchmark comparison after
-  applying the current fragments and generating Layer A/B ontology files.
+- Recorded a sanitized before/after benchmark comparison after applying the
+  current fragments and generating Layer A/B ontology files.
 
 ## [1.2.1] — 2026-05-08
 
@@ -235,8 +235,8 @@ could include breaking changes.
 ### Documentation
 
 - Recorded the published-package v0.7.0 smoke test in `docs/DOGFOOD.md`,
-  covering a fresh NestJS/Prisma fixture and a `sanitized-nest-prisma` source
-  snapshot through `npm exec @mcprotein/anamnesis@0.7.0`.
+  covering a fresh sanitized NestJS/Prisma fixture through
+  `npm exec @mcprotein/anamnesis@0.7.0`.
 - Replanned the post-v0.7 roadmap into v0.8 schema/API/migration
   stabilization, v0.9 registry/signing/docs readiness, and v1.0 surface
   freeze criteria.
@@ -287,9 +287,9 @@ could include breaking changes.
 - Added `docs/AGENT-SWITCHING-GUIDE.md`, a public user journey for installing
   all agent surfaces, preparing a handoff, resuming in Claude Code/Codex/Cursor,
   verifying continuity, and understanding native-vs-fallback limits.
-- Added the first v0.7 sanitized-fixture benchmark comparison in `docs/BENCHMARKS.md`,
-  showing `sanitized-nest-prisma@e19fc0d` improving from ready layers `1/5` to
-  `5/5` after all-adapter install, Layer A bootstrap, and Layer B enrichment.
+- Added the first v0.7 sanitized benchmark comparison in
+  `docs/BENCHMARKS.md`, showing ready layers improving from `1/5` to `5/5`
+  after all-adapter install, Layer A bootstrap, and Layer B enrichment.
 
 ### Changed
 
@@ -373,15 +373,14 @@ semantic YAML.
   questions for future agents.
 - Documented that bootstrap output should lead directly into agent-assisted
   enrichment instead of leaving users to hand-author semantic ontology YAML.
-- Added the first v0.6 sanitized-fixture ontology before/after dogfood record for
-  `sanitized-nest-prisma`, showing static-only ontology versus bootstrap plus
-  agent-enriched ontology on a NestJS/Prisma backend snapshot.
+- Added the first v0.6 sanitized ontology before/after dogfood record,
+  showing static-only ontology versus bootstrap plus agent-enriched ontology
+  on a NestJS/Prisma backend fixture.
 - Added a v0.7 roadmap item for a repeatable benchmark/report command so
   future README claims can be backed by measured before/after context quality,
   not just anecdotal dogfood notes.
-- Documented the Layer A introspector change gate and recorded the
-  `sanitized-nest-prisma` follow-up showing NestJS route facts increasing from 30
-  to 31 after `@Sse()` support.
+- Documented the Layer A introspector change gate and recorded a sanitized
+  follow-up showing NestJS route facts increasing after `@Sse()` support.
 
 ## [0.5.0] — 2026-04-30
 
@@ -431,11 +430,10 @@ simulation, stale-handoff diagnostics, and repair guidance.
   handoff startup instructions. Missing archive references, active tasks
   pointing away from the newest archive, and completed/superseded entries in
   open handoff sections are reported before a fresh agent trusts stale state.
-- Added the first sanitized-fixture dogfood matrix for v0.5, covering a managed
-  NestJS+Prisma backend, a fresh Next.js app, and a fresh NestJS+k8s backend
-  from git archive snapshots. The matrix records continuity, doctor,
-  ontology bootstrap, and handoff injection evidence without modifying the
-  source repositories.
+- Added the first sanitized dogfood matrix for v0.5, covering a managed
+  NestJS+Prisma fixture, a fresh Next.js fixture, and a fresh NestJS+k8s
+  fixture. The matrix records continuity, doctor, ontology bootstrap, and
+  handoff injection evidence without publishing private source identifiers.
 - Adapter-surface continuity failures now target only the missing or drifted
   surfaces, keeping `doctor` output actionable on real existing projects.
 - `doctor` issues now include repair guidance for user-modified managed files,
@@ -585,15 +583,15 @@ two-layer design.
   `services` (name/ns/type/ports/selector), `ingresses` (host/paths/
   backend), `workloads` (Deployment / StatefulSet / DaemonSet / Job /
   CronJob with images + replicas). Stable sort by (namespace, name).
-  Verified on sanitized-k8s: 7 namespaces + ingresses + services +
-  workloads from real manifests, 276 lines of structured output.
+  Verified on a sanitized Kubernetes fixture: namespaces, ingresses, services,
+  and workloads render as structured output.
 - **prisma introspector** (`cli/src/introspectors/prisma.ts`) —
   finds `**/schema.prisma`, regex-based block parser, extracts
   `datasources`, `generators`, `models` (with field-level type +
   attributes like `@id` / `@default` / `@relation`), `enums` (with
-  values). Multi-file schema layouts supported. Verified on
-  sanitized-nest-prisma: postgresql datasource + prisma-client generator +
-  2 enums + multiple models, attributes preserved.
+  values). Multi-file schema layouts supported. Verified on a sanitized
+  Prisma fixture with datasource, generator, enum, model, and attribute
+  extraction.
 - **`ontology-enrich` skill** — Layer B. Shipped as a new `skill`
   capability of the base fragment (v4 → v5). Tool-agnostic via the
   existing skill renderer pipeline: CC gets a native SKILL.md, Codex

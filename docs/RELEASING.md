@@ -104,9 +104,9 @@ Run the published CLI checks from the fresh temp directory, not from the
 anamnesis repository. Otherwise `npm exec` can resolve a local or globally
 installed `anamnesis` binary before the just-published package binary.
 
-For releases that claim sanitized-fixture continuity improvements, also repeat the
-published-package smoke on the current dogfood snapshot and record the result
-in `docs/DOGFOOD.md`.
+For releases that claim sanitized fixture continuity improvements, also repeat
+the published-package smoke on the current fixture snapshot and record the
+result in `docs/DOGFOOD.md`.
 
 ## Recovery Notes
 

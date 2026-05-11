@@ -5,7 +5,7 @@ this file is the canonical source.
 
 v1.0 and later follow semver. Before v1.0, minor version bumps could include
 breaking changes. Feature timing is best-effort; items can move between
-releases as verified feedback arrives.
+releases as user feedback and verified product evidence arrive.
 
 ## Product north star
 
@@ -177,10 +177,10 @@ Progress:
 - 2026-04-30: Added stale active-handoff diagnostics to `status` / `doctor`
   for missing archive references, active entries that do not point at the
   newest archive, and completed/superseded entries left in open sections.
-- 2026-04-30: Ran the first sanitized-fixture dogfood matrix on `sanitized-nest-prisma`,
-  `sanitized-nextjs-frontend`, and `sanitized-nest-k8s` git-archive snapshots. Fresh Next.js
-  and NestJS+k8s installs reached continuity `6/6`; the existing managed
-  backend exposed a repair/review gap around user-modified native surfaces.
+- 2026-04-30: Ran the first sanitized dogfood matrix across frontend,
+  backend, and backend/infra fixture shapes. Fresh frontend and backend/infra
+  installs reached continuity `6/6`; an existing managed fixture exposed a
+  repair/review gap around user-modified native surfaces.
 - 2026-04-30: Added `doctor` repair guidance for user-modified managed files,
   adapter-surface continuity failures, invalid settings, missing hook
   registrations, and stale active handoff state.
@@ -248,15 +248,15 @@ Progress:
   stale bootstrap guidance now points to the follow-up `/ontology-enrich`
   step, and `ontology bootstrap` prints the `.enriched.yaml` targets an agent
   should create or refresh after Layer A facts are current.
-- 2026-05-03: Ran the first v0.6 sanitized-fixture ontology before/after dogfood on
-  a `sanitized-nest-prisma@e19fc0d` archive snapshot. Static-only ontology had 2
-  ontology warnings and no bootstrap/enriched files; after bootstrap plus
-  agent enrichment, ontology warnings dropped to 0, with 10 Prisma models, 7
-  NestJS controllers, 30 routes, and 21 semantic Layer B entries captured.
+- 2026-05-03: Ran the first v0.6 sanitized ontology before/after dogfood on a
+  NestJS/Prisma fixture. Static-only ontology had 2 ontology warnings and no
+  bootstrap/enriched files; after bootstrap plus agent enrichment, ontology
+  warnings dropped to 0 with deterministic model/controller/route facts and
+  semantic Layer B entries captured.
 - 2026-05-03: Resolved the first dogfood-proven deterministic Layer A gap by
-  adding NestJS `@Sse()` route extraction. A follow-up
-  `sanitized-nest-prisma@e19fc0d` archive bootstrap now records
-  `/notifications/stream`, and NestJS route facts increased from 30 to 31.
+  adding NestJS `@Sse()` route extraction. A follow-up sanitized fixture
+  bootstrap recorded the SSE route fact and increased the deterministic route
+  count.
 
 Exit criteria met:
 - Users can tell from command output whether the current ontology/context
@@ -283,7 +283,7 @@ Exit criteria met:
 | 4 | **Lifecycle hardening** | Reduce surprises around pinned fragments, user-modified regions, backups, declined suggestions, and multi-scope updates as projects evolve. |
 | 5 | **Public UX docs** | Document the expected user journey for "install once, switch agents, continue work" with limitations per adapter. |
 | 6 | **Ontology refresh workflow hardening** | Turn the v0.6 bootstrap/enrichment path into a reliable lifecycle workflow: detect stale facts, prompt or route agent enrichment, preserve reviewed semantics, and keep all adapter entrypoints pointing at the same context. |
-| 7 | **Benchmark/report command** | Add a repeatable benchmark surface that measures static-only vs bootstrap vs enriched context on sanitized fixture snapshots. Candidate metrics: context recall score, question reduction, time-to-first-correct-action, handoff continuity, ontology coverage, and diagnostic quality. Output should be suitable for `docs/BENCHMARKS.md` and a compact README "sanitized fixture evidence" section. |
+| 7 | **Benchmark/report command** | Add a repeatable benchmark surface that measures static-only vs bootstrap vs enriched context on sanitized snapshots. Candidate metrics: context recall score, question reduction, time-to-first-correct-action, handoff continuity, ontology coverage, and diagnostic quality. Output should be suitable for `docs/BENCHMARKS.md` and a compact README evidence section. |
 
 Progress:
 - 2026-05-03: Started the v0.7 adapter parity work with a canonical
@@ -315,11 +315,11 @@ Progress:
   install-time adapter selection, ontology refresh, `/handoff-prepare`, target
   agent resume behavior, verification commands, and known native-vs-fallback
   limitations.
-- 2026-05-03: Recorded the first v0.7 sanitized-fixture benchmark comparison in
-  `docs/BENCHMARKS.md` using `sanitized-nest-prisma@e19fc0d`. The existing
-  Claude Code-only managed baseline scored ready layers `1/5`; the same
-  source after all-adapter install, Layer A bootstrap, and Layer B enrichment
-  scored `5/5` with continuity `6/6` and zero ontology warnings.
+- 2026-05-03: Recorded the first v0.7 sanitized benchmark comparison in
+  `docs/BENCHMARKS.md`. The existing Claude Code-only managed baseline scored
+  ready layers `1/5`; the same sanitized fixture after all-adapter install,
+  Layer A bootstrap, and Layer B enrichment scored `5/5` with continuity
+  `6/6` and zero ontology warnings.
 - 2026-05-03: Polished cross-repo benchmark collection UX so
   `benchmark report --append --output <absolute-path>` prints the absolute
   output path when the report is written outside the benchmarked project.
@@ -329,7 +329,7 @@ Exit criteria:
   continuity, and operational reminders in normal workflows.
 - Known adapter gaps are documented as tool-surface limitations, not hidden behavior.
 - At least one benchmark report compares before/after context quality on a
-  sanitized fixturesitory without requiring proprietary or credential-bearing source
+  sanitized fixture without requiring proprietary or credential-bearing source
   snippets in public docs.
 
 ---
@@ -349,7 +349,7 @@ to depend on.
 | 3 | **Migration command design** | Designed in `docs/AGENTFILE-MIGRATIONS.md`; CLI skeleton shipped with dry-run/apply/backup/idempotency behavior and no built-in schema transforms yet. |
 | 4 | **Stable TypeScript API boundary** | Public import boundary added at `@mcprotein/anamnesis` for Agentfile utilities only; unsupported deep imports are blocked by package `exports`. |
 | 5 | **Existing-project repair workflow** | `docs/REPAIR.md` now covers user-modified managed files, missing hook registrations, partial adapter installs, stale Agentfile versions, stale handoff state, and ontology gaps. |
-| 6 | **Published package smoke gate** | Recurring post-publish gate documented in `docs/RELEASING.md`: force npmjs.org, verify package version/CLI, run a fresh fixture through `npm exec @mcprotein/anamnesis@<version>`, and record sanitized-fixture smoke when release claims depend on it. |
+| 6 | **Published package smoke gate** | Recurring post-publish gate documented in `docs/RELEASING.md`: force npmjs.org, verify package version/CLI, run a fresh fixture through `npm exec @mcprotein/anamnesis@<version>`, and record sanitized smoke when release claims depend on it. |
 
 Exit criteria met:
 - We can say which parts of `Agentfile` are v1-stable candidates.
@@ -814,13 +814,13 @@ Progress:
   to `hooks = true` with doctor `0/0`.
 
 Private validation notes:
-- Use private sanitized-fixture dogfood only as internal validation evidence.
+- Use private validation only as internal development evidence.
   Do not add project-specific private evidence to README,
   `docs/BENCHMARK-GALLERY.md`, public claim candidates, or public benchmark
   fixtures unless it has been explicitly sanitized and approved later.
 
 Exit criteria:
-- Fresh adoption on a TypeScript TypeScript service-style repo can produce
+- Fresh adoption on a TypeScript service-style repo can produce
   cross-agent surfaces plus a useful `system_graph.yaml` draft without an
   agent manually writing it.
 - Existing project-specific `load-context` content is preserved instead of

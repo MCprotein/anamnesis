@@ -162,4 +162,4 @@ What to look for:
 - [`ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md) — Layer A / Layer B ontology
   lifecycle.
 - [`BENCHMARKS.md`](BENCHMARKS.md) — deterministic context-quality reports.
-- [`DOGFOOD.md`](DOGFOOD.md) — self-check and sanitized-fixture dogfood evidence.
+- [`DOGFOOD.md`](DOGFOOD.md) — self-check and sanitized fixture evidence.
