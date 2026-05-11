@@ -54,4 +54,21 @@ jobs:
 
       - name: Publish
         if: steps.published.outputs.exists != 'true'
-        run: npm publish --access public
+        run: |
+          set -euo pipefail
+
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          publish_log="$(mktemp)"
+
+          if npm publish --access public 2>&1 | tee "$publish_log"; then
+            exit 0
+          fi
+
+          if grep -q "previously published versions" "$publish_log" &&
+             npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already published; treating duplicate publish as success."
+            exit 0
+          fi
+
+          exit 1
