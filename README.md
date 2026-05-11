@@ -258,7 +258,7 @@ the claim ledger is [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md).
 | **v1.1** | Codex native lifecycle hooks, hook diagnostics, real hook smokes, and runtime evidence | shipped 2026-05-07; latest patch 1.1.1 |
 | **v1.2** | Numeric benchmark evidence, public scorecards, and runtime evidence expansion | shipped 2026-05-08; latest patch 1.2.1 |
 | **v1.3** | Fragment dependency resolution and update event hooks | shipped 2026-05-08 |
-| **v1.4** | Adoption automation and project context bootstrap | release candidate on main |
+| **v1.4** | Adoption automation and project context bootstrap | shipped 2026-05-11 |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

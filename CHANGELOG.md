@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-05-11
+
 ### Added
 
 - Added first-run project context bootstrap: `init` now creates a conservative

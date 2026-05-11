@@ -13,14 +13,14 @@ This section is generated from runtime evidence. It separates README-ready
 claim candidates from evidence that still needs more repo shapes or manual
 review.
 
-Generated: 2026-05-08T05:02:48.979Z
-Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (16 valid, 0 invalid)
+Generated: 2026-05-11T07:52:24.466Z
+Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (17 valid, 0 invalid)
 
 ## Evidence Entries
 
 | Project | Kind | Generated | Evidence | Result | Claim candidate |
 |---|---|---|---|---|---|
-| anamnesis | dogfood-check | 2026-05-08T05:02:48.979Z | docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl | dogfood 5/5; tools claude-code, codex, cursor | anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor. |
+| anamnesis | dogfood-check | 2026-05-11T07:52:24.466Z | docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl | dogfood 5/5; tools claude-code, codex, cursor | anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor. |
 | sanitized-nest-prisma | benchmark-compare | 2026-05-08T04:39:52.456Z | docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl | 6 improved, 0 regressed, 3 unchanged | sanitized-nest-prisma before/after benchmark improved 6 scorecard dimension(s) with 0 regressions. |
 | public-next-frontend-adoption | benchmark-compare | 2026-05-07T07:19:25.533Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | 3 improved, 0 regressed, 6 unchanged | public-next-frontend-adoption before/after benchmark improved 3 scorecard dimension(s) with 0 regressions. |
 | sanitized-python-api | benchmark-report | 2026-05-07T07:15:19.092Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 2/5; continuity 5/6; doctor 0 errors, 2 warnings | No readiness claim until continuity and doctor diagnostics are clean. |

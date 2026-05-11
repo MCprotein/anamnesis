@@ -774,7 +774,7 @@ Exit criteria:
 
 ---
 
-## v1.4 — *release candidate*
+## v1.4 — *shipped 2026-05-11*
 
 > **Theme: adoption automation and project context bootstrap**
 
@@ -786,9 +786,9 @@ no framework-specific fragment exists.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Generic project context bootstrap** | implemented on main | During `init`, create a conservative `system_graph.yaml` draft when one does not already exist. Use safe local signals such as `package.json`, README/CLAUDE/docs headings, common source directories, and dependency names. Do not read or emit secret values from env files, Terraform state, tfvars, PEM keys, logs, or credentials. |
-| 2 | **Existing surface conflict handling** | implemented on main | When a pre-existing project-specific `.claude/skills/load-context` blocks the managed base surface, preserve it under a project-specific name and install the standard anamnesis `load-context` surface so first-run continuity can reach `6/6` without manual rename work. Keep the behavior conservative and visible in CLI output/evidence. |
-| 3 | **Adoption UX report** | implemented on main | Make `init` output explain which context was generated, which local surfaces were preserved, and which follow-ups remain agent-required. The report should answer "what did this just do?" without forcing users to inspect manifest internals. |
+| 1 | **Generic project context bootstrap** | shipped | During `init`, create a conservative `system_graph.yaml` draft when one does not already exist. Use safe local signals such as `package.json`, README/CLAUDE/docs headings, common source directories, and dependency names. Do not read or emit secret values from env files, Terraform state, tfvars, PEM keys, logs, or credentials. |
+| 2 | **Existing surface conflict handling** | shipped | When a pre-existing project-specific `.claude/skills/load-context` blocks the managed base surface, preserve it under a project-specific name and install the standard anamnesis `load-context` surface so first-run continuity can reach `6/6` without manual rename work. Keep the behavior conservative and visible in CLI output/evidence. |
+| 3 | **Adoption UX report** | shipped | Make `init` output explain which context was generated, which local surfaces were preserved, and which follow-ups remain agent-required. The report should answer "what did this just do?" without forcing users to inspect manifest internals. |
 
 Progress:
 - 2026-05-11: Implemented the v1.4 adoption helpers in the CLI. `init`
@@ -799,6 +799,8 @@ Progress:
   `/private/tmp`. The smoke reached continuity `6/6`, doctor `0/0`, and
   benchmark ready layers `3/5` without publishing any private-project
   evidence.
+- 2026-05-11: Cut the v1.4.0 release prep after `npm run release:check`
+  passed locally.
 
 Private validation notes:
 - Use private sanitized-fixture dogfood only as internal validation evidence.
