@@ -110,17 +110,15 @@ result in `docs/DOGFOOD.md`.
 
 ## Recovery Notes
 
-If the tag workflow passes install/typecheck/test/build but fails at
+Trusted Publishing is the primary release path. The `v1.4.4` tag workflow
+completed successfully and npmjs.org returned `1.4.4`, proving the current
+GitHub Actions OIDC configuration can publish the package.
+
+If a future tag workflow passes install/typecheck/test/build but fails at
 `npm publish` with an npm registry authorization error, first verify the
 case-sensitive Trusted Publishing fields above in npmjs.com. npm does not
 validate those fields when they are saved, so a repository owner, workflow
-filename, or environment mismatch only appears at publish time.
-
-As of the `v0.4.4` verification tag, the workflow reaches `npm publish`
-but npmjs.org still returns E404 during the publish step even when the
-trusted publisher appears to be configured as `MCprotein/anamnesis` +
-`publish.yml` with no environment. Treat that as an unresolved npm/GitHub
-OIDC matching issue, not a release blocker.
+filename, or environment mismatch may only appear at publish time.
 
 Local developer machines may also have a scoped registry override such as
 `@mcprotein:registry=https://npm.pkg.github.com`, which can make `npm view`
@@ -133,12 +131,13 @@ npm publish --access public --@mcprotein:registry=https://registry.npmjs.org/
 ```
 
 Use the manual `npm publish` fallback only from a committed release state
-with local package-owner authentication. Do not add long-lived npm publish
+with local package-owner authentication and only when the OIDC workflow is
+blocked by a registry or GitHub incident. Do not add long-lived npm publish
 tokens to GitHub Actions; the workflow remains OIDC-first and skips publish
 when the exact package version already exists on npmjs.org.
 
-If OIDC continues to fail after the settings above are checked, prefer the
-manual fallback over further release blocking:
+If OIDC fails after the settings above are checked and the release must not
+wait, use the documented manual fallback:
 
 ```bash
 npm whoami --registry https://registry.npmjs.org/
@@ -151,8 +150,10 @@ skip `npm publish` when the exact version already exists on npmjs.org.
 ## Notes
 
 - Do not add long-lived npm publish tokens for this workflow.
-- After the first successful OIDC publish, npm package settings can be
-  tightened to require two-factor authentication and disallow tokens.
+- `v1.4.4` verified successful OIDC publish from the tag workflow.
+- npm package settings can be tightened to require two-factor authentication
+  and disallow tokens once the maintainer is comfortable with the incident
+  recovery path.
 - Trusted Publishing currently depends on GitHub-hosted runners.
 
 References:

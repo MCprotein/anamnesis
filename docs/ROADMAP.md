@@ -105,7 +105,7 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 | 4 | **`anamnesis doctor`** | shipped in 0.4.2 | Read-only installation integrity check: manifest errors, tracked file/region drift, missing library fragments, update warnings, adapter coverage gaps, and `.claude/settings.json` hook registration drift. |
 | 5 | **Full version pinning** | shipped in 0.4.2 | Fragment version cache so `pinned: true` renders the pinned version, not library-current. Library stores past versions under `base/.versions/<version>/` or `fragments/<id>/.versions/<version>/`. |
 | 6 | **`anamnesis update --bump-pinned`** | shipped in 0.4.2 | Explicitly bump pinned fragments after manual review while keeping them pinned. Companion to #5. |
-| 7 | **Trusted Publishing setup** | workflow shipped in 0.4.2; OIDC unresolved | GitHub Actions workflow + documented npm Trusted Publisher config shipped. `0.4.3` was published with local npm owner credentials. `v0.4.4` proved the tag workflow reaches `npm publish`, but npm OIDC still returns E404 despite apparently correct trusted-publisher settings. Manual npmjs.org publish remains the supported fallback until npm/GitHub OIDC matching is resolved. |
+| 7 | **Trusted Publishing setup** | shipped; OIDC verified in 1.4.4 | GitHub Actions workflow + documented npm Trusted Publisher config shipped. Early 0.4.x tags exposed an npm OIDC mismatch, so manual npmjs.org publish stayed documented as a fallback. The later `v1.4.4` tag workflow completed and published through Trusted Publishing, so OIDC is now the primary release path. |
 | 8 | **Fragment catalog expansion** | shipped in 0.4.2 | Ruby on Rails, Django, Go services, Rust, plus more JS frameworks (SvelteKit, Remix, Nuxt). |
 | 9 | **Codex hook auto-wiring** | shipped in 0.4.2 | Git pre-commit bridge for `executable_hook` in the Codex adapter. Codex still gets AGENTS.md fallback instructions; Git repos also get `.anamnesis/codex-hooks/` plus `.git/hooks/pre-commit` when exec adapters are allowed. |
 | 10 | **Aider/Windsurf adapters (optional)** | optional | If community demand justifies. Same content+capabilities IR, different render targets. |
@@ -133,11 +133,13 @@ Design: [`docs/ONTOLOGY-BOOTSTRAP.md`](ONTOLOGY-BOOTSTRAP.md)
 
 **Shipped in 0.4.4 patch:**
 - tag-triggered Trusted Publishing verification release
-- GitHub Actions reached `npm publish`, but npm OIDC exchange/publish still failed with E404
+- GitHub Actions reached `npm publish`, but npm OIDC exchange/publish still failed with E404 at that time
 
-**Remaining 0.4.x operational task:**
-- Keep the manual npmjs.org owner-token publish fallback documented and available.
-- Revisit npm Trusted Publishing only when new evidence or npm/GitHub behavior changes; do not block feature work on OIDC.
+**Later release automation update:**
+- 2026-05-19: `v1.4.4` completed the tag-triggered GitHub Actions
+  `Publish` workflow and npmjs.org returned `1.4.4`. Trusted Publishing is
+  the primary path again; manual npmjs.org publish remains only an incident
+  recovery fallback.
 
 ---
 
@@ -567,6 +569,10 @@ Progress:
   now deduped by dirty git fingerprint, so repeated agent Stop invocations do
   not keep blocking on the same unchanged worktree state while still warning
   again after the git changes differ.
+- 2026-05-19: Published `@mcprotein/anamnesis@1.4.4` from the tag-triggered
+  GitHub Actions `Publish` workflow. npmjs.org returned `1.4.4`, and a
+  published-package smoke verified fresh init/status/doctor plus Stop hook
+  first-run/second-run dedupe behavior.
 - 2026-05-07: Added real `UserPromptSubmit` smoke coverage. The opt-in real
   dogfood path now verifies Codex invokes `UserPromptSubmit` before model
   transport completes and accepts the `hookSpecificOutput.additionalContext`
@@ -829,6 +835,10 @@ Progress:
 - 2026-05-19: Added the `anamnesis-init` base skill. When an agent performs
   setup for the user, it asks one multiple-choice README/docs question and maps
   the answer to no docs flag, `--scaffold-docs`, or `--enhance-docs`.
+- 2026-05-19: Published `@mcprotein/anamnesis@1.4.4` from the tag-triggered
+  GitHub Actions `Publish` workflow. The published-package smoke verified
+  the deduped Stop handoff reminder: first unchanged dirty fingerprint warns,
+  the second run with the same dirty state is silent.
 
 Private validation notes:
 - Use private validation only as internal development evidence.

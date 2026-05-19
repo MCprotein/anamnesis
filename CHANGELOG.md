@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Documentation
+
+- Updated release docs and roadmap notes to reflect that the `v1.4.4`
+  tag-triggered GitHub Actions workflow successfully published through npm
+  Trusted Publishing/OIDC; manual npm publish is now an incident fallback,
+  not the expected release path.
+
 ## [1.4.4] — 2026-05-19
 
 ### Added
