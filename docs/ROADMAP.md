@@ -563,6 +563,10 @@ Progress:
   `.codex/hooks.json` fixture. `ANAMNESIS_REAL_CODEX_SMOKE=1 npm run dogfood`
   now records both real SessionStart paths: isolated `CODEX_HOME/hooks.json`
   and project-local `.codex/hooks.json` discovered through `codex exec -C`.
+- 2026-05-19: Tightened stop-time continuity UX. The Stop handoff reminder is
+  now deduped by dirty git fingerprint, so repeated agent Stop invocations do
+  not keep blocking on the same unchanged worktree state while still warning
+  again after the git changes differ.
 - 2026-05-07: Added real `UserPromptSubmit` smoke coverage. The opt-in real
   dogfood path now verifies Codex invokes `UserPromptSubmit` before model
   transport completes and accepts the `hookSpecificOutput.additionalContext`

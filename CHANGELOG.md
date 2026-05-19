@@ -26,6 +26,12 @@ could include breaking changes.
   invariants, and open questions instead of inventing ontology facts or
   skipping the context file.
 
+### Fixed
+
+- Deduped Stop-hook handoff reminders by dirty git fingerprint, so repeated
+  Stop invocations warn once for unchanged worktree state and warn again only
+  after the git changes differ.
+
 ## [1.4.3] — 2026-05-19
 
 ### Fixed

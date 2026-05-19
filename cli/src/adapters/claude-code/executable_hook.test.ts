@@ -141,4 +141,50 @@ describe("executableHookRenderer (claude-code)", () => {
       result.stdout.indexOf("--- .anamnesis/ontology/base.yaml ---"),
     );
   });
+
+  it("dedupes handoff reminders for the same dirty git fingerprint", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    const gitInit = spawnSync("git", ["init"], {
+      cwd: projectRoot,
+      encoding: "utf8",
+    });
+    expect(gitInit.status).toBe(0);
+
+    fs.writeFileSync(path.join(projectRoot, "first.txt"), "dirty\n", "utf8");
+
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/handoff-reminder.sh",
+    );
+    const runHook = () =>
+      spawnSync("bash", [hook], {
+        cwd: projectRoot,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+        encoding: "utf8",
+      });
+
+    const first = runHook();
+    expect(first.status).toBe(0);
+    expect(first.stderr).toContain(
+      "1 uncommitted change(s) are newer than the latest handoff",
+    );
+    expect(
+      fs.existsSync(
+        path.join(projectRoot, ".git/anamnesis/handoff-reminder.last"),
+      ),
+    ).toBe(true);
+
+    const second = runHook();
+    expect(second.status).toBe(0);
+    expect(second.stderr).toBe("");
+
+    fs.writeFileSync(path.join(projectRoot, "second.txt"), "new dirty\n", "utf8");
+
+    const third = runHook();
+    expect(third.status).toBe(0);
+    expect(third.stderr).toContain(
+      "2 uncommitted change(s) are newer than the latest handoff",
+    );
+  });
 });

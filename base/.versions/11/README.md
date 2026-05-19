@@ -16,7 +16,7 @@ base/
     ├── hooks/
     │   ├── inject-ontology.sh    # SessionStart: cats ontology slices recursively
     │   ├── inject-handoff.sh     # SessionStart: cats active.md + recent handoff archive
-    │   ├── handoff-reminder.sh   # Stop: deduped dirty-work handoff reminder
+    │   ├── handoff-reminder.sh   # Stop: reminds when dirty work is newer than handoff
     │   └── remind-uncommitted.sh # PostToolUse:Edit: nags on dirty git tree
     ├── commands/
     │   ├── load-context.md      # /load-context slash command
