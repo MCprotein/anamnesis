@@ -157,6 +157,14 @@ describe("cross-agent context continuity acceptance", () => {
         "open_questions",
       ],
     );
+    expectContainsAll(
+      fileByPath(actions, ".claude/skills/anamnesis-init/SKILL.md").content,
+      [
+        "multiple-choice question",
+        "--scaffold-docs",
+        "--enhance-docs",
+      ],
+    );
   });
 
   it("renders Codex native hooks plus AGENTS.md fallbacks", () => {
@@ -229,6 +237,12 @@ describe("cross-agent context continuity acceptance", () => {
         "supersedes",
       ],
     );
+    expectContainsAll(regionById(actions, "codex-skill-anamnesis-init").content, [
+      "Skill: `anamnesis-init`",
+      "multiple-choice question",
+      "--scaffold-docs",
+      "--enhance-docs",
+    ]);
   });
 
   it("renders Cursor rule fallbacks for commands and skills", () => {
@@ -261,6 +275,15 @@ describe("cross-agent context continuity acceptance", () => {
         "enriched.yaml",
         "anamnesis.enriched.v1",
         "open_questions",
+      ],
+    );
+    expectContainsAll(
+      fileByPath(actions, ".cursor/rules/anamnesis-init.mdc").content,
+      [
+        "agentRequested: true",
+        "multiple-choice question",
+        "--scaffold-docs",
+        "--enhance-docs",
       ],
     );
   });

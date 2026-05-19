@@ -168,11 +168,20 @@ describe("init", () => {
     const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
     expect(agentsMd).toContain("codex-cmd-handoff-prepare");
     expect(agentsMd).toContain("codex-skill-ontology-enrich");
+    expect(agentsMd).toContain("codex-skill-anamnesis-init");
     expect(
       fs.existsSync(path.join(project, ".cursor/rules/handoff-prepare-cmd.mdc")),
     ).toBe(true);
     expect(
       fs.existsSync(path.join(project, ".cursor/rules/ontology-enrich.mdc")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(project, ".cursor/rules/anamnesis-init.mdc")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(project, ".claude/skills/anamnesis-init/SKILL.md"),
+      ),
     ).toBe(true);
   });
 

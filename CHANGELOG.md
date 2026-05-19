@@ -14,6 +14,9 @@ could include breaking changes.
   `docs/PROJECT-CONTEXT.md` starter docs, while `--enhance-docs` adds or
   refreshes managed context-review regions in existing docs without replacing
   user-authored content.
+- Added the `anamnesis-init` agent skill so agents ask a multiple-choice
+  README/docs question before choosing `init` documentation flags on the
+  user's behalf.
 
 ### Changed
 

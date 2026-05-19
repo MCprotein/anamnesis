@@ -1,11 +1,11 @@
 id: base
-version: 11
+version: 10
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
-  the ontology-enrich lifecycle/schema contract, the agent-guided
-  anamnesis-init workflow, and the AGENTS.md baseline region. anamnesis init
-  auto-includes this fragment regardless of rulebook matches.
+  the ontology-enrich lifecycle/schema contract, and the AGENTS.md baseline
+  region. anamnesis init auto-includes this fragment regardless of rulebook
+  matches.
 capabilities:
   - type: project_memory
     source: content/agents.snippet.md
@@ -50,10 +50,6 @@ capabilities:
     name: ontology-enrich
     source: adapters/claude-code/skills/ontology-enrich
 
-  - type: skill
-    name: anamnesis-init
-    source: adapters/claude-code/skills/anamnesis-init
-
 owns:
   - region: anamnesis-base in AGENTS.md
   - file: .anamnesis/ontology/base.yaml
@@ -70,4 +66,3 @@ owns:
   - file: .claude/commands/handoff-prepare.md
   - file: .claude/skills/load-context/SKILL.md
   - file: .claude/skills/ontology-enrich/SKILL.md
-  - file: .claude/skills/anamnesis-init/SKILL.md

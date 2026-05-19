@@ -16,7 +16,6 @@
 - `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.
 - `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.
   결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 자동 주입됨.
-- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
 

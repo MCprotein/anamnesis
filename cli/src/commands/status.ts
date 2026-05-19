@@ -774,6 +774,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
       ".claude/commands/handoff-prepare.md",
       ".claude/skills/load-context/SKILL.md",
       ".claude/skills/ontology-enrich/SKILL.md",
+      ".claude/skills/anamnesis-init/SKILL.md",
     );
   }
   if (tools.includes("codex")) {
@@ -787,6 +788,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
       "AGENTS.md [region:codex-cmd-handoff-prepare]",
       "AGENTS.md [region:codex-skill-load-context]",
       "AGENTS.md [region:codex-skill-ontology-enrich]",
+      "AGENTS.md [region:codex-skill-anamnesis-init]",
     );
   }
   if (tools.includes("cursor")) {
@@ -795,6 +797,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
       ".cursor/rules/handoff-prepare-cmd.mdc",
       ".cursor/rules/load-context.mdc",
       ".cursor/rules/ontology-enrich.mdc",
+      ".cursor/rules/anamnesis-init.mdc",
     );
   }
   return targets;

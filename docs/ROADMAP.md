@@ -789,7 +789,7 @@ no framework-specific fragment exists.
 | 1 | **Generic project context bootstrap** | shipped | During `init`, create a conservative `system_graph.yaml` draft when one does not already exist. Use safe local signals such as `package.json`, README/CLAUDE/docs headings, common source directories, and dependency names when available. If no safe signals exist yet, still create a zero-context draft with safety invariants and open questions rather than inventing facts or leaving the next agent with no project-level ontology file. Do not read or emit secret values from env files, Terraform state, tfvars, PEM keys, logs, or credentials. |
 | 2 | **Existing surface conflict handling** | shipped | When a pre-existing project-specific `.claude/skills/load-context` blocks the managed base surface, preserve it under a project-specific name and install the standard anamnesis `load-context` surface so first-run continuity can reach `6/6` without manual rename work. Keep the behavior conservative and visible in CLI output/evidence. |
 | 3 | **Adoption UX report** | shipped | Make `init` output explain which context was generated, which local surfaces were preserved, and which follow-ups remain agent-required. The report should answer "what did this just do?" without forcing users to inspect manifest internals. |
-| 4 | **Opt-in project docs scaffold/enhance** | shipped | Add gated first-run documentation support: `--scaffold-docs` creates missing `README.md` and `docs/PROJECT-CONTEXT.md` starter docs, while `--enhance-docs` adds managed context-review regions to existing docs without replacing user prose. Keep default init conservative so user-owned docs are not rewritten unexpectedly. |
+| 4 | **Opt-in project docs scaffold/enhance** | shipped | Add gated first-run documentation support: `--scaffold-docs` creates missing `README.md` and `docs/PROJECT-CONTEXT.md` starter docs, while `--enhance-docs` adds managed context-review regions to existing docs without replacing user prose. Add the `anamnesis-init` agent skill so agents ask a multiple-choice README/docs question before selecting those flags for the user. Keep default init conservative so user-owned docs are not rewritten unexpectedly. |
 
 Progress:
 - 2026-05-11: Implemented the v1.4 adoption helpers in the CLI. `init`
@@ -822,6 +822,9 @@ Progress:
   missing starter docs, and `--enhance-docs` adds managed review regions to
   existing README/docs so users can explicitly decide when anamnesis touches
   user-facing documentation.
+- 2026-05-19: Added the `anamnesis-init` base skill. When an agent performs
+  setup for the user, it asks one multiple-choice README/docs question and maps
+  the answer to no docs flag, `--scaffold-docs`, or `--enhance-docs`.
 
 Private validation notes:
 - Use private validation only as internal development evidence.

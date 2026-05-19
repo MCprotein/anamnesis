@@ -35,7 +35,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@9 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@11 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -54,6 +54,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 - `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.
 - `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.
   결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 자동 주입됨.
+- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
 
@@ -362,7 +363,7 @@ When in doubt, append rather than rewrite.
 - The project has no agent-discernible intent beyond what the static fragments already say (e.g., a tiny single-service repo)
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@9 -->
+<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@11 -->
 ### base hook: `inject-ontology.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
@@ -376,9 +377,9 @@ When in doubt, append rather than rewrite.
 # anamnesis SessionStart hook — inject ontology context for the agent.
 #
 # Concatenates two sources, in order:
-#   1. **/.anamnesis/ontology/*.yaml — anamnesis-managed slices, walked
+#   1. system_graph.yaml — user-managed top-level ontology, if present.
+#   2. **/.anamnesis/ontology/*.yaml — anamnesis-managed slices, walked
 #      recursively to support monorepo multi-scope layouts (root + sub-scopes).
-#   2. system_graph.yaml — user-managed top-level ontology, if present.
 #
 # Output goes to stdout; Claude Code captures SessionStart hook stdout and
 # injects it into the conversation context.
@@ -387,8 +388,6 @@ set -euo pipefail
 
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 USER_ONTOLOGY="$PROJECT_ROOT/system_graph.yaml"
-
-emitted=0
 
 # Walk all .anamnesis/ontology/*.yaml at any depth (multi-scope monorepo
 # support), skipping common heavy directories.
@@ -403,29 +402,27 @@ done < <(
     -path '*/.anamnesis/ontology/*.yaml' -type f -print 2>/dev/null
 )
 
-if (( ${#ontology_files[@]} > 0 )); then
+if [[ -f "$USER_ONTOLOGY" || ${#ontology_files[@]} -gt 0 ]]; then
   echo "=== anamnesis: ontology context ==="
   echo
   echo "프로젝트의 불변 관계(네임스페이스, 식별자, 경로 등)를 담는 온톨로지."
   echo "매니페스트나 로그를 뒤지기 전에 이 정보를 먼저 참조한다."
   echo
+fi
+
+if [[ -f "$USER_ONTOLOGY" ]]; then
+  echo "--- system_graph.yaml (user-managed) ---"
+  cat "$USER_ONTOLOGY"
+  echo
+fi
+
+if (( ${#ontology_files[@]} > 0 )); then
   for f in "${ontology_files[@]}"; do
     rel="${f#$PROJECT_ROOT/}"
     echo "--- $rel ---"
     cat "$f"
     echo
   done
-  emitted=1
-fi
-
-if [[ -f "$USER_ONTOLOGY" ]]; then
-  if (( emitted == 0 )); then
-    echo "=== anamnesis: ontology context ==="
-    echo
-  fi
-  echo "--- system_graph.yaml (user-managed) ---"
-  cat "$USER_ONTOLOGY"
-  echo
 fi
 
 exit 0
@@ -634,4 +631,76 @@ echo "[anamnesis] If you are stopping or switching agents, run /handoff-prepare 
 
 exit 0
 ```
+<!-- /anamnesis:region -->
+
+<!-- anamnesis:region id=codex-skill-anamnesis-init fragment=base@11 -->
+### Skill: `anamnesis-init`
+
+When the user asks for "anamnesis-init" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+
+# anamnesis-init
+
+Use this skill when the user asks the agent to initialize a project with
+anamnesis, install anamnesis surfaces, or "run init" on their behalf.
+
+`anamnesis init` is a CLI command, not a skill. This skill is the agent-facing
+adoption workflow that decides which CLI flags to use.
+
+## Required Question
+
+Before running `anamnesis init`, ask exactly one multiple-choice question unless
+the user already gave an explicit docs preference such as "don't touch README",
+"create docs", "enhance existing docs", `--scaffold-docs`, or `--enhance-docs`.
+
+Question:
+
+```text
+README/docs 처리 방식을 선택해줘.
+```
+
+Choices:
+
+```text
+1. 문서 건드리지 않음 (Recommended) - AGENTS/CLAUDE/context/ontology만 설치하고 README/docs는 그대로 둠.
+2. 누락 문서만 생성 - README.md와 docs/PROJECT-CONTEXT.md가 없을 때만 생성함. 기존 문서는 그대로 둠.
+3. 기존 문서도 보완 - 기존 README/docs에 anamnesis 관리 region을 추가하거나 갱신하고, 누락 문서도 생성함.
+```
+
+If the agent runtime has a native multiple-choice question UI, use it. If not,
+ask the same numbered question in plain text and wait for the user's answer.
+
+## Map Answer To CLI Flags
+
+- Choice 1: no docs flag.
+- Choice 2: add `--scaffold-docs`.
+- Choice 3: add `--enhance-docs`.
+
+Do not use both docs flags. `--enhance-docs` already covers missing docs plus
+existing-doc enhancement.
+
+## Execution
+
+1. Determine the target project root. Use the current working directory unless
+   the user gave a path.
+2. Run `anamnesis init --dry-run` first with the selected docs flag and any
+   user-requested tool flags.
+3. Review the dry-run output for blocked executable adapter writes, existing
+   `Agentfile`, or unexpected user-owned document changes.
+4. If the user already asked you to perform the install, run the apply command
+   after dry-run succeeds:
+   - Add `--allow-exec-adapters` when the user requested native hooks,
+     commands, skills, Codex hooks, Cursor rules, or `--tools all`.
+   - Preserve any user-supplied `--tools`, `--project-root`, `--library`,
+     `--monorepo`, `--no-bootstrap`, or `--no-context-bootstrap` flags.
+5. Report the docs choice, generated context files, and any follow-up agent
+   work such as `/ontology-enrich`.
+
+## Safety
+
+- Never modify README/docs without either the user's explicit preference or the
+  multiple-choice answer above.
+- Never invent project facts. Starter docs and zero-context ontology drafts
+  should contain open questions and review checklists until evidence exists.
+- If `Agentfile` already exists, stop the init path and use
+  `anamnesis update --dry-run` instead.
 <!-- /anamnesis:region -->
