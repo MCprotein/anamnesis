@@ -7,6 +7,17 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.4.3] — 2026-05-19
+
+### Fixed
+
+- Fixed the Codex native SessionStart wrapper so a project-root
+  `system_graph.yaml` symlink is followed and injected as user-managed
+  ontology context.
+- Changed Claude Code and Codex SessionStart ontology injection to emit the
+  user-managed `system_graph.yaml` before generated ontology slices, so
+  project-specific context survives tighter hook-output displays.
+
 ## [1.4.2] — 2026-05-11
 
 ### Security

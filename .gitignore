@@ -30,6 +30,7 @@ Thumbs.db
 
 # anamnesis-generated (for in-repo test fixtures if any)
 **/.anamnesis/backups/
+**/.anamnesis/handoff/
 **/.anamnesis/overrides/
 
 # Lock files - prefer npm for v0.1

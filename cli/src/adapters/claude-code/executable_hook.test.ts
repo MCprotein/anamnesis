@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -97,5 +98,47 @@ describe("executableHookRenderer (claude-code)", () => {
         makeContext(fragmentDir),
       ),
     ).toThrow(/wrong capability type/);
+  });
+
+  it("prints user-managed system_graph.yaml before managed ontology slices", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    fs.mkdirSync(path.join(projectRoot, ".anamnesis/ontology"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(projectRoot, "configs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, ".anamnesis/ontology/base.yaml"),
+      "managed_by: anamnesis\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(projectRoot, "configs/system_graph.yaml"),
+      "project: forecasting\n",
+      "utf8",
+    );
+    fs.symlinkSync(
+      "configs/system_graph.yaml",
+      path.join(projectRoot, "system_graph.yaml"),
+    );
+
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/inject-ontology.sh",
+    );
+    const result = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("--- system_graph.yaml (user-managed) ---");
+    expect(result.stdout).toContain("project: forecasting");
+    expect(result.stdout).toContain("--- .anamnesis/ontology/base.yaml ---");
+    expect(result.stdout.indexOf("--- system_graph.yaml")).toBeLessThan(
+      result.stdout.indexOf("--- .anamnesis/ontology/base.yaml ---"),
+    );
   });
 });

@@ -5,7 +5,7 @@
 // that the Claude Code SessionStart shell hooks print, then returns it as
 // hookSpecificOutput.additionalContext.
 
-import { lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
 const MAX_FILE_BYTES = 256 * 1024;
@@ -125,7 +125,7 @@ function newestArchivedHandoff(handoffDir) {
 
 function fileExists(filePath) {
   try {
-    return lstatSync(filePath).isFile();
+    return statSync(filePath).isFile();
   } catch {
     return false;
   }
@@ -133,7 +133,7 @@ function fileExists(filePath) {
 
 function dirExists(filePath) {
   try {
-    return lstatSync(filePath).isDirectory();
+    return statSync(filePath).isDirectory();
   } catch {
     return false;
   }
@@ -159,6 +159,13 @@ function buildOntologySection(projectRoot, budget) {
       "Project ontology and invariants. Check this before re-deriving architecture from filenames or logs.",
     ].join("\n"),
   ];
+  pushFileSection(
+    sections,
+    projectRoot,
+    "--- system_graph.yaml (user-managed) ---",
+    systemGraph,
+    budget,
+  );
   for (const filePath of ontologyFiles) {
     pushFileSection(
       sections,
@@ -168,13 +175,6 @@ function buildOntologySection(projectRoot, budget) {
       budget,
     );
   }
-  pushFileSection(
-    sections,
-    projectRoot,
-    "--- system_graph.yaml (user-managed) ---",
-    systemGraph,
-    budget,
-  );
   return sections.join("\n\n");
 }
 

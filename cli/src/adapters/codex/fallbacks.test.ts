@@ -196,6 +196,91 @@ describe("codex executable_hook fallback", () => {
     }
   });
 
+  it("includes symlinked system_graph.yaml in the native SessionStart context", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir("anamnesis-codex-session-start-");
+    fs.mkdirSync(path.join(projectRoot, ".anamnesis/ontology"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(projectRoot, "configs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, ".anamnesis/ontology/base.yaml"),
+      "schema_version: anamnesis.ontology.v1\nfragment: base\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(projectRoot, "configs/system_graph.yaml"),
+      "aws:\n  required_profile: forecast\n",
+      "utf8",
+    );
+    fs.symlinkSync(
+      "configs/system_graph.yaml",
+      path.join(projectRoot, "system_graph.yaml"),
+    );
+
+    fs.mkdirSync(path.join(fragmentDir, "adapters/codex/hooks"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/inject-ontology.sh"),
+      "#!/bin/bash\necho ontology\n",
+    );
+    fs.copyFileSync(
+      path.resolve("base/adapters/codex/hooks/session-start.mjs"),
+      path.join(fragmentDir, "adapters/codex/hooks/session-start.mjs"),
+    );
+    const fragment: FragmentDefinition = {
+      id: "base",
+      version: 10,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "SessionStart",
+        source: "adapters/claude-code/hooks/inject-ontology.sh",
+        adapters_supported: ["codex"],
+      },
+      makeContext(fragmentDir, fragment, ".", projectRoot),
+    );
+
+    for (const action of actions) {
+      if (action.kind !== "file") continue;
+      const target = path.join(projectRoot, action.path);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, action.content, "utf8");
+      if (action.mode) fs.chmodSync(target, action.mode);
+    }
+
+    const wrapperPath = path.join(
+      projectRoot,
+      ".anamnesis/codex-native-hooks/session-start.mjs",
+    );
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    const output = JSON.parse(result.stdout) as {
+      hookSpecificOutput?: { additionalContext?: string };
+    };
+    const context = output.hookSpecificOutput?.additionalContext ?? "";
+    expect(context).toContain("--- .anamnesis/ontology/base.yaml ---");
+    expect(context).toContain("--- system_graph.yaml (user-managed) ---");
+    expect(context).toContain("required_profile: forecast");
+    expect(context.indexOf("--- system_graph.yaml")).toBeLessThan(
+      context.indexOf("--- .anamnesis/ontology/base.yaml ---"),
+    );
+  });
+
   it("registers Stop hooks natively without a matcher", () => {
     fs.writeFileSync(
       path.join(fragmentDir, "adapters/claude-code/hooks/stop.sh"),
