@@ -41,7 +41,7 @@ The word **anamnesis** (ἀνάμνησις) means *"not forgetting"* in Greek �
 - **Promotes** your project-local hooks/skills back into the library so
   other projects benefit.
 
-It is **not** a project scaffolder (no `package.json`, no source code generation). It manages the small markdown/yaml/shell ecosystem your AI agent reads, nothing else.
+It is **not** an application scaffolder (no `package.json`, no source code generation). It manages the small markdown/yaml/shell ecosystem your AI agent reads, and can optionally scaffold project-facing docs when explicitly requested.
 
 ---
 
@@ -80,6 +80,10 @@ anamnesis init --dry-run                 # preview what would happen
 anamnesis init --allow-exec-adapters     # actually install
 anamnesis init --tools all --allow-exec-adapters
 # install Claude Code, Codex, and Cursor surfaces on first init
+anamnesis init --scaffold-docs --allow-exec-adapters
+# also create missing README.md and docs/PROJECT-CONTEXT.md starter docs
+anamnesis init --enhance-docs --allow-exec-adapters
+# add managed context-review sections to existing README/docs
 ```
 
 What gets created:
@@ -105,6 +109,10 @@ your-project/
 ```
 
 `AGENTS.md` is *additive* — anamnesis appends regions inside `<!-- anamnesis:region ... -->` anchors. Anything outside the anchors is yours.
+
+`README.md` and `docs/PROJECT-CONTEXT.md` are opt-in. Use
+`--scaffold-docs` to create missing starter docs, or `--enhance-docs` to add
+managed context-review regions to existing docs without replacing your prose.
 
 ---
 

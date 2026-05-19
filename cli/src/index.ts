@@ -279,6 +279,10 @@ Flags (init):
   --no-context-bootstrap        Skip the first-run system_graph.yaml draft
                                   generated from safe local project signals or
                                   zero-context open questions
+  --scaffold-docs               Create missing README.md and
+                                  docs/PROJECT-CONTEXT.md starter docs
+  --enhance-docs                Add/refresh managed context-review regions in
+                                  existing README/docs files
 
 Flags (update):
   --project-root <path>         Target directory (default: cwd)
@@ -458,6 +462,18 @@ function reportInit(result: InitResult): void {
       console.log(`  context bootstrap: ${ctx.outcome}`);
     }
   }
+  if (result.projectDocs) {
+    const planned = result.projectDocs.targets.filter(
+      (target) => target.outcome !== "skipped-existing",
+    ).length;
+    const skipped = result.projectDocs.targets.length - planned;
+    console.log(
+      `  project docs: ${result.projectDocs.mode} ${planned} planned, ${skipped} skipped`,
+    );
+    for (const target of result.projectDocs.targets) {
+      console.log(`    ${target.outcome.padEnd(16)} ${target.path}`);
+    }
+  }
   for (const conflict of result.surfaceConflicts) {
     const label =
       conflict.outcome === "planned-preserve"
@@ -472,7 +488,7 @@ function reportInit(result: InitResult): void {
   }
   console.log("  generation boundary:");
   console.log(
-    "    cli-generated: AGENTS.md managed context, static ontology slices, and any .bootstrap.yaml facts above",
+    "    cli-generated: AGENTS.md managed context, optional docs regions, static ontology slices, and any .bootstrap.yaml facts above",
   );
   console.log(
     "    agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
@@ -1128,6 +1144,8 @@ async function main(argv: string[]): Promise<number> {
           monorepo: flags["monorepo"] === true,
           noBootstrap: flags["no-bootstrap"] === true,
           noContextBootstrap: flags["no-context-bootstrap"] === true,
+          scaffoldDocs: flags["scaffold-docs"] === true,
+          enhanceDocs: flags["enhance-docs"] === true,
         });
         reportInit(result);
         return 0;

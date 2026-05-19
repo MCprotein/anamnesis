@@ -7,6 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added opt-in project documentation scaffolding for `init`:
+  `--scaffold-docs` creates missing `README.md` and
+  `docs/PROJECT-CONTEXT.md` starter docs, while `--enhance-docs` adds or
+  refreshes managed context-review regions in existing docs without replacing
+  user-authored content.
+
 ### Changed
 
 - Changed first-run project context bootstrap so `init` now writes a

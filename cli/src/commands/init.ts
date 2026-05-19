@@ -84,6 +84,10 @@ import {
   type ProjectContextBootstrapResult,
   type SurfaceConflictResolution,
 } from "../core/adoption.js";
+import {
+  planProjectDocs,
+  type ProjectDocsPlan,
+} from "../core/project_docs.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -121,6 +125,17 @@ export interface InitOptions {
    * invented facts.
    */
   noContextBootstrap?: boolean;
+  /**
+   * Create missing user-facing project docs (`README.md` and
+   * `docs/PROJECT-CONTEXT.md`) with conservative managed starter regions.
+   * Existing user-authored docs are left untouched unless `enhanceDocs` is set.
+   */
+  scaffoldDocs?: boolean;
+  /**
+   * Add or refresh managed context-review regions in existing project docs.
+   * This is intentionally opt-in because README/docs are usually user-owned.
+   */
+  enhanceDocs?: boolean;
   now?: () => Date;
 }
 
@@ -158,6 +173,8 @@ export interface InitResult {
   evidencePath?: string;
   /** First-run project context draft outcome for `system_graph.yaml`. */
   contextBootstrap?: ProjectContextBootstrapResult;
+  /** Optional user-facing docs scaffold/enhancement plan. */
+  projectDocs?: ProjectDocsPlan;
   /** Existing project-specific agent surfaces preserved before writing ours. */
   surfaceConflicts: SurfaceConflictResolution[];
 }
@@ -382,7 +399,17 @@ export function init(opts: InitOptions): InitResult {
   // Multi-scope rendering with inherited base produces duplicate exec-
   // adapter writes (every scope renders base's hooks → same .claude/hooks
   // path). Region/file dedup by target identity collapses these.
-  const dedupedActions = dedupeActions(actions);
+  const projectDocs = planProjectDocs({
+    projectRoot,
+    projectName,
+    scaffoldDocs: opts.scaffoldDocs === true,
+    enhanceDocs: opts.enhanceDocs === true,
+  });
+
+  const dedupedActions = dedupeActions([
+    ...actions,
+    ...(projectDocs?.actions ?? []),
+  ]);
   const surfaceConflicts = resolveKnownSurfaceConflicts({
     projectRoot,
     manifest: emptyManifest(),
@@ -440,6 +467,8 @@ export function init(opts: InitOptions): InitResult {
       monorepoRequested: opts.monorepo === true,
       noBootstrap: opts.noBootstrap === true,
       noContextBootstrap: opts.noContextBootstrap === true,
+      scaffoldDocs: opts.scaffoldDocs === true,
+      enhanceDocs: opts.enhanceDocs === true,
       projectNameOverride: opts.projectName,
       toolsOverride: opts.tools,
     });
@@ -460,7 +489,10 @@ export function init(opts: InitOptions): InitResult {
         allowExecAdapters: opts.allowExecAdapters,
         noBootstrap: opts.noBootstrap === true,
         noContextBootstrap: opts.noContextBootstrap === true,
+        scaffoldDocs: opts.scaffoldDocs === true,
+        enhanceDocs: opts.enhanceDocs === true,
         contextBootstrap,
+        projectDocs,
         surfaceConflicts,
         projectNameOverride: opts.projectName,
         toolsOverride: opts.tools,
@@ -490,6 +522,7 @@ export function init(opts: InitOptions): InitResult {
     codexHookRegistrations,
     evidencePath,
     contextBootstrap,
+    projectDocs,
     surfaceConflicts,
   };
 }
@@ -509,7 +542,10 @@ function initInstallEvidenceRecord(input: {
   allowExecAdapters: boolean;
   noBootstrap: boolean;
   noContextBootstrap: boolean;
+  scaffoldDocs: boolean;
+  enhanceDocs: boolean;
   contextBootstrap?: ProjectContextBootstrapResult;
+  projectDocs?: ProjectDocsPlan;
   surfaceConflicts: readonly SurfaceConflictResolution[];
   projectNameOverride?: string;
   toolsOverride?: readonly ToolName[];
@@ -542,6 +578,8 @@ function initInstallEvidenceRecord(input: {
         allow_exec_adapters: input.allowExecAdapters,
         no_bootstrap: input.noBootstrap,
         no_context_bootstrap: input.noContextBootstrap,
+        scaffold_docs: input.scaffoldDocs,
+        enhance_docs: input.enhanceDocs,
       },
       context_bootstrap: input.contextBootstrap
         ? {
@@ -556,6 +594,18 @@ function initInstallEvidenceRecord(input: {
           (conflict) => conflict.outcome === "preserved",
         ).length,
       },
+      project_docs: input.projectDocs
+        ? {
+            mode: input.projectDocs.mode,
+            targets: input.projectDocs.targets.length,
+            planned: input.projectDocs.targets.filter(
+              (target) => target.outcome !== "skipped-existing",
+            ).length,
+            skipped_existing: input.projectDocs.targets.filter(
+              (target) => target.outcome === "skipped-existing",
+            ).length,
+          }
+        : { mode: "disabled" },
     },
     details: {
       fragments: input.selectedFragments.map((fragment) => ({
@@ -592,6 +642,14 @@ function initInstallEvidenceRecord(input: {
         outcome: conflict.outcome,
         reason: conflict.reason,
       })),
+      ...(input.projectDocs
+        ? {
+            project_docs: {
+              mode: input.projectDocs.mode,
+              targets: input.projectDocs.targets,
+            },
+          }
+        : {}),
     },
   };
 }
@@ -601,6 +659,8 @@ function initEvidenceCommand(input: {
   monorepoRequested: boolean;
   noBootstrap: boolean;
   noContextBootstrap?: boolean;
+  scaffoldDocs?: boolean;
+  enhanceDocs?: boolean;
   projectNameOverride?: string;
   toolsOverride?: readonly ToolName[];
 }): string[] {
@@ -609,6 +669,8 @@ function initEvidenceCommand(input: {
   if (input.monorepoRequested) command.push("--monorepo");
   if (input.noBootstrap) command.push("--no-bootstrap");
   if (input.noContextBootstrap) command.push("--no-context-bootstrap");
+  if (input.scaffoldDocs) command.push("--scaffold-docs");
+  if (input.enhanceDocs) command.push("--enhance-docs");
   if (input.projectNameOverride) {
     command.push("--project-name", input.projectNameOverride);
   }

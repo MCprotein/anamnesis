@@ -176,6 +176,95 @@ describe("init", () => {
     ).toBe(true);
   });
 
+  it("scaffolds missing project-facing docs when requested", () => {
+    const result = init({
+      projectRoot: project,
+      libraryRoot: process.cwd(),
+      dryRun: false,
+      allowExecAdapters: false,
+      scaffoldDocs: true,
+      noBootstrap: true,
+    });
+
+    expect(result.projectDocs).toMatchObject({
+      mode: "scaffold",
+      targets: [
+        expect.objectContaining({
+          path: "README.md",
+          outcome: "planned-create",
+        }),
+        expect.objectContaining({
+          path: "docs/PROJECT-CONTEXT.md",
+          outcome: "planned-create",
+        }),
+      ],
+    });
+    expect(fs.readFileSync(path.join(project, "README.md"), "utf8")).toContain(
+      "anamnesis:region id=anamnesis-readme-context",
+    );
+    expect(
+      fs.readFileSync(
+        path.join(project, "docs", "PROJECT-CONTEXT.md"),
+        "utf8",
+      ),
+    ).toContain("system_graph.yaml");
+  });
+
+  it("leaves existing project docs untouched unless enhancement is requested", () => {
+    fs.writeFileSync(path.join(project, "README.md"), "# Existing\n", "utf8");
+
+    const result = init({
+      projectRoot: project,
+      libraryRoot: process.cwd(),
+      dryRun: false,
+      allowExecAdapters: false,
+      scaffoldDocs: true,
+      noBootstrap: true,
+    });
+
+    expect(result.projectDocs?.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "README.md",
+          outcome: "skipped-existing",
+        }),
+      ]),
+    );
+    expect(fs.readFileSync(path.join(project, "README.md"), "utf8")).toBe(
+      "# Existing\n",
+    );
+    expect(
+      fs.existsSync(path.join(project, "docs", "PROJECT-CONTEXT.md")),
+    ).toBe(true);
+  });
+
+  it("enhances existing project docs with managed review regions", () => {
+    fs.writeFileSync(path.join(project, "README.md"), "# Existing\n", "utf8");
+
+    const result = init({
+      projectRoot: project,
+      libraryRoot: process.cwd(),
+      dryRun: false,
+      allowExecAdapters: false,
+      enhanceDocs: true,
+      noBootstrap: true,
+    });
+
+    expect(result.projectDocs).toMatchObject({
+      mode: "enhance",
+      targets: expect.arrayContaining([
+        expect.objectContaining({
+          path: "README.md",
+          outcome: "planned-enhance",
+        }),
+      ]),
+    });
+    const readme = fs.readFileSync(path.join(project, "README.md"), "utf8");
+    expect(readme).toContain("# Existing");
+    expect(readme).toContain("anamnesis:region id=anamnesis-readme-context");
+    expect(readme).toContain("## AI Agent Context");
+  });
+
   it("bootstraps project context and preserves a project-specific load-context skill", () => {
     const skillDir = path.join(project, ".claude", "skills", "load-context");
     fs.mkdirSync(skillDir, { recursive: true });
