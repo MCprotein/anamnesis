@@ -64,6 +64,25 @@ npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis doctor
 ```
 
+### v1.4.3
+
+Recorded: 2026-05-19
+
+Purpose: verify the npm-published SessionStart ontology ordering patch, not
+the local TypeScript source tree.
+
+Results:
+
+- npmjs.org `@mcprotein/anamnesis` latest returned `1.4.3`.
+- Published CLI execution from `/private/tmp` returned `1.4.3`.
+- GitHub Actions `Publish` for tag `v1.4.3` completed successfully.
+- Fresh published-package fixture with all adapters installed had continuity
+  `ready (6/6)`, Codex hook warnings `0`, and doctor `0` errors. The only
+  doctor warning was the expected missing Layer B enrichment for the fresh
+  Prisma fixture.
+- Direct published Claude Code SessionStart hook execution emitted
+  `system_graph.yaml (user-managed)` before generated ontology slices.
+
 ## Current Public Claim Boundary
 
 - Self-dogfood may claim this repository's continuity checks pass.
