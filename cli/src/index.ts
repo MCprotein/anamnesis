@@ -277,7 +277,8 @@ Flags (init):
                                   pass (fragments with introspectors auto-
                                   populate .anamnesis/ontology/<id>.bootstrap.yaml)
   --no-context-bootstrap        Skip the first-run system_graph.yaml draft
-                                  generated from safe local project signals
+                                  generated from safe local project signals or
+                                  zero-context open questions
 
 Flags (update):
   --project-root <path>         Target directory (default: cwd)

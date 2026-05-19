@@ -68,15 +68,6 @@ export function bootstrapProjectContext(opts: {
   }
 
   const graph = buildSystemGraph(projectRoot);
-  if (graph.signals.length === 0) {
-    return {
-      path: rel,
-      outcome: "skipped-no-signals",
-      writtenToDisk: false,
-      signals: [],
-    };
-  }
-
   if (!opts.dryRun) {
     fs.writeFileSync(target, graph.yaml, "utf8");
   }
@@ -322,6 +313,15 @@ function buildSystemGraph(projectRoot: string): { yaml: string; signals: string[
       },
     ],
     open_questions: [
+      ...(signals.length === 0
+        ? [
+            {
+              id: "project-purpose-and-entrypoints",
+              question:
+                "No safe local project signals were found during init. Record the project's purpose, primary entrypoints, important flows, and non-negotiable constraints before relying on this draft for execution.",
+            },
+          ]
+        : []),
       {
         id: "semantic-relationships-review",
         question:

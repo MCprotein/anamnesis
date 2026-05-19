@@ -116,7 +116,9 @@ export interface InitOptions {
   noBootstrap?: boolean;
   /**
    * Skip the conservative project-level `system_graph.yaml` draft. By default,
-   * init writes it only when absent and when safe local project signals exist.
+   * init writes it when absent. If no safe local project signals exist, the
+   * draft contains only safety invariants and open questions instead of
+   * invented facts.
    */
   noContextBootstrap?: boolean;
   now?: () => Date;
@@ -395,6 +397,14 @@ export function init(opts: InitOptions): InitResult {
     allowExecAdapters: opts.allowExecAdapters,
   });
 
+  let contextBootstrap: ProjectContextBootstrapResult | undefined;
+  if (!opts.noContextBootstrap) {
+    contextBootstrap = bootstrapProjectContext({
+      projectRoot,
+      dryRun: opts.dryRun,
+    });
+  }
+
   // 11. Apply (or dry-run).
   let hookRegistrations: HookSyncResult[] = [];
   let codexHookRegistrations: CodexHookSyncResult[] = [];
@@ -405,14 +415,6 @@ export function init(opts: InitOptions): InitResult {
     const hookSync = syncWrittenHooks(changes, projectRoot);
     hookRegistrations = hookSync.claude;
     codexHookRegistrations = hookSync.codex;
-  }
-
-  let contextBootstrap: ProjectContextBootstrapResult | undefined;
-  if (!opts.noContextBootstrap) {
-    contextBootstrap = bootstrapProjectContext({
-      projectRoot,
-      dryRun: opts.dryRun,
-    });
   }
 
   // 12. Post-install ontology bootstrap (Layer A). Failure does not

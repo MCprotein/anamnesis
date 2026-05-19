@@ -7,6 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Changed first-run project context bootstrap so `init` now writes a
+  conservative `system_graph.yaml` draft even when no safe local project
+  signals exist. Zero-context drafts contain only the project name, safety
+  invariants, and open questions instead of inventing ontology facts or
+  skipping the context file.
+
 ## [1.4.3] — 2026-05-19
 
 ### Fixed

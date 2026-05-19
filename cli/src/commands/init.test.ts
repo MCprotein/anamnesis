@@ -93,6 +93,14 @@ describe("init", () => {
     });
     expect(result.selectedFragments).toHaveLength(0);
     expect(result.changes).toHaveLength(0);
+    expect(result.contextBootstrap).toMatchObject({
+      outcome: "written",
+      path: "system_graph.yaml",
+      signals: [],
+    });
+    expect(
+      fs.readFileSync(path.join(project, "system_graph.yaml"), "utf8"),
+    ).toContain("project-purpose-and-entrypoints");
 
     const af = readAgentfile(project);
     expect(af.fragments).toHaveLength(0);
@@ -131,8 +139,16 @@ describe("init", () => {
     });
 
     expect(result.agentfile.tools).toEqual(["claude-code", "codex", "cursor"]);
+    expect(result.contextBootstrap).toMatchObject({
+      outcome: "written",
+      path: "system_graph.yaml",
+      signals: [],
+    });
     const af = readAgentfile(project);
     expect(af.tools).toEqual(["claude-code", "codex", "cursor"]);
+    expect(
+      fs.readFileSync(path.join(project, "system_graph.yaml"), "utf8"),
+    ).toContain("project-purpose-and-entrypoints");
     expect(fs.existsSync(path.join(project, "CLAUDE.md"))).toBe(true);
     expect(
       fs.existsSync(path.join(project, ".claude/commands/handoff-prepare.md")),

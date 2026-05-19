@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { parse as parseYaml } from "yaml";
 import { emptyManifest } from "./manifest.js";
 import {
   bootstrapProjectContext,
@@ -54,6 +55,31 @@ describe("project adoption helpers", () => {
     expect(graph).toContain("protect-secrets");
     expect(graph).not.toContain("token =");
     expect(graph).not.toContain("terraform.tfvars");
+  });
+
+  it("writes an open-question system_graph.yaml when no project signals exist", () => {
+    const project = tmpDir("anamnesis-adoption-empty-");
+
+    const result = bootstrapProjectContext({ projectRoot: project, dryRun: false });
+
+    expect(result).toMatchObject({
+      outcome: "written",
+      writtenToDisk: true,
+      path: "system_graph.yaml",
+      signals: [],
+    });
+    const graph = parseYaml(
+      fs.readFileSync(path.join(project, "system_graph.yaml"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(graph.schema_version).toBe("anamnesis.system_graph.v1");
+    expect(graph.evidence_sources).toEqual([]);
+    expect(graph.entities).toBeUndefined();
+    expect(graph.open_questions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "project-purpose-and-entrypoints" }),
+        expect.objectContaining({ id: "semantic-relationships-review" }),
+      ]),
+    );
   });
 
   it("preserves an existing project load-context skill before managed install", () => {

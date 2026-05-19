@@ -786,7 +786,7 @@ no framework-specific fragment exists.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Generic project context bootstrap** | shipped | During `init`, create a conservative `system_graph.yaml` draft when one does not already exist. Use safe local signals such as `package.json`, README/CLAUDE/docs headings, common source directories, and dependency names. Do not read or emit secret values from env files, Terraform state, tfvars, PEM keys, logs, or credentials. |
+| 1 | **Generic project context bootstrap** | shipped | During `init`, create a conservative `system_graph.yaml` draft when one does not already exist. Use safe local signals such as `package.json`, README/CLAUDE/docs headings, common source directories, and dependency names when available. If no safe signals exist yet, still create a zero-context draft with safety invariants and open questions rather than inventing facts or leaving the next agent with no project-level ontology file. Do not read or emit secret values from env files, Terraform state, tfvars, PEM keys, logs, or credentials. |
 | 2 | **Existing surface conflict handling** | shipped | When a pre-existing project-specific `.claude/skills/load-context` blocks the managed base surface, preserve it under a project-specific name and install the standard anamnesis `load-context` surface so first-run continuity can reach `6/6` without manual rename work. Keep the behavior conservative and visible in CLI output/evidence. |
 | 3 | **Adoption UX report** | shipped | Make `init` output explain which context was generated, which local surfaces were preserved, and which follow-ups remain agent-required. The report should answer "what did this just do?" without forcing users to inspect manifest internals. |
 
@@ -812,6 +812,11 @@ Progress:
   `1.4.1`, published CLI execution returned `1.4.1`, and a published-package
   migration smoke verified a v1.4.0 install upgrades from `codex_hooks = true`
   to `hooks = true` with doctor `0/0`.
+- 2026-05-19: Tightened the v1.4 bootstrap plan for completely blank
+  projects: `init` should still write `system_graph.yaml`, but from the
+  pre-install project state and with open questions plus invariants only when
+  no safe signals exist, so downstream `/ontology-enrich` or human review can
+  add semantics without the CLI pretending to know project intent.
 
 Private validation notes:
 - Use private validation only as internal development evidence.
