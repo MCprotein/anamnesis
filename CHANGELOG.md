@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.4.4] — 2026-05-19
+
 ### Added
 
 - Added opt-in project documentation scaffolding for `init`:
