@@ -64,6 +64,26 @@ npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis doctor
 ```
 
+### v1.4.4
+
+Recorded: 2026-05-19
+
+Purpose: verify the npm-published Stop-hook handoff reminder dedupe patch,
+not the local TypeScript source tree.
+
+Results:
+
+- npmjs.org `@mcprotein/anamnesis@1.4.4` returned `1.4.4`.
+- Published CLI execution from `/private/tmp` returned `1.4.4`.
+- GitHub Actions `Publish` for tag `v1.4.4` completed successfully.
+- Fresh published-package fixture with all adapters installed had continuity
+  `ready (6/6)`, Codex hook warnings `0`, and doctor `0` errors. The only
+  doctor warning was the expected missing Layer B enrichment for the fresh
+  Prisma fixture.
+- Direct published Stop hook execution in a fresh git repo emitted the
+  handoff reminder on the first unchanged dirty fingerprint and emitted
+  nothing on the second run with the same dirty state.
+
 ### v1.4.3
 
 Recorded: 2026-05-19
