@@ -1,0 +1,431 @@
+{
+  "schema_version": "anamnesis.session_context_benchmark.v1",
+  "generatedAt": "2026-06-19T03:47:03.664Z",
+  "fixtures": [
+    {
+      "id": "tiny",
+      "label": "Tiny project",
+      "fileBytes": 172,
+      "hardCapTokens": 320,
+      "requiredRules": [
+        "must preserve user edits"
+      ],
+      "metrics": {
+        "full": {
+          "fixtureId": "tiny",
+          "fixtureLabel": "Tiny project",
+          "mode": "full",
+          "startupChars": 352,
+          "startupLines": 13,
+          "estimatedTokens": 88,
+          "includedFileBytes": 172,
+          "sourcePointers": 0,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 320,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 117,
+            "ontology": 55,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 114,
+            "source_pointers": 0,
+            "invariant_digest": 0
+          }
+        },
+        "compact": {
+          "fixtureId": "tiny",
+          "fixtureLabel": "Tiny project",
+          "mode": "compact",
+          "startupChars": 502,
+          "startupLines": 15,
+          "estimatedTokens": 126,
+          "includedFileBytes": 0,
+          "sourcePointers": 2,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 320,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 0,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 299,
+            "source_pointers": 91,
+            "invariant_digest": 102
+          }
+        }
+      },
+      "compactReductionPct": -43
+    },
+    {
+      "id": "normal",
+      "label": "Normal handoff",
+      "fileBytes": 1484,
+      "hardCapTokens": 520,
+      "requiredRules": [
+        "must read active handoff before resuming"
+      ],
+      "metrics": {
+        "full": {
+          "fixtureId": "normal",
+          "fixtureLabel": "Normal handoff",
+          "mode": "full",
+          "startupChars": 1754,
+          "startupLines": 55,
+          "estimatedTokens": 439,
+          "includedFileBytes": 1484,
+          "sourcePointers": 0,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 520,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 112,
+            "ontology": 483,
+            "handoff_active": 243,
+            "handoff_archive": 646,
+            "instructions": 114,
+            "source_pointers": 0,
+            "invariant_digest": 0
+          }
+        },
+        "compact": {
+          "fixtureId": "normal",
+          "fixtureLabel": "Normal handoff",
+          "mode": "compact",
+          "startupChars": 939,
+          "startupLines": 24,
+          "estimatedTokens": 235,
+          "includedFileBytes": 0,
+          "sourcePointers": 4,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 520,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 0,
+            "handoff_active": 205,
+            "handoff_archive": 0,
+            "instructions": 299,
+            "source_pointers": 210,
+            "invariant_digest": 209
+          }
+        }
+      },
+      "compactReductionPct": 46
+    },
+    {
+      "id": "large-ontology",
+      "label": "Large ontology",
+      "fileBytes": 21100,
+      "hardCapTokens": 900,
+      "requiredRules": [
+        "must verify source pointers before changing adapters"
+      ],
+      "metrics": {
+        "full": {
+          "fixtureId": "large-ontology",
+          "fixtureLabel": "Large ontology",
+          "mode": "full",
+          "startupChars": 21408,
+          "startupLines": 517,
+          "estimatedTokens": 5352,
+          "includedFileBytes": 21100,
+          "sourcePointers": 0,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 900,
+          "capExceeded": true,
+          "payloadComposition": {
+            "system_graph": 6009,
+            "ontology": 9168,
+            "handoff_active": 265,
+            "handoff_archive": 5658,
+            "instructions": 114,
+            "source_pointers": 0,
+            "invariant_digest": 0
+          }
+        },
+        "compact": {
+          "fixtureId": "large-ontology",
+          "fixtureLabel": "Large ontology",
+          "mode": "compact",
+          "startupChars": 1192,
+          "startupLines": 29,
+          "estimatedTokens": 298,
+          "includedFileBytes": 0,
+          "sourcePointers": 5,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 900,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 0,
+            "handoff_active": 227,
+            "handoff_archive": 0,
+            "instructions": 299,
+            "source_pointers": 269,
+            "invariant_digest": 379
+          }
+        }
+      },
+      "compactReductionPct": 94
+    },
+    {
+      "id": "stale-handoff",
+      "label": "Stale handoff",
+      "fileBytes": 1736,
+      "hardCapTokens": 520,
+      "requiredRules": [
+        "must check git history before trusting stale handoff"
+      ],
+      "metrics": {
+        "full": {
+          "fixtureId": "stale-handoff",
+          "fixtureLabel": "Stale handoff",
+          "mode": "full",
+          "startupChars": 1979,
+          "startupLines": 62,
+          "estimatedTokens": 495,
+          "includedFileBytes": 1736,
+          "sourcePointers": 0,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 520,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 500,
+            "handoff_active": 223,
+            "handoff_archive": 1013,
+            "instructions": 114,
+            "source_pointers": 0,
+            "invariant_digest": 0
+          }
+        },
+        "compact": {
+          "fixtureId": "stale-handoff",
+          "fixtureLabel": "Stale handoff",
+          "mode": "compact",
+          "startupChars": 825,
+          "startupLines": 21,
+          "estimatedTokens": 207,
+          "includedFileBytes": 0,
+          "sourcePointers": 3,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 520,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 0,
+            "handoff_active": 185,
+            "handoff_archive": 0,
+            "instructions": 299,
+            "source_pointers": 171,
+            "invariant_digest": 156
+          }
+        }
+      },
+      "compactReductionPct": 58
+    },
+    {
+      "id": "conflicting-ontology",
+      "label": "Conflicting ontology",
+      "fileBytes": 2720,
+      "hardCapTokens": 620,
+      "requiredRules": [
+        "must flag contradictory ontology claims"
+      ],
+      "metrics": {
+        "full": {
+          "fixtureId": "conflicting-ontology",
+          "fixtureLabel": "Conflicting ontology",
+          "mode": "full",
+          "startupChars": 2975,
+          "startupLines": 67,
+          "estimatedTokens": 744,
+          "includedFileBytes": 2720,
+          "sourcePointers": 0,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 620,
+          "capExceeded": true,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 2720,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 114,
+            "source_pointers": 0,
+            "invariant_digest": 0
+          }
+        },
+        "compact": {
+          "fixtureId": "conflicting-ontology",
+          "fixtureLabel": "Conflicting ontology",
+          "mode": "compact",
+          "startupChars": 913,
+          "startupLines": 20,
+          "estimatedTokens": 229,
+          "includedFileBytes": 0,
+          "sourcePointers": 3,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 620,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 0,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 299,
+            "source_pointers": 184,
+            "invariant_digest": 418
+          }
+        }
+      },
+      "compactReductionPct": 69
+    },
+    {
+      "id": "missing-handoff",
+      "label": "Missing handoff",
+      "fileBytes": 602,
+      "hardCapTokens": 420,
+      "requiredRules": [
+        "must continue without inventing missing handoff state"
+      ],
+      "metrics": {
+        "full": {
+          "fixtureId": "missing-handoff",
+          "fixtureLabel": "Missing handoff",
+          "mode": "full",
+          "startupChars": 782,
+          "startupLines": 21,
+          "estimatedTokens": 196,
+          "includedFileBytes": 602,
+          "sourcePointers": 0,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 420,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 118,
+            "ontology": 484,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 114,
+            "source_pointers": 0,
+            "invariant_digest": 0
+          }
+        },
+        "compact": {
+          "fixtureId": "missing-handoff",
+          "fixtureLabel": "Missing handoff",
+          "mode": "compact",
+          "startupChars": 658,
+          "startupLines": 17,
+          "estimatedTokens": 165,
+          "includedFileBytes": 0,
+          "sourcePointers": 2,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 420,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 0,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 299,
+            "source_pointers": 93,
+            "invariant_digest": 256
+          }
+        }
+      },
+      "compactReductionPct": 16
+    },
+    {
+      "id": "multi-scope",
+      "label": "Multi-scope repo",
+      "fileBytes": 696,
+      "hardCapTokens": 680,
+      "requiredRules": [
+        "must preserve scope-specific ontology boundaries"
+      ],
+      "metrics": {
+        "full": {
+          "fixtureId": "multi-scope",
+          "fixtureLabel": "Multi-scope repo",
+          "mode": "full",
+          "startupChars": 950,
+          "startupLines": 28,
+          "estimatedTokens": 238,
+          "includedFileBytes": 696,
+          "sourcePointers": 0,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 680,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 696,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 114,
+            "source_pointers": 0,
+            "invariant_digest": 0
+          }
+        },
+        "compact": {
+          "fixtureId": "multi-scope",
+          "fixtureLabel": "Multi-scope repo",
+          "mode": "compact",
+          "startupChars": 948,
+          "startupLines": 21,
+          "estimatedTokens": 237,
+          "includedFileBytes": 0,
+          "sourcePointers": 3,
+          "requiredRulesPresent": 1,
+          "requiredRulesTotal": 1,
+          "hardCapTokens": 680,
+          "capExceeded": false,
+          "payloadComposition": {
+            "system_graph": 0,
+            "ontology": 0,
+            "handoff_active": 0,
+            "handoff_archive": 0,
+            "instructions": 299,
+            "source_pointers": 179,
+            "invariant_digest": 458
+          }
+        }
+      },
+      "compactReductionPct": 0
+    }
+  ],
+  "summary": {
+    "fixtures": 7,
+    "compactRequiredRulePasses": 7,
+    "compactRequiredRuleTotal": 7,
+    "compactSourcePointerFixtures": 7,
+    "largeFixtureCompactReductionPct": 94,
+    "compactCapExceeded": 0,
+    "fullCapExceeded": 2
+  },
+  "artifacts": {
+    "outputDir": "docs/benchmark-evidence/session-context",
+    "json": "docs/benchmark-evidence/session-context/session-context.json",
+    "markdown": "docs/benchmark-evidence/session-context/session-context.md",
+    "tokenByModeSvg": "docs/benchmark-evidence/session-context/token-by-mode.svg",
+    "payloadCompositionSvg": "docs/benchmark-evidence/session-context/payload-composition.svg",
+    "fixtureGrowthSvg": "docs/benchmark-evidence/session-context/fixture-growth.svg",
+    "capSuccessSummarySvg": "docs/benchmark-evidence/session-context/cap-success-summary.svg"
+  },
+  "markdown": "# Session Context Benchmark — 2026-06-19T03:47:03.664Z\n\nDeterministic benchmark comparing full SessionStart file injection with compact source-pointer startup context.\n\nFixtures: 7\nCompact required rules present: 7/7\nLarge fixture compact token reduction: 94%\nCap exceeded: compact 0, full 2\n\n| Fixture | Full tokens | Compact tokens | Reduction | Compact source pointers | Compact cap | Required rules |\n|---|---:|---:|---:|---:|---|---:|\n| Tiny project | 88 | 126 | -43% | 2 | ok | 1/1 |\n| Normal handoff | 439 | 235 | 46% | 4 | ok | 1/1 |\n| Large ontology | 5352 | 298 | 94% | 5 | ok | 1/1 |\n| Stale handoff | 495 | 207 | 58% | 3 | ok | 1/1 |\n| Conflicting ontology | 744 | 229 | 69% | 3 | ok | 1/1 |\n| Missing handoff | 196 | 165 | 16% | 2 | ok | 1/1 |\n| Multi-scope repo | 238 | 237 | 0% | 3 | ok | 1/1 |\n\n## Charts\n\n![Token by mode](token-by-mode.svg)\n![Payload composition](payload-composition.svg)\n![Fixture growth](fixture-growth.svg)\n![Cap success summary](cap-success-summary.svg)"
+}

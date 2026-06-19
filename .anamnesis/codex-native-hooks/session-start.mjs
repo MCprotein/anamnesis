@@ -2,8 +2,10 @@
 // anamnesis Codex SessionStart hook.
 //
 // Codex native hooks expect JSON output. This wrapper reads the same context
-// that the Claude Code SessionStart shell hooks print, then returns it as
-// hookSpecificOutput.additionalContext.
+// that the Claude Code SessionStart shell hooks expose, then returns compact
+// source pointers by default as hookSpecificOutput.additionalContext. Set
+// ANAMNESIS_SESSION_CONTEXT_MODE=full to emit full file bodies for
+// compatibility/debugging.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
@@ -147,7 +149,65 @@ function pushFileSection(sections, projectRoot, title, filePath, budget) {
   sections.push([title ?? `--- ${rel} ---`, body.trimEnd()].join("\n"));
 }
 
-function buildOntologySection(projectRoot, budget) {
+function sessionContextMode() {
+  return process.env.ANAMNESIS_SESSION_CONTEXT_MODE === "full" ? "full" : "compact";
+}
+
+function fileStats(filePath) {
+  const body = readFileSync(filePath, "utf8");
+  return {
+    bytes: Buffer.byteLength(body, "utf8"),
+    lines: body.length === 0 ? 0 : body.split(/\r?\n/).length - (body.endsWith("\n") ? 1 : 0),
+  };
+}
+
+function sourcePointer(projectRoot, filePath, label) {
+  const rel = relative(projectRoot, filePath).split(sep).join("/");
+  const stats = fileStats(filePath);
+  const suffix = label ? `; ${label}` : "";
+  return `- ${rel} (${stats.bytes} bytes, ${stats.lines} lines${suffix})`;
+}
+
+function activeHandoffSummary(activePath) {
+  if (!fileExists(activePath)) return [];
+  const lines = readFileSync(activePath, "utf8").split(/\r?\n/);
+  const out = [];
+  let inSummarySection = false;
+  for (const line of lines) {
+    if (line === "## Current focus" || line === "## Active tasks") {
+      inSummarySection = true;
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      inSummarySection = false;
+      continue;
+    }
+    if (inSummarySection && line.startsWith("- ")) {
+      out.push(line);
+      if (out.length >= 12) break;
+    }
+  }
+  return out;
+}
+
+function invariantDigest(files, projectRoot, maxLines = 12) {
+  const out = [];
+  const pattern =
+    /(must|never|always|invariant|rule|severity:\s*"?must|필수|금지|항상|절대)/i;
+  for (const filePath of files) {
+    if (!fileExists(filePath)) continue;
+    const rel = relative(projectRoot, filePath).split(sep).join("/");
+    const lines = readFileSync(filePath, "utf8").split(/\r?\n/);
+    for (const line of lines) {
+      if (!pattern.test(line)) continue;
+      out.push(`- ${rel}: ${line.trimStart()}`);
+      if (out.length >= maxLines) return out;
+    }
+  }
+  return out;
+}
+
+function buildOntologySection(projectRoot, budget, mode = sessionContextMode()) {
   const ontologyFiles = walkOntologyFiles(projectRoot);
   const systemGraph = join(projectRoot, "system_graph.yaml");
   if (ontologyFiles.length === 0 && !fileExists(systemGraph)) return null;
@@ -156,9 +216,34 @@ function buildOntologySection(projectRoot, budget) {
     [
       "=== anamnesis: ontology context ===",
       "",
-      "Project ontology and invariants. Check this before re-deriving architecture from filenames or logs.",
+      "Project ontology and invariants. Read exact source files before relying on relationships, paths, or operational rules.",
     ].join("\n"),
   ];
+  if (mode !== "full") {
+    sections.push("Mode: compact (set ANAMNESIS_SESSION_CONTEXT_MODE=full for full file injection)");
+    sections.push("Source pointers:");
+    if (fileExists(systemGraph)) {
+      sections.push(sourcePointer(projectRoot, systemGraph, "user-managed top-level ontology"));
+    }
+    for (const filePath of ontologyFiles) {
+      sections.push(sourcePointer(projectRoot, filePath, "managed ontology slice"));
+    }
+    const digest = invariantDigest(
+      [fileExists(systemGraph) ? systemGraph : "", ...ontologyFiles].filter(Boolean),
+      projectRoot,
+    );
+    sections.push("", "Invariant digest:");
+    if (digest.length > 0) {
+      sections.push(...digest);
+    } else {
+      sections.push("- (none detected; use source pointers for exact project context)");
+    }
+    sections.push(
+      "",
+      "Retrieval rule: read the exact source file before relying on an invariant, relationship, entity, path, or operational rule.",
+    );
+    return sections.join("\n");
+  }
   pushFileSection(
     sections,
     projectRoot,
@@ -178,7 +263,7 @@ function buildOntologySection(projectRoot, budget) {
   return sections.join("\n\n");
 }
 
-function buildHandoffSection(projectRoot, budget) {
+function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
   const handoffDir = join(projectRoot, ".anamnesis", "handoff");
   if (!dirExists(handoffDir)) return null;
 
@@ -190,9 +275,25 @@ function buildHandoffSection(projectRoot, budget) {
     [
       "=== anamnesis: handoff ===",
       "",
-      "Previous-session handoff. Use it to resume work; ignore it when git history shows it is stale.",
+      "Previous-session handoff. Use active.md as the compact index; read the referenced archive for detail.",
     ].join("\n"),
   ];
+  if (mode !== "full") {
+    sections.push("Mode: compact (set ANAMNESIS_SESSION_CONTEXT_MODE=full for full file injection)");
+    sections.push("Source pointers:");
+    if (fileExists(active)) sections.push(sourcePointer(projectRoot, active));
+    if (latest) sections.push(sourcePointer(projectRoot, latest));
+    const summary = activeHandoffSummary(active);
+    if (summary.length > 0) {
+      sections.push("", "Active task summary:", ...summary);
+    }
+    sections.push(
+      "",
+      "Retrieval rule: read active.md and the referenced archive before continuing non-trivial in-flight work.",
+      "--- end of handoff ---",
+    );
+    return sections.join("\n");
+  }
   pushFileSection(sections, projectRoot, `Source: ${relative(projectRoot, active).split(sep).join("/")}`, active, budget);
   if (latest) {
     const rel = relative(projectRoot, latest).split(sep).join("/");

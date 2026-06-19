@@ -196,7 +196,7 @@ describe("codex executable_hook fallback", () => {
     }
   });
 
-  it("includes symlinked system_graph.yaml in the native SessionStart context", () => {
+  it("points to symlinked system_graph.yaml in the native SessionStart context", () => {
     if (process.platform === "win32") return;
 
     const projectRoot = tmpDir("anamnesis-codex-session-start-");
@@ -273,11 +273,40 @@ describe("codex executable_hook fallback", () => {
       hookSpecificOutput?: { additionalContext?: string };
     };
     const context = output.hookSpecificOutput?.additionalContext ?? "";
-    expect(context).toContain("--- .anamnesis/ontology/base.yaml ---");
-    expect(context).toContain("--- system_graph.yaml (user-managed) ---");
-    expect(context).toContain("required_profile: forecast");
-    expect(context.indexOf("--- system_graph.yaml")).toBeLessThan(
-      context.indexOf("--- .anamnesis/ontology/base.yaml ---"),
+    expect(context).toContain("Mode: compact");
+    expect(context).toContain("Source pointers:");
+    expect(context).toContain(
+      "- system_graph.yaml (34 bytes, 2 lines; user-managed top-level ontology)",
+    );
+    expect(context).toContain(
+      "- .anamnesis/ontology/base.yaml (53 bytes, 2 lines; managed ontology slice)",
+    );
+    expect(context).not.toContain("required_profile: forecast");
+    expect(context.indexOf("- system_graph.yaml")).toBeLessThan(
+      context.indexOf("- .anamnesis/ontology/base.yaml"),
+    );
+
+    const full = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      env: {
+        ...process.env,
+        ANAMNESIS_SESSION_CONTEXT_MODE: "full",
+      },
+      encoding: "utf8",
+    });
+
+    expect(full.status).toBe(0);
+    expect(full.stderr).toBe("");
+    const fullOutput = JSON.parse(full.stdout) as {
+      hookSpecificOutput?: { additionalContext?: string };
+    };
+    const fullContext = fullOutput.hookSpecificOutput?.additionalContext ?? "";
+    expect(fullContext).toContain("--- .anamnesis/ontology/base.yaml ---");
+    expect(fullContext).toContain("--- system_graph.yaml (user-managed) ---");
+    expect(fullContext).toContain("required_profile: forecast");
+    expect(fullContext.indexOf("--- system_graph.yaml")).toBeLessThan(
+      fullContext.indexOf("--- .anamnesis/ontology/base.yaml ---"),
     );
   });
 

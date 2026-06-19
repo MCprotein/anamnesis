@@ -7,6 +7,20 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added `anamnesis benchmark session-context`, a deterministic full-vs-compact
+  SessionStart benchmark with public-safe fixtures, JSON/Markdown output, and
+  dependency-free SVG charts for token deltas, payload composition, fixture
+  growth, and cap/success status.
+
+### Changed
+
+- Changed Claude Code and Codex SessionStart continuity hooks to emit compact
+  invariant digests, active handoff summaries, source pointers, and retrieval
+  instructions by default. Full file-body injection remains available through
+  `ANAMNESIS_SESSION_CONTEXT_MODE=full` for compatibility/debugging.
+
 ### Documentation
 
 - Updated release docs and roadmap notes to reflect that the `v1.4.4`

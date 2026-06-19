@@ -77,6 +77,11 @@ import {
   type PromptDeltaGateResult,
 } from "./commands/benchmark_prompt_gate.js";
 import {
+  sessionContextBenchmark,
+  SessionContextBenchmarkError,
+  type SessionContextBenchmarkResult,
+} from "./commands/benchmark_session_context.js";
+import {
   migrateAgentfile,
   MigrateError,
   type MigrateAgentfileResult,
@@ -254,6 +259,8 @@ Commands:
                                   separately from deterministic scorecards
   benchmark prompt-gate        Decide whether prompt-time context delta
                                   injection is justified by evidence
+  benchmark session-context    Compare full vs compact SessionStart context
+                                  and optionally write JSON/SVG artifacts
   migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
@@ -368,6 +375,13 @@ Flags (benchmark prompt-gate):
   --source <path[,path]>        Extra evidence JSONL source(s)
   --max-tokens <n>              Max estimated prompt delta token budget
                                   (default: 800)
+
+Flags (benchmark session-context):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write JSON, markdown, and dependency-free SVG
+                                  charts under docs/benchmark-evidence
+  --output <path>               Override artifact output directory
 
 Flags (migrate agentfile):
   --project-root <path>         Target directory (default: cwd)
@@ -1018,6 +1032,47 @@ function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
   }
 }
 
+function reportSessionContextBenchmark(
+  result: SessionContextBenchmarkResult,
+): void {
+  console.log("anamnesis benchmark session-context");
+  console.log(`  fixtures: ${result.summary.fixtures}`);
+  console.log(
+    `  compact required rules: ${result.summary.compactRequiredRulePasses}/${result.summary.compactRequiredRuleTotal}`,
+  );
+  console.log(
+    `  compact source pointer fixtures: ${result.summary.compactSourcePointerFixtures}/${result.summary.fixtures}`,
+  );
+  console.log(
+    `  large fixture reduction: ${result.summary.largeFixtureCompactReductionPct}%`,
+  );
+  console.log(
+    `  cap exceeded: compact=${result.summary.compactCapExceeded}, full=${result.summary.fullCapExceeded}`,
+  );
+  for (const fixture of result.fixtures) {
+    const direction =
+      fixture.compactReductionPct >= 0
+        ? `${fixture.compactReductionPct}% less`
+        : `${Math.abs(fixture.compactReductionPct)}% more`;
+    console.log(
+      `  ${fixture.id}: full=${fixture.metrics.full.estimatedTokens} tokens, compact=${fixture.metrics.compact.estimatedTokens} tokens (${direction})`,
+    );
+  }
+  if (result.artifacts.outputDir) {
+    console.log(`  output: ${result.artifacts.outputDir}`);
+  }
+  for (const artifact of [
+    result.artifacts.json,
+    result.artifacts.markdown,
+    result.artifacts.tokenByModeSvg,
+    result.artifacts.payloadCompositionSvg,
+    result.artifacts.fixtureGrowthSvg,
+    result.artifacts.capSuccessSummarySvg,
+  ]) {
+    if (artifact) console.log(`  artifact: ${artifact}`);
+  }
+}
+
 function reportMigrate(result: MigrateAgentfileResult): void {
   const verdict = result.changed
     ? result.applied
@@ -1293,7 +1348,8 @@ async function main(argv: string[]): Promise<number> {
         sub !== "gallery" &&
         sub !== "trace" &&
         sub !== "task" &&
-        sub !== "prompt-gate"
+        sub !== "prompt-gate" &&
+        sub !== "session-context"
       ) {
         console.error(
           `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
@@ -1316,9 +1372,27 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis benchmark prompt-gate [--json] [--append] [--output=<path>]`,
         );
+        console.error(
+          `       anamnesis benchmark session-context [--json] [--write] [--output=<dir>]`,
+        );
         return 1;
       }
       try {
+        if (sub === "session-context") {
+          const result = sessionContextBenchmark({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            write: flags["write"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportSessionContextBenchmark(result);
+          }
+          return 0;
+        }
+
         if (sub === "prompt-gate") {
           const maxTokens = parseOptionalPositiveIntegerFlag(
             flags["max-tokens"],
@@ -1450,7 +1524,8 @@ async function main(argv: string[]): Promise<number> {
           e instanceof BenchmarkGalleryError ||
           e instanceof BenchmarkTraceError ||
           e instanceof AgentTaskBenchmarkError ||
-          e instanceof PromptDeltaGateError
+          e instanceof PromptDeltaGateError ||
+          e instanceof SessionContextBenchmarkError
         ) {
           console.error(`error: ${e.message}`);
           return 1;

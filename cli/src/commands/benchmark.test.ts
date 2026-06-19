@@ -9,6 +9,7 @@ import {
   agentTaskBenchmarkTemplate,
 } from "./benchmark_task.js";
 import { promptDeltaGate } from "./benchmark_prompt_gate.js";
+import { sessionContextBenchmark } from "./benchmark_session_context.js";
 import { init } from "./init.js";
 
 function tmpDir(prefix: string): string {
@@ -558,5 +559,70 @@ describe("benchmarkReport", () => {
       kind: "prompt-delta-gate",
       summary: { recommendation: "prototype" },
     });
+  });
+});
+
+describe("sessionContextBenchmark", () => {
+  it("compares full and compact startup context and writes SVG artifacts", () => {
+    const project = tmpDir("anamnesis-session-context-benchmark-");
+
+    const result = sessionContextBenchmark({
+      projectRoot: project,
+      write: true,
+      now: () => new Date("2026-06-19T00:00:00.000Z"),
+    });
+
+    expect(result.schema_version).toBe("anamnesis.session_context_benchmark.v1");
+    expect(result.summary.fixtures).toBe(7);
+    expect(result.summary.compactRequiredRulePasses).toBe(
+      result.summary.compactRequiredRuleTotal,
+    );
+    expect(result.summary.compactSourcePointerFixtures).toBe(7);
+    expect(result.summary.largeFixtureCompactReductionPct).toBeGreaterThanOrEqual(
+      60,
+    );
+    expect(result.summary.compactCapExceeded).toBe(0);
+    expect(result.summary.fullCapExceeded).toBeGreaterThan(0);
+    expect(result.markdown).toContain("Session Context Benchmark");
+    expect(result.markdown).toContain("| Large ontology |");
+
+    const large = result.fixtures.find((fixture) => fixture.id === "large-ontology");
+    expect(large?.metrics.full.includedFileBytes).toBeGreaterThan(0);
+    expect(large?.metrics.compact.includedFileBytes).toBe(0);
+    expect(large?.metrics.compact.sourcePointers).toBeGreaterThan(0);
+
+    for (const artifact of [
+      result.artifacts.json,
+      result.artifacts.markdown,
+      result.artifacts.tokenByModeSvg,
+      result.artifacts.payloadCompositionSvg,
+      result.artifacts.fixtureGrowthSvg,
+      result.artifacts.capSuccessSummarySvg,
+    ]) {
+      expect(artifact).toBeTruthy();
+      expect(fs.existsSync(path.join(project, artifact!))).toBe(true);
+    }
+
+    const json = JSON.parse(
+      fs.readFileSync(path.join(project, result.artifacts.json!), "utf8"),
+    ) as { schema_version?: string; artifacts?: Record<string, string> };
+    expect(json.schema_version).toBe("anamnesis.session_context_benchmark.v1");
+    expect(json.artifacts?.tokenByModeSvg).toBe(
+      "docs/benchmark-evidence/session-context/token-by-mode.svg",
+    );
+
+    const markdown = fs.readFileSync(
+      path.join(project, result.artifacts.markdown!),
+      "utf8",
+    );
+    expect(markdown).toContain("![Token by mode](token-by-mode.svg)");
+    expect(markdown).toContain("![Cap success summary](cap-success-summary.svg)");
+
+    const svg = fs.readFileSync(
+      path.join(project, result.artifacts.tokenByModeSvg!),
+      "utf8",
+    );
+    expect(svg).toContain("<svg");
+    expect(svg).toContain("Session Context Tokens By Mode");
   });
 });

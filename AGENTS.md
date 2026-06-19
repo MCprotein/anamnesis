@@ -35,7 +35,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@12 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@13 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -53,7 +53,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 - `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.
 - `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.
-  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 자동 주입됨.
+  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 compact 요약과 source pointer 로 자동 주입됨.
 - `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
@@ -68,8 +68,8 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
 5. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
 
-Claude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 자동 stdout 주입됨.
-Codex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
+Claude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.
+Codex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
 Cursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
 Claude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.
 <!-- /anamnesis:region -->
@@ -363,7 +363,7 @@ When in doubt, append rather than rewrite.
 - The project has no agent-discernible intent beyond what the static fragments already say (e.g., a tiny single-service repo)
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@11 -->
+<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@13 -->
 ### base hook: `inject-ontology.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
@@ -376,10 +376,13 @@ When in doubt, append rather than rewrite.
 #!/bin/bash
 # anamnesis SessionStart hook — inject ontology context for the agent.
 #
-# Concatenates two sources, in order:
+# Compactly points to two sources, in order:
 #   1. system_graph.yaml — user-managed top-level ontology, if present.
 #   2. **/.anamnesis/ontology/*.yaml — anamnesis-managed slices, walked
 #      recursively to support monorepo multi-scope layouts (root + sub-scopes).
+#
+# Set ANAMNESIS_SESSION_CONTEXT_MODE=full to emit full file bodies for
+# compatibility/debugging.
 #
 # Output goes to stdout; Claude Code captures SessionStart hook stdout and
 # injects it into the conversation context.
@@ -388,6 +391,7 @@ set -euo pipefail
 
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 USER_ONTOLOGY="$PROJECT_ROOT/system_graph.yaml"
+SESSION_CONTEXT_MODE="${ANAMNESIS_SESSION_CONTEXT_MODE:-compact}"
 
 # Walk all .anamnesis/ontology/*.yaml at any depth (multi-scope monorepo
 # support), skipping common heavy directories.
@@ -406,8 +410,83 @@ if [[ -f "$USER_ONTOLOGY" || ${#ontology_files[@]} -gt 0 ]]; then
   echo "=== anamnesis: ontology context ==="
   echo
   echo "프로젝트의 불변 관계(네임스페이스, 식별자, 경로 등)를 담는 온톨로지."
-  echo "매니페스트나 로그를 뒤지기 전에 이 정보를 먼저 참조한다."
+  echo "매니페스트나 로그를 뒤지기 전에 필요한 원본 파일을 직접 읽는다."
   echo
+fi
+
+file_stats() {
+  local file="$1"
+  local bytes=""
+  local lines=""
+
+  bytes=$(wc -c < "$file" | tr -d ' ')
+  lines=$(wc -l < "$file" | tr -d ' ')
+  printf '%s bytes, %s lines' "$bytes" "$lines"
+}
+
+source_pointer() {
+  local file="$1"
+  local label="${2:-}"
+  local rel="${file#$PROJECT_ROOT/}"
+
+  if [[ -n "$label" ]]; then
+    printf -- "- %s (%s; %s)\n" "$rel" "$label" "$(file_stats "$file")"
+  else
+    printf -- "- %s (%s)\n" "$rel" "$(file_stats "$file")"
+  fi
+}
+
+digest_count=0
+emit_invariant_digest() {
+  local file="$1"
+  local rel="${file#$PROJECT_ROOT/}"
+  local line=""
+
+  while IFS= read -r line; do
+    (( digest_count < 12 )) || return 0
+    printf -- "- %s: %s\n" "$rel" "$line"
+    digest_count=$((digest_count + 1))
+  done < <(
+    awk '
+      BEGIN { IGNORECASE = 1 }
+      /(must|never|always|invariant|rule|severity:[[:space:]]*"?must|필수|금지|항상|절대)/ {
+        sub(/^[[:space:]]+/, "")
+        print
+      }
+    ' "$file"
+  )
+}
+
+if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
+  if [[ -f "$USER_ONTOLOGY" || ${#ontology_files[@]} -gt 0 ]]; then
+    echo "Mode: compact (set ANAMNESIS_SESSION_CONTEXT_MODE=full for full file injection)"
+    echo
+    echo "Source pointers:"
+    if [[ -f "$USER_ONTOLOGY" ]]; then
+      source_pointer "$USER_ONTOLOGY" "user-managed top-level ontology"
+    fi
+    if (( ${#ontology_files[@]} > 0 )); then
+      for f in "${ontology_files[@]}"; do
+        source_pointer "$f" "managed ontology slice"
+      done
+    fi
+    echo
+    echo "Invariant digest:"
+    if [[ -f "$USER_ONTOLOGY" ]]; then
+      emit_invariant_digest "$USER_ONTOLOGY"
+    fi
+    if (( ${#ontology_files[@]} > 0 )); then
+      for f in "${ontology_files[@]}"; do
+        emit_invariant_digest "$f"
+      done
+    fi
+    if (( digest_count == 0 )); then
+      echo "- (none detected; use source pointers for exact project context)"
+    fi
+    echo
+    echo "Retrieval rule: read the exact source file before relying on an invariant, relationship, entity, path, or operational rule."
+  fi
+  exit 0
 fi
 
 if [[ -f "$USER_ONTOLOGY" ]]; then
@@ -429,7 +508,7 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@9 -->
+<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@13 -->
 ### base hook: `inject-handoff.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
@@ -443,9 +522,12 @@ exit 0
 # anamnesis SessionStart hook — inject active and recent agent handoff context.
 #
 # Looks for `.anamnesis/handoff/active.md` plus the most recent archived
-# handoff, and prints them to stdout so Claude Code injects them into the
-# session context. This bridges sessions across token-limit boundaries and
-# across different agents (Claude → Codex, etc.).
+# handoff, then emits a compact active-task summary plus source pointers.
+# This bridges sessions across token-limit boundaries and across different
+# agents (Claude → Codex, etc.) without injecting full archives by default.
+#
+# Set ANAMNESIS_SESSION_CONTEXT_MODE=full to emit full file bodies for
+# compatibility/debugging.
 #
 # Silent (exit 0) when no handoff dir or no handoff files exist —
 # brand-new projects don't need to spam an empty notice.
@@ -454,6 +536,7 @@ set -euo pipefail
 
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 HANDOFF_DIR="$PROJECT_ROOT/.anamnesis/handoff"
+SESSION_CONTEXT_MODE="${ANAMNESIS_SESSION_CONTEXT_MODE:-compact}"
 
 [[ -d "$HANDOFF_DIR" ]] || exit 0
 
@@ -490,9 +573,60 @@ done
 
 echo "=== anamnesis: handoff ==="
 echo
-echo "이전 세션이 남긴 작업 인계서. 무엇을 이어받는지 확인하고 작업 재개."
-echo "더 이상 유효하지 않으면 무시하고 새 작업 시작."
+echo "이전 세션이 남긴 작업 인계서. active.md 요약을 먼저 보고, 세부 내용은 원본 archive 를 직접 읽는다."
+echo "git history 기준으로 stale 이면 무시하고 새 작업으로 진행한다."
 echo
+
+file_stats() {
+  local file="$1"
+  local bytes=""
+  local lines=""
+
+  bytes=$(wc -c < "$file" | tr -d ' ')
+  lines=$(wc -l < "$file" | tr -d ' ')
+  printf '%s bytes, %s lines' "$bytes" "$lines"
+}
+
+source_pointer() {
+  local file="$1"
+  local rel="${file#$PROJECT_ROOT/}"
+  printf -- "- %s (%s)\n" "$rel" "$(file_stats "$file")"
+}
+
+active_summary() {
+  local file="$1"
+  awk '
+    /^## Current focus$/ { section=1; next }
+    /^## Active tasks$/ { section=1; next }
+    /^## / { section=0; next }
+    section == 1 && /^- / {
+      print
+      count++
+      if (count >= 12) exit
+    }
+  ' "$file"
+}
+
+if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
+  echo "Mode: compact (set ANAMNESIS_SESSION_CONTEXT_MODE=full for full file injection)"
+  echo
+  echo "Source pointers:"
+  if [[ -f "$active" ]]; then
+    source_pointer "$active"
+  fi
+  if [[ -n "$latest" ]]; then
+    source_pointer "$latest"
+  fi
+  if [[ -f "$active" ]]; then
+    echo
+    echo "Active task summary:"
+    active_summary "$active"
+  fi
+  echo
+  echo "Retrieval rule: read active.md and the referenced archive before continuing non-trivial in-flight work."
+  echo "--- end of handoff ---"
+  exit 0
+fi
 
 if [[ -f "$active" ]]; then
   rel_active="${active#$PROJECT_ROOT/}"

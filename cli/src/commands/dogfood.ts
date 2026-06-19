@@ -419,7 +419,7 @@ function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
       command,
       start,
       "pass",
-      "active.md and latest archive injected; Codex native SessionStart and Cursor fallback instructions present",
+      "active.md and latest archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present",
     );
   } catch (e) {
     return handoffSimulationResult(
@@ -1444,10 +1444,10 @@ process.stdout.write(JSON.stringify({
 
 function requiredHandoffEvidence(archivePath: string): string[] {
   return [
-    "Source: .anamnesis/handoff/active.md",
-    `--- most recent archived handoff: ${archivePath} ---`,
+    "Source pointers:",
+    "- .anamnesis/handoff/active.md",
+    `- ${archivePath}`,
     "resume v0.5 active handoff simulation",
-    "Codex or Cursor should continue from active.md without a user re-brief.",
     ".anamnesis/handoff/active.md",
     "stale",
     "/handoff-prepare",

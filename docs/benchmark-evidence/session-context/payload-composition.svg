@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="420" viewBox="0 0 1120 420" role="img" aria-label="Payload Composition Bytes">
+<rect width="1120" height="420" fill="#ffffff" />
+<text x="24" y="24" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#111827">Payload Composition Bytes</text>
+<line x1="72" y1="302" x2="1096" y2="302" stroke="#d1d5db" />
+<line x1="72" y1="36" x2="72" y2="302" stroke="#d1d5db" />
+<rect x="75.0" y="300.5" width="65.1" height="1.5" fill="#2563eb"><title>Tiny project full system_graph: 117 bytes</title></rect>
+<rect x="75.0" y="299.8" width="65.1" height="0.7" fill="#0f766e"><title>Tiny project full ontology: 55 bytes</title></rect>
+<rect x="75.0" y="298.4" width="65.1" height="1.4" fill="#64748b"><title>Tiny project full instructions: 114 bytes</title></rect>
+<text x="107.6" y="348" text-anchor="end" transform="rotate(-45 107.6 348)" font-size="10" fill="#374151">tiny-full</text>
+<rect x="148.1" y="298.3" width="65.1" height="3.7" fill="#64748b"><title>Tiny project compact instructions: 299 bytes</title></rect>
+<rect x="148.1" y="297.1" width="65.1" height="1.1" fill="#16a34a"><title>Tiny project compact source_pointers: 91 bytes</title></rect>
+<rect x="148.1" y="295.8" width="65.1" height="1.3" fill="#9333ea"><title>Tiny project compact invariant_digest: 102 bytes</title></rect>
+<text x="180.7" y="348" text-anchor="end" transform="rotate(-45 180.7 348)" font-size="10" fill="#374151">tiny-compact</text>
+<rect x="221.3" y="300.6" width="65.1" height="1.4" fill="#2563eb"><title>Normal handoff full system_graph: 112 bytes</title></rect>
+<rect x="221.3" y="294.5" width="65.1" height="6.1" fill="#0f766e"><title>Normal handoff full ontology: 483 bytes</title></rect>
+<rect x="221.3" y="291.5" width="65.1" height="3.0" fill="#d97706"><title>Normal handoff full handoff_active: 243 bytes</title></rect>
+<rect x="221.3" y="283.4" width="65.1" height="8.1" fill="#b45309"><title>Normal handoff full handoff_archive: 646 bytes</title></rect>
+<rect x="221.3" y="282.0" width="65.1" height="1.4" fill="#64748b"><title>Normal handoff full instructions: 114 bytes</title></rect>
+<text x="253.9" y="348" text-anchor="end" transform="rotate(-45 253.9 348)" font-size="10" fill="#374151">normal-full</text>
+<rect x="294.4" y="299.4" width="65.1" height="2.6" fill="#d97706"><title>Normal handoff compact handoff_active: 205 bytes</title></rect>
+<rect x="294.4" y="295.7" width="65.1" height="3.7" fill="#64748b"><title>Normal handoff compact instructions: 299 bytes</title></rect>
+<rect x="294.4" y="293.0" width="65.1" height="2.6" fill="#16a34a"><title>Normal handoff compact source_pointers: 210 bytes</title></rect>
+<rect x="294.4" y="290.4" width="65.1" height="2.6" fill="#9333ea"><title>Normal handoff compact invariant_digest: 209 bytes</title></rect>
+<text x="327.0" y="348" text-anchor="end" transform="rotate(-45 327.0 348)" font-size="10" fill="#374151">normal-compact</text>
+<rect x="367.6" y="226.7" width="65.1" height="75.3" fill="#2563eb"><title>Large ontology full system_graph: 6009 bytes</title></rect>
+<rect x="367.6" y="111.7" width="65.1" height="115.0" fill="#0f766e"><title>Large ontology full ontology: 9168 bytes</title></rect>
+<rect x="367.6" y="108.4" width="65.1" height="3.3" fill="#d97706"><title>Large ontology full handoff_active: 265 bytes</title></rect>
+<rect x="367.6" y="37.4" width="65.1" height="70.9" fill="#b45309"><title>Large ontology full handoff_archive: 5658 bytes</title></rect>
+<rect x="367.6" y="36.0" width="65.1" height="1.4" fill="#64748b"><title>Large ontology full instructions: 114 bytes</title></rect>
+<text x="400.1" y="348" text-anchor="end" transform="rotate(-45 400.1 348)" font-size="10" fill="#374151">large-ontology-full</text>
+<rect x="440.7" y="299.2" width="65.1" height="2.8" fill="#d97706"><title>Large ontology compact handoff_active: 227 bytes</title></rect>
+<rect x="440.7" y="295.4" width="65.1" height="3.7" fill="#64748b"><title>Large ontology compact instructions: 299 bytes</title></rect>
+<rect x="440.7" y="292.0" width="65.1" height="3.4" fill="#16a34a"><title>Large ontology compact source_pointers: 269 bytes</title></rect>
+<rect x="440.7" y="287.3" width="65.1" height="4.8" fill="#9333ea"><title>Large ontology compact invariant_digest: 379 bytes</title></rect>
+<text x="473.3" y="348" text-anchor="end" transform="rotate(-45 473.3 348)" font-size="10" fill="#374151">large-ontology-compact</text>
+<rect x="513.9" y="295.7" width="65.1" height="6.3" fill="#0f766e"><title>Stale handoff full ontology: 500 bytes</title></rect>
+<rect x="513.9" y="292.9" width="65.1" height="2.8" fill="#d97706"><title>Stale handoff full handoff_active: 223 bytes</title></rect>
+<rect x="513.9" y="280.2" width="65.1" height="12.7" fill="#b45309"><title>Stale handoff full handoff_archive: 1013 bytes</title></rect>
+<rect x="513.9" y="278.8" width="65.1" height="1.4" fill="#64748b"><title>Stale handoff full instructions: 114 bytes</title></rect>
+<text x="546.4" y="348" text-anchor="end" transform="rotate(-45 546.4 348)" font-size="10" fill="#374151">stale-handoff-full</text>
+<rect x="587.0" y="299.7" width="65.1" height="2.3" fill="#d97706"><title>Stale handoff compact handoff_active: 185 bytes</title></rect>
+<rect x="587.0" y="295.9" width="65.1" height="3.7" fill="#64748b"><title>Stale handoff compact instructions: 299 bytes</title></rect>
+<rect x="587.0" y="293.8" width="65.1" height="2.1" fill="#16a34a"><title>Stale handoff compact source_pointers: 171 bytes</title></rect>
+<rect x="587.0" y="291.8" width="65.1" height="2.0" fill="#9333ea"><title>Stale handoff compact invariant_digest: 156 bytes</title></rect>
+<text x="619.6" y="348" text-anchor="end" transform="rotate(-45 619.6 348)" font-size="10" fill="#374151">stale-handoff-compact</text>
+<rect x="660.1" y="267.9" width="65.1" height="34.1" fill="#0f766e"><title>Conflicting ontology full ontology: 2720 bytes</title></rect>
+<rect x="660.1" y="266.5" width="65.1" height="1.4" fill="#64748b"><title>Conflicting ontology full instructions: 114 bytes</title></rect>
+<text x="692.7" y="348" text-anchor="end" transform="rotate(-45 692.7 348)" font-size="10" fill="#374151">conflicting-ontology-full</text>
+<rect x="733.3" y="298.3" width="65.1" height="3.7" fill="#64748b"><title>Conflicting ontology compact instructions: 299 bytes</title></rect>
+<rect x="733.3" y="295.9" width="65.1" height="2.3" fill="#16a34a"><title>Conflicting ontology compact source_pointers: 184 bytes</title></rect>
+<rect x="733.3" y="290.7" width="65.1" height="5.2" fill="#9333ea"><title>Conflicting ontology compact invariant_digest: 418 bytes</title></rect>
+<text x="765.9" y="348" text-anchor="end" transform="rotate(-45 765.9 348)" font-size="10" fill="#374151">conflicting-ontology-compact</text>
+<rect x="806.4" y="300.5" width="65.1" height="1.5" fill="#2563eb"><title>Missing handoff full system_graph: 118 bytes</title></rect>
+<rect x="806.4" y="294.5" width="65.1" height="6.1" fill="#0f766e"><title>Missing handoff full ontology: 484 bytes</title></rect>
+<rect x="806.4" y="293.0" width="65.1" height="1.4" fill="#64748b"><title>Missing handoff full instructions: 114 bytes</title></rect>
+<text x="839.0" y="348" text-anchor="end" transform="rotate(-45 839.0 348)" font-size="10" fill="#374151">missing-handoff-full</text>
+<rect x="879.6" y="298.3" width="65.1" height="3.7" fill="#64748b"><title>Missing handoff compact instructions: 299 bytes</title></rect>
+<rect x="879.6" y="297.1" width="65.1" height="1.2" fill="#16a34a"><title>Missing handoff compact source_pointers: 93 bytes</title></rect>
+<rect x="879.6" y="293.9" width="65.1" height="3.2" fill="#9333ea"><title>Missing handoff compact invariant_digest: 256 bytes</title></rect>
+<text x="912.1" y="348" text-anchor="end" transform="rotate(-45 912.1 348)" font-size="10" fill="#374151">missing-handoff-compact</text>
+<rect x="952.7" y="293.3" width="65.1" height="8.7" fill="#0f766e"><title>Multi-scope repo full ontology: 696 bytes</title></rect>
+<rect x="952.7" y="291.8" width="65.1" height="1.4" fill="#64748b"><title>Multi-scope repo full instructions: 114 bytes</title></rect>
+<text x="985.3" y="348" text-anchor="end" transform="rotate(-45 985.3 348)" font-size="10" fill="#374151">multi-scope-full</text>
+<rect x="1025.9" y="298.3" width="65.1" height="3.7" fill="#64748b"><title>Multi-scope repo compact instructions: 299 bytes</title></rect>
+<rect x="1025.9" y="296.0" width="65.1" height="2.2" fill="#16a34a"><title>Multi-scope repo compact source_pointers: 179 bytes</title></rect>
+<rect x="1025.9" y="290.3" width="65.1" height="5.7" fill="#9333ea"><title>Multi-scope repo compact invariant_digest: 458 bytes</title></rect>
+<text x="1058.4" y="348" text-anchor="end" transform="rotate(-45 1058.4 348)" font-size="10" fill="#374151">multi-scope-compact</text>
+<rect x="24" y="44" width="11" height="11" fill="#2563eb" />
+<text x="40" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">system_graph</text>
+<rect x="234" y="44" width="11" height="11" fill="#0f766e" />
+<text x="250" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">ontology</text>
+<rect x="444" y="44" width="11" height="11" fill="#d97706" />
+<text x="460" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">handoff_active</text>
+<rect x="654" y="44" width="11" height="11" fill="#b45309" />
+<text x="670" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">handoff_archive</text>
+<rect x="24" y="62" width="11" height="11" fill="#64748b" />
+<text x="40" y="72" font-size="11" font-family="Arial, sans-serif" fill="#374151">instructions</text>
+<rect x="234" y="62" width="11" height="11" fill="#16a34a" />
+<text x="250" y="72" font-size="11" font-family="Arial, sans-serif" fill="#374151">source_pointers</text>
+<rect x="444" y="62" width="11" height="11" fill="#9333ea" />
+<text x="460" y="72" font-size="11" font-family="Arial, sans-serif" fill="#374151">invariant_digest</text>
+</svg>

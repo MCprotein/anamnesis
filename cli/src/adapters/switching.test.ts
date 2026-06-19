@@ -155,8 +155,11 @@ function expectTargetResumeSurface(
       stdio: "pipe",
     });
     expect(hook.status).toBe(0);
-    expect(hook.stdout).toContain("Source: .anamnesis/handoff/active.md");
-    expect(hook.stdout).toContain(`--- most recent archived handoff: ${archivePath} ---`);
+    expect(hook.stdout).toContain("Mode: compact");
+    expect(hook.stdout).toContain("Source pointers:");
+    expect(hook.stdout).toContain("- .anamnesis/handoff/active.md");
+    expect(hook.stdout).toContain(`- ${archivePath}`);
+    expect(hook.stdout).toContain("Active task summary:");
     expect(hook.stdout).toContain(`switching scenario ${scenarioId}`);
     return;
   }
@@ -178,8 +181,11 @@ function expectTargetResumeSurface(
     };
     const context = output.hookSpecificOutput?.additionalContext ?? "";
     expect(context).toContain("=== anamnesis: handoff ===");
-    expect(context).toContain("Source: .anamnesis/handoff/active.md");
-    expect(context).toContain(`--- most recent archived handoff: ${archivePath} ---`);
+    expect(context).toContain("Mode: compact");
+    expect(context).toContain("Source pointers:");
+    expect(context).toContain("- .anamnesis/handoff/active.md");
+    expect(context).toContain(`- ${archivePath}`);
+    expect(context).toContain("Active task summary:");
     expect(context).toContain(`switching scenario ${scenarioId}`);
     const hooksJson = fs.readFileSync(
       path.join(project, ".codex", "hooks.json"),

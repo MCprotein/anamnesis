@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="360" viewBox="0 0 980 360" role="img" aria-label="Session Context Tokens By Mode">
+<rect width="980" height="360" fill="#ffffff" />
+<text x="24" y="24" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#111827">Session Context Tokens By Mode</text>
+<line x1="64" y1="268" x2="956" y2="268" stroke="#d1d5db" />
+<line x1="64" y1="36" x2="64" y2="268" stroke="#d1d5db" />
+<rect x="92.0" y="264.2" width="33.1" height="3.8" fill="#7c3aed"><title>Tiny project full: 88 tokens</title></rect>
+<rect x="131.2" y="262.5" width="33.1" height="5.5" fill="#059669"><title>Tiny project compact: 126 tokens</title></rect>
+<text x="125.2" y="302" text-anchor="end" transform="rotate(-35 125.2 302)" font-size="11" fill="#374151">tiny</text>
+<rect x="219.5" y="249.0" width="33.1" height="19.0" fill="#7c3aed"><title>Normal handoff full: 439 tokens</title></rect>
+<rect x="258.6" y="257.8" width="33.1" height="10.2" fill="#059669"><title>Normal handoff compact: 235 tokens</title></rect>
+<text x="252.6" y="302" text-anchor="end" transform="rotate(-35 252.6 302)" font-size="11" fill="#374151">normal</text>
+<rect x="346.9" y="36.0" width="33.1" height="232.0" fill="#7c3aed"><title>Large ontology full: 5352 tokens</title></rect>
+<rect x="386.0" y="255.1" width="33.1" height="12.9" fill="#059669"><title>Large ontology compact: 298 tokens</title></rect>
+<text x="380.0" y="302" text-anchor="end" transform="rotate(-35 380.0 302)" font-size="11" fill="#374151">large-ontology</text>
+<rect x="474.3" y="246.5" width="33.1" height="21.5" fill="#7c3aed"><title>Stale handoff full: 495 tokens</title></rect>
+<rect x="513.5" y="259.0" width="33.1" height="9.0" fill="#059669"><title>Stale handoff compact: 207 tokens</title></rect>
+<text x="507.5" y="302" text-anchor="end" transform="rotate(-35 507.5 302)" font-size="11" fill="#374151">stale-handoff</text>
+<rect x="601.7" y="235.7" width="33.1" height="32.3" fill="#7c3aed"><title>Conflicting ontology full: 744 tokens</title></rect>
+<rect x="640.9" y="258.1" width="33.1" height="9.9" fill="#059669"><title>Conflicting ontology compact: 229 tokens</title></rect>
+<text x="634.9" y="302" text-anchor="end" transform="rotate(-35 634.9 302)" font-size="11" fill="#374151">conflicting-ontology</text>
+<rect x="729.2" y="259.5" width="33.1" height="8.5" fill="#7c3aed"><title>Missing handoff full: 196 tokens</title></rect>
+<rect x="768.3" y="260.8" width="33.1" height="7.2" fill="#059669"><title>Missing handoff compact: 165 tokens</title></rect>
+<text x="762.3" y="302" text-anchor="end" transform="rotate(-35 762.3 302)" font-size="11" fill="#374151">missing-handoff</text>
+<rect x="856.6" y="257.7" width="33.1" height="10.3" fill="#7c3aed"><title>Multi-scope repo full: 238 tokens</title></rect>
+<rect x="895.7" y="257.7" width="33.1" height="10.3" fill="#059669"><title>Multi-scope repo compact: 237 tokens</title></rect>
+<text x="889.7" y="302" text-anchor="end" transform="rotate(-35 889.7 302)" font-size="11" fill="#374151">multi-scope</text>
+<rect x="24" y="44" width="11" height="11" fill="#7c3aed" />
+<text x="40" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">Full</text>
+<rect x="234" y="44" width="11" height="11" fill="#059669" />
+<text x="250" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">Compact</text>
+</svg>

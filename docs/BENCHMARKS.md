@@ -14,6 +14,7 @@ anamnesis benchmark gallery --write
 anamnesis benchmark gallery --validate
 anamnesis benchmark trace --append
 anamnesis benchmark prompt-gate
+anamnesis benchmark session-context --write
 ```
 
 Append runs also write a machine-readable evidence record to
@@ -53,6 +54,12 @@ duplicate-context risk, and returns one of three decisions:
 Use `benchmark compare` for before/after adoption evidence. It reads two
 `benchmark report --json` files and reports raw scorecard deltas rather than
 collapsing the result into a single opaque score.
+
+Use `benchmark session-context --write` for the v1.5 startup-context budget
+check. It compares full SessionStart file injection with compact invariant
+digest/source-pointer context across public-safe fixtures, then writes JSON,
+markdown, and dependency-free SVG charts under
+[`docs/benchmark-evidence/session-context/`](benchmark-evidence/session-context/).
 
 Public-safe summaries and claim boundaries live in
 [`docs/BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md). Sanitized public-shape

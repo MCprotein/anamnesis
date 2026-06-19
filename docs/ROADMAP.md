@@ -879,13 +879,26 @@ pressure, but the roadmap below is the canonical plan.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Compact SessionStart default** | planned | Change ontology and handoff startup injection to emit a short invariant digest, active-task summary, source pointers, and retrieval instructions by default. Full file injection remains an explicit compatibility/debug mode, not the default. |
-| 2 | **Session context budget policy** | planned | Add a documented budget contract for startup payloads: estimated tokens, chars, lines, source-pointer count, required-rule presence, and cap-exceeded status. The policy should prefer source pointers over truncating long files. |
-| 3 | **Deterministic `benchmark session-context`** | planned | Add a model-free benchmark comparing `full` and `compact` session context across sanitized fixtures. Metrics should include startup chars, lines, estimated tokens, included file bytes, source pointers, required rules present, and hard-cap outcomes. |
-| 4 | **Numeric graph artifacts** | planned | Generate dependency-free SVG charts from the same benchmark JSON so context tradeoffs are visible without reading raw data or adding a chart runtime. Required graphs: mode-by-mode token bar chart, stacked payload composition, fixture-size growth line, and cap/success summary. Store public-safe generated artifacts under docs or benchmark output paths. |
+| 1 | **Compact SessionStart default** | shipped | Change ontology and handoff startup injection to emit a short invariant digest, active-task summary, source pointers, and retrieval instructions by default. Full file injection remains an explicit compatibility/debug mode via `ANAMNESIS_SESSION_CONTEXT_MODE=full`, not the default. |
+| 2 | **Session context budget policy** | partial | Add a documented budget contract for startup payloads: estimated tokens, chars, lines, source-pointer count, required-rule presence, and cap-exceeded status. `benchmark session-context` now reports those dimensions and hard-cap outcomes; status/doctor surfacing remains open. |
+| 3 | **Deterministic `benchmark session-context`** | shipped | Add a model-free benchmark comparing `full` and `compact` session context across sanitized fixtures. Metrics include startup chars, lines, estimated tokens, included file bytes, source pointers, required rules present, and hard-cap outcomes. |
+| 4 | **Numeric graph artifacts** | shipped | Generate dependency-free SVG charts from the same benchmark JSON so context tradeoffs are visible without reading raw data or adding a chart runtime. Required graphs are generated: mode-by-mode token bar chart, stacked payload composition, fixture-size growth line, and cap/success summary. Store public-safe generated artifacts under docs or benchmark output paths. |
 | 5 | **Model-dependent retrieval benchmark** | planned | Add optional controlled task runs that compare full vs compact behavior. Metrics should include task success, required-source-read rate, missed invariant count, hallucinated fact count, unnecessary context reads, elapsed time, and token usage. Keep this separate from deterministic benchmark claims. |
-| 6 | **Session-context fixture suite** | planned | Add fixtures for tiny, normal, large ontology, stale handoff, conflicting ontology, missing handoff, and multi-scope projects so compact mode is tested against the failure modes that caused full injection to look attractive. |
+| 6 | **Session-context fixture suite** | shipped | Add fixtures for tiny, normal, large ontology, stale handoff, conflicting ontology, missing handoff, and multi-scope projects so compact mode is tested against the failure modes that caused full injection to look attractive. |
 | 7 | **Prompt-gate integration** | planned | Feed session-context benchmark evidence into `benchmark prompt-gate` so prompt-time context deltas stay disabled unless repeated measured failures justify bounded extra injection. |
+
+Progress notes:
+- 2026-06-19: Shipped compact SessionStart defaults for Claude Code and
+  Codex native wrappers. Default startup context now emits invariant digest,
+  active handoff summary, source pointers, and retrieval instructions; full
+  file-body injection remains available through
+  `ANAMNESIS_SESSION_CONTEXT_MODE=full`.
+- 2026-06-19: Added deterministic `anamnesis benchmark session-context`.
+  Current public-safe fixture run covers 7 fixture shapes, reports compact
+  required rules `7/7`, compact source pointer fixtures `7/7`, large-fixture
+  token reduction `94%`, and cap exceeded counts `compact=0`, `full=2`.
+  Generated artifacts live under
+  `docs/benchmark-evidence/session-context/`.
 
 Exit criteria:
 - Compact SessionStart includes required invariants and source pointers in

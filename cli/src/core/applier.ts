@@ -46,6 +46,12 @@ export function isExecAdapterPath(projectRelative: string): boolean {
   return EXEC_ADAPTER_PREFIXES.some((p) => projectRelative.startsWith(p));
 }
 
+function isRegenerableLocalAdapterFile(projectRelative: string): boolean {
+  // Git hook files live under `.git/`, so they are intentionally local to a
+  // checkout even when the manifest records the generated bridge.
+  return projectRelative === ".git/hooks/pre-commit";
+}
+
 // ---------------------------------------------------------------------------
 // Change types
 // ---------------------------------------------------------------------------
@@ -344,8 +350,13 @@ function planFile(
     status = "user-modified";
     reason = "file exists on disk but not tracked in manifest";
   } else if (!exists && manifestEntry) {
-    status = "user-modified";
-    reason = "file tracked in manifest but missing on disk";
+    if (isRegenerableLocalAdapterFile(action.path)) {
+      status = "update";
+      reason = "regenerating missing local adapter file";
+    } else {
+      status = "user-modified";
+      reason = "file tracked in manifest but missing on disk";
+    }
   } else if (currentHash !== manifestEntry!.last_applied_hash) {
     status = "user-modified";
     reason = "file content differs from last-applied hash";
@@ -405,6 +416,7 @@ function planFile(
       status,
       newContent: action.content,
       currentContent,
+      reason,
     },
     nextManifest: upsertFileEntry(manifest, entry),
   };

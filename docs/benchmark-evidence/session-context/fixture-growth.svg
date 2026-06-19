@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="360" viewBox="0 0 980 360" role="img" aria-label="Fixture Size Growth">
+<rect width="980" height="360" fill="#ffffff" />
+<text x="24" y="24" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#111827">Fixture Size Growth</text>
+<line x1="64" y1="278" x2="956" y2="278" stroke="#d1d5db" />
+<line x1="64" y1="36" x2="64" y2="278" stroke="#d1d5db" />
+<path d="M 71.3 274.0 L 89.4 269.1 L 93.4 267.2 L 126.7 258.1 L 137.4 255.6 L 179.0 244.4 L 956.0 36.0" fill="none" stroke="#7c3aed" stroke-width="2.5" />
+<circle cx="71.3" cy="274.0" r="4" fill="#7c3aed"><title>Tiny project full: 88 tokens</title></circle>
+<circle cx="89.4" cy="269.1" r="4" fill="#7c3aed"><title>Missing handoff full: 196 tokens</title></circle>
+<circle cx="93.4" cy="267.2" r="4" fill="#7c3aed"><title>Multi-scope repo full: 238 tokens</title></circle>
+<circle cx="126.7" cy="258.1" r="4" fill="#7c3aed"><title>Normal handoff full: 439 tokens</title></circle>
+<circle cx="137.4" cy="255.6" r="4" fill="#7c3aed"><title>Stale handoff full: 495 tokens</title></circle>
+<circle cx="179.0" cy="244.4" r="4" fill="#7c3aed"><title>Conflicting ontology full: 744 tokens</title></circle>
+<circle cx="956.0" cy="36.0" r="4" fill="#7c3aed"><title>Large ontology full: 5352 tokens</title></circle>
+<path d="M 71.3 272.3 L 89.4 270.5 L 93.4 267.3 L 126.7 267.4 L 137.4 268.6 L 179.0 267.6 L 956.0 264.5" fill="none" stroke="#059669" stroke-width="2.5" />
+<circle cx="71.3" cy="272.3" r="4" fill="#059669"><title>Tiny project compact: 126 tokens</title></circle>
+<circle cx="89.4" cy="270.5" r="4" fill="#059669"><title>Missing handoff compact: 165 tokens</title></circle>
+<circle cx="93.4" cy="267.3" r="4" fill="#059669"><title>Multi-scope repo compact: 237 tokens</title></circle>
+<circle cx="126.7" cy="267.4" r="4" fill="#059669"><title>Normal handoff compact: 235 tokens</title></circle>
+<circle cx="137.4" cy="268.6" r="4" fill="#059669"><title>Stale handoff compact: 207 tokens</title></circle>
+<circle cx="179.0" cy="267.6" r="4" fill="#059669"><title>Conflicting ontology compact: 229 tokens</title></circle>
+<circle cx="956.0" cy="264.5" r="4" fill="#059669"><title>Large ontology compact: 298 tokens</title></circle>
+<rect x="24" y="44" width="11" height="11" fill="#7c3aed" />
+<text x="40" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">Full</text>
+<rect x="234" y="44" width="11" height="11" fill="#059669" />
+<text x="250" y="54" font-size="11" font-family="Arial, sans-serif" fill="#374151">Compact</text>
+<text x="490" y="332" text-anchor="middle" font-size="12" fill="#4b5563">fixture source bytes</text>
+</svg>

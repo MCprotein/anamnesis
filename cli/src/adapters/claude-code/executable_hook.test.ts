@@ -100,7 +100,7 @@ describe("executableHookRenderer (claude-code)", () => {
     ).toThrow(/wrong capability type/);
   });
 
-  it("prints user-managed system_graph.yaml before managed ontology slices", () => {
+  it("points to user-managed system_graph.yaml before managed ontology slices", () => {
     if (process.platform === "win32") return;
 
     const projectRoot = tmpDir();
@@ -134,11 +134,36 @@ describe("executableHookRenderer (claude-code)", () => {
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout).toContain("--- system_graph.yaml (user-managed) ---");
-    expect(result.stdout).toContain("project: forecasting");
-    expect(result.stdout).toContain("--- .anamnesis/ontology/base.yaml ---");
-    expect(result.stdout.indexOf("--- system_graph.yaml")).toBeLessThan(
-      result.stdout.indexOf("--- .anamnesis/ontology/base.yaml ---"),
+    expect(result.stdout).toContain("Mode: compact");
+    expect(result.stdout).toContain("Source pointers:");
+    expect(result.stdout).toContain(
+      "- system_graph.yaml (user-managed top-level ontology;",
+    );
+    expect(result.stdout).toContain(
+      "- .anamnesis/ontology/base.yaml (managed ontology slice;",
+    );
+    expect(result.stdout).not.toContain("project: forecasting");
+    expect(result.stdout.indexOf("- system_graph.yaml")).toBeLessThan(
+      result.stdout.indexOf("- .anamnesis/ontology/base.yaml"),
+    );
+
+    const full = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: projectRoot,
+        ANAMNESIS_SESSION_CONTEXT_MODE: "full",
+      },
+      encoding: "utf8",
+    });
+
+    expect(full.status).toBe(0);
+    expect(full.stderr).toBe("");
+    expect(full.stdout).toContain("--- system_graph.yaml (user-managed) ---");
+    expect(full.stdout).toContain("project: forecasting");
+    expect(full.stdout).toContain("--- .anamnesis/ontology/base.yaml ---");
+    expect(full.stdout.indexOf("--- system_graph.yaml")).toBeLessThan(
+      full.stdout.indexOf("--- .anamnesis/ontology/base.yaml ---"),
     );
   });
 

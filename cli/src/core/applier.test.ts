@@ -296,6 +296,32 @@ describe("planChanges — file", () => {
     expect(second.changes[0]!.status).toBe("user-modified");
   });
 
+  it("regenerates missing local git hook bridge files when exec adapters are allowed", () => {
+    const act = fileAction({
+      path: ".git/hooks/pre-commit",
+      content: "#!/bin/sh\n",
+      mode: 0o755,
+    });
+    const first = planChanges([act], {
+      projectRoot: root,
+      manifest: emptyManifest(),
+      allowExecAdapters: true,
+    });
+    applyChanges(first.changes, { projectRoot: root });
+    fs.unlinkSync(path.join(root, ".git/hooks/pre-commit"));
+
+    const second = planChanges([act], {
+      projectRoot: root,
+      manifest: first.nextManifest,
+      allowExecAdapters: true,
+    });
+
+    expect(second.changes[0]!.status).toBe("update");
+    expect(second.changes[0]!.reason).toContain("regenerating");
+    applyChanges(second.changes, { projectRoot: root });
+    expect(fs.existsSync(path.join(root, ".git/hooks/pre-commit"))).toBe(true);
+  });
+
   it("preserves `mode` through planning", () => {
     const act = fileAction({
       path: ".claude/hooks/validate.sh",

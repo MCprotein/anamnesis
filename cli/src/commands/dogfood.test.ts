@@ -118,7 +118,7 @@ describe("dogfoodCheck", () => {
     expect(text).toContain("`anamnesis dogfood real-codex-project-hook-smoke`");
     expect(text).toContain("`anamnesis dogfood real-codex-user-prompt-smoke`");
     expect(text).toContain("`anamnesis dogfood real-codex-tool-turn-smoke`");
-    expect(text).toContain("active.md and latest archive injected");
+    expect(text).toContain("active.md and latest archive source pointers injected");
     expect(text).toContain("status and doctor detect active.md");
     expect(text).toContain("synthetic Codex JSON dispatch");
 
