@@ -862,16 +862,16 @@ Exit criteria:
 
 ---
 
-## v1.5 — *planned*
+## v1.5 — *shipped 2026-06-19; follow-ups planned*
 
 > **Theme: compact session context with numeric proof**
 
-The next product risk is context over-injection. SessionStart continuity is
+The next product risk was context over-injection. SessionStart continuity is
 valuable only when it gives agents the minimum current state they need and
-clear pointers to retrieve the rest. v1.5 should move ontology and handoff
-startup behavior from "print everything we found" toward a compact,
-retrieval-first contract, then prove the change with numeric reports and
-graphs before making broad claims.
+clear pointers to retrieve the rest. v1.5 moved ontology and handoff startup
+behavior from "print everything we found" toward a compact, retrieval-first
+contract, then proved the change with numeric reports and graphs before
+making broad claims.
 
 This version is informed by recent agent/LLM ecosystem signals around
 context-budget discipline, large-context failure modes, and local-model cost
