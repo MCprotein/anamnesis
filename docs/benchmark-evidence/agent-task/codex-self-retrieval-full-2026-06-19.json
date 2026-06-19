@@ -1,0 +1,45 @@
+{
+  "schema_version": "anamnesis.agent_task_benchmark.v1",
+  "generated_at": "2026-06-19T08:15:35Z",
+  "project": {
+    "name": "anamnesis",
+    "shape": "self-dogfood"
+  },
+  "task": {
+    "id": "self-retrieval-v1-5-benchmark-state",
+    "prompt": "Public-safe benchmark task. Do not edit files. Before answering, inspect these required source files exactly: docs/AGENT-TASK-BENCHMARKS.md, docs/ROADMAP.md, cli/src/commands/benchmark_task.ts. Then return only valid JSON with keys: task_success boolean, first_correct_action boolean, source_files_read array, answer_summary string, missed_invariant_count number, hallucinated_fact_count number, unnecessary_context_reads number. The correct answer_summary should mention that benchmark task supports retrieval metrics, task-compare compares paired full/compact runs, task-compare --template creates matched inputs, and the remaining gap is repeated public-safe full/compact model runs before success parity claims.",
+    "expected_first_action": "Read the required public source files before answering."
+  },
+  "run": {
+    "id": "codex-self-retrieval-full-2026-06-19",
+    "agent": "codex",
+    "model": "gpt-5.5",
+    "session_context_mode": "full",
+    "context_state": "static"
+  },
+  "metrics": {
+    "questions_before_action": 0,
+    "tool_turns_to_context": 1,
+    "first_correct_action": true,
+    "handoff_recovered": false,
+    "elapsed_ms": 21773,
+    "task_success": true,
+    "required_source_reads": 3,
+    "expected_source_reads": 3,
+    "missed_invariant_count": 0,
+    "hallucinated_fact_count": 0,
+    "unnecessary_context_reads": 0,
+    "input_tokens": 82463,
+    "output_tokens": 806,
+    "total_tokens": 83269
+  },
+  "limitations": [
+    "Single model-dependent diagnostic run; do not use for success parity claims.",
+    "This task measures required-source retrieval and summary correctness, not handoff recovery.",
+    "Token usage includes model-visible prompt, tool output, and reasoning for this exact run strategy."
+  ],
+  "evidence": [
+    "Observed with codex exec --json --ephemeral --sandbox read-only on 2026-06-19.",
+    "Final response contained only the required public-safe JSON fields."
+  ]
+}

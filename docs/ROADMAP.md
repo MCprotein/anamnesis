@@ -914,6 +914,12 @@ Progress notes:
 - 2026-06-19: Added `anamnesis benchmark task-compare --template` so repeated
   full/compact retrieval runs can start from matched public-safe input pairs
   before observed model metrics are filled in.
+- 2026-06-19: Recorded the first public-safe Codex full-vs-compact retrieval
+  diagnostic pair under `docs/benchmark-evidence/agent-task/`. Both modes
+  completed the fixed task with `3/3` required source reads, `0` missed
+  invariants, and `0` hallucinated facts. The compact run was slower and used
+  more total tokens in this single pair, so it is evidence for retrieval
+  instrumentation and prompt-gate friction tracking, not success parity.
 
 Exit criteria:
 - Compact SessionStart includes required invariants and source pointers in

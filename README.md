@@ -258,6 +258,9 @@ Public-safe benchmark boundaries live in
 [`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md), and broader
 ecosystem claims stay intentionally disallowed. The claim ledger is
 [`docs/README-CLAIMS.md`](docs/README-CLAIMS.md).
+Model-dependent task diagnostics live separately in
+[`docs/AGENT-TASK-BENCHMARKS.md`](docs/AGENT-TASK-BENCHMARKS.md) and are not
+used for deterministic README score claims.
 
 ---
 

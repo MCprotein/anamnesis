@@ -121,6 +121,40 @@ Not allowed:
 
 ## Current Runs
 
-No public model-dependent run is committed yet. Add runs only when the input
-JSON avoids proprietary prompts, source snippets, credentials, and local
-absolute paths.
+The first committed public-safe pair is diagnostic only. It verifies that both
+full and compact SessionStart modes can complete the same fixed retrieval task,
+but it does not establish compact/full success parity. The task did not measure
+handoff recovery; the paired input JSON marks that limitation explicitly.
+
+Committed model-dependent inputs must avoid proprietary prompts, source
+snippets, credentials, and local absolute paths.
+
+## Agent Task Benchmark Compare — 2026-06-19T08:16:49.313Z
+
+Project: anamnesis
+Task: self-retrieval-v1-5-benchmark-state
+Agent/model: codex / gpt-5.5
+Context state: static
+Full run: codex-self-retrieval-full-2026-06-19 (4/5)
+Compact run: codex-self-retrieval-compact-2026-06-19 (3.5/5)
+
+Summary:
+- compact task success within tolerance: yes
+- regressions: 3
+- failures: 0
+- compact token reduction: -122.552%
+
+| Metric | Full | Compact | Delta | Verdict |
+|---|---:|---:|---:|---|
+| 5-point score | 4 points | 3.5 points | -0.5 points | compact-worse |
+| Task success | 1 | 1 | 0 | same |
+| Required source read rate | 1 | 1 | 0 | same |
+| Missed invariants | 0 | 0 | 0 | same |
+| Hallucinated facts | 0 | 0 | 0 | same |
+| Unnecessary context reads | 0 | 0 | 0 | same |
+| Elapsed | 21773 ms | 35541 ms | +13768 ms | compact-worse |
+| Total tokens | 83269 tokens | 185317 tokens | +102048 tokens | compact-worse |
+
+Claim boundary:
+- This is one paired model-dependent comparison, not deterministic product evidence.
+- Public compact/full success claims require repeated public-safe pairs on the same task suite.
