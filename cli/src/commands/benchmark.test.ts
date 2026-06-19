@@ -7,6 +7,7 @@ import { benchmarkGallery } from "./benchmark_gallery.js";
 import {
   agentTaskBenchmark,
   agentTaskBenchmarkCompare,
+  agentTaskBenchmarkCompareTemplate,
   agentTaskBenchmarkTemplate,
 } from "./benchmark_task.js";
 import { promptDeltaGate } from "./benchmark_prompt_gate.js";
@@ -582,6 +583,40 @@ describe("benchmarkReport", () => {
       recommendation: "collect-more-evidence",
       shouldImplementPromptDelta: false,
     });
+  });
+
+  it("generates a comparable full and compact task pair template", () => {
+    const project = tmpDir("anamnesis-agent-task-pair-template-");
+    const template = agentTaskBenchmarkCompareTemplate(
+      new Date("2026-06-19T01:20:00.000Z"),
+    );
+
+    expect(template.full.run.session_context_mode).toBe("full");
+    expect(template.compact.run.session_context_mode).toBe("compact");
+    expect(template.full.task.prompt).toBe(template.compact.task.prompt);
+    expect(template.full.run.agent).toBe(template.compact.run.agent);
+    expect(template.full.run.model).toBe(template.compact.run.model);
+    expect(template.usage.compare_command).toContain(
+      "anamnesis benchmark task-compare",
+    );
+
+    const fullInputPath = path.join(project, template.usage.full_input);
+    const compactInputPath = path.join(project, template.usage.compact_input);
+    fs.writeFileSync(fullInputPath, JSON.stringify(template.full), "utf8");
+    fs.writeFileSync(compactInputPath, JSON.stringify(template.compact), "utf8");
+
+    const result = agentTaskBenchmarkCompare({
+      projectRoot: project,
+      fullInputPath,
+      compactInputPath,
+      now: () => new Date("2026-06-19T01:21:00.000Z"),
+    });
+
+    expect(result.summary).toMatchObject({
+      compact_task_success_within_tolerance: true,
+      compact_token_reduction_pct: 46.154,
+    });
+    expect(result.markdown).toContain("Agent Task Benchmark Compare");
   });
 
   it("defers prompt-time context deltas when evidence is insufficient", () => {

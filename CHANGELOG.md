@@ -15,6 +15,8 @@ could include breaking changes.
 - Added `anamnesis benchmark task-compare` for paired full-vs-compact
   model-dependent task runs, including delta markdown and
   `agent-task-benchmark-compare` runtime evidence.
+- Added `anamnesis benchmark task-compare --template` to generate matched
+  full/compact task inputs before observed run metrics are filled in.
 
 ### Changed
 

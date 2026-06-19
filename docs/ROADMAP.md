@@ -911,6 +911,9 @@ Progress notes:
   project/task/prompt/agent/model/context state, records compact/full deltas,
   and emits `agent-task-benchmark-compare` evidence that `prompt-gate` can use
   as retrieval friction/failure signal.
+- 2026-06-19: Added `anamnesis benchmark task-compare --template` so repeated
+  full/compact retrieval runs can start from matched public-safe input pairs
+  before observed model metrics are filled in.
 
 Exit criteria:
 - Compact SessionStart includes required invariants and source pointers in

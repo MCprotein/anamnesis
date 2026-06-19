@@ -68,6 +68,7 @@ import {
 import {
   agentTaskBenchmark,
   agentTaskBenchmarkCompare,
+  agentTaskBenchmarkCompareTemplate,
   agentTaskBenchmarkTemplate,
   AgentTaskBenchmarkError,
   type AgentTaskBenchmarkCompareResult,
@@ -374,6 +375,7 @@ Flags (benchmark task-compare):
   --project-root <path>         Target directory (default: cwd)
   --full <path>                 Full SessionStart mode task benchmark JSON
   --compact <path>              Compact SessionStart mode task benchmark JSON
+  --template                    Print a paired full/compact input template
   --json                        Print structured JSON
   --append                      Append markdown to docs/AGENT-TASK-BENCHMARKS.md
   --output <path>               Override agent task compare log path
@@ -1447,6 +1449,9 @@ async function main(argv: string[]): Promise<number> {
           `       anamnesis benchmark task-compare --full <path> --compact <path> [--json] [--append] [--output=<path>]`,
         );
         console.error(
+          `       anamnesis benchmark task-compare --template`,
+        );
+        console.error(
           `       anamnesis benchmark prompt-gate [--json] [--append] [--output=<path>]`,
         );
         console.error(
@@ -1524,6 +1529,10 @@ async function main(argv: string[]): Promise<number> {
         }
 
         if (sub === "task-compare") {
+          if (flags["template"] === true) {
+            console.log(JSON.stringify(agentTaskBenchmarkCompareTemplate(), null, 2));
+            return 0;
+          }
           const fullInputPath = flags["full"];
           const compactInputPath = flags["compact"];
           if (
@@ -1532,6 +1541,9 @@ async function main(argv: string[]): Promise<number> {
           ) {
             console.error(
               `usage: anamnesis benchmark task-compare --full <path> --compact <path> [--json] [--append] [--output=<path>]`,
+            );
+            console.error(
+              `       anamnesis benchmark task-compare --template`,
             );
             return 1;
           }

@@ -15,6 +15,7 @@ anamnesis benchmark gallery --validate
 anamnesis benchmark trace --append
 anamnesis benchmark prompt-gate
 anamnesis benchmark session-context --write
+anamnesis benchmark task-compare --template
 ```
 
 Append runs also write a machine-readable evidence record to

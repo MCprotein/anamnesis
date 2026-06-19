@@ -136,6 +136,17 @@ export interface AgentTaskBenchmarkCompareResult {
   evidencePath?: string;
 }
 
+export interface AgentTaskBenchmarkCompareTemplate {
+  full: AgentTaskBenchmarkInput;
+  compact: AgentTaskBenchmarkInput;
+  usage: {
+    full_input: string;
+    compact_input: string;
+    compare_command: string;
+    note: string;
+  };
+}
+
 export interface AgentTaskBenchmarkOptions {
   projectRoot: string;
   inputPath?: string;
@@ -205,6 +216,41 @@ export function agentTaskBenchmarkTemplate(now = new Date()): AgentTaskBenchmark
       "terminal transcript or structured run log path",
       "benchmark report evidence for the same snapshot",
     ],
+  };
+}
+
+export function agentTaskBenchmarkCompareTemplate(
+  now = new Date(),
+): AgentTaskBenchmarkCompareTemplate {
+  const full = agentTaskBenchmarkTemplate(now);
+  full.run.id = "example-project-load-context-and-plan-full-001";
+  full.run.session_context_mode = "full";
+  full.metrics.required_source_reads = 1;
+  full.metrics.expected_source_reads = 2;
+  full.metrics.input_tokens = 24000;
+  full.metrics.output_tokens = 2000;
+  full.metrics.total_tokens = 26000;
+
+  const compact = JSON.parse(JSON.stringify(full)) as AgentTaskBenchmarkInput;
+  compact.run.id = "example-project-load-context-and-plan-compact-001";
+  compact.run.session_context_mode = "compact";
+  compact.metrics.required_source_reads = 2;
+  compact.metrics.expected_source_reads = 2;
+  compact.metrics.input_tokens = 12000;
+  compact.metrics.output_tokens = 2000;
+  compact.metrics.total_tokens = 14000;
+
+  return {
+    full,
+    compact,
+    usage: {
+      full_input: "full-run.json",
+      compact_input: "compact-run.json",
+      compare_command:
+        "anamnesis benchmark task-compare --full full-run.json --compact compact-run.json --append",
+      note:
+        "Use the same task prompt, repo snapshot, agent, model, tool permissions, and context state for both runs. Replace metrics with observed run values before appending evidence.",
+    },
   };
 }
 

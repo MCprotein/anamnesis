@@ -13,6 +13,7 @@ model-dependent and need repeated runs before any public claim.
 anamnesis benchmark task --template > task-run.json
 anamnesis benchmark task --input task-run.json
 anamnesis benchmark task --input task-run.json --append
+anamnesis benchmark task-compare --template > task-pair.json
 anamnesis benchmark task-compare --full full-run.json --compact compact-run.json
 anamnesis benchmark task-compare --full full-run.json --compact compact-run.json --append
 ```
@@ -32,6 +33,9 @@ sources" from "startup context is compact and the agent missed required facts."
 `run.session_context_mode=full` for one and `compact` for the other, verifies
 the project/task/prompt/agent/model/context state match, and records an
 `agent-task-benchmark-compare` evidence record when appended.
+`--template` prints a paired object with `full`, `compact`, and `usage` fields;
+use it to create matching inputs, then replace the example metrics with
+observed run values before appending evidence.
 
 ## Schema
 
