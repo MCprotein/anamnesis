@@ -952,7 +952,7 @@ turning anamnesis into a cloud memory service or an agent runtime.
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Local context index design** | in progress | Design a read-only index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Start with JSONL or SQLite; no external service dependency. Draft: [`docs/CONTEXT-INDEX-DESIGN.md`](CONTEXT-INDEX-DESIGN.md). |
-| 2 | **Context index prototype** | planned | Add a CLI prototype that builds and queries the local index with source paths, stable IDs, content type, freshness, and snippet metadata. The index should be disposable and regenerable from repo files. |
+| 2 | **Context index prototype** | in progress | Added `anamnesis context index` and `anamnesis context query` prototype commands that build/query a disposable JSONL index with source paths, stable refs, freshness, kinds, tags, and snippets. Remaining hardening: broader fixtures and diagnostics integration. |
 | 3 | **Ontology and handoff contradiction report** | planned | Teach `doctor` or a dedicated context command to flag duplicate entity IDs, conflicting relationship claims, stale handoff archive pointers, docs that contradict bootstrap facts, and reviewed semantic entries superseded by newer evidence. |
 | 4 | **Compact resume bundle** | planned | Produce a repo-native text summary of active task, latest archive pointer, touched files, latest evidence, and stale warnings so mobile/remote agents can resume without full archive injection. |
 | 5 | **Optional MCP/export decision** | planned | Decide whether the context index should expose an MCP or adapter export. Keep export optional and post-index; core continuity must work through files alone. |
@@ -968,6 +968,11 @@ Exit criteria:
   budget.
 - Optional MCP/export work is explicitly accepted or deferred based on
   dogfood value, not ecosystem pressure.
+
+Progress notes:
+- 2026-06-19: Started the JSONL prototype with local indexing for `AGENTS.md`,
+  `CLAUDE.md`, ontology YAML, active handoff plus referenced archives,
+  manifest entries, runtime evidence summaries, and selected docs.
 
 ---
 

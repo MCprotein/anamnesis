@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-527%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
+[![tests](https://img.shields.io/badge/tests-531%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
 
 ---
 
@@ -133,6 +133,8 @@ anamnesis doctor --append  # record doctor diagnostics as runtime evidence
 anamnesis hooks summary --append  # summarize hook logs and record runtime evidence
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup
 anamnesis dogfood check --append  # score and record self-check continuity evidence
+anamnesis context index --write  # build a local source-pointer index
+anamnesis context query "managed region"  # retrieve exact context pointers
 anamnesis benchmark report --append  # record deterministic context-quality scorecard evidence
 anamnesis benchmark compare --baseline before.json --after after.json --append  # record before/after deltas
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates

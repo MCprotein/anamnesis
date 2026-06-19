@@ -80,6 +80,14 @@ import {
   type AgentTaskBenchmarkSeriesResult,
 } from "./commands/benchmark_task_series.js";
 import {
+  contextIndex,
+  contextQuery,
+  ContextIndexError,
+  type ContextIndexKind,
+  type ContextIndexResult,
+  type ContextQueryResult,
+} from "./commands/context_index.js";
+import {
   promptDeltaGate,
   PromptDeltaGateError,
   type PromptDeltaGateResult,
@@ -217,6 +225,20 @@ function parseOptionalPositiveIntegerFlag(
   return parsed;
 }
 
+function parseContextLimitFlag(
+  value: string | boolean | undefined,
+): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new ContextIndexError("--limit requires a positive integer");
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new ContextIndexError("--limit requires a positive integer");
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Library root discovery
 // ---------------------------------------------------------------------------
@@ -255,6 +277,10 @@ Commands:
                                   record runtime evidence
   dogfood check                 Run continuity self-check and optionally append
                                   a record to docs/DOGFOOD.md
+  context index                 Build a local JSONL context index from
+                                  agent rules, ontology, handoffs, and docs
+  context query                 Search the local context index and print
+                                  source pointers for exact follow-up reads
   benchmark report             Generate a deterministic context-quality
                                   benchmark report for docs/BENCHMARKS.md
   benchmark compare            Compare two benchmark report JSON snapshots
@@ -337,6 +363,19 @@ Flags (dogfood check):
   --library <path>              Library path (default: bundled)
   --append                      Append markdown result to docs/DOGFOOD.md
   --output <path>               Override self-check log path
+
+Flags (context index):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write .anamnesis/context/index.jsonl
+  --output <path>               Override index output path
+
+Flags (context query):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --kind <kind>                 Restrict to one context kind
+  --limit <n>                   Max matches to print (default: 8)
+  --index <path>                Override index JSONL path
 
 Flags (benchmark report):
   --project-root <path>         Target directory (default: cwd)
@@ -893,6 +932,51 @@ function reportDogfood(result: DogfoodResult): void {
   }
   if (result.evidencePath) {
     console.log(`  evidence: ${result.evidencePath}`);
+  }
+}
+
+function reportContextIndex(result: ContextIndexResult): void {
+  console.log("anamnesis context index");
+  console.log(`  sources: ${result.summary.sources}`);
+  console.log(`  entries: ${result.summary.entries}`);
+  const byKind = Object.entries(result.summary.byKind)
+    .filter(([, total]) => total > 0)
+    .sort(([a], [b]) => a.localeCompare(b));
+  if (byKind.length > 0) {
+    console.log(
+      `  kinds: ${byKind.map(([kind, total]) => `${kind}=${total}`).join(", ")}`,
+    );
+  }
+  if (result.warnings.length > 0) {
+    console.log(`  warnings: ${result.warnings.length}`);
+    for (const warning of result.warnings.slice(0, 5)) {
+      console.log(`    - ${warning}`);
+    }
+  }
+  if (result.writtenPath) {
+    console.log(`  written: ${result.writtenPath}`);
+  } else {
+    console.log("  (dry-run - re-run with --write to write the index)");
+  }
+}
+
+function reportContextQuery(result: ContextQueryResult): void {
+  console.log(`anamnesis context query - ${result.query}`);
+  if (result.kind) {
+    console.log(`  kind: ${result.kind}`);
+  }
+  console.log(
+    `  searched: ${result.summary.entriesSearched}, matches: ${result.summary.matches}`,
+  );
+  for (const match of result.matches) {
+    const entry = match.entry;
+    console.log(
+      `  [${match.score}] ${entry.kind} ${entry.source_path} ${entry.stable_ref}`,
+    );
+    console.log(`      ${entry.title}`);
+    if (entry.snippet) {
+      console.log(`      ${entry.snippet}`);
+    }
   }
 }
 
@@ -1464,6 +1548,66 @@ async function main(argv: string[]): Promise<number> {
         return result.ok ? 0 : 1;
       } catch (e) {
         if (e instanceof DogfoodError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
+
+    case "context": {
+      const sub = positional[0];
+      if (sub !== "index" && sub !== "query") {
+        console.error(
+          `error: unknown 'context' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(
+          `usage: anamnesis context index [--json] [--write] [--output=<path>]`,
+        );
+        console.error(
+          `       anamnesis context query [--kind=<kind>] [--limit=<n>] [--index=<path>] <query>`,
+        );
+        return 1;
+      }
+      try {
+        if (sub === "index") {
+          const result = contextIndex({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            write: flags["write"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportContextIndex(result);
+          }
+          return 0;
+        }
+
+        const query = positional.slice(1).join(" ").trim();
+        if (!query) {
+          console.error(
+            `usage: anamnesis context query [--kind=<kind>] [--limit=<n>] [--index=<path>] <query>`,
+          );
+          return 1;
+        }
+        const result = contextQuery({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          query,
+          kind: flags["kind"] as ContextIndexKind | undefined,
+          limit: parseContextLimitFlag(flags["limit"]),
+          indexPath: flags["index"] as string | undefined,
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportContextQuery(result);
+        }
+        return 0;
+      } catch (e) {
+        if (e instanceof ContextIndexError) {
           console.error(`error: ${e.message}`);
           return 1;
         }

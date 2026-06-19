@@ -30,6 +30,7 @@ Thumbs.db
 
 # anamnesis-generated (for in-repo test fixtures if any)
 **/.anamnesis/backups/
+**/.anamnesis/context/
 **/.anamnesis/handoff/
 **/.anamnesis/overrides/
 

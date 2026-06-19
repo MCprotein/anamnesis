@@ -20,6 +20,8 @@ could include breaking changes.
 - Added `anamnesis benchmark task-series --write` to aggregate repeated
   full/compact compare evidence into average, standard deviation, min/max, and
   SVG chart artifacts.
+- Added `anamnesis context index` and `anamnesis context query` as the first
+  v1.6 local JSONL context index prototype.
 
 ### Changed
 
@@ -32,7 +34,8 @@ could include breaking changes.
 - Recorded the first public-safe Codex full-vs-compact retrieval diagnostic
   pair for the v1.5 `benchmark task-compare` workflow, keeping it separate
   from deterministic README claims.
-- Started the v1.6 context index design in `docs/CONTEXT-INDEX-DESIGN.md`.
+- Updated the v1.6 context index design and roadmap notes for the JSONL
+  prototype.
 - Recorded the npmjs.org post-publish smoke for `@mcprotein/anamnesis@1.5.0`,
   including published compact SessionStart hook output from Claude Code and
   Codex native wrappers.

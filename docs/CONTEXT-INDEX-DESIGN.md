@@ -1,6 +1,6 @@
 # Context Index Design
 
-Status: v1.6 draft.
+Status: v1.6 prototype in progress.
 
 ## Goal
 
@@ -74,6 +74,18 @@ anamnesis context query --kind ontology-rule "managed region"
 Query output must cite `source_path` and `stable_ref`. Agents should then read
 the exact source before relying on an invariant, relationship, entity, path, or
 operational rule.
+
+Prototype behavior:
+
+- `anamnesis context index` builds the index in memory and reports source,
+  entry, kind, and warning counts.
+- `anamnesis context index --write` writes
+  `.anamnesis/context/index.jsonl`.
+- `anamnesis context query <terms>` reads the JSONL index, ranks exact local
+  entries by term hits, and prints source pointers.
+- `--kind <kind>` filters query results to one entry kind.
+- `.anamnesis/context/` is ignored by git because the index is regenerable and
+  may include handoff snippets from local work.
 
 ## Diagnostics
 
