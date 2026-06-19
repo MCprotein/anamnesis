@@ -53,6 +53,7 @@ export interface PromptDeltaGateEvidenceSummary {
   benchmarkReports: number;
   benchmarkCompares: number;
   agentTaskBenchmarks: number;
+  agentTaskBenchmarkCompares: number;
   retrievalBenchmarks: number;
   compactRetrievalBenchmarks: number;
   fullRetrievalBenchmarks: number;
@@ -62,6 +63,8 @@ export interface PromptDeltaGateEvidenceSummary {
   taskFailures: number;
   retrievalFriction: number;
   retrievalFailures: number;
+  retrievalComparisonRegressions: number;
+  retrievalComparisonFailures: number;
   sessionContextBenchmarks: number;
   sessionContextCompactCapExceeded: number;
   sessionContextFullCapExceeded: number;
@@ -247,6 +250,7 @@ function summarizePromptGateEvidence(
   let benchmarkReports = 0;
   let benchmarkCompares = 0;
   let agentTaskBenchmarks = 0;
+  let agentTaskBenchmarkCompares = 0;
   let retrievalBenchmarks = 0;
   let compactRetrievalBenchmarks = 0;
   let fullRetrievalBenchmarks = 0;
@@ -256,6 +260,8 @@ function summarizePromptGateEvidence(
   let taskFailures = 0;
   let retrievalFriction = 0;
   let retrievalFailures = 0;
+  let retrievalComparisonRegressions = 0;
+  let retrievalComparisonFailures = 0;
 
   for (const record of records) {
     if (record.kind === "benchmark-report") {
@@ -369,6 +375,41 @@ function summarizePromptGateEvidence(
         taskFailures++;
       }
       if (recordRetrievalFailure) retrievalFailures++;
+      continue;
+    }
+
+    if (record.kind === "agent-task-benchmark-compare") {
+      agentTaskBenchmarkCompares++;
+      const regressions = numberField(record.summary, "regressions") ?? 0;
+      const failures = numberField(record.summary, "failures") ?? 0;
+      const withinTolerance = booleanField(
+        record.summary,
+        "compact_task_success_within_tolerance",
+      );
+      const missedInvariantDelta = numberField(
+        record.summary,
+        "missed_invariant_delta",
+      );
+      const hallucinatedFactDelta = numberField(
+        record.summary,
+        "hallucinated_fact_delta",
+      );
+      const compareFriction = regressions > 0;
+      const compareFailure =
+        failures > 0 ||
+        withinTolerance === false ||
+        (missedInvariantDelta !== undefined && missedInvariantDelta > 0) ||
+        (hallucinatedFactDelta !== undefined && hallucinatedFactDelta > 0);
+      if (compareFriction) {
+        taskFriction++;
+        retrievalFriction++;
+        retrievalComparisonRegressions += regressions;
+      }
+      if (compareFailure) {
+        taskFailures++;
+        retrievalFailures++;
+        retrievalComparisonFailures += Math.max(1, failures);
+      }
     }
   }
 
@@ -378,6 +419,7 @@ function summarizePromptGateEvidence(
     benchmarkReports,
     benchmarkCompares,
     agentTaskBenchmarks,
+    agentTaskBenchmarkCompares,
     retrievalBenchmarks,
     compactRetrievalBenchmarks,
     fullRetrievalBenchmarks,
@@ -387,6 +429,8 @@ function summarizePromptGateEvidence(
     taskFailures,
     retrievalFriction,
     retrievalFailures,
+    retrievalComparisonRegressions,
+    retrievalComparisonFailures,
     sessionContextBenchmarks: sessionContextEvidence ? 1 : 0,
     sessionContextCompactCapExceeded:
       sessionContextEvidence?.summary.compactCapExceeded ?? 0,
@@ -598,13 +642,15 @@ function promptDeltaSignals(input: {
         ? "fail"
         : input.evidence.taskFriction > 0
           ? "warn"
-          : input.evidence.agentTaskBenchmarks === 0
+          : input.evidence.agentTaskBenchmarks === 0 &&
+              input.evidence.agentTaskBenchmarkCompares === 0
             ? "warn"
             : "pass",
     detail:
-      input.evidence.agentTaskBenchmarks === 0
+      input.evidence.agentTaskBenchmarks === 0 &&
+      input.evidence.agentTaskBenchmarkCompares === 0
         ? "no model-dependent task benchmark evidence found"
-        : `${input.evidence.taskFriction} friction run(s), ${input.evidence.taskFailures} hard failure(s); retrieval ${input.evidence.retrievalFriction}/${input.evidence.retrievalFailures}`,
+        : `${input.evidence.taskFriction} friction run(s), ${input.evidence.taskFailures} hard failure(s); retrieval ${input.evidence.retrievalFriction}/${input.evidence.retrievalFailures}; compares ${input.evidence.agentTaskBenchmarkCompares}`,
   });
 
   signals.push({
@@ -638,7 +684,8 @@ function decidePromptDelta(input: {
 }): PromptDeltaGateDecision {
   const hasEvidence =
     input.evidence.benchmarkReports > 0 ||
-    input.evidence.agentTaskBenchmarks > 0;
+    input.evidence.agentTaskBenchmarks > 0 ||
+    input.evidence.agentTaskBenchmarkCompares > 0;
   const hasSessionContextEvidence = input.evidence.sessionContextBenchmarks > 0;
   const evidenceShowsGap =
     input.evidence.continuityGaps > 0 ||
@@ -763,10 +810,12 @@ function renderPromptDeltaGateMarkdown(input: {
     `- benchmark compares: ${input.evidence.benchmarkCompares}`,
     `- session-context benchmarks: ${input.evidence.sessionContextBenchmarks}`,
     `- agent task benchmarks: ${input.evidence.agentTaskBenchmarks}`,
+    `- agent task compares: ${input.evidence.agentTaskBenchmarkCompares}`,
     `- retrieval benchmarks: ${input.evidence.retrievalBenchmarks} (compact ${input.evidence.compactRetrievalBenchmarks}, full ${input.evidence.fullRetrievalBenchmarks})`,
     `- continuity gaps: ${input.evidence.continuityGaps}`,
     `- task friction/failures: ${input.evidence.taskFriction}/${input.evidence.taskFailures}`,
     `- retrieval friction/failures: ${input.evidence.retrievalFriction}/${input.evidence.retrievalFailures}`,
+    `- retrieval compare regressions/failures: ${input.evidence.retrievalComparisonRegressions}/${input.evidence.retrievalComparisonFailures}`,
     "",
     "Context budget:",
     `- estimated duplicate prompt context: ${input.contextBudget.bytes} bytes (~${input.contextBudget.estimatedTokens} tokens)`,

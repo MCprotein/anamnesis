@@ -8,6 +8,8 @@ import {
 
 export const AGENT_TASK_BENCHMARK_SCHEMA_VERSION =
   "anamnesis.agent_task_benchmark.v1";
+export const AGENT_TASK_BENCHMARK_COMPARE_SCHEMA_VERSION =
+  "anamnesis.agent_task_benchmark_compare.v1";
 
 export interface AgentTaskBenchmarkInput {
   schema_version: typeof AGENT_TASK_BENCHMARK_SCHEMA_VERSION;
@@ -84,9 +86,68 @@ export interface AgentTaskBenchmarkResult {
   evidencePath?: string;
 }
 
+export type AgentTaskBenchmarkCompareDirection =
+  | "higher-is-better"
+  | "lower-is-better";
+export type AgentTaskBenchmarkCompareVerdict =
+  | "compact-better"
+  | "compact-worse"
+  | "same"
+  | "unknown";
+
+export interface AgentTaskBenchmarkCompareDelta {
+  id: string;
+  label: string;
+  direction: AgentTaskBenchmarkCompareDirection;
+  full?: number;
+  compact?: number;
+  delta?: number;
+  verdict: AgentTaskBenchmarkCompareVerdict;
+  unit?: string;
+}
+
+export interface AgentTaskBenchmarkCompareSummary {
+  regressions: number;
+  failures: number;
+  compact_task_success_within_tolerance?: boolean;
+  compact_task_success_delta?: number;
+  required_source_read_rate_delta?: number;
+  missed_invariant_delta?: number;
+  hallucinated_fact_delta?: number;
+  unnecessary_context_reads_delta?: number;
+  elapsed_ms_delta?: number;
+  total_tokens_delta?: number;
+  compact_token_reduction_pct?: number;
+}
+
+export interface AgentTaskBenchmarkCompareResult {
+  projectRoot: string;
+  generatedAt: string;
+  fullInputPath: string;
+  compactInputPath: string;
+  full: AgentTaskBenchmarkInput;
+  compact: AgentTaskBenchmarkInput;
+  fullScore: AgentTaskBenchmarkScore;
+  compactScore: AgentTaskBenchmarkScore;
+  deltas: AgentTaskBenchmarkCompareDelta[];
+  summary: AgentTaskBenchmarkCompareSummary;
+  markdown: string;
+  appendedPath?: string;
+  evidencePath?: string;
+}
+
 export interface AgentTaskBenchmarkOptions {
   projectRoot: string;
   inputPath?: string;
+  append?: boolean;
+  outputPath?: string;
+  now?: () => Date;
+}
+
+export interface AgentTaskBenchmarkCompareOptions {
+  projectRoot: string;
+  fullInputPath: string;
+  compactInputPath: string;
   append?: boolean;
   outputPath?: string;
   now?: () => Date;
@@ -193,6 +254,95 @@ export function agentTaskBenchmark(
     inputPath: displayPathFromProject(projectRoot, inputPath),
     input,
     score,
+    markdown,
+    appendedPath,
+    evidencePath,
+  };
+}
+
+export function agentTaskBenchmarkCompare(
+  opts: AgentTaskBenchmarkCompareOptions,
+): AgentTaskBenchmarkCompareResult {
+  const projectRoot = path.resolve(opts.projectRoot);
+  const fullInputPath = path.resolve(projectRoot, opts.fullInputPath);
+  const compactInputPath = path.resolve(projectRoot, opts.compactInputPath);
+  const full = readAgentTaskBenchmarkInput(fullInputPath);
+  const compact = readAgentTaskBenchmarkInput(compactInputPath);
+  validateComparablePair({
+    full,
+    compact,
+    fullInputPath,
+    compactInputPath,
+  });
+
+  const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+  const fullScore = scoreAgentTaskBenchmark(full);
+  const compactScore = scoreAgentTaskBenchmark(compact);
+  const deltas = compareAgentTaskBenchmarkDeltas({
+    full,
+    compact,
+    fullScore,
+    compactScore,
+  });
+  const summary = summarizeAgentTaskBenchmarkCompare({
+    full,
+    compact,
+    fullScore,
+    compactScore,
+    deltas,
+  });
+  const markdown = renderAgentTaskBenchmarkCompareMarkdown({
+    generatedAt,
+    full,
+    compact,
+    fullScore,
+    compactScore,
+    deltas,
+    summary,
+  });
+
+  let appendedPath: string | undefined;
+  let evidencePath: string | undefined;
+  if (opts.append === true) {
+    const outputPath = path.resolve(
+      projectRoot,
+      opts.outputPath ?? path.join("docs", "AGENT-TASK-BENCHMARKS.md"),
+    );
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    const prefix =
+      fs.existsSync(outputPath) && fs.readFileSync(outputPath, "utf8").trim() !== ""
+        ? "\n\n"
+        : "";
+    fs.appendFileSync(outputPath, `${prefix}${markdown}\n`, "utf8");
+    appendedPath = displayPathFromProject(projectRoot, outputPath);
+    evidencePath = appendEvidenceRecord(
+      projectRoot,
+      agentTaskBenchmarkCompareEvidenceRecord({
+        generatedAt,
+        full,
+        compact,
+        fullScore,
+        compactScore,
+        deltas,
+        summary,
+        fullInputPath: displayPathFromProject(projectRoot, fullInputPath),
+        compactInputPath: displayPathFromProject(projectRoot, compactInputPath),
+        appendedPath,
+      }),
+    );
+  }
+
+  return {
+    projectRoot,
+    generatedAt,
+    fullInputPath: displayPathFromProject(projectRoot, fullInputPath),
+    compactInputPath: displayPathFromProject(projectRoot, compactInputPath),
+    full,
+    compact,
+    fullScore,
+    compactScore,
+    deltas,
+    summary,
     markdown,
     appendedPath,
     evidencePath,
@@ -468,6 +618,314 @@ function agentTaskBenchmarkEvidenceRecord(input: {
   };
 }
 
+function validateComparablePair(input: {
+  full: AgentTaskBenchmarkInput;
+  compact: AgentTaskBenchmarkInput;
+  fullInputPath: string;
+  compactInputPath: string;
+}): void {
+  if (input.full.run.session_context_mode !== "full") {
+    throw new AgentTaskBenchmarkError(
+      `full benchmark input must use run.session_context_mode=full: ${input.fullInputPath}`,
+    );
+  }
+  if (input.compact.run.session_context_mode !== "compact") {
+    throw new AgentTaskBenchmarkError(
+      `compact benchmark input must use run.session_context_mode=compact: ${input.compactInputPath}`,
+    );
+  }
+
+  const comparisons: [string, string, string][] = [
+    ["project.name", input.full.project.name, input.compact.project.name],
+    ["task.id", input.full.task.id, input.compact.task.id],
+    ["task.prompt", input.full.task.prompt, input.compact.task.prompt],
+    ["run.agent", input.full.run.agent, input.compact.run.agent],
+    ["run.model", input.full.run.model, input.compact.run.model],
+    ["run.context_state", input.full.run.context_state, input.compact.run.context_state],
+  ];
+  for (const [label, fullValue, compactValue] of comparisons) {
+    if (fullValue !== compactValue) {
+      throw new AgentTaskBenchmarkError(
+        `full and compact benchmark inputs must share ${label}`,
+      );
+    }
+  }
+}
+
+function compareAgentTaskBenchmarkDeltas(input: {
+  full: AgentTaskBenchmarkInput;
+  compact: AgentTaskBenchmarkInput;
+  fullScore: AgentTaskBenchmarkScore;
+  compactScore: AgentTaskBenchmarkScore;
+}): AgentTaskBenchmarkCompareDelta[] {
+  return [
+    compareDelta({
+      id: "score",
+      label: "5-point score",
+      direction: "higher-is-better",
+      full: input.fullScore.points,
+      compact: input.compactScore.points,
+      unit: "points",
+    }),
+    compareDelta({
+      id: "task-success",
+      label: "Task success",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.task_success,
+      compact: input.compactScore.retrieval?.task_success,
+    }),
+    compareDelta({
+      id: "required-source-read-rate",
+      label: "Required source read rate",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.required_source_read_rate,
+      compact: input.compactScore.retrieval?.required_source_read_rate,
+    }),
+    compareDelta({
+      id: "missed-invariants",
+      label: "Missed invariants",
+      direction: "lower-is-better",
+      full: input.full.metrics.missed_invariant_count,
+      compact: input.compact.metrics.missed_invariant_count,
+    }),
+    compareDelta({
+      id: "hallucinated-facts",
+      label: "Hallucinated facts",
+      direction: "lower-is-better",
+      full: input.full.metrics.hallucinated_fact_count,
+      compact: input.compact.metrics.hallucinated_fact_count,
+    }),
+    compareDelta({
+      id: "unnecessary-context-reads",
+      label: "Unnecessary context reads",
+      direction: "lower-is-better",
+      full: input.full.metrics.unnecessary_context_reads,
+      compact: input.compact.metrics.unnecessary_context_reads,
+    }),
+    compareDelta({
+      id: "elapsed-ms",
+      label: "Elapsed",
+      direction: "lower-is-better",
+      full: input.full.metrics.elapsed_ms,
+      compact: input.compact.metrics.elapsed_ms,
+      unit: "ms",
+    }),
+    compareDelta({
+      id: "total-tokens",
+      label: "Total tokens",
+      direction: "lower-is-better",
+      full: input.full.metrics.total_tokens,
+      compact: input.compact.metrics.total_tokens,
+      unit: "tokens",
+    }),
+  ];
+}
+
+function summarizeAgentTaskBenchmarkCompare(input: {
+  full: AgentTaskBenchmarkInput;
+  compact: AgentTaskBenchmarkInput;
+  fullScore: AgentTaskBenchmarkScore;
+  compactScore: AgentTaskBenchmarkScore;
+  deltas: readonly AgentTaskBenchmarkCompareDelta[];
+}): AgentTaskBenchmarkCompareSummary {
+  const taskSuccessDelta = deltaById(input.deltas, "task-success")?.delta;
+  const requiredSourceReadRateDelta = deltaById(
+    input.deltas,
+    "required-source-read-rate",
+  )?.delta;
+  const missedInvariantDelta = deltaById(input.deltas, "missed-invariants")?.delta;
+  const hallucinatedFactDelta = deltaById(input.deltas, "hallucinated-facts")?.delta;
+  const unnecessaryContextReadsDelta = deltaById(
+    input.deltas,
+    "unnecessary-context-reads",
+  )?.delta;
+  const elapsedMsDelta = deltaById(input.deltas, "elapsed-ms")?.delta;
+  const totalTokensDelta = deltaById(input.deltas, "total-tokens")?.delta;
+  const fullTokens = input.full.metrics.total_tokens;
+  const compactTokens = input.compact.metrics.total_tokens;
+  const compactTokenReductionPct =
+    fullTokens !== undefined && fullTokens > 0 && compactTokens !== undefined
+      ? roundNumber(((fullTokens - compactTokens) / fullTokens) * 100)
+      : undefined;
+  const compactTaskSuccessWithinTolerance =
+    taskSuccessDelta === undefined ? undefined : taskSuccessDelta >= -0.05;
+  const regressions = input.deltas.filter(
+    (delta) => delta.verdict === "compact-worse",
+  ).length;
+  const failures =
+    (compactTaskSuccessWithinTolerance === false ? 1 : 0) +
+    (missedInvariantDelta !== undefined && missedInvariantDelta > 0 ? 1 : 0) +
+    (hallucinatedFactDelta !== undefined && hallucinatedFactDelta > 0 ? 1 : 0);
+
+  return {
+    regressions,
+    failures,
+    ...(compactTaskSuccessWithinTolerance !== undefined
+      ? { compact_task_success_within_tolerance: compactTaskSuccessWithinTolerance }
+      : {}),
+    ...(taskSuccessDelta !== undefined
+      ? { compact_task_success_delta: taskSuccessDelta }
+      : {}),
+    ...(requiredSourceReadRateDelta !== undefined
+      ? { required_source_read_rate_delta: requiredSourceReadRateDelta }
+      : {}),
+    ...(missedInvariantDelta !== undefined
+      ? { missed_invariant_delta: missedInvariantDelta }
+      : {}),
+    ...(hallucinatedFactDelta !== undefined
+      ? { hallucinated_fact_delta: hallucinatedFactDelta }
+      : {}),
+    ...(unnecessaryContextReadsDelta !== undefined
+      ? { unnecessary_context_reads_delta: unnecessaryContextReadsDelta }
+      : {}),
+    ...(elapsedMsDelta !== undefined ? { elapsed_ms_delta: elapsedMsDelta } : {}),
+    ...(totalTokensDelta !== undefined ? { total_tokens_delta: totalTokensDelta } : {}),
+    ...(compactTokenReductionPct !== undefined
+      ? { compact_token_reduction_pct: compactTokenReductionPct }
+      : {}),
+  };
+}
+
+function agentTaskBenchmarkCompareEvidenceRecord(input: {
+  generatedAt: string;
+  full: AgentTaskBenchmarkInput;
+  compact: AgentTaskBenchmarkInput;
+  fullScore: AgentTaskBenchmarkScore;
+  compactScore: AgentTaskBenchmarkScore;
+  deltas: readonly AgentTaskBenchmarkCompareDelta[];
+  summary: AgentTaskBenchmarkCompareSummary;
+  fullInputPath: string;
+  compactInputPath: string;
+  appendedPath: string;
+}): RuntimeEvidenceRecord {
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "agent-task-benchmark-compare",
+    generated_at: input.generatedAt,
+    command: ["anamnesis", "benchmark", "task-compare"],
+    project: { name: input.full.project.name },
+    summary: {
+      schema_version: AGENT_TASK_BENCHMARK_COMPARE_SCHEMA_VERSION,
+      task_id: input.full.task.id,
+      agent: input.full.run.agent,
+      model: input.full.run.model,
+      context_state: input.full.run.context_state,
+      full_run_id: input.full.run.id,
+      compact_run_id: input.compact.run.id,
+      full_score: {
+        points: input.fullScore.points,
+        total: input.fullScore.total,
+      },
+      compact_score: {
+        points: input.compactScore.points,
+        total: input.compactScore.total,
+      },
+      ...input.summary,
+    },
+    details: {
+      deltas: input.deltas,
+      full_metrics: input.full.metrics,
+      compact_metrics: input.compact.metrics,
+    },
+    artifacts: {
+      full_input: input.fullInputPath,
+      compact_input: input.compactInputPath,
+      markdown: input.appendedPath,
+    },
+  };
+}
+
+function renderAgentTaskBenchmarkCompareMarkdown(input: {
+  generatedAt: string;
+  full: AgentTaskBenchmarkInput;
+  compact: AgentTaskBenchmarkInput;
+  fullScore: AgentTaskBenchmarkScore;
+  compactScore: AgentTaskBenchmarkScore;
+  deltas: readonly AgentTaskBenchmarkCompareDelta[];
+  summary: AgentTaskBenchmarkCompareSummary;
+}): string {
+  return [
+    `## Agent Task Benchmark Compare — ${input.generatedAt}`,
+    "",
+    `Project: ${input.full.project.name}`,
+    `Task: ${input.full.task.id}`,
+    `Agent/model: ${input.full.run.agent} / ${input.full.run.model}`,
+    `Context state: ${input.full.run.context_state}`,
+    `Full run: ${input.full.run.id} (${formatScore(input.fullScore.points)}/${input.fullScore.total})`,
+    `Compact run: ${input.compact.run.id} (${formatScore(input.compactScore.points)}/${input.compactScore.total})`,
+    "",
+    "Summary:",
+    `- compact task success within tolerance: ${formatMaybeBoolean(input.summary.compact_task_success_within_tolerance)}`,
+    `- regressions: ${input.summary.regressions}`,
+    `- failures: ${input.summary.failures}`,
+    `- compact token reduction: ${formatMaybePercent(input.summary.compact_token_reduction_pct)}`,
+    "",
+    "| Metric | Full | Compact | Delta | Verdict |",
+    "|---|---:|---:|---:|---|",
+    ...input.deltas.map(
+      (delta) =>
+        `| ${delta.label} | ${formatDeltaValue(delta.full, delta.unit)} | ${formatDeltaValue(delta.compact, delta.unit)} | ${formatSignedDelta(delta.delta, delta.unit)} | ${delta.verdict} |`,
+    ),
+    "",
+    "Claim boundary:",
+    "- This is one paired model-dependent comparison, not deterministic product evidence.",
+    "- Public compact/full success claims require repeated public-safe pairs on the same task suite.",
+  ].join("\n");
+}
+
+function compareDelta(input: {
+  id: string;
+  label: string;
+  direction: AgentTaskBenchmarkCompareDirection;
+  full?: number;
+  compact?: number;
+  unit?: string;
+}): AgentTaskBenchmarkCompareDelta {
+  if (input.full === undefined || input.compact === undefined) {
+    return {
+      id: input.id,
+      label: input.label,
+      direction: input.direction,
+      ...(input.full !== undefined ? { full: input.full } : {}),
+      ...(input.compact !== undefined ? { compact: input.compact } : {}),
+      verdict: "unknown",
+      ...(input.unit ? { unit: input.unit } : {}),
+    };
+  }
+  const delta = roundNumber(input.compact - input.full);
+  const verdict =
+    delta === 0
+      ? "same"
+      : input.direction === "higher-is-better"
+        ? delta > 0
+          ? "compact-better"
+          : "compact-worse"
+        : delta < 0
+          ? "compact-better"
+          : "compact-worse";
+  return {
+    id: input.id,
+    label: input.label,
+    direction: input.direction,
+    full: input.full,
+    compact: input.compact,
+    delta,
+    verdict,
+    ...(input.unit ? { unit: input.unit } : {}),
+  };
+}
+
+function deltaById(
+  deltas: readonly AgentTaskBenchmarkCompareDelta[],
+  id: string,
+): AgentTaskBenchmarkCompareDelta | undefined {
+  return deltas.find((delta) => delta.id === id);
+}
+
+function roundNumber(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
 function retrievalMetricRows(
   input: AgentTaskBenchmarkInput,
   score: AgentTaskBenchmarkScore,
@@ -501,6 +959,25 @@ function retrievalMetricRows(
 
 function formatMaybeNumber(value: number | undefined): string {
   return value === undefined ? "-" : String(value);
+}
+
+function formatMaybeBoolean(value: boolean | undefined): string {
+  return value === undefined ? "unknown" : value ? "yes" : "no";
+}
+
+function formatMaybePercent(value: number | undefined): string {
+  return value === undefined ? "unknown" : `${value}%`;
+}
+
+function formatDeltaValue(value: number | undefined, unit?: string): string {
+  if (value === undefined) return "-";
+  return unit ? `${value} ${unit}` : String(value);
+}
+
+function formatSignedDelta(value: number | undefined, unit?: string): string {
+  if (value === undefined) return "-";
+  const formatted = value > 0 ? `+${value}` : String(value);
+  return unit ? `${formatted} ${unit}` : formatted;
 }
 
 function formatScore(value: number): string {

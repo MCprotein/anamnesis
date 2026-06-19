@@ -883,7 +883,7 @@ pressure, but the roadmap below is the canonical plan.
 | 2 | **Session context budget policy** | partial | Add a documented budget contract for startup payloads: estimated tokens, chars, lines, source-pointer count, required-rule presence, and cap-exceeded status. `benchmark session-context` now reports those dimensions and hard-cap outcomes; status/doctor surfacing remains open. |
 | 3 | **Deterministic `benchmark session-context`** | shipped | Add a model-free benchmark comparing `full` and `compact` session context across sanitized fixtures. Metrics include startup chars, lines, estimated tokens, included file bytes, source pointers, required rules present, and hard-cap outcomes. |
 | 4 | **Numeric graph artifacts** | shipped | Generate dependency-free SVG charts from the same benchmark JSON so context tradeoffs are visible without reading raw data or adding a chart runtime. Required graphs are generated: mode-by-mode token bar chart, stacked payload composition, fixture-size growth line, and cap/success summary. Store public-safe generated artifacts under docs or benchmark output paths. |
-| 5 | **Model-dependent retrieval benchmark** | partial | `benchmark task` now accepts optional compact/full retrieval metrics: task success, required-source-read rate, missed invariant count, hallucinated fact count, unnecessary context reads, elapsed time, and token usage. The remaining follow-up is repeated public-safe full-vs-compact task runs before any success-rate claim. |
+| 5 | **Model-dependent retrieval benchmark** | partial | `benchmark task` now accepts optional compact/full retrieval metrics, and `benchmark task-compare` compares paired full/compact runs for task success, required-source-read rate, missed invariant count, hallucinated fact count, unnecessary context reads, elapsed time, and token usage. The remaining follow-up is repeated public-safe full-vs-compact task runs before any success-rate claim. |
 | 6 | **Session-context fixture suite** | shipped | Add fixtures for tiny, normal, large ontology, stale handoff, conflicting ontology, missing handoff, and multi-scope projects so compact mode is tested against the failure modes that caused full injection to look attractive. |
 | 7 | **Prompt-gate integration** | shipped | `benchmark prompt-gate` now reads deterministic session-context JSON and retrieval-aware task evidence so prompt-time context deltas stay disabled unless repeated measured failures justify bounded extra injection. |
 
@@ -906,6 +906,11 @@ Progress notes:
   retrieval-aware `agent-task-benchmark` records. This enables the
   compact-vs-full model-dependent comparison, but repeated public-safe runs
   are still required before claiming compact task success parity.
+- 2026-06-19: Added `anamnesis benchmark task-compare` for paired full vs
+  compact retrieval runs. It validates that the two run inputs share the same
+  project/task/prompt/agent/model/context state, records compact/full deltas,
+  and emits `agent-task-benchmark-compare` evidence that `prompt-gate` can use
+  as retrieval friction/failure signal.
 
 Exit criteria:
 - Compact SessionStart includes required invariants and source pointers in

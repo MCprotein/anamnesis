@@ -67,8 +67,10 @@ import {
 } from "./commands/benchmark_gallery.js";
 import {
   agentTaskBenchmark,
+  agentTaskBenchmarkCompare,
   agentTaskBenchmarkTemplate,
   AgentTaskBenchmarkError,
+  type AgentTaskBenchmarkCompareResult,
   type AgentTaskBenchmarkResult,
 } from "./commands/benchmark_task.js";
 import {
@@ -257,6 +259,8 @@ Commands:
                                   record runtime evidence
   benchmark task               Record a model-dependent agent task benchmark
                                   separately from deterministic scorecards
+  benchmark task-compare       Compare paired full/compact agent task
+                                  benchmark inputs
   benchmark prompt-gate        Decide whether prompt-time context delta
                                   injection is justified by evidence
   benchmark session-context    Compare full vs compact SessionStart context
@@ -365,6 +369,14 @@ Flags (benchmark task):
   --json                        Print structured JSON
   --append                      Append markdown to docs/AGENT-TASK-BENCHMARKS.md
   --output <path>               Override agent task benchmark log path
+
+Flags (benchmark task-compare):
+  --project-root <path>         Target directory (default: cwd)
+  --full <path>                 Full SessionStart mode task benchmark JSON
+  --compact <path>              Compact SessionStart mode task benchmark JSON
+  --json                        Print structured JSON
+  --append                      Append markdown to docs/AGENT-TASK-BENCHMARKS.md
+  --output <path>               Override agent task compare log path
 
 Flags (benchmark prompt-gate):
   --project-root <path>         Target directory (default: cwd)
@@ -1015,6 +1027,49 @@ function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
   }
 }
 
+function reportAgentTaskBenchmarkCompare(
+  result: AgentTaskBenchmarkCompareResult,
+): void {
+  console.log(`anamnesis benchmark task-compare — ${result.full.project.name}`);
+  console.log(`  task: ${result.full.task.id}`);
+  console.log(`  agent/model: ${result.full.run.agent} / ${result.full.run.model}`);
+  console.log(`  full run: ${result.full.run.id}`);
+  console.log(`  compact run: ${result.compact.run.id}`);
+  console.log(
+    `  score: full ${result.fullScore.points}/${result.fullScore.total}, compact ${result.compactScore.points}/${result.compactScore.total}`,
+  );
+  console.log(
+    `  compact task success within tolerance: ${result.summary.compact_task_success_within_tolerance === undefined ? "unknown" : result.summary.compact_task_success_within_tolerance ? "yes" : "no"}`,
+  );
+  console.log(
+    `  regressions/failures: ${result.summary.regressions}/${result.summary.failures}`,
+  );
+  if (result.summary.compact_token_reduction_pct !== undefined) {
+    console.log(
+      `  compact token reduction: ${result.summary.compact_token_reduction_pct}%`,
+    );
+  }
+  for (const delta of result.deltas) {
+    const compact = delta.compact === undefined ? "-" : String(delta.compact);
+    const full = delta.full === undefined ? "-" : String(delta.full);
+    const diff =
+      delta.delta === undefined
+        ? "-"
+        : delta.delta > 0
+          ? `+${delta.delta}`
+          : String(delta.delta);
+    console.log(
+      `  ${delta.verdict.padEnd(14)} ${delta.label}: full=${full}, compact=${compact}, delta=${diff}`,
+    );
+  }
+  if (result.appendedPath) {
+    console.log(`  appended: ${result.appendedPath}`);
+  }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
+}
+
 function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
   console.log(
     `anamnesis benchmark prompt-gate — ${result.status.agentfile.project.name}`,
@@ -1029,6 +1084,9 @@ function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
   );
   console.log(
     `  session-context benchmarks: ${result.evidence.sessionContextBenchmarks}`,
+  );
+  console.log(
+    `  agent task compares: ${result.evidence.agentTaskBenchmarkCompares}`,
   );
   console.log(
     `  retrieval benchmarks: ${result.evidence.retrievalBenchmarks} (compact ${result.evidence.compactRetrievalBenchmarks}, full ${result.evidence.fullRetrievalBenchmarks}), friction/failures ${result.evidence.retrievalFriction}/${result.evidence.retrievalFailures}`,
@@ -1363,6 +1421,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "gallery" &&
         sub !== "trace" &&
         sub !== "task" &&
+        sub !== "task-compare" &&
         sub !== "prompt-gate" &&
         sub !== "session-context"
       ) {
@@ -1383,6 +1442,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
+        );
+        console.error(
+          `       anamnesis benchmark task-compare --full <path> --compact <path> [--json] [--append] [--output=<path>]`,
         );
         console.error(
           `       anamnesis benchmark prompt-gate [--json] [--append] [--output=<path>]`,
@@ -1457,6 +1519,34 @@ async function main(argv: string[]): Promise<number> {
             console.log(JSON.stringify(result, null, 2));
           } else {
             reportAgentTaskBenchmark(result);
+          }
+          return 0;
+        }
+
+        if (sub === "task-compare") {
+          const fullInputPath = flags["full"];
+          const compactInputPath = flags["compact"];
+          if (
+            typeof fullInputPath !== "string" ||
+            typeof compactInputPath !== "string"
+          ) {
+            console.error(
+              `usage: anamnesis benchmark task-compare --full <path> --compact <path> [--json] [--append] [--output=<path>]`,
+            );
+            return 1;
+          }
+          const result = agentTaskBenchmarkCompare({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            fullInputPath,
+            compactInputPath,
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportAgentTaskBenchmarkCompare(result);
           }
           return 0;
         }

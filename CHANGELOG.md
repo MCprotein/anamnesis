@@ -12,12 +12,15 @@ could include breaking changes.
 - Added optional retrieval metrics to `anamnesis benchmark task`, including
   compact/full session context mode, required source reads, missed invariants,
   hallucinated facts, unnecessary context reads, task success, and token usage.
+- Added `anamnesis benchmark task-compare` for paired full-vs-compact
+  model-dependent task runs, including delta markdown and
+  `agent-task-benchmark-compare` runtime evidence.
 
 ### Changed
 
 - Changed `anamnesis benchmark prompt-gate` to consume deterministic
-  session-context benchmark JSON plus retrieval-aware task evidence before
-  recommending any prompt-time context delta.
+  session-context benchmark JSON plus retrieval-aware task and task-compare
+  evidence before recommending any prompt-time context delta.
 
 ### Documentation
 

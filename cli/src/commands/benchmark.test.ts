@@ -6,6 +6,7 @@ import { benchmarkCompare, benchmarkReport } from "./benchmark.js";
 import { benchmarkGallery } from "./benchmark_gallery.js";
 import {
   agentTaskBenchmark,
+  agentTaskBenchmarkCompare,
   agentTaskBenchmarkTemplate,
 } from "./benchmark_task.js";
 import { promptDeltaGate } from "./benchmark_prompt_gate.js";
@@ -489,6 +490,98 @@ describe("benchmarkReport", () => {
     expect(gallery.warnings).toContain(
       "No current benchmark scorecard evidence found.",
     );
+  });
+
+  it("compares paired full and compact retrieval task benchmarks", () => {
+    const { project, library } = setupBenchmarkProject();
+    const full = agentTaskBenchmarkTemplate(
+      new Date("2026-06-19T01:00:00.000Z"),
+    );
+    full.project.name = "anamnesis-project";
+    full.task.id = "compact-retrieval";
+    full.run.id = "compact-retrieval-full-001";
+    full.run.session_context_mode = "full";
+    full.metrics = {
+      questions_before_action: 0,
+      tool_turns_to_context: 1,
+      first_correct_action: true,
+      handoff_recovered: true,
+      elapsed_ms: 60000,
+      task_success: true,
+      required_source_reads: 1,
+      expected_source_reads: 3,
+      missed_invariant_count: 0,
+      hallucinated_fact_count: 0,
+      unnecessary_context_reads: 0,
+      total_tokens: 20000,
+    };
+    const compact = JSON.parse(JSON.stringify(full)) as typeof full;
+    compact.generated_at = "2026-06-19T01:05:00.000Z";
+    compact.run.id = "compact-retrieval-compact-001";
+    compact.run.session_context_mode = "compact";
+    compact.metrics.required_source_reads = 3;
+    compact.metrics.unnecessary_context_reads = 1;
+    compact.metrics.elapsed_ms = 50000;
+    compact.metrics.total_tokens = 10000;
+
+    const fullInputPath = path.join(project, "full.json");
+    const compactInputPath = path.join(project, "compact.json");
+    fs.writeFileSync(fullInputPath, JSON.stringify(full), "utf8");
+    fs.writeFileSync(compactInputPath, JSON.stringify(compact), "utf8");
+
+    const compare = agentTaskBenchmarkCompare({
+      projectRoot: project,
+      fullInputPath,
+      compactInputPath,
+      append: true,
+      now: () => new Date("2026-06-19T01:10:00.000Z"),
+    });
+
+    expect(compare.summary).toMatchObject({
+      regressions: 1,
+      failures: 0,
+      compact_task_success_within_tolerance: true,
+      compact_token_reduction_pct: 50,
+    });
+    expect(compare.deltas.find((delta) => delta.id === "required-source-read-rate")).toMatchObject({
+      delta: 0.667,
+      verdict: "compact-better",
+    });
+    expect(compare.markdown).toContain("Agent Task Benchmark Compare");
+    expect(compare.markdown).toContain("| Total tokens | 20000 tokens | 10000 tokens | -10000 tokens | compact-better |");
+    expect(compare.appendedPath).toBe("docs/AGENT-TASK-BENCHMARKS.md");
+    expect(compare.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
+
+    const evidenceLines = fs
+      .readFileSync(
+        path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+        "utf8",
+      )
+      .trim()
+      .split(/\r?\n/);
+    expect(evidenceLines).toHaveLength(3);
+    expect(JSON.parse(evidenceLines.at(-1)!) as { kind: string }).toMatchObject({
+      kind: "agent-task-benchmark-compare",
+    });
+
+    const gate = promptDeltaGate({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-06-19T01:11:00.000Z"),
+    });
+    expect(gate.evidence).toMatchObject({
+      records: 3,
+      agentTaskBenchmarks: 0,
+      agentTaskBenchmarkCompares: 1,
+      retrievalComparisonRegressions: 1,
+      retrievalComparisonFailures: 0,
+      retrievalFriction: 1,
+      retrievalFailures: 0,
+    });
+    expect(gate.decision).toMatchObject({
+      recommendation: "collect-more-evidence",
+      shouldImplementPromptDelta: false,
+    });
   });
 
   it("defers prompt-time context deltas when evidence is insufficient", () => {

@@ -43,9 +43,9 @@ scorecards or generated benchmark-gallery README claims.
 Use `benchmark prompt-gate` before adding any Codex `UserPromptSubmit`
 context delta injection. The gate reads deterministic scorecard evidence,
 session-context benchmark JSON, and model-dependent task evidence, including
-optional compact/full retrieval metrics. It estimates duplicate
-ontology/handoff prompt overhead, checks duplicate-context risk, and returns
-one of three decisions:
+optional compact/full retrieval metrics and paired task-compare evidence. It
+estimates duplicate ontology/handoff prompt overhead, checks duplicate-context
+risk, and returns one of three decisions:
 
 - `defer`: keep prompt-time context delta disabled.
 - `collect-more-evidence`: a gap exists, but repeated-gap evidence or

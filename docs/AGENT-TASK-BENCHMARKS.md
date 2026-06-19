@@ -13,6 +13,8 @@ model-dependent and need repeated runs before any public claim.
 anamnesis benchmark task --template > task-run.json
 anamnesis benchmark task --input task-run.json
 anamnesis benchmark task --input task-run.json --append
+anamnesis benchmark task-compare --full full-run.json --compact compact-run.json
+anamnesis benchmark task-compare --full full-run.json --compact compact-run.json --append
 ```
 
 Append runs write markdown here and an `agent-task-benchmark` record to
@@ -25,6 +27,11 @@ deciding whether Codex prompt-time context delta injection is justified. In
 v1.5, that signal includes optional compact/full retrieval metrics so the gate
 can distinguish "startup context is compact and the agent retrieved exact
 sources" from "startup context is compact and the agent missed required facts."
+
+`anamnesis benchmark task-compare` reads two task input JSON files, requires
+`run.session_context_mode=full` for one and `compact` for the other, verifies
+the project/task/prompt/agent/model/context state match, and records an
+`agent-task-benchmark-compare` evidence record when appended.
 
 ## Schema
 
@@ -83,6 +90,15 @@ The comparison should look for task success, required-source-read rate, missed
 invariants, hallucinated facts, unnecessary context reads, elapsed time, and
 token usage. A single pair is diagnostic only. Public claims need repeated
 public-safe runs.
+
+`benchmark task-compare` reports:
+
+- compact task success delta and whether it stays within the current 5
+  percentage-point tolerance
+- required-source-read-rate delta
+- missed invariant, hallucinated fact, and unnecessary context-read deltas
+- elapsed-time and total-token deltas
+- regression/failure counts for prompt-gate consumption
 
 ## Claim Boundary
 

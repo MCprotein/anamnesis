@@ -16,6 +16,7 @@ export type EvidenceKind =
   | "benchmark-compare"
   | "benchmark-trace-rollup"
   | "agent-task-benchmark"
+  | "agent-task-benchmark-compare"
   | "prompt-delta-gate";
 
 export interface RuntimeEvidenceRecord {
@@ -143,6 +144,7 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
       record.kind === "benchmark-compare" ||
       record.kind === "benchmark-trace-rollup" ||
       record.kind === "agent-task-benchmark" ||
+      record.kind === "agent-task-benchmark-compare" ||
       record.kind === "prompt-delta-gate") &&
     typeof record.generated_at === "string" &&
     Array.isArray(record.command) &&
