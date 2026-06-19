@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-06-19
+
 ### Added
 
 - Added `anamnesis benchmark session-context`, a deterministic full-vs-compact
