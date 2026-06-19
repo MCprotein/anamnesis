@@ -987,6 +987,9 @@ function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
   console.log(
     `  agent/model: ${result.input.run.agent} / ${result.input.run.model}`,
   );
+  if (result.input.run.session_context_mode) {
+    console.log(`  session context mode: ${result.input.run.session_context_mode}`);
+  }
   console.log(`  context state: ${result.input.run.context_state}`);
   console.log(`  score: ${result.score.points}/${result.score.total}`);
   console.log(
@@ -998,6 +1001,12 @@ function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
   console.log(
     `  handoff recovered: ${result.input.metrics.handoff_recovered ? "yes" : "no"}`,
   );
+  if (result.score.retrieval) {
+    const metrics = result.input.metrics;
+    console.log(
+      `  retrieval: success=${metrics.task_success === undefined ? "unknown" : metrics.task_success ? "yes" : "no"}, source_reads=${metrics.required_source_reads ?? "-"}/${metrics.expected_source_reads ?? "-"}, missed=${metrics.missed_invariant_count ?? "-"}, hallucinated=${metrics.hallucinated_fact_count ?? "-"}, unnecessary=${metrics.unnecessary_context_reads ?? "-"}, total_tokens=${metrics.total_tokens ?? "-"}`,
+    );
+  }
   if (result.appendedPath) {
     console.log(`  appended: ${result.appendedPath}`);
   }
@@ -1017,6 +1026,12 @@ function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
   console.log(`  reason: ${result.decision.reason}`);
   console.log(
     `  evidence: ${result.evidence.records} valid, ${result.evidence.invalidRecords} invalid`,
+  );
+  console.log(
+    `  session-context benchmarks: ${result.evidence.sessionContextBenchmarks}`,
+  );
+  console.log(
+    `  retrieval benchmarks: ${result.evidence.retrievalBenchmarks} (compact ${result.evidence.compactRetrievalBenchmarks}, full ${result.evidence.fullRetrievalBenchmarks}), friction/failures ${result.evidence.retrievalFriction}/${result.evidence.retrievalFailures}`,
   );
   console.log(
     `  context budget: ~${result.contextBudget.estimatedTokens}/${result.contextBudget.maxPromptDeltaTokens} tokens, duplicate risk ${result.contextBudget.duplicateContextRisk}`,

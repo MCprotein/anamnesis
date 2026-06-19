@@ -411,6 +411,13 @@ describe("benchmarkReport", () => {
       first_correct_action: true,
       handoff_recovered: true,
       elapsed_ms: 45000,
+      task_success: true,
+      required_source_reads: 2,
+      expected_source_reads: 2,
+      missed_invariant_count: 0,
+      hallucinated_fact_count: 0,
+      unnecessary_context_reads: 0,
+      total_tokens: 9000,
     };
     const inputPath = path.join(project, "task-run.json");
     fs.writeFileSync(inputPath, JSON.stringify(input), "utf8");
@@ -427,10 +434,20 @@ describe("benchmarkReport", () => {
       total: 5,
       first_correct_action: 1,
       handoff_recovered: 1,
+      retrieval: {
+        required_source_read_rate: 1,
+        task_success: 1,
+        missed_invariant_count: 0,
+        hallucinated_fact_count: 0,
+        unnecessary_context_reads: 0,
+        total_tokens: 9000,
+      },
     });
     expect(result.appendedPath).toBe("docs/AGENT-TASK-BENCHMARKS.md");
     expect(result.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
     expect(result.markdown).toContain("Agent Task Benchmark");
+    expect(result.markdown).toContain("Session context mode: compact");
+    expect(result.markdown).toContain("| Required source reads | 2/2 | 100% |");
     expect(result.markdown).toContain("Model-dependent result");
 
     const evidenceLines = fs
@@ -445,14 +462,24 @@ describe("benchmarkReport", () => {
       kind: string;
       summary: {
         schema_version?: string;
+        session_context_mode?: string;
         score?: { points?: number; total?: number };
+        retrieval?: {
+          required_source_read_rate?: number;
+          task_success?: number;
+        };
       };
     };
     expect(evidence).toMatchObject({
       kind: "agent-task-benchmark",
       summary: {
         schema_version: "anamnesis.agent_task_benchmark.v1",
+        session_context_mode: "compact",
         score: { points: 5, total: 5 },
+        retrieval: {
+          required_source_read_rate: 1,
+          task_success: 1,
+        },
       },
     });
 
@@ -485,6 +512,80 @@ describe("benchmarkReport", () => {
     expect(result.contextBudget.files.length).toBeGreaterThan(0);
     expect(result.markdown).toContain("Prompt-Time Delta Gate");
     expect(result.markdown).toContain("Implement prompt-time delta: no");
+  });
+
+  it("uses session-context and retrieval benchmark evidence in prompt gate", () => {
+    const { project, library } = setupBenchmarkProject();
+    sessionContextBenchmark({
+      projectRoot: project,
+      write: true,
+      now: () => new Date("2026-06-19T00:00:00.000Z"),
+    });
+
+    const input = agentTaskBenchmarkTemplate(
+      new Date("2026-06-19T00:10:00.000Z"),
+    );
+    input.project.name = "anamnesis-project";
+    input.task.id = "compact-retrieval";
+    input.run.id = "compact-retrieval-codex-001";
+    input.run.session_context_mode = "compact";
+    input.metrics = {
+      questions_before_action: 0,
+      tool_turns_to_context: 1,
+      first_correct_action: true,
+      handoff_recovered: true,
+      elapsed_ms: 50000,
+      task_success: true,
+      required_source_reads: 3,
+      expected_source_reads: 3,
+      missed_invariant_count: 0,
+      hallucinated_fact_count: 0,
+      unnecessary_context_reads: 0,
+      total_tokens: 10000,
+    };
+    const inputPath = path.join(project, "compact-retrieval.json");
+    fs.writeFileSync(inputPath, JSON.stringify(input), "utf8");
+    agentTaskBenchmark({
+      projectRoot: project,
+      inputPath,
+      append: true,
+      now: () => new Date("2026-06-19T00:11:00.000Z"),
+    });
+
+    const result = promptDeltaGate({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-06-19T00:12:00.000Z"),
+    });
+
+    expect(result.decision).toMatchObject({
+      recommendation: "defer",
+      shouldImplementPromptDelta: false,
+    });
+    expect(result.evidence).toMatchObject({
+      records: 3,
+      agentTaskBenchmarks: 1,
+      retrievalBenchmarks: 1,
+      compactRetrievalBenchmarks: 1,
+      fullRetrievalBenchmarks: 0,
+      retrievalFriction: 0,
+      retrievalFailures: 0,
+      sessionContextBenchmarks: 1,
+      sessionContextCompactCapExceeded: 0,
+    });
+    expect(
+      result.signals.find((signal) => signal.id === "session-context-benchmark"),
+    ).toMatchObject({ status: "pass" });
+    expect(
+      result.signals.find((signal) => signal.id === "agent-task-friction"),
+    ).toMatchObject({ status: "pass" });
+    expect(result.evidencePath).toContain(
+      "docs/benchmark-evidence/session-context/session-context.json",
+    );
+    expect(result.markdown).toContain("- session-context benchmarks: 1");
+    expect(result.markdown).toContain(
+      "- retrieval benchmarks: 1 (compact 1, full 0)",
+    );
   });
 
   it("allows only a non-default prompt-time prototype for repeated continuity failures", () => {

@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-523%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
+[![tests](https://img.shields.io/badge/tests-524%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
 
 ---
 
@@ -138,9 +138,9 @@ anamnesis benchmark compare --baseline before.json --after after.json --append  
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates
 anamnesis benchmark gallery --validate  # fail when gallery evidence is stale
 anamnesis benchmark trace --append  # roll up benchmark trace logs as runtime evidence
-anamnesis benchmark task --template  # create a model-dependent task benchmark input
+anamnesis benchmark task --template  # create a model-dependent task/retrieval benchmark input
 anamnesis benchmark task --input task-run.json --append  # record an agent task run separately
-anamnesis benchmark prompt-gate  # decide whether prompt-time context delta is justified
+anamnesis benchmark prompt-gate  # decide using scorecard, session-context, and retrieval evidence
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 

@@ -7,6 +7,18 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added optional retrieval metrics to `anamnesis benchmark task`, including
+  compact/full session context mode, required source reads, missed invariants,
+  hallucinated facts, unnecessary context reads, task success, and token usage.
+
+### Changed
+
+- Changed `anamnesis benchmark prompt-gate` to consume deterministic
+  session-context benchmark JSON plus retrieval-aware task evidence before
+  recommending any prompt-time context delta.
+
 ### Documentation
 
 - Recorded the npmjs.org post-publish smoke for `@mcprotein/anamnesis@1.5.0`,

@@ -8,6 +8,10 @@ import {
   type RuntimeEvidenceLog,
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
+import {
+  SESSION_CONTEXT_BENCHMARK_SCHEMA_VERSION,
+  type SessionContextBenchmarkResult,
+} from "./benchmark_session_context.js";
 import { status, StatusError, type StatusResult } from "./status.js";
 
 export const PROMPT_DELTA_GATE_SCHEMA_VERSION =
@@ -49,10 +53,27 @@ export interface PromptDeltaGateEvidenceSummary {
   benchmarkReports: number;
   benchmarkCompares: number;
   agentTaskBenchmarks: number;
+  retrievalBenchmarks: number;
+  compactRetrievalBenchmarks: number;
+  fullRetrievalBenchmarks: number;
   continuityGaps: number;
   continuityRegressions: number;
   taskFriction: number;
   taskFailures: number;
+  retrievalFriction: number;
+  retrievalFailures: number;
+  sessionContextBenchmarks: number;
+  sessionContextCompactCapExceeded: number;
+  sessionContextFullCapExceeded: number;
+  sessionContextLargeReductionPct?: number;
+  sessionContextCompactRequiredRulePasses?: number;
+  sessionContextCompactRequiredRuleTotal?: number;
+  sessionContextCompactSourcePointerFixtures?: number;
+}
+
+interface PromptDeltaGateSessionContextEvidence {
+  path: string;
+  summary: SessionContextBenchmarkResult["summary"];
 }
 
 export interface PromptDeltaGateDecision {
@@ -112,7 +133,12 @@ export function promptDeltaGate(
   }
 
   const log = readPromptGateEvidenceRecords(projectRoot, opts.sources ?? []);
-  const evidence = summarizePromptGateEvidence(log.records, log.invalid);
+  const sessionContextEvidence = readSessionContextBenchmarkEvidence(projectRoot);
+  const evidence = summarizePromptGateEvidence(
+    log.records,
+    log.invalid,
+    sessionContextEvidence,
+  );
   const contextBudget = measurePromptContextBudget({
     projectRoot,
     maxPromptDeltaTokens,
@@ -121,10 +147,11 @@ export function promptDeltaGate(
   const signals = promptDeltaSignals({ st, evidence, contextBudget });
   const decision = decidePromptDelta({ evidence, contextBudget });
   const requiredBeforeShip = requiredPromptDeltaShipEvidence();
+  const combinedEvidencePath = evidencePath(log, sessionContextEvidence);
   const markdown = renderPromptDeltaGateMarkdown({
     generatedAt,
     projectName: st.agentfile.project.name,
-    evidencePath: log.path,
+    evidencePath: combinedEvidencePath,
     evidence,
     contextBudget,
     signals,
@@ -163,7 +190,7 @@ export function promptDeltaGate(
   return {
     projectRoot,
     generatedAt,
-    evidencePath: log.path,
+    evidencePath: combinedEvidencePath,
     status: st,
     evidence,
     contextBudget,
@@ -215,14 +242,20 @@ function defaultPromptGateEvidenceSources(
 function summarizePromptGateEvidence(
   records: readonly RuntimeEvidenceRecord[],
   invalidRecords: number,
+  sessionContextEvidence?: PromptDeltaGateSessionContextEvidence,
 ): PromptDeltaGateEvidenceSummary {
   let benchmarkReports = 0;
   let benchmarkCompares = 0;
   let agentTaskBenchmarks = 0;
+  let retrievalBenchmarks = 0;
+  let compactRetrievalBenchmarks = 0;
+  let fullRetrievalBenchmarks = 0;
   let continuityGaps = 0;
   let continuityRegressions = 0;
   let taskFriction = 0;
   let taskFailures = 0;
+  let retrievalFriction = 0;
+  let retrievalFailures = 0;
 
   for (const record of records) {
     if (record.kind === "benchmark-report") {
@@ -259,22 +292,83 @@ function summarizePromptGateEvidence(
       agentTaskBenchmarks++;
       const score = objectField(record.summary, "score");
       const metrics = objectField(record.summary, "metrics");
+      const retrieval = objectField(record.summary, "retrieval");
       const points = score ? numberField(score, "points") : undefined;
       const total = score ? numberField(score, "total") : undefined;
       const questions = metrics ? numberField(metrics, "questions_before_action") : undefined;
       const turns = metrics ? numberField(metrics, "tool_turns_to_context") : undefined;
       const firstCorrect = metrics ? booleanField(metrics, "first_correct_action") : undefined;
       const handoffRecovered = metrics ? booleanField(metrics, "handoff_recovered") : undefined;
+      const taskSuccess = metrics ? booleanField(metrics, "task_success") : undefined;
+      const expectedSourceReads = metrics
+        ? numberField(metrics, "expected_source_reads")
+        : undefined;
+      const requiredSourceReads = metrics
+        ? numberField(metrics, "required_source_reads")
+        : undefined;
+      const missedInvariantCount = metrics
+        ? numberField(metrics, "missed_invariant_count")
+        : undefined;
+      const hallucinatedFactCount = metrics
+        ? numberField(metrics, "hallucinated_fact_count")
+        : undefined;
+      const unnecessaryContextReads = metrics
+        ? numberField(metrics, "unnecessary_context_reads")
+        : undefined;
+      const sourceReadRate =
+        retrieval && numberField(retrieval, "required_source_read_rate") !== undefined
+          ? numberField(retrieval, "required_source_read_rate")
+          : expectedSourceReads !== undefined &&
+              expectedSourceReads > 0 &&
+              requiredSourceReads !== undefined
+            ? requiredSourceReads / expectedSourceReads
+            : undefined;
+      const sessionContextMode =
+        typeof record.summary.session_context_mode === "string"
+          ? record.summary.session_context_mode
+          : undefined;
+      const hasRetrievalMetrics =
+        taskSuccess !== undefined ||
+        expectedSourceReads !== undefined ||
+        requiredSourceReads !== undefined ||
+        missedInvariantCount !== undefined ||
+        hallucinatedFactCount !== undefined ||
+        unnecessaryContextReads !== undefined ||
+        sourceReadRate !== undefined;
+      if (hasRetrievalMetrics) {
+        retrievalBenchmarks++;
+        if (sessionContextMode === "compact") compactRetrievalBenchmarks++;
+        if (sessionContextMode === "full") fullRetrievalBenchmarks++;
+      }
+      const recordRetrievalFriction =
+        hasRetrievalMetrics &&
+        ((sourceReadRate !== undefined && sourceReadRate < 1) ||
+          (unnecessaryContextReads !== undefined && unnecessaryContextReads > 0) ||
+          (missedInvariantCount !== undefined && missedInvariantCount > 0) ||
+          (hallucinatedFactCount !== undefined && hallucinatedFactCount > 0) ||
+          taskSuccess === false);
+      const recordRetrievalFailure =
+        hasRetrievalMetrics &&
+        (taskSuccess === false ||
+          (missedInvariantCount !== undefined && missedInvariantCount > 0) ||
+          (hallucinatedFactCount !== undefined && hallucinatedFactCount > 0));
       if (
         (points !== undefined && total !== undefined && points < total) ||
         (questions !== undefined && questions > 0) ||
-        (turns !== undefined && turns > 1)
+        (turns !== undefined && turns > 1) ||
+        recordRetrievalFriction
       ) {
         taskFriction++;
       }
-      if (firstCorrect === false || handoffRecovered === false) {
+      if (recordRetrievalFriction) retrievalFriction++;
+      if (
+        firstCorrect === false ||
+        handoffRecovered === false ||
+        recordRetrievalFailure
+      ) {
         taskFailures++;
       }
+      if (recordRetrievalFailure) retrievalFailures++;
     }
   }
 
@@ -284,11 +378,71 @@ function summarizePromptGateEvidence(
     benchmarkReports,
     benchmarkCompares,
     agentTaskBenchmarks,
+    retrievalBenchmarks,
+    compactRetrievalBenchmarks,
+    fullRetrievalBenchmarks,
     continuityGaps,
     continuityRegressions,
     taskFriction,
     taskFailures,
+    retrievalFriction,
+    retrievalFailures,
+    sessionContextBenchmarks: sessionContextEvidence ? 1 : 0,
+    sessionContextCompactCapExceeded:
+      sessionContextEvidence?.summary.compactCapExceeded ?? 0,
+    sessionContextFullCapExceeded:
+      sessionContextEvidence?.summary.fullCapExceeded ?? 0,
+    ...(sessionContextEvidence
+      ? {
+          sessionContextLargeReductionPct:
+            sessionContextEvidence.summary.largeFixtureCompactReductionPct,
+          sessionContextCompactRequiredRulePasses:
+            sessionContextEvidence.summary.compactRequiredRulePasses,
+          sessionContextCompactRequiredRuleTotal:
+            sessionContextEvidence.summary.compactRequiredRuleTotal,
+          sessionContextCompactSourcePointerFixtures:
+            sessionContextEvidence.summary.compactSourcePointerFixtures,
+        }
+      : {}),
   };
+}
+
+function readSessionContextBenchmarkEvidence(
+  projectRoot: string,
+): PromptDeltaGateSessionContextEvidence | undefined {
+  const rel = path.join(
+    "docs",
+    "benchmark-evidence",
+    "session-context",
+    "session-context.json",
+  );
+  const abs = path.join(projectRoot, rel);
+  if (!fs.existsSync(abs)) return undefined;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(abs, "utf8")) as unknown;
+    if (
+      isObject(parsed) &&
+      parsed.schema_version === SESSION_CONTEXT_BENCHMARK_SCHEMA_VERSION &&
+      isObject(parsed.summary)
+    ) {
+      return {
+        path: rel.split(path.sep).join("/"),
+        summary: parsed.summary as SessionContextBenchmarkResult["summary"],
+      };
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function evidencePath(
+  log: RuntimeEvidenceLog,
+  sessionContextEvidence?: PromptDeltaGateSessionContextEvidence,
+): string {
+  return sessionContextEvidence
+    ? `${log.path}; ${sessionContextEvidence.path}`
+    : log.path;
 }
 
 function measurePromptContextBudget(input: {
@@ -395,6 +549,23 @@ function promptDeltaSignals(input: {
 }): PromptDeltaGateSignal[] {
   const signals: PromptDeltaGateSignal[] = [];
   signals.push({
+    id: "session-context-benchmark",
+    label: "Session context benchmark",
+    status:
+      input.evidence.sessionContextBenchmarks === 0
+        ? "warn"
+        : input.evidence.sessionContextCompactCapExceeded > 0 ||
+            input.evidence.sessionContextCompactRequiredRulePasses !==
+              input.evidence.sessionContextCompactRequiredRuleTotal
+          ? "fail"
+          : "pass",
+    detail:
+      input.evidence.sessionContextBenchmarks === 0
+        ? "no session-context benchmark JSON found"
+        : `large reduction ${input.evidence.sessionContextLargeReductionPct ?? "?"}%; compact cap exceeded ${input.evidence.sessionContextCompactCapExceeded}; required rules ${input.evidence.sessionContextCompactRequiredRulePasses ?? "?"}/${input.evidence.sessionContextCompactRequiredRuleTotal ?? "?"}`,
+  });
+
+  signals.push({
     id: "session-start-continuity",
     label: "SessionStart + handoff continuity",
     status: input.st.continuity.ready ? "pass" : "fail",
@@ -433,7 +604,7 @@ function promptDeltaSignals(input: {
     detail:
       input.evidence.agentTaskBenchmarks === 0
         ? "no model-dependent task benchmark evidence found"
-        : `${input.evidence.taskFriction} friction run(s), ${input.evidence.taskFailures} hard failure(s)`,
+        : `${input.evidence.taskFriction} friction run(s), ${input.evidence.taskFailures} hard failure(s); retrieval ${input.evidence.retrievalFriction}/${input.evidence.retrievalFailures}`,
   });
 
   signals.push({
@@ -465,13 +636,19 @@ function decidePromptDelta(input: {
   evidence: PromptDeltaGateEvidenceSummary;
   contextBudget: PromptDeltaGateContextBudget;
 }): PromptDeltaGateDecision {
-  const hasEvidence = input.evidence.benchmarkReports > 0 || input.evidence.agentTaskBenchmarks > 0;
+  const hasEvidence =
+    input.evidence.benchmarkReports > 0 ||
+    input.evidence.agentTaskBenchmarks > 0;
+  const hasSessionContextEvidence = input.evidence.sessionContextBenchmarks > 0;
   const evidenceShowsGap =
     input.evidence.continuityGaps > 0 ||
     input.evidence.continuityRegressions > 0 ||
     input.evidence.taskFriction > 0 ||
-    input.evidence.taskFailures > 0;
-  if (!hasEvidence) {
+    input.evidence.taskFailures > 0 ||
+    input.evidence.retrievalFriction > 0 ||
+    input.evidence.retrievalFailures > 0 ||
+    input.evidence.sessionContextCompactCapExceeded > 0;
+  if (!hasEvidence && !hasSessionContextEvidence) {
     return {
       recommendation: "defer",
       shouldImplementPromptDelta: false,
@@ -490,7 +667,9 @@ function decidePromptDelta(input: {
   const repeatedGap =
     input.evidence.continuityGaps + input.evidence.continuityRegressions >= 2 ||
     input.evidence.taskFailures >= 2 ||
-    input.evidence.taskFriction >= 3;
+    input.evidence.taskFriction >= 3 ||
+    input.evidence.retrievalFailures >= 2 ||
+    input.evidence.retrievalFriction >= 3;
   const tokenBudgetOk =
     input.contextBudget.estimatedTokens <= input.contextBudget.maxPromptDeltaTokens;
   const duplicateRiskOk = input.contextBudget.duplicateContextRisk !== "high";
@@ -582,9 +761,12 @@ function renderPromptDeltaGateMarkdown(input: {
     `- records: ${input.evidence.records} valid / ${input.evidence.invalidRecords} invalid`,
     `- benchmark reports: ${input.evidence.benchmarkReports}`,
     `- benchmark compares: ${input.evidence.benchmarkCompares}`,
+    `- session-context benchmarks: ${input.evidence.sessionContextBenchmarks}`,
     `- agent task benchmarks: ${input.evidence.agentTaskBenchmarks}`,
+    `- retrieval benchmarks: ${input.evidence.retrievalBenchmarks} (compact ${input.evidence.compactRetrievalBenchmarks}, full ${input.evidence.fullRetrievalBenchmarks})`,
     `- continuity gaps: ${input.evidence.continuityGaps}`,
     `- task friction/failures: ${input.evidence.taskFriction}/${input.evidence.taskFailures}`,
+    `- retrieval friction/failures: ${input.evidence.retrievalFriction}/${input.evidence.retrievalFailures}`,
     "",
     "Context budget:",
     `- estimated duplicate prompt context: ${input.contextBudget.bytes} bytes (~${input.contextBudget.estimatedTokens} tokens)`,

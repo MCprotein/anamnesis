@@ -883,9 +883,9 @@ pressure, but the roadmap below is the canonical plan.
 | 2 | **Session context budget policy** | partial | Add a documented budget contract for startup payloads: estimated tokens, chars, lines, source-pointer count, required-rule presence, and cap-exceeded status. `benchmark session-context` now reports those dimensions and hard-cap outcomes; status/doctor surfacing remains open. |
 | 3 | **Deterministic `benchmark session-context`** | shipped | Add a model-free benchmark comparing `full` and `compact` session context across sanitized fixtures. Metrics include startup chars, lines, estimated tokens, included file bytes, source pointers, required rules present, and hard-cap outcomes. |
 | 4 | **Numeric graph artifacts** | shipped | Generate dependency-free SVG charts from the same benchmark JSON so context tradeoffs are visible without reading raw data or adding a chart runtime. Required graphs are generated: mode-by-mode token bar chart, stacked payload composition, fixture-size growth line, and cap/success summary. Store public-safe generated artifacts under docs or benchmark output paths. |
-| 5 | **Model-dependent retrieval benchmark** | planned | Add optional controlled task runs that compare full vs compact behavior. Metrics should include task success, required-source-read rate, missed invariant count, hallucinated fact count, unnecessary context reads, elapsed time, and token usage. Keep this separate from deterministic benchmark claims. |
+| 5 | **Model-dependent retrieval benchmark** | partial | `benchmark task` now accepts optional compact/full retrieval metrics: task success, required-source-read rate, missed invariant count, hallucinated fact count, unnecessary context reads, elapsed time, and token usage. The remaining follow-up is repeated public-safe full-vs-compact task runs before any success-rate claim. |
 | 6 | **Session-context fixture suite** | shipped | Add fixtures for tiny, normal, large ontology, stale handoff, conflicting ontology, missing handoff, and multi-scope projects so compact mode is tested against the failure modes that caused full injection to look attractive. |
-| 7 | **Prompt-gate integration** | planned | Feed session-context benchmark evidence into `benchmark prompt-gate` so prompt-time context deltas stay disabled unless repeated measured failures justify bounded extra injection. |
+| 7 | **Prompt-gate integration** | shipped | `benchmark prompt-gate` now reads deterministic session-context JSON and retrieval-aware task evidence so prompt-time context deltas stay disabled unless repeated measured failures justify bounded extra injection. |
 
 Progress notes:
 - 2026-06-19: Shipped compact SessionStart defaults for Claude Code and
@@ -899,6 +899,13 @@ Progress notes:
   token reduction `94%`, and cap exceeded counts `compact=0`, `full=2`.
   Generated artifacts live under
   `docs/benchmark-evidence/session-context/`.
+- 2026-06-19: Extended `anamnesis benchmark task` with optional
+  `session_context_mode` and retrieval metrics, and taught
+  `anamnesis benchmark prompt-gate` to consume both
+  `docs/benchmark-evidence/session-context/session-context.json` and
+  retrieval-aware `agent-task-benchmark` records. This enables the
+  compact-vs-full model-dependent comparison, but repeated public-safe runs
+  are still required before claiming compact task success parity.
 
 Exit criteria:
 - Compact SessionStart includes required invariants and source pointers in

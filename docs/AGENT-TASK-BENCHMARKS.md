@@ -1,6 +1,6 @@
 # Agent Task Benchmarks
 
-Status: v1.2 model-dependent benchmark harness.
+Status: v1.5 retrieval-aware model-dependent benchmark harness.
 
 This file is separate from [`BENCHMARKS.md`](BENCHMARKS.md). Deterministic
 benchmark reports measure context surfaces on disk. Agent task benchmarks
@@ -18,9 +18,13 @@ anamnesis benchmark task --input task-run.json --append
 Append runs write markdown here and an `agent-task-benchmark` record to
 `.anamnesis/evidence/events.jsonl`. The generated benchmark gallery
 intentionally ignores this evidence kind so deterministic README claims do not
-mix product surface quality with model behavior. `anamnesis benchmark
-prompt-gate` may consume these records as one signal when deciding whether
-Codex prompt-time context delta injection is justified.
+mix product surface quality with model behavior.
+
+`anamnesis benchmark prompt-gate` consumes these records as one signal when
+deciding whether Codex prompt-time context delta injection is justified. In
+v1.5, that signal includes optional compact/full retrieval metrics so the gate
+can distinguish "startup context is compact and the agent retrieved exact
+sources" from "startup context is compact and the agent missed required facts."
 
 ## Schema
 
@@ -28,11 +32,24 @@ Input files use `schema_version: anamnesis.agent_task_benchmark.v1` and include:
 
 - `project`: public-safe project name and optional shape
 - `task`: stable task id, fixed prompt, and optional expected first action
-- `run`: run id, agent, model, and context state
+- `run`: run id, agent, model, optional `session_context_mode`
+  (`full`, `compact`, or `unknown`), and context state
 - `metrics`: questions before action, tool turns to locate context,
   first-correct-action success, handoff recovery success, and elapsed time
 - `limitations`: why the result should not be overgeneralized
 - `evidence`: transcript, run log, or deterministic benchmark evidence paths
+
+Optional v1.5 retrieval metrics:
+
+- `task_success`: whether the task finished correctly
+- `required_source_reads` / `expected_source_reads`: how many required source
+  pointers the agent actually opened before acting
+- `missed_invariant_count`: required invariants omitted or violated
+- `hallucinated_fact_count`: project facts asserted without source support
+- `unnecessary_context_reads`: context files read despite not being needed for
+  the task
+- `input_tokens`, `output_tokens`, `total_tokens`: token usage from the model
+  run when available
 
 ## Scoring
 
@@ -48,7 +65,24 @@ The harness reports a 5-point convenience score:
 
 Half credit is used for 1 question, 2-3 context tool turns, or 60-180 seconds.
 Scores are only comparable across repeated runs with the same task prompt,
-repo snapshot, agent, model family, and context state.
+repo snapshot, agent, model family, session context mode, and context state.
+Retrieval metrics are reported beside the 5-point convenience score; they are
+not folded into that score so old runs remain comparable.
+
+## Compact vs Full Retrieval Runs
+
+Use paired runs when evaluating v1.5 compact SessionStart behavior:
+
+1. Same repo snapshot.
+2. Same task prompt and expected source list.
+3. Same agent, model, and tool permissions.
+4. One run with `ANAMNESIS_SESSION_CONTEXT_MODE=full`.
+5. One run with `ANAMNESIS_SESSION_CONTEXT_MODE=compact`.
+
+The comparison should look for task success, required-source-read rate, missed
+invariants, hallucinated facts, unnecessary context reads, elapsed time, and
+token usage. A single pair is diagnostic only. Public claims need repeated
+public-safe runs.
 
 ## Claim Boundary
 
