@@ -862,6 +862,110 @@ Exit criteria:
 
 ---
 
+## v1.5 — *planned*
+
+> **Theme: compact session context with numeric proof**
+
+The next product risk is context over-injection. SessionStart continuity is
+valuable only when it gives agents the minimum current state they need and
+clear pointers to retrieve the rest. v1.5 should move ontology and handoff
+startup behavior from "print everything we found" toward a compact,
+retrieval-first contract, then prove the change with numeric reports and
+graphs before making broad claims.
+
+This version is informed by recent agent/LLM ecosystem signals around
+context-budget discipline, large-context failure modes, and local-model cost
+pressure, but the roadmap below is the canonical plan.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Compact SessionStart default** | planned | Change ontology and handoff startup injection to emit a short invariant digest, active-task summary, source pointers, and retrieval instructions by default. Full file injection remains an explicit compatibility/debug mode, not the default. |
+| 2 | **Session context budget policy** | planned | Add a documented budget contract for startup payloads: estimated tokens, chars, lines, source-pointer count, required-rule presence, and cap-exceeded status. The policy should prefer source pointers over truncating long files. |
+| 3 | **Deterministic `benchmark session-context`** | planned | Add a model-free benchmark comparing `full` and `compact` session context across sanitized fixtures. Metrics should include startup chars, lines, estimated tokens, included file bytes, source pointers, required rules present, and hard-cap outcomes. |
+| 4 | **Numeric graph artifacts** | planned | Generate charts from benchmark output so context tradeoffs are visible without reading JSON. Required graphs: mode-by-mode token bar chart, stacked payload composition, fixture-size growth line, and cap/success summary. Store public-safe generated artifacts under docs or benchmark output paths. |
+| 5 | **Model-dependent retrieval benchmark** | planned | Add optional controlled task runs that compare full vs compact behavior. Metrics should include task success, required-source-read rate, missed invariant count, hallucinated fact count, unnecessary context reads, elapsed time, and token usage. Keep this separate from deterministic benchmark claims. |
+| 6 | **Session-context fixture suite** | planned | Add fixtures for tiny, normal, large ontology, stale handoff, conflicting ontology, missing handoff, and multi-scope projects so compact mode is tested against the failure modes that caused full injection to look attractive. |
+| 7 | **Prompt-gate integration** | planned | Feed session-context benchmark evidence into `benchmark prompt-gate` so prompt-time context deltas stay disabled unless repeated measured failures justify bounded extra injection. |
+
+Exit criteria:
+- Compact SessionStart includes required invariants and source pointers in
+  100% of fixture runs.
+- Compact mode reduces startup estimated tokens by at least 60% on the
+  large-ontology fixture.
+- Model-dependent compact task success is no more than 5 percentage points
+  below full mode on the controlled task suite.
+- Compact mode increases required-source-read rate versus full mode, showing
+  agents retrieve exact context instead of relying on startup payload memory.
+- Numeric chart artifacts are generated from the same benchmark data used for
+  JSON/markdown reports.
+- `status`, `doctor`, or benchmark output can explain when a project is over
+  the session-context budget and which source category dominates the payload.
+
+---
+
+## v1.6 — *planned*
+
+> **Theme: repo-local executable context and contradiction diagnostics**
+
+After startup payloads are compact, the missing piece is retrieval quality.
+v1.6 should make repo-local context easier for agents to query without
+turning anamnesis into a cloud memory service or an agent runtime.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Local context index design** | planned | Design a read-only index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Start with JSONL or SQLite; no external service dependency. |
+| 2 | **Context index prototype** | planned | Add a CLI prototype that builds and queries the local index with source paths, stable IDs, content type, freshness, and snippet metadata. The index should be disposable and regenerable from repo files. |
+| 3 | **Ontology and handoff contradiction report** | planned | Teach `doctor` or a dedicated context command to flag duplicate entity IDs, conflicting relationship claims, stale handoff archive pointers, docs that contradict bootstrap facts, and reviewed semantic entries superseded by newer evidence. |
+| 4 | **Compact resume bundle** | planned | Produce a repo-native text summary of active task, latest archive pointer, touched files, latest evidence, and stale warnings so mobile/remote agents can resume without full archive injection. |
+| 5 | **Optional MCP/export decision** | planned | Decide whether the context index should expose an MCP or adapter export. Keep export optional and post-index; core continuity must work through files alone. |
+
+Exit criteria:
+- The index can be regenerated from tracked and local anamnesis files without
+  requiring network access or credentials.
+- Query output cites source file paths and stable IDs rather than anonymous
+  memory blobs.
+- Doctor/status diagnostics identify at least stale handoff pointers and
+  contradictory ontology claims in fixtures.
+- Resume output stays compact enough to fit within the v1.5 session-context
+  budget.
+- Optional MCP/export work is explicitly accepted or deferred based on
+  dogfood value, not ecosystem pressure.
+
+---
+
+## v1.7 — *planned*
+
+> **Theme: task harnesses, behavior verification, and adapter security**
+
+Once agents receive compact context and can retrieve exact project memory, the
+next step is to make agent work verifiable. v1.7 should promote the strongest
+Hada-radar signals around harnesses, rubrics, agentic review, and executable
+adapter safety into repo-native capabilities and diagnostics.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **`task_harness` capability design** | planned | Specify a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, and rubric. Preserve adapter parity semantics across Claude Code, Codex, and Cursor. |
+| 2 | **Base task harness fixture** | planned | Add one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture should target context/ontology/handoff continuity behavior. |
+| 3 | **Behavior benchmark expansion** | planned | Extend `benchmark task` fixtures to check whether agents preserve user edits, avoid direct managed-region edits, avoid hand-editing `.bootstrap.yaml`, refresh handoff state, and cite exact sources when compact context requires retrieval. |
+| 4 | **Executable capability side-effect metadata** | planned | Add metadata for read-only, local-write, git-hook, network, credential-touching, and external-production behavior on executable capabilities and rendered wrappers. |
+| 5 | **Executable adapter security diagnostics** | planned | Add `doctor` warnings for generated or managed hooks that write outside the project, access network unexpectedly, touch likely secrets, omit shell safety settings, or drift from managed wrapper content. |
+| 6 | **Malicious and unsafe-fragment fixtures** | planned | Add fixtures for unsafe executable adapters, suspicious native wrappers, network egress, repo-external writes, and stale hook registrations so security diagnostics are test-backed. |
+| 7 | **Review diagnostics for AI-agent config damage** | planned | Add advisory checks for copied handoff archives in startup context, generated docs that overclaim adapter parity, managed regions changed outside anchors, and bootstrap ontology files edited by hand. |
+
+Exit criteria:
+- `task_harness` has a documented schema or design decision and at least one
+  adapter-parity fixture.
+- Behavior benchmarks report numeric pass/fail dimensions separately from
+  deterministic context-quality scorecards.
+- Executable adapter security diagnostics are visible in `doctor` or `status`
+  and backed by unsafe fixture tests.
+- Security checks remain advisory unless a command would generate unsafe
+  managed executable output; user-authored files are not auto-reverted.
+- README or public claims mention task harnesses or security diagnostics only
+  after fixture and dogfood evidence exist.
+
+---
+
 ## Parked ideas (outside the accepted roadmap)
 
 These have been discussed, but they are not active roadmap work. Bring them
