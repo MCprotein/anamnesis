@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-500%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.2%20stable-success)]()
+[![tests](https://img.shields.io/badge/tests-523%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
 
 ---
 
@@ -65,8 +65,8 @@ Either way, the CLI is invoked as `anamnesis`.
 Building from source instead (during development or for forks):
 
 ```bash
-git clone https://github.com/MCprotein/anamnesis ~/code/anamnesis
-cd ~/code/anamnesis
+git clone https://github.com/MCprotein/anamnesis
+cd anamnesis
 npm install
 npm run build       # produces cli/dist/
 npm link            # makes `anamnesis` available globally
@@ -229,6 +229,28 @@ anamnesis is dogfooded on itself. Public claims are limited to sanitized
 fixtures and self-check evidence; private-project validation is kept out of
 README, packaged docs, and public benchmark artifacts.
 
+### Session context benchmark
+
+v1.5 changed SessionStart from full file-body injection to compact source
+pointers plus invariant digests. The deterministic benchmark compares both
+modes across public-safe fixtures.
+
+![Session context tokens by mode](docs/benchmark-evidence/session-context/token-by-mode.svg)
+
+![Session context cap and success summary](docs/benchmark-evidence/session-context/cap-success-summary.svg)
+
+Current run:
+
+- Large ontology fixture: compact mode reduced estimated startup tokens by
+  `94%`.
+- Hard-cap outcomes: compact mode exceeded the cap `0` times; full mode
+  exceeded it `2` times.
+- Required retrieval rules and source pointers were present in `7/7`
+  compact fixture runs.
+
+Full generated evidence is in
+[`docs/benchmark-evidence/session-context/`](docs/benchmark-evidence/session-context/).
+
 Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 Public-safe benchmark boundaries live in
 [`docs/BENCHMARK-GALLERY.md`](docs/BENCHMARK-GALLERY.md), and broader
@@ -264,6 +286,7 @@ ecosystem claims stay intentionally disallowed. The claim ledger is
 | **v1.2** | Numeric benchmark evidence, public scorecards, and runtime evidence expansion | shipped 2026-05-08; latest patch 1.2.1 |
 | **v1.3** | Fragment dependency resolution and update event hooks | shipped 2026-05-08 |
 | **v1.4** | Adoption automation and project context bootstrap | shipped 2026-05-11; latest patch 1.4.4 |
+| **v1.5** | Compact SessionStart defaults and session-context benchmark graphs | shipped 2026-06-19 |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

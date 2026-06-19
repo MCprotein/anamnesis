@@ -603,7 +603,7 @@ Progress:
   and treats published CLI version mismatches as release blockers.
 - 2026-05-07: Published `@mcprotein/anamnesis@1.1.1` as the v1.1 patch.
   npmjs.org version lookup returned `1.1.1`, published CLI execution from
-  `/private/tmp` returned `1.1.1`, and a fresh Prisma fixture initialized
+  a fresh temp directory returned `1.1.1`, and a fresh Prisma fixture initialized
   with `--tools all --allow-exec-adapters` reached continuity `ready (6/6)`,
   Codex hook warnings `0`, and doctor `0 error(s)` with only the expected
   agent-required `.enriched.yaml` warning.
@@ -712,7 +712,7 @@ Progress:
   evidence.
 - 2026-05-08: Published `@mcprotein/anamnesis@1.2.0` from the tag-triggered
   workflow. npmjs.org `latest` returned `1.2.0`, published CLI execution
-  from `/private/tmp` returned `1.2.0`, and a fresh Prisma fixture initialized
+  from a fresh temp directory returned `1.2.0`, and a fresh Prisma fixture initialized
   with continuity `ready (6/6)`, `init-install` evidence, and the expected
   Layer B enrichment follow-up.
 - 2026-05-08: Published `@mcprotein/anamnesis@1.2.1` as a package-facing
@@ -765,7 +765,7 @@ Progress:
   remains intentionally absent until there is an opt-in delivery smoke.
 - 2026-05-08: Published `@mcprotein/anamnesis@1.3.0` from the tag-triggered
   workflow. npmjs.org `@mcprotein/anamnesis@1.3.0` returned `1.3.0`,
-  published CLI execution from `/private/tmp` returned `1.3.0`, and a fresh
+  published CLI execution from a fresh temp directory returned `1.3.0`, and a fresh
   Prisma fixture reached continuity `ready (6/6)` with both `init-install`
   and `fragment-lifecycle` evidence records plus the expected Layer B
   enrichment follow-up.
@@ -807,14 +807,14 @@ Progress:
   conflicting project-specific `load-context` skills before installing the
   managed surface, and runtime evidence records both outcomes.
 - 2026-05-11: Ran a sanitized TypeScript service-shaped CLI smoke from
-  `/private/tmp`. The smoke reached continuity `6/6`, doctor `0/0`, and
+  a fresh temp directory. The smoke reached continuity `6/6`, doctor `0/0`, and
   benchmark ready layers `3/5` without publishing any private-project
   evidence.
 - 2026-05-11: Cut the v1.4.0 release prep after `npm run release:check`
   passed locally.
 - 2026-05-11: Published `@mcprotein/anamnesis@1.4.0` from the tag-triggered
   workflow. npmjs.org returned `1.4.0`, published CLI execution from
-  `/private/tmp` returned `1.4.0`, and a fresh sanitized TypeScript service
+  a fresh temp directory returned `1.4.0`, and a fresh sanitized TypeScript service
   fixture verified context bootstrap plus load-context preservation.
 - 2026-05-11: Prepared `1.4.1` to follow Codex CLI `0.130.0`'s renamed hook
   feature flag, replacing `[features].codex_hooks` with `[features].hooks`

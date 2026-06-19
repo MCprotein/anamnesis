@@ -74,7 +74,7 @@ session-context benchmark release, not the local TypeScript source tree.
 Results:
 
 - npmjs.org `@mcprotein/anamnesis@1.5.0` returned `1.5.0`.
-- Published CLI execution from `/private/tmp` returned `1.5.0`.
+- Published CLI execution from a fresh temp directory returned `1.5.0`.
 - GitHub Actions `Publish` for tag `v1.5.0` completed successfully.
 - Fresh published-package fixture with all adapters installed had continuity
   `ready (6/6)`, Codex hook warnings `0`, and doctor `0` errors. The only
@@ -97,7 +97,7 @@ not the local TypeScript source tree.
 Results:
 
 - npmjs.org `@mcprotein/anamnesis@1.4.4` returned `1.4.4`.
-- Published CLI execution from `/private/tmp` returned `1.4.4`.
+- Published CLI execution from a fresh temp directory returned `1.4.4`.
 - GitHub Actions `Publish` for tag `v1.4.4` completed successfully.
 - Fresh published-package fixture with all adapters installed had continuity
   `ready (6/6)`, Codex hook warnings `0`, and doctor `0` errors. The only
@@ -117,7 +117,7 @@ the local TypeScript source tree.
 Results:
 
 - npmjs.org `@mcprotein/anamnesis` latest returned `1.4.3`.
-- Published CLI execution from `/private/tmp` returned `1.4.3`.
+- Published CLI execution from a fresh temp directory returned `1.4.3`.
 - GitHub Actions `Publish` for tag `v1.4.3` completed successfully.
 - Fresh published-package fixture with all adapters installed had continuity
   `ready (6/6)`, Codex hook warnings `0`, and doctor `0` errors. The only
