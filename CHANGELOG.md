@@ -17,6 +17,9 @@ could include breaking changes.
   `agent-task-benchmark-compare` runtime evidence.
 - Added `anamnesis benchmark task-compare --template` to generate matched
   full/compact task inputs before observed run metrics are filled in.
+- Added `anamnesis benchmark task-series --write` to aggregate repeated
+  full/compact compare evidence into average, standard deviation, min/max, and
+  SVG chart artifacts.
 
 ### Changed
 
@@ -29,6 +32,7 @@ could include breaking changes.
 - Recorded the first public-safe Codex full-vs-compact retrieval diagnostic
   pair for the v1.5 `benchmark task-compare` workflow, keeping it separate
   from deterministic README claims.
+- Started the v1.6 context index design in `docs/CONTEXT-INDEX-DESIGN.md`.
 - Recorded the npmjs.org post-publish smoke for `@mcprotein/anamnesis@1.5.0`,
   including published compact SessionStart hook output from Claude Code and
   Codex native wrappers.

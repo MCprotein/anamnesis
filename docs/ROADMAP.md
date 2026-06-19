@@ -883,7 +883,7 @@ pressure, but the roadmap below is the canonical plan.
 | 2 | **Session context budget policy** | partial | Add a documented budget contract for startup payloads: estimated tokens, chars, lines, source-pointer count, required-rule presence, and cap-exceeded status. `benchmark session-context` now reports those dimensions and hard-cap outcomes; status/doctor surfacing remains open. |
 | 3 | **Deterministic `benchmark session-context`** | shipped | Add a model-free benchmark comparing `full` and `compact` session context across sanitized fixtures. Metrics include startup chars, lines, estimated tokens, included file bytes, source pointers, required rules present, and hard-cap outcomes. |
 | 4 | **Numeric graph artifacts** | shipped | Generate dependency-free SVG charts from the same benchmark JSON so context tradeoffs are visible without reading raw data or adding a chart runtime. Required graphs are generated: mode-by-mode token bar chart, stacked payload composition, fixture-size growth line, and cap/success summary. Store public-safe generated artifacts under docs or benchmark output paths. |
-| 5 | **Model-dependent retrieval benchmark** | partial | `benchmark task` now accepts optional compact/full retrieval metrics, and `benchmark task-compare` compares paired full/compact runs for task success, required-source-read rate, missed invariant count, hallucinated fact count, unnecessary context reads, elapsed time, and token usage. The remaining follow-up is repeated public-safe full-vs-compact task runs before any success-rate claim. |
+| 5 | **Model-dependent retrieval benchmark** | partial | `benchmark task` now accepts optional compact/full retrieval metrics, `benchmark task-compare` compares paired full/compact runs, and `benchmark task-series` rolls repeated compare evidence into averages, ranges, standard deviations, and SVG charts. The remaining follow-up is repeated public-safe full-vs-compact task runs before any success-rate claim. |
 | 6 | **Session-context fixture suite** | shipped | Add fixtures for tiny, normal, large ontology, stale handoff, conflicting ontology, missing handoff, and multi-scope projects so compact mode is tested against the failure modes that caused full injection to look attractive. |
 | 7 | **Prompt-gate integration** | shipped | `benchmark prompt-gate` now reads deterministic session-context JSON and retrieval-aware task evidence so prompt-time context deltas stay disabled unless repeated measured failures justify bounded extra injection. |
 
@@ -920,6 +920,10 @@ Progress notes:
   invariants, and `0` hallucinated facts. The compact run was slower and used
   more total tokens in this single pair, so it is evidence for retrieval
   instrumentation and prompt-gate friction tracking, not success parity.
+- 2026-06-19: Added `anamnesis benchmark task-series --write` to roll repeated
+  compare evidence into average/stddev/min/max metrics and SVG charts. The
+  current committed series has only one pair, so it is a pipeline check, not a
+  parity claim.
 
 Exit criteria:
 - Compact SessionStart includes required invariants and source pointers in
@@ -947,7 +951,7 @@ turning anamnesis into a cloud memory service or an agent runtime.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Local context index design** | planned | Design a read-only index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Start with JSONL or SQLite; no external service dependency. |
+| 1 | **Local context index design** | in progress | Design a read-only index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Start with JSONL or SQLite; no external service dependency. Draft: [`docs/CONTEXT-INDEX-DESIGN.md`](CONTEXT-INDEX-DESIGN.md). |
 | 2 | **Context index prototype** | planned | Add a CLI prototype that builds and queries the local index with source paths, stable IDs, content type, freshness, and snippet metadata. The index should be disposable and regenerable from repo files. |
 | 3 | **Ontology and handoff contradiction report** | planned | Teach `doctor` or a dedicated context command to flag duplicate entity IDs, conflicting relationship claims, stale handoff archive pointers, docs that contradict bootstrap facts, and reviewed semantic entries superseded by newer evidence. |
 | 4 | **Compact resume bundle** | planned | Produce a repo-native text summary of active task, latest archive pointer, touched files, latest evidence, and stale warnings so mobile/remote agents can resume without full archive injection. |

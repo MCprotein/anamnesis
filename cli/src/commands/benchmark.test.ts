@@ -10,6 +10,7 @@ import {
   agentTaskBenchmarkCompareTemplate,
   agentTaskBenchmarkTemplate,
 } from "./benchmark_task.js";
+import { agentTaskBenchmarkSeries } from "./benchmark_task_series.js";
 import { promptDeltaGate } from "./benchmark_prompt_gate.js";
 import { sessionContextBenchmark } from "./benchmark_session_context.js";
 import { init } from "./init.js";
@@ -617,6 +618,119 @@ describe("benchmarkReport", () => {
       compact_token_reduction_pct: 46.154,
     });
     expect(result.markdown).toContain("Agent Task Benchmark Compare");
+  });
+
+  it("rolls up repeated full and compact task comparisons", () => {
+    const { project } = setupBenchmarkProject();
+    const full = agentTaskBenchmarkTemplate(
+      new Date("2026-06-19T02:00:00.000Z"),
+    );
+    full.project.name = "anamnesis-project";
+    full.task.id = "compact-retrieval";
+    full.run.id = "compact-retrieval-full-001";
+    full.run.session_context_mode = "full";
+    full.metrics = {
+      questions_before_action: 0,
+      tool_turns_to_context: 1,
+      first_correct_action: true,
+      handoff_recovered: true,
+      elapsed_ms: 60000,
+      task_success: true,
+      required_source_reads: 1,
+      expected_source_reads: 3,
+      missed_invariant_count: 0,
+      hallucinated_fact_count: 0,
+      unnecessary_context_reads: 0,
+      total_tokens: 20000,
+    };
+    const compact = JSON.parse(JSON.stringify(full)) as typeof full;
+    compact.run.id = "compact-retrieval-compact-001";
+    compact.run.session_context_mode = "compact";
+    compact.metrics.required_source_reads = 3;
+    compact.metrics.elapsed_ms = 50000;
+    compact.metrics.total_tokens = 10000;
+
+    const fullPath = path.join(project, "full-1.json");
+    const compactPath = path.join(project, "compact-1.json");
+    fs.writeFileSync(fullPath, JSON.stringify(full), "utf8");
+    fs.writeFileSync(compactPath, JSON.stringify(compact), "utf8");
+    agentTaskBenchmarkCompare({
+      projectRoot: project,
+      fullInputPath: fullPath,
+      compactInputPath: compactPath,
+      append: true,
+      now: () => new Date("2026-06-19T02:10:00.000Z"),
+    });
+
+    const full2 = JSON.parse(JSON.stringify(full)) as typeof full;
+    full2.run.id = "compact-retrieval-full-002";
+    full2.metrics.required_source_reads = 3;
+    full2.metrics.elapsed_ms = 40000;
+    full2.metrics.total_tokens = 18000;
+    const compact2 = JSON.parse(JSON.stringify(full2)) as typeof full2;
+    compact2.run.id = "compact-retrieval-compact-002";
+    compact2.run.session_context_mode = "compact";
+    compact2.metrics.required_source_reads = 2;
+    compact2.metrics.elapsed_ms = 70000;
+    compact2.metrics.total_tokens = 24000;
+
+    const full2Path = path.join(project, "full-2.json");
+    const compact2Path = path.join(project, "compact-2.json");
+    fs.writeFileSync(full2Path, JSON.stringify(full2), "utf8");
+    fs.writeFileSync(compact2Path, JSON.stringify(compact2), "utf8");
+    agentTaskBenchmarkCompare({
+      projectRoot: project,
+      fullInputPath: full2Path,
+      compactInputPath: compact2Path,
+      append: true,
+      now: () => new Date("2026-06-19T02:20:00.000Z"),
+    });
+
+    const series = agentTaskBenchmarkSeries({
+      projectRoot: project,
+      write: true,
+      now: () => new Date("2026-06-19T02:30:00.000Z"),
+    });
+
+    expect(series.summary).toMatchObject({
+      groups: 1,
+      pairs: 2,
+      failures: 0,
+    });
+    expect(series.compareRecords).toBe(2);
+    const group = series.groups[0]!;
+    expect(group).toMatchObject({
+      pairs: 2,
+      compact_task_success_rate: 1,
+      required_source_read_rate_delta: {
+        average: 0.167,
+        min: -0.333,
+        max: 0.667,
+      },
+      total_tokens_delta: {
+        average: -2000,
+        min: -10000,
+        max: 6000,
+        stddev: 8000,
+      },
+    });
+    expect(series.markdown).toContain("Agent Task Benchmark Series");
+    expect(series.markdown).toContain("avg/stddev/min/max");
+    for (const artifact of [
+      series.artifacts.json,
+      series.artifacts.markdown,
+      series.artifacts.tokenDeltaSvg,
+      series.artifacts.qualitySummarySvg,
+    ]) {
+      expect(artifact).toBeTruthy();
+      expect(fs.existsSync(path.join(project, artifact!))).toBe(true);
+    }
+    const svg = fs.readFileSync(
+      path.join(project, series.artifacts.tokenDeltaSvg!),
+      "utf8",
+    );
+    expect(svg).toContain("<svg");
+    expect(svg).toContain("Agent Task Series Total Token Delta");
   });
 
   it("defers prompt-time context deltas when evidence is insufficient", () => {

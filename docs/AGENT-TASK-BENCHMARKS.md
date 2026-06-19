@@ -16,6 +16,8 @@ anamnesis benchmark task --input task-run.json --append
 anamnesis benchmark task-compare --template > task-pair.json
 anamnesis benchmark task-compare --full full-run.json --compact compact-run.json
 anamnesis benchmark task-compare --full full-run.json --compact compact-run.json --append
+anamnesis benchmark task-series
+anamnesis benchmark task-series --write
 ```
 
 Append runs write markdown here and an `agent-task-benchmark` record to
@@ -104,6 +106,14 @@ public-safe runs.
 - elapsed-time and total-token deltas
 - regression/failure counts for prompt-gate consumption
 
+`benchmark task-series` rolls up repeated
+`agent-task-benchmark-compare` evidence records by project, task, agent, model,
+and context state. It reports pair count, full/compact task success rates,
+compact success-within-tolerance rate, average/stddev/min/max required-source
+read deltas, total-token deltas, and elapsed-time deltas. `--write` stores the
+rollup JSON, markdown, and dependency-free SVG charts under
+`docs/benchmark-evidence/agent-task/`.
+
 ## Claim Boundary
 
 Allowed:
@@ -128,6 +138,17 @@ handoff recovery; the paired input JSON marks that limitation explicitly.
 
 Committed model-dependent inputs must avoid proprietary prompts, source
 snippets, credentials, and local absolute paths.
+
+Current series artifacts:
+
+- [`series.json`](benchmark-evidence/agent-task/series.json)
+- [`series.md`](benchmark-evidence/agent-task/series.md)
+- [`series-token-delta.svg`](benchmark-evidence/agent-task/series-token-delta.svg)
+- [`series-quality-summary.svg`](benchmark-evidence/agent-task/series-quality-summary.svg)
+
+![Task series token delta](benchmark-evidence/agent-task/series-token-delta.svg)
+
+![Task series quality summary](benchmark-evidence/agent-task/series-quality-summary.svg)
 
 ## Agent Task Benchmark Compare — 2026-06-19T08:16:49.313Z
 

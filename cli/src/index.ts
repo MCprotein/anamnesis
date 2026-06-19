@@ -75,6 +75,11 @@ import {
   type AgentTaskBenchmarkResult,
 } from "./commands/benchmark_task.js";
 import {
+  agentTaskBenchmarkSeries,
+  AgentTaskBenchmarkSeriesError,
+  type AgentTaskBenchmarkSeriesResult,
+} from "./commands/benchmark_task_series.js";
+import {
   promptDeltaGate,
   PromptDeltaGateError,
   type PromptDeltaGateResult,
@@ -262,6 +267,8 @@ Commands:
                                   separately from deterministic scorecards
   benchmark task-compare       Compare paired full/compact agent task
                                   benchmark inputs
+  benchmark task-series        Roll up repeated full/compact task compare
+                                  evidence and write numeric graph artifacts
   benchmark prompt-gate        Decide whether prompt-time context delta
                                   injection is justified by evidence
   benchmark session-context    Compare full vs compact SessionStart context
@@ -379,6 +386,14 @@ Flags (benchmark task-compare):
   --json                        Print structured JSON
   --append                      Append markdown to docs/AGENT-TASK-BENCHMARKS.md
   --output <path>               Override agent task compare log path
+
+Flags (benchmark task-series):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write JSON, markdown, and SVG charts under
+                                  docs/benchmark-evidence/agent-task
+  --source <path[,path]>        Extra runtime evidence JSONL source(s)
+  --output <path>               Override artifact output directory
 
 Flags (benchmark prompt-gate):
   --project-root <path>         Target directory (default: cwd)
@@ -1072,6 +1087,47 @@ function reportAgentTaskBenchmarkCompare(
   }
 }
 
+function reportAgentTaskBenchmarkSeries(
+  result: AgentTaskBenchmarkSeriesResult,
+): void {
+  console.log("anamnesis benchmark task-series");
+  console.log(
+    `  evidence: ${result.evidenceRecords} valid, ${result.invalidEvidenceLines} invalid`,
+  );
+  console.log(`  compare records: ${result.compareRecords}`);
+  console.log(
+    `  summary: ${result.summary.groups} group(s), ${result.summary.pairs} pair(s), regressions=${result.summary.regressions}, failures=${result.summary.failures}`,
+  );
+  for (const group of result.groups) {
+    const tokenDelta =
+      group.total_tokens_delta.average === undefined
+        ? "unknown"
+        : String(group.total_tokens_delta.average);
+    const sourceDelta =
+      group.required_source_read_rate_delta.average === undefined
+        ? "unknown"
+        : String(group.required_source_read_rate_delta.average);
+    console.log(
+      `  ${group.id}: pairs=${group.pairs}, compact_success=${formatCliRate(group.compact_task_success_rate)}, source_delta=${sourceDelta}, token_delta=${tokenDelta}`,
+    );
+  }
+  if (result.artifacts.outputDir) {
+    console.log(`  output: ${result.artifacts.outputDir}`);
+  }
+  for (const artifact of [
+    result.artifacts.json,
+    result.artifacts.markdown,
+    result.artifacts.tokenDeltaSvg,
+    result.artifacts.qualitySummarySvg,
+  ]) {
+    if (artifact) console.log(`  artifact: ${artifact}`);
+  }
+}
+
+function formatCliRate(value: number | undefined): string {
+  return value === undefined ? "unknown" : `${Math.round(value * 100)}%`;
+}
+
 function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
   console.log(
     `anamnesis benchmark prompt-gate — ${result.status.agentfile.project.name}`,
@@ -1424,6 +1480,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "trace" &&
         sub !== "task" &&
         sub !== "task-compare" &&
+        sub !== "task-series" &&
         sub !== "prompt-gate" &&
         sub !== "session-context"
       ) {
@@ -1450,6 +1507,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis benchmark task-compare --template`,
+        );
+        console.error(
+          `       anamnesis benchmark task-series [--json] [--write] [--source=<path>] [--output=<dir>]`,
         );
         console.error(
           `       anamnesis benchmark prompt-gate [--json] [--append] [--output=<path>]`,
@@ -1563,6 +1623,22 @@ async function main(argv: string[]): Promise<number> {
           return 0;
         }
 
+        if (sub === "task-series") {
+          const result = agentTaskBenchmarkSeries({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            sources: parseCommaListFlag(flags["source"]),
+            write: flags["write"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportAgentTaskBenchmarkSeries(result);
+          }
+          return 0;
+        }
+
         if (sub === "trace") {
           const result = benchmarkTraceRollup({
             projectRoot:
@@ -1641,6 +1717,7 @@ async function main(argv: string[]): Promise<number> {
           e instanceof BenchmarkGalleryError ||
           e instanceof BenchmarkTraceError ||
           e instanceof AgentTaskBenchmarkError ||
+          e instanceof AgentTaskBenchmarkSeriesError ||
           e instanceof PromptDeltaGateError ||
           e instanceof SessionContextBenchmarkError
         ) {
