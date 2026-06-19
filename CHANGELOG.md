@@ -7,6 +7,12 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Documentation
+
+- Recorded the npmjs.org post-publish smoke for `@mcprotein/anamnesis@1.5.0`,
+  including published compact SessionStart hook output from Claude Code and
+  Codex native wrappers.
+
 ## [1.5.0] — 2026-06-19
 
 ### Added

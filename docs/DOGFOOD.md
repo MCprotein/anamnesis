@@ -64,6 +64,29 @@ npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis doctor
 ```
 
+### v1.5.0
+
+Recorded: 2026-06-19
+
+Purpose: verify the npm-published compact SessionStart default and
+session-context benchmark release, not the local TypeScript source tree.
+
+Results:
+
+- npmjs.org `@mcprotein/anamnesis@1.5.0` returned `1.5.0`.
+- Published CLI execution from `/private/tmp` returned `1.5.0`.
+- GitHub Actions `Publish` for tag `v1.5.0` completed successfully.
+- Fresh published-package fixture with all adapters installed had continuity
+  `ready (6/6)`, Codex hook warnings `0`, and doctor `0` errors. The only
+  doctor warning was the expected missing Layer B enrichment for the fresh
+  Prisma fixture.
+- Direct published Claude Code SessionStart hook execution emitted
+  `Mode: compact`, source pointers for `system_graph.yaml` and managed
+  ontology files, an invariant digest, and the retrieval rule.
+- Direct published Codex native SessionStart execution returned JSON
+  `additionalContext` with compact mode, source pointers, invariant digest,
+  and retrieval rule.
+
 ### v1.4.4
 
 Recorded: 2026-05-19
