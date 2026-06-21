@@ -110,12 +110,13 @@ Prototype behavior:
   endpoints differ across sources.
 - It reports semantic entries referenced by `supersedes` when the superseded
   entry is still unmarked as superseded.
+- It reports explicit Markdown docs-vs-bootstrap conflicts only when docs use
+  `anamnesis-fact: facts... = ...` markers. It does not infer contradictions
+  from free-form prose.
 - It reports malformed evidence JSONL lines and missing local artifact paths.
 - `status` exposes only the path-free context diagnostic summary. `doctor`
   recomputes diagnostics and prints detailed advisory issues with source
   pointers and repair hints.
-- Docs-vs-bootstrap contradiction detection remains a hardening item because
-  naive natural-language matching would create noisy false positives.
 
 ## Non-Goals
 

@@ -8,6 +8,7 @@ export const CONTEXT_DIAGNOSTICS_SCHEMA_VERSION =
 export type ContextDiagnosticSeverity = "warning" | "info";
 
 export type ContextDiagnosticCode =
+  | "docs-bootstrap-conflict"
   | "handoff-archive-missing"
   | "handoff-archive-stale"
   | "ontology-duplicate-id"
@@ -56,7 +57,21 @@ interface OntologyRecord {
   status?: string;
 }
 
+interface BootstrapFact {
+  sourcePath: string;
+  stableRef: string;
+  value: string;
+}
+
+interface DocFactClaim {
+  sourcePath: string;
+  lineNumber: number;
+  key: string;
+  value: string;
+}
+
 const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
+  "docs-bootstrap-conflict",
   "handoff-archive-missing",
   "handoff-archive-stale",
   "ontology-duplicate-id",
@@ -75,6 +90,7 @@ export function contextDiagnostics(
   const issues = [
     ...handoffIssues(projectRoot),
     ...ontologyIssues(projectRoot),
+    ...docsBootstrapIssues(projectRoot),
     ...evidenceIssues(projectRoot),
   ].sort(compareIssues);
 
@@ -196,6 +212,35 @@ function evidenceIssues(projectRoot: string): ContextDiagnosticIssue[] {
       }
     }
   });
+  return issues;
+}
+
+function docsBootstrapIssues(projectRoot: string): ContextDiagnosticIssue[] {
+  const factsByKey = bootstrapFactsByKey(projectRoot);
+  if (factsByKey.size === 0) return [];
+
+  const issues: ContextDiagnosticIssue[] = [];
+  for (const claim of docFactClaims(projectRoot)) {
+    const facts = factsByKey.get(claim.key);
+    if (!facts || facts.length === 0) continue;
+    if (facts.some((fact) => fact.value === claim.value)) continue;
+
+    const actualValues = uniqueStrings(facts.map((fact) => fact.value));
+    issues.push({
+      severity: "warning",
+      code: "docs-bootstrap-conflict",
+      message:
+        `documented fact '${claim.key}' is '${claim.value}', ` +
+        `but bootstrap has ${actualValues.map(quoteValue).join(", ")}`,
+      source_path: claim.sourcePath,
+      stable_ref: `line:${claim.lineNumber}:${claim.key}`,
+      related: facts.map((fact) =>
+        `${fact.sourcePath} ${fact.stableRef}=${quoteValue(fact.value)}`,
+      ),
+      repair:
+        "Update the document claim or re-run `anamnesis ontology bootstrap` if the project files changed.",
+    });
+  }
   return issues;
 }
 
@@ -386,6 +431,87 @@ function ontologySourcePaths(projectRoot: string): string[] {
   return [...paths].sort();
 }
 
+function bootstrapFactsByKey(projectRoot: string): Map<string, BootstrapFact[]> {
+  const byKey = new Map<string, BootstrapFact[]>();
+  for (const relPath of ontologySourcePaths(projectRoot).filter((sourcePath) =>
+    /\.bootstrap\.ya?ml$/.test(sourcePath),
+  )) {
+    let parsed: unknown;
+    try {
+      parsed = YAML.parse(
+        fs.readFileSync(path.join(projectRoot, relPath), "utf8"),
+      );
+    } catch {
+      continue;
+    }
+    if (!isObject(parsed) || !isObject(parsed.facts)) continue;
+    const facts = flattenBootstrapFacts(parsed.facts, "facts", relPath);
+    for (const fact of facts) {
+      const list = byKey.get(fact.stableRef) ?? [];
+      list.push(fact);
+      byKey.set(fact.stableRef, list);
+    }
+  }
+  return byKey;
+}
+
+function flattenBootstrapFacts(
+  value: unknown,
+  stableRef: string,
+  sourcePath: string,
+): BootstrapFact[] {
+  if (isScalarFact(value)) {
+    return [{ sourcePath, stableRef, value: normalizeFactValue(value) }];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) =>
+      flattenBootstrapFacts(item, `${stableRef}[${index}]`, sourcePath),
+    );
+  }
+  if (!isObject(value)) return [];
+
+  return Object.entries(value).flatMap(([key, child]) =>
+    flattenBootstrapFacts(child, `${stableRef}.${key}`, sourcePath),
+  );
+}
+
+function docFactClaims(projectRoot: string): DocFactClaim[] {
+  const claims: DocFactClaim[] = [];
+  for (const relPath of diagnosticDocPaths(projectRoot)) {
+    const lines = fs
+      .readFileSync(path.join(projectRoot, relPath), "utf8")
+      .split(/\r?\n/);
+    lines.forEach((line, index) => {
+      const match = line.match(
+        /\banamnesis-fact:\s*([^=]+?)\s*=\s*(.+)\s*$/i,
+      );
+      if (!match) return;
+      const key = stripFactMarker(match[1]!);
+      if (!key.startsWith("facts.")) return;
+      claims.push({
+        sourcePath: relPath,
+        lineNumber: index + 1,
+        key,
+        value: normalizeDocFactValue(match[2]!),
+      });
+    });
+  }
+  return claims;
+}
+
+function diagnosticDocPaths(projectRoot: string): string[] {
+  const docs = new Set<string>();
+  if (fs.existsSync(path.join(projectRoot, "README.md"))) {
+    docs.add("README.md");
+  }
+  for (const relPath of walkFiles(projectRoot, "docs")) {
+    if (!relPath.endsWith(".md")) continue;
+    if (relPath.startsWith("docs/benchmark-evidence/")) continue;
+    docs.add(relPath);
+  }
+  return [...docs].sort();
+}
+
 function walkFiles(projectRoot: string, relDir: string): string[] {
   const absDir = path.join(projectRoot, relDir);
   if (!fs.existsSync(absDir)) return [];
@@ -403,6 +529,33 @@ function walkFiles(projectRoot: string, relDir: string): string[] {
     }
   }
   return result.sort();
+}
+
+function isScalarFact(value: unknown): boolean {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+function normalizeFactValue(value: unknown): string {
+  return value === null ? "null" : String(value).trim();
+}
+
+function normalizeDocFactValue(value: string): string {
+  return stripFactMarker(value).replace(/\s+/g, " ");
+}
+
+function stripFactMarker(value: string): string {
+  const trimmed = value.trim();
+  const quoted = trimmed.match(/^([`'"])(.*)\1$/);
+  return (quoted ? quoted[2]! : trimmed).trim();
+}
+
+function quoteValue(value: string): string {
+  return `'${value}'`;
 }
 
 function extractArchiveRefs(text: string): string[] {

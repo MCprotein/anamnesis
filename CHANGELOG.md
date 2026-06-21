@@ -24,7 +24,8 @@ could include breaking changes.
   v1.6 local JSONL context index prototype.
 - Added `anamnesis context diagnose` to report stale handoff pointers,
   duplicate ontology IDs, conflicting relationship claims, superseded entries,
-  invalid evidence lines, and missing evidence artifacts.
+  explicit docs-vs-bootstrap fact conflicts, invalid evidence lines, and
+  missing evidence artifacts.
 - Added context diagnostic surfacing to `anamnesis status` and `doctor`:
   `status` prints a short warning/info summary, while `doctor` includes the
   detailed advisory issues.

@@ -183,4 +183,54 @@ describe("context diagnostics", () => {
     expect(result.ok).toBe(true);
     expect(result.summary.issues).toBe(0);
   });
+
+  it("reports explicit docs-vs-bootstrap fact contradictions", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-docs-bootstrap-");
+    writeFile(
+      project,
+      ".anamnesis/ontology/nextjs.bootstrap.yaml",
+      [
+        'schema_version: "anamnesis.bootstrap.v1"',
+        "generator:",
+        "  name: anamnesis",
+        '  version: "1.0.0"',
+        "  introspector: nextjs",
+        "facts:",
+        "  routes:",
+        "    - path: /api/current",
+        "      file: app/api/current/route.ts",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      "docs/PROJECT-CONTEXT.md",
+      [
+        "# Project Context",
+        "",
+        "- anamnesis-fact: facts.routes[0].path = /api/legacy",
+        "- anamnesis-fact: facts.routes[0].file = app/api/current/route.ts",
+        "",
+      ].join("\n"),
+    );
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.ok).toBe(false);
+    expect(result.summary.byCode["docs-bootstrap-conflict"]).toBe(1);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "docs-bootstrap-conflict",
+          source_path: "docs/PROJECT-CONTEXT.md",
+          stable_ref: "line:3:facts.routes[0].path",
+          message: expect.stringContaining("/api/current"),
+          related: expect.arrayContaining([
+            ".anamnesis/ontology/nextjs.bootstrap.yaml facts.routes[0].path='/api/current'",
+          ]),
+        }),
+      ]),
+    );
+  });
 });
