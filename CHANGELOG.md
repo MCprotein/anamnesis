@@ -22,6 +22,9 @@ could include breaking changes.
   SVG chart artifacts.
 - Added `anamnesis context index` and `anamnesis context query` as the first
   v1.6 local JSONL context index prototype.
+- Added `anamnesis context diagnose` to report stale handoff pointers,
+  duplicate ontology IDs, conflicting relationship claims, superseded entries,
+  invalid evidence lines, and missing evidence artifacts.
 
 ### Changed
 

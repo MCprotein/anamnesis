@@ -88,6 +88,10 @@ import {
   type ContextQueryResult,
 } from "./commands/context_index.js";
 import {
+  contextDiagnostics,
+  type ContextDiagnosticsResult,
+} from "./commands/context_diagnostics.js";
+import {
   promptDeltaGate,
   PromptDeltaGateError,
   type PromptDeltaGateResult,
@@ -281,6 +285,8 @@ Commands:
                                   agent rules, ontology, handoffs, and docs
   context query                 Search the local context index and print
                                   source pointers for exact follow-up reads
+  context diagnose              Report stale handoff pointers, ontology
+                                  conflicts, and missing evidence artifacts
   benchmark report             Generate a deterministic context-quality
                                   benchmark report for docs/BENCHMARKS.md
   benchmark compare            Compare two benchmark report JSON snapshots
@@ -376,6 +382,10 @@ Flags (context query):
   --kind <kind>                 Restrict to one context kind
   --limit <n>                   Max matches to print (default: 8)
   --index <path>                Override index JSONL path
+
+Flags (context diagnose):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
 
 Flags (benchmark report):
   --project-root <path>         Target directory (default: cwd)
@@ -980,6 +990,22 @@ function reportContextQuery(result: ContextQueryResult): void {
   }
 }
 
+function reportContextDiagnostics(result: ContextDiagnosticsResult): void {
+  console.log(`anamnesis context diagnose - ${result.ok ? "ok" : "issues"}`);
+  console.log(
+    `  issues: ${result.summary.warnings} warning(s), ${result.summary.info} info`,
+  );
+  for (const issue of result.issues) {
+    console.log(
+      `  ${issue.severity.padEnd(7)} ${issue.code} ${issue.source_path} ${issue.stable_ref}`,
+    );
+    console.log(`      ${issue.message}`);
+    if (issue.repair) {
+      console.log(`      repair: ${issue.repair}`);
+    }
+  }
+}
+
 function reportBenchmark(result: BenchmarkResult): void {
   console.log(
     `anamnesis benchmark report — ${result.status.agentfile.project.name}`,
@@ -1557,7 +1583,7 @@ async function main(argv: string[]): Promise<number> {
 
     case "context": {
       const sub = positional[0];
-      if (sub !== "index" && sub !== "query") {
+      if (sub !== "index" && sub !== "query" && sub !== "diagnose") {
         console.error(
           `error: unknown 'context' subcommand: ${sub ?? "(none)"}`,
         );
@@ -1566,6 +1592,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis context query [--kind=<kind>] [--limit=<n>] [--index=<path>] <query>`,
+        );
+        console.error(
+          `       anamnesis context diagnose [--json]`,
         );
         return 1;
       }
@@ -1581,6 +1610,19 @@ async function main(argv: string[]): Promise<number> {
             console.log(JSON.stringify(result, null, 2));
           } else {
             reportContextIndex(result);
+          }
+          return 0;
+        }
+
+        if (sub === "diagnose") {
+          const result = contextDiagnostics({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportContextDiagnostics(result);
           }
           return 0;
         }

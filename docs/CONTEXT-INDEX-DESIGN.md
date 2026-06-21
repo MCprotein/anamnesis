@@ -101,6 +101,19 @@ The index enables v1.6 diagnostics that are hard with plain startup context:
 Diagnostics should be advisory first. They should not rewrite user-authored
 ontology or handoff files.
 
+Prototype behavior:
+
+- `anamnesis context diagnose` runs advisory checks over handoff files,
+  ontology YAML, and runtime evidence.
+- It reports missing or stale active handoff archive pointers.
+- It reports duplicate ontology entity IDs and relationship IDs whose
+  endpoints differ across sources.
+- It reports semantic entries referenced by `supersedes` when the superseded
+  entry is still unmarked as superseded.
+- It reports malformed evidence JSONL lines and missing local artifact paths.
+- Docs-vs-bootstrap contradiction detection remains a hardening item because
+  naive natural-language matching would create noisy false positives.
+
 ## Non-Goals
 
 - No network service.
