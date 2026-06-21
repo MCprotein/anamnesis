@@ -440,6 +440,47 @@ fragments:
     );
   });
 
+  it("surfaces context diagnostics as detailed doctor issues", () => {
+    const { project, library } = installProject();
+    const evidencePath = path.join(
+      project,
+      ".anamnesis",
+      "evidence",
+      "events.jsonl",
+    );
+    fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
+    fs.appendFileSync(
+      evidencePath,
+      `${JSON.stringify({
+        schema_version: "anamnesis.evidence.v1",
+        kind: "doctor-check",
+        generated_at: "2026-06-22T00:00:00.000Z",
+        command: ["anamnesis", "doctor"],
+        project: { name: "fixture" },
+        summary: { ok: true },
+        artifacts: {
+          markdown: "docs/MISSING.md",
+        },
+      })}\n`,
+      "utf8",
+    );
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.summary.warnings).toBeGreaterThanOrEqual(1);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "evidence-artifact-missing",
+          target: expect.stringContaining(".anamnesis/evidence/events.jsonl"),
+          repair: expect.stringContaining("Regenerate the evidence artifact"),
+        }),
+      ]),
+    );
+  });
+
   it("reports advisory Codex hook ownership warnings", () => {
     const { project, library } = installContinuityProject();
     const hooksPath = path.join(project, ".codex", "hooks.json");

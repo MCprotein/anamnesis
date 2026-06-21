@@ -953,7 +953,7 @@ turning anamnesis into a cloud memory service or an agent runtime.
 |---|---|---|---|
 | 1 | **Local context index design** | in progress | Design a read-only index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Start with JSONL or SQLite; no external service dependency. Draft: [`docs/CONTEXT-INDEX-DESIGN.md`](CONTEXT-INDEX-DESIGN.md). |
 | 2 | **Context index prototype** | in progress | Added `anamnesis context index` and `anamnesis context query` prototype commands that build/query a disposable JSONL index with source paths, stable refs, freshness, kinds, tags, and snippets. Remaining hardening: broader fixtures and diagnostics integration. |
-| 3 | **Ontology and handoff contradiction report** | in progress | Added `anamnesis context diagnose` for stale/missing handoff archive pointers, duplicate ontology entity IDs, conflicting relationship IDs, superseded semantic entries still treated as current, malformed evidence lines, and evidence records with missing artifacts. Remaining hardening: docs-vs-bootstrap contradiction fixtures and optional doctor/status surfacing. |
+| 3 | **Ontology and handoff contradiction report** | in progress | Added `anamnesis context diagnose` for stale/missing handoff archive pointers, duplicate ontology entity IDs, conflicting relationship IDs, superseded semantic entries still treated as current, malformed evidence lines, and evidence records with missing artifacts. `status` now exposes a short context diagnostic summary and `doctor` exposes detailed advisory issues. Remaining hardening: docs-vs-bootstrap contradiction fixtures. |
 | 4 | **Compact resume bundle** | planned | Produce a repo-native text summary of active task, latest archive pointer, touched files, latest evidence, and stale warnings so mobile/remote agents can resume without full archive injection. |
 | 5 | **Optional MCP/export decision** | planned | Decide whether the context index should expose an MCP or adapter export. Keep export optional and post-index; core continuity must work through files alone. |
 
@@ -975,6 +975,8 @@ Progress notes:
   manifest entries, runtime evidence summaries, and selected docs.
 - 2026-06-22: Added `anamnesis context diagnose` as an advisory context
   consistency report over handoffs, ontology YAML, and runtime evidence.
+- 2026-06-22: Surfaced context diagnostics through `status` summary output
+  and detailed `doctor` advisory issues without adding prompt-time injection.
 
 ---
 

@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-533%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
+[![tests](https://img.shields.io/badge/tests-534%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
 
 ---
 
@@ -127,8 +127,8 @@ managed context-review regions to existing docs without replacing your prose.
 anamnesis init      # first-time setup; writes install evidence
 anamnesis update    # library updates + drift detection (dry-run by default; --apply writes evidence)
 anamnesis update --bump-pinned  # explicitly move pinned fragments to current
-anamnesis status    # fragments, drift, ontology gaps, continuity, evidence freshness (--json for tools)
-anamnesis doctor    # read-only installation integrity + continuity/ontology diagnostics
+anamnesis status    # fragments, drift, ontology gaps, continuity, evidence, context diagnostic summary
+anamnesis doctor    # read-only installation integrity + continuity/ontology/context diagnostics
 anamnesis doctor --append  # record doctor diagnostics as runtime evidence
 anamnesis hooks summary --append  # summarize hook logs and record runtime evidence
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup

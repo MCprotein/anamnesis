@@ -481,6 +481,9 @@ describe("status — continuity readiness", () => {
     expect(active?.status).toBe("fail");
     expect(active?.detail).toContain("missing archive");
     expect(active?.targets).toContain(".anamnesis/handoff/missing.md");
+    expect(r.contextDiagnostics.ok).toBe(false);
+    expect(r.contextDiagnostics.summary.byCode["handoff-archive-missing"]).toBe(1);
+    expect(r.summary.contextDiagnosticWarnings).toBe(1);
   });
 
   it("reports active handoff entries that do not point at the newest archive", () => {

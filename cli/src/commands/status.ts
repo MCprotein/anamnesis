@@ -60,6 +60,10 @@ import {
   readEvidenceSummary,
   type RuntimeEvidenceSummary,
 } from "../core/evidence.js";
+import {
+  contextDiagnostics,
+  type ContextDiagnosticsResult,
+} from "./context_diagnostics.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -152,6 +156,11 @@ export interface FragmentDependencyStatus {
   };
 }
 
+export interface ContextDiagnosticStatus {
+  ok: boolean;
+  summary: ContextDiagnosticsResult["summary"];
+}
+
 export interface StatusResult {
   agentfile: Agentfile;
   /** Flat union across all scopes — preserved for back-compat and quick overview. */
@@ -174,6 +183,8 @@ export interface StatusResult {
   evidence: RuntimeEvidenceSummary;
   /** Fragment dependency graph health across effective scopes. */
   dependencies: FragmentDependencyStatus;
+  /** Advisory repo-local context consistency summary. */
+  contextDiagnostics: ContextDiagnosticStatus;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -190,6 +201,8 @@ export interface StatusResult {
     evidenceRecords: number;
     evidenceInvalidRecords: number;
     dependencyProblems: number;
+    contextDiagnosticWarnings: number;
+    contextDiagnosticInfo: number;
     suggestedCount: number;
     declinedCount: number;
     declinedStaleCount: number;
@@ -442,6 +455,14 @@ export function status(opts: StatusOptions): StatusResult {
   const evidence = readEvidenceSummary(projectRoot, {
     now: (opts.now ?? (() => new Date()))(),
   });
+  const contextDiagnosticResult = contextDiagnostics({
+    projectRoot,
+    now: opts.now,
+  });
+  const contextDiagnosticStatus: ContextDiagnosticStatus = {
+    ok: contextDiagnosticResult.ok,
+    summary: contextDiagnosticResult.summary,
+  };
 
   // Summary counts.
   const summary = {
@@ -462,6 +483,8 @@ export function status(opts: StatusOptions): StatusResult {
     evidenceRecords: evidence.total,
     evidenceInvalidRecords: evidence.invalid,
     dependencyProblems: dependencies.summary.total,
+    contextDiagnosticWarnings: contextDiagnosticStatus.summary.warnings,
+    contextDiagnosticInfo: contextDiagnosticStatus.summary.info,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
     declinedStaleCount: declined.filter((d) => !d.matched).length,
@@ -483,6 +506,7 @@ export function status(opts: StatusOptions): StatusResult {
     ontology,
     evidence,
     dependencies,
+    contextDiagnostics: contextDiagnosticStatus,
     suggested,
     declined,
     summary,

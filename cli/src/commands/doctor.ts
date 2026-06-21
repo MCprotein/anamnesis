@@ -56,13 +56,18 @@ import {
   EVIDENCE_SCHEMA_VERSION,
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
+import {
+  contextDiagnostics,
+  type ContextDiagnosticIssue,
+  type ContextDiagnosticSeverity,
+} from "./context_diagnostics.js";
 import { status, type ContinuityCheck, type StatusResult } from "./status.js";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type DoctorSeverity = "error" | "warning";
+export type DoctorSeverity = "error" | ContextDiagnosticSeverity;
 
 export type DoctorIssueCode =
   | "manifest-missing"
@@ -93,7 +98,8 @@ export type DoctorIssueCode =
   | "ontology-static-missing"
   | "ontology-bootstrap-missing"
   | "ontology-bootstrap-stale"
-  | "ontology-enrichment-missing";
+  | "ontology-enrichment-missing"
+  | ContextDiagnosticIssue["code"];
 
 export interface DoctorIssue {
   severity: DoctorSeverity;
@@ -114,6 +120,7 @@ export interface DoctorResult {
   summary: {
     errors: number;
     warnings: number;
+    info: number;
   };
   markdown: string;
   appendedPath?: string;
@@ -183,12 +190,17 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   }
 
   if (manifestReadable) {
-    const st = status({ projectRoot, libraryRoot });
+    const stableNow = () => new Date(generatedAt);
+    const st = status({ projectRoot, libraryRoot, now: stableNow });
     addStatusIssues(st.entries, st.fragments, issues);
     addDependencyIssues(st.dependencies.problems, issues);
     addContinuityIssues(st.continuity.checks, issues);
     addOntologyGapIssues(st.ontology.gaps, issues);
     addDeclinedIssues(st.declined, issues);
+    addContextDiagnosticIssues(
+      contextDiagnostics({ projectRoot, now: stableNow }).issues,
+      issues,
+    );
   }
 
   const library = libraryFragmentMap(libraryRoot);
@@ -203,8 +215,9 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   addCodexHookIssues(projectRoot, manifest, renderActions, issues);
 
   const errors = issues.filter((i) => i.severity === "error").length;
-  const warnings = issues.length - errors;
-  const summary = { errors, warnings };
+  const warnings = issues.filter((i) => i.severity === "warning").length;
+  const info = issues.filter((i) => i.severity === "info").length;
+  const summary = { errors, warnings, info };
   const ok = errors === 0;
   const markdown = renderDoctorMarkdown({
     generatedAt,
@@ -421,6 +434,21 @@ function addDeclinedIssues(
       message: `declined fragment '${entry.id}' no longer matches the current rulebook`,
       repair:
         "Remove this entry from Agentfile.declined if it was only suppressing an old rulebook match. Keep it if the project intentionally documents a permanent opt-out.",
+    });
+  }
+}
+
+function addContextDiagnosticIssues(
+  diagnostics: readonly ContextDiagnosticIssue[],
+  issues: DoctorIssue[],
+): void {
+  for (const diagnostic of diagnostics) {
+    issues.push({
+      severity: diagnostic.severity,
+      code: diagnostic.code,
+      target: `${diagnostic.source_path} ${diagnostic.stable_ref}`,
+      message: diagnostic.message,
+      repair: diagnostic.repair,
     });
   }
 }
@@ -852,7 +880,7 @@ function renderDoctorMarkdown(input: {
     "",
     `Project: ${input.projectName}`,
     `Status: ${input.ok ? "ok" : "issues"}`,
-    `Issues: ${input.summary.errors} error(s), ${input.summary.warnings} warning(s)`,
+    `Issues: ${input.summary.errors} error(s), ${input.summary.warnings} warning(s), ${input.summary.info} info`,
     "",
     "| Severity | Code | Target | Message |",
     "|---|---|---|---|",
@@ -878,6 +906,7 @@ function doctorEvidenceRecord(input: {
       ok: input.ok,
       errors: input.summary.errors,
       warnings: input.summary.warnings,
+      info: input.summary.info,
     },
     details: {
       issues: input.issues.map((issue) => ({

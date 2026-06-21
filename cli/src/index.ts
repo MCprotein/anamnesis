@@ -741,6 +741,14 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
       evidence.invalid > 0 ? ` (${evidence.invalid} invalid line(s))` : "";
     console.log(`  evidence: none${suffix}`);
   }
+  const contextDiagnostics = result.contextDiagnostics;
+  const contextInfo =
+    contextDiagnostics.summary.info > 0
+      ? `, ${contextDiagnostics.summary.info} info`
+      : "";
+  console.log(
+    `  context diagnostics: ${contextDiagnostics.ok ? "ok" : "issues"} (${contextDiagnostics.summary.warnings} warning(s)${contextInfo})`,
+  );
   for (const line of formatGenerationBoundaryLines(
     collectGenerationBoundaryStatus(projectRoot),
   )) {
@@ -752,7 +760,7 @@ function reportDoctor(result: DoctorResult): void {
   const verdict = result.ok ? "ok" : "issues found";
   console.log(`anamnesis doctor — ${verdict}`);
   console.log(
-    `  issues: ${result.summary.errors} error(s), ${result.summary.warnings} warning(s)`,
+    `  issues: ${result.summary.errors} error(s), ${result.summary.warnings} warning(s), ${result.summary.info} info`,
   );
   if (result.issues.length === 0) {
     console.log("  installation integrity checks passed");

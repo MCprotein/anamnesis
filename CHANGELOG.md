@@ -25,6 +25,9 @@ could include breaking changes.
 - Added `anamnesis context diagnose` to report stale handoff pointers,
   duplicate ontology IDs, conflicting relationship claims, superseded entries,
   invalid evidence lines, and missing evidence artifacts.
+- Added context diagnostic surfacing to `anamnesis status` and `doctor`:
+  `status` prints a short warning/info summary, while `doctor` includes the
+  detailed advisory issues.
 
 ### Changed
 
