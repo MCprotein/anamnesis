@@ -92,6 +92,10 @@ import {
   type ContextDiagnosticsResult,
 } from "./commands/context_diagnostics.js";
 import {
+  contextResume,
+  type ContextResumeResult,
+} from "./commands/context_resume.js";
+import {
   promptDeltaGate,
   PromptDeltaGateError,
   type PromptDeltaGateResult,
@@ -287,6 +291,8 @@ Commands:
                                   source pointers for exact follow-up reads
   context diagnose              Report stale handoff pointers, ontology
                                   conflicts, and missing evidence artifacts
+  context resume                Print a compact resume bundle for current
+                                  handoff, touched files, evidence, warnings
   benchmark report             Generate a deterministic context-quality
                                   benchmark report for docs/BENCHMARKS.md
   benchmark compare            Compare two benchmark report JSON snapshots
@@ -386,6 +392,12 @@ Flags (context query):
 Flags (context diagnose):
   --project-root <path>         Target directory (default: cwd)
   --json                        Print structured JSON
+
+Flags (context resume):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write .anamnesis/context/resume.md
+  --output <path>               Override resume bundle output path
 
 Flags (benchmark report):
   --project-root <path>         Target directory (default: cwd)
@@ -1014,6 +1026,17 @@ function reportContextDiagnostics(result: ContextDiagnosticsResult): void {
   }
 }
 
+function reportContextResume(result: ContextResumeResult): void {
+  console.log(result.bundle);
+  console.log("");
+  console.log(
+    `summary: ${result.summary.lines} lines, ${result.summary.chars} chars, ~${result.summary.estimatedTokens} tokens`,
+  );
+  if (result.writtenPath) {
+    console.log(`written: ${result.writtenPath}`);
+  }
+}
+
 function reportBenchmark(result: BenchmarkResult): void {
   console.log(
     `anamnesis benchmark report — ${result.status.agentfile.project.name}`,
@@ -1591,7 +1614,12 @@ async function main(argv: string[]): Promise<number> {
 
     case "context": {
       const sub = positional[0];
-      if (sub !== "index" && sub !== "query" && sub !== "diagnose") {
+      if (
+        sub !== "index" &&
+        sub !== "query" &&
+        sub !== "diagnose" &&
+        sub !== "resume"
+      ) {
         console.error(
           `error: unknown 'context' subcommand: ${sub ?? "(none)"}`,
         );
@@ -1603,6 +1631,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis context diagnose [--json]`,
+        );
+        console.error(
+          `       anamnesis context resume [--json] [--write] [--output=<path>]`,
         );
         return 1;
       }
@@ -1631,6 +1662,21 @@ async function main(argv: string[]): Promise<number> {
             console.log(JSON.stringify(result, null, 2));
           } else {
             reportContextDiagnostics(result);
+          }
+          return 0;
+        }
+
+        if (sub === "resume") {
+          const result = contextResume({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            write: flags["write"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportContextResume(result);
           }
           return 0;
         }

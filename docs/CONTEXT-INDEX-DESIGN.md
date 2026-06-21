@@ -69,6 +69,8 @@ The first CLI surface should be read-only:
 anamnesis context index --write
 anamnesis context query "handoff current task"
 anamnesis context query --kind ontology-rule "managed region"
+anamnesis context resume
+anamnesis context resume --write
 ```
 
 Query output must cite `source_path` and `stable_ref`. Agents should then read
@@ -84,6 +86,11 @@ Prototype behavior:
 - `anamnesis context query <terms>` reads the JSONL index, ranks exact local
   entries by term hits, and prints source pointers.
 - `--kind <kind>` filters query results to one entry kind.
+- `anamnesis context resume` prints a compact bundle with active handoff
+  pointer, latest archive pointer, touched git files, latest runtime evidence,
+  diagnostic warnings, retrieval rules, and line/char/token estimates.
+- `anamnesis context resume --write` writes
+  `.anamnesis/context/resume.md`; the file is regenerable and ignored by git.
 - `.anamnesis/context/` is ignored by git because the index is regenerable and
   may include handoff snippets from local work.
 

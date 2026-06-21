@@ -954,7 +954,7 @@ turning anamnesis into a cloud memory service or an agent runtime.
 | 1 | **Local context index design** | in progress | Design a read-only index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Start with JSONL or SQLite; no external service dependency. Draft: [`docs/CONTEXT-INDEX-DESIGN.md`](CONTEXT-INDEX-DESIGN.md). |
 | 2 | **Context index prototype** | in progress | Added `anamnesis context index` and `anamnesis context query` prototype commands that build/query a disposable JSONL index with source paths, stable refs, freshness, kinds, tags, and snippets. Remaining hardening: broader fixtures and diagnostics integration. |
 | 3 | **Ontology and handoff contradiction report** | done | Added `anamnesis context diagnose` for stale/missing handoff archive pointers, duplicate ontology entity IDs, conflicting relationship IDs, explicit docs-vs-bootstrap fact conflicts, superseded semantic entries still treated as current, malformed evidence lines, and evidence records with missing artifacts. `status` exposes a short context diagnostic summary and `doctor` exposes detailed advisory issues. |
-| 4 | **Compact resume bundle** | planned | Produce a repo-native text summary of active task, latest archive pointer, touched files, latest evidence, and stale warnings so mobile/remote agents can resume without full archive injection. |
+| 4 | **Compact resume bundle** | done | Added `anamnesis context resume` and `--write` to produce a repo-native compact bundle with active task lines, active/latest handoff pointers, touched files, latest evidence, diagnostic warnings, retrieval rules, and line/char/token estimates. |
 | 5 | **Optional MCP/export decision** | planned | Decide whether the context index should expose an MCP or adapter export. Keep export optional and post-index; core continuity must work through files alone. |
 
 Exit criteria:
@@ -980,6 +980,9 @@ Progress notes:
 - 2026-06-22: Added an explicit docs-vs-bootstrap contradiction fixture using
   `anamnesis-fact: facts... = ...` markers, closing the v1.6 contradiction
   report item without free-form prose inference.
+- 2026-06-22: Added `anamnesis context resume` for compact handoff/evidence
+  resumption; targeted tests assert the generated bundle stays below 300
+  estimated tokens on the fixture.
 
 ---
 

@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-535%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
+[![tests](https://img.shields.io/badge/tests-537%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.5.0%20published-success)]()
 
 ---
 
@@ -136,6 +136,7 @@ anamnesis dogfood check --append  # score and record self-check continuity evide
 anamnesis context index --write  # build a local source-pointer index
 anamnesis context query "managed region"  # retrieve exact context pointers
 anamnesis context diagnose  # report handoff, ontology, docs/bootstrap, and evidence consistency issues
+anamnesis context resume  # print a compact resume bundle with size metrics
 anamnesis benchmark report --append  # record deterministic context-quality scorecard evidence
 anamnesis benchmark compare --baseline before.json --after after.json --append  # record before/after deltas
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates

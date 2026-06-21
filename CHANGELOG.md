@@ -29,6 +29,9 @@ could include breaking changes.
 - Added context diagnostic surfacing to `anamnesis status` and `doctor`:
   `status` prints a short warning/info summary, while `doctor` includes the
   detailed advisory issues.
+- Added `anamnesis context resume` to print or write a compact resume bundle
+  with active handoff pointers, latest archive, touched files, latest evidence,
+  diagnostics, and bundle size metrics.
 
 ### Changed
 
