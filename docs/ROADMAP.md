@@ -941,7 +941,7 @@ Exit criteria:
 
 ---
 
-## v1.6 — *implementation complete; release pending*
+## v1.6 — *shipped 2026-06-25*
 
 > **Theme: repo-local executable context and contradiction diagnostics**
 
@@ -988,7 +988,7 @@ Progress notes:
 - 2026-06-25: Hardened context index/query fixtures around `system_graph.yaml`,
   bootstrap facts, docs fact markers, runtime evidence, stale handoff pointers,
   malformed JSONL rows, repo-relative JSON output, and diagnostic follow-up
-  source pointers. v1.6 implementation is complete pending release/version bump.
+  source pointers.
 
 ---
 

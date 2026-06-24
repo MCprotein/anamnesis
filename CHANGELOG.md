@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-06-25
+
 ### Added
 
 - Added optional retrieval metrics to `anamnesis benchmark task`, including
