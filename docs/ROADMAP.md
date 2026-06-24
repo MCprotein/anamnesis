@@ -955,7 +955,7 @@ turning anamnesis into a cloud memory service or an agent runtime.
 | 2 | **Context index prototype** | in progress | Added `anamnesis context index` and `anamnesis context query` prototype commands that build/query a disposable JSONL index with source paths, stable refs, freshness, kinds, tags, and snippets. Remaining hardening: broader fixtures and diagnostics integration. |
 | 3 | **Ontology and handoff contradiction report** | done | Added `anamnesis context diagnose` for stale/missing handoff archive pointers, duplicate ontology entity IDs, conflicting relationship IDs, explicit docs-vs-bootstrap fact conflicts, superseded semantic entries still treated as current, malformed evidence lines, and evidence records with missing artifacts. `status` exposes a short context diagnostic summary and `doctor` exposes detailed advisory issues. |
 | 4 | **Compact resume bundle** | done | Added `anamnesis context resume` and `--write` to produce a repo-native compact bundle with active task lines, active/latest handoff pointers, touched files, latest evidence, diagnostic warnings, retrieval rules, and line/char/token estimates. |
-| 5 | **Optional MCP/export decision** | planned | Decide whether the context index should expose an MCP or adapter export. Keep export optional and post-index; core continuity must work through files alone. |
+| 5 | **Export interface decision** | done | Deferred MCP/API export for v1.6. Core continuity stays on local CLI commands and regenerable `.anamnesis/context/` files; revisit MCP only if dogfood shows file/CLI access is materially blocking cross-session use. |
 
 Exit criteria:
 - The index can be regenerated from tracked and local anamnesis files without
@@ -966,8 +966,8 @@ Exit criteria:
   contradictory ontology claims in fixtures.
 - Resume output stays compact enough to fit within the v1.5 session-context
   budget.
-- Optional MCP/export work is explicitly accepted or deferred based on
-  dogfood value, not ecosystem pressure.
+- MCP/API export work is explicitly deferred based on current product scope;
+  core cross-session use remains file/CLI based.
 
 Progress notes:
 - 2026-06-19: Started the JSONL prototype with local indexing for `AGENTS.md`,
@@ -983,6 +983,8 @@ Progress notes:
 - 2026-06-22: Added `anamnesis context resume` for compact handoff/evidence
   resumption; targeted tests assert the generated bundle stays below 300
   estimated tokens on the fixture.
+- 2026-06-25: Deferred MCP/API export from v1.6; local CLI commands and
+  regenerable `.anamnesis/context/` files remain the continuity interface.
 
 ---
 

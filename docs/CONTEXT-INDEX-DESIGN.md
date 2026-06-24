@@ -94,6 +94,19 @@ Prototype behavior:
 - `.anamnesis/context/` is ignored by git because the index is regenerable and
   may include handoff snippets from local work.
 
+## Export Interface Decision
+
+v1.6 does not expose the context index through MCP or another API server.
+Cross-session continuity stays intentionally simple:
+
+- Agents can call `anamnesis context query` or `anamnesis context resume`.
+- Agents can read regenerable files under `.anamnesis/context/`.
+- Source files remain authoritative; generated index/resume files are pointers,
+  not memory blobs.
+
+Revisit MCP only if repeated dogfood shows CLI/file access is materially
+blocking supported agent workflows.
+
 ## Diagnostics
 
 The index enables v1.6 diagnostics that are hard with plain startup context:
