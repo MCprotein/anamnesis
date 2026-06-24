@@ -941,7 +941,7 @@ Exit criteria:
 
 ---
 
-## v1.6 — *planned*
+## v1.6 — *implementation complete; release pending*
 
 > **Theme: repo-local executable context and contradiction diagnostics**
 
@@ -951,8 +951,8 @@ turning anamnesis into a cloud memory service or an agent runtime.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Local context index design** | in progress | Design a read-only index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Start with JSONL or SQLite; no external service dependency. Draft: [`docs/CONTEXT-INDEX-DESIGN.md`](CONTEXT-INDEX-DESIGN.md). |
-| 2 | **Context index prototype** | in progress | Added `anamnesis context index` and `anamnesis context query` prototype commands that build/query a disposable JSONL index with source paths, stable refs, freshness, kinds, tags, and snippets. Remaining hardening: broader fixtures and diagnostics integration. |
+| 1 | **Local context index design** | done | Designed a read-only JSONL index over `AGENTS.md`, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, `.enriched.yaml`, handoff files, manifest data, runtime evidence, and selected docs. Draft/decision record: [`docs/CONTEXT-INDEX-DESIGN.md`](CONTEXT-INDEX-DESIGN.md). |
+| 2 | **Context index prototype** | done | Added and hardened `anamnesis context index` and `anamnesis context query` prototype commands that build/query a disposable JSONL index with source paths, stable refs, freshness, kinds, tags, snippets, malformed-index tolerance, and diagnostic source-pointer coverage. |
 | 3 | **Ontology and handoff contradiction report** | done | Added `anamnesis context diagnose` for stale/missing handoff archive pointers, duplicate ontology entity IDs, conflicting relationship IDs, explicit docs-vs-bootstrap fact conflicts, superseded semantic entries still treated as current, malformed evidence lines, and evidence records with missing artifacts. `status` exposes a short context diagnostic summary and `doctor` exposes detailed advisory issues. |
 | 4 | **Compact resume bundle** | done | Added `anamnesis context resume` and `--write` to produce a repo-native compact bundle with active task lines, active/latest handoff pointers, touched files, latest evidence, diagnostic warnings, retrieval rules, and line/char/token estimates. |
 | 5 | **Export interface decision** | done | Deferred MCP/API export for v1.6. Core continuity stays on local CLI commands and regenerable `.anamnesis/context/` files; revisit MCP only if dogfood shows file/CLI access is materially blocking cross-session use. |
@@ -985,6 +985,10 @@ Progress notes:
   estimated tokens on the fixture.
 - 2026-06-25: Deferred MCP/API export from v1.6; local CLI commands and
   regenerable `.anamnesis/context/` files remain the continuity interface.
+- 2026-06-25: Hardened context index/query fixtures around `system_graph.yaml`,
+  bootstrap facts, docs fact markers, runtime evidence, stale handoff pointers,
+  malformed JSONL rows, repo-relative JSON output, and diagnostic follow-up
+  source pointers. v1.6 implementation is complete pending release/version bump.
 
 ---
 

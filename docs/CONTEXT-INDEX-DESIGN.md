@@ -1,6 +1,6 @@
 # Context Index Design
 
-Status: v1.6 prototype in progress.
+Status: v1.6 prototype hardened; MCP/API export deferred.
 
 ## Goal
 

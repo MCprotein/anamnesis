@@ -38,6 +38,9 @@ could include breaking changes.
 - Changed `anamnesis benchmark prompt-gate` to consume deterministic
   session-context benchmark JSON plus retrieval-aware task and task-compare
   evidence before recommending any prompt-time context delta.
+- Hardened `anamnesis context index` and `context query` with stricter JSONL
+  entry validation, repo-relative JSON output, broader source fixtures, malformed
+  index-line tolerance, and diagnostic source-pointer coverage.
 
 ### Documentation
 

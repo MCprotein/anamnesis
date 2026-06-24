@@ -8,6 +8,7 @@ import {
   ContextIndexError,
   readContextIndex,
 } from "./context_index.js";
+import { contextDiagnostics } from "./context_diagnostics.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -34,6 +35,20 @@ function setupContextProject(): string {
   );
   writeFile(
     project,
+    "system_graph.yaml",
+    [
+      'schema_version: "anamnesis.system_graph.v1"',
+      "",
+      "entities:",
+      "  project_context:",
+      '    id: "project-context"',
+      '    name: "Project context"',
+      '    description: "Local context sources used by agents."',
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    project,
     ".anamnesis/ontology/base.yaml",
     [
       'schema_version: "anamnesis.enriched.v1"',
@@ -50,6 +65,18 @@ function setupContextProject(): string {
       "    to:",
       '      kind: "Manifest"',
       '    reason: "updates render manifest-tracked regions"',
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    project,
+    ".anamnesis/ontology/base.bootstrap.yaml",
+    [
+      'schema_version: "anamnesis.bootstrap.v1"',
+      "",
+      "facts:",
+      "  runtime:",
+      '    name: "actual-runtime"',
       "",
     ].join("\n"),
   );
@@ -133,6 +160,8 @@ function setupContextProject(): string {
       "## v1.6",
       "Build a local context index prototype.",
       "",
+      "anamnesis-fact: facts.runtime.name = documented-runtime",
+      "",
     ].join("\n"),
   );
   return project;
@@ -152,6 +181,7 @@ describe("context index", () => {
     expect(result.writtenPath).toBe(".anamnesis/context/index.jsonl");
     expect(result.summary.entries).toBeGreaterThan(0);
     expect(result.summary.byKind["agent-rule"]).toBeGreaterThan(0);
+    expect(result.summary.byKind["ontology-entity"]).toBeGreaterThan(0);
     expect(result.summary.byKind["ontology-rule"]).toBeGreaterThan(0);
     expect(result.summary.byKind["ontology-relationship"]).toBeGreaterThan(0);
     expect(result.summary.byKind["handoff-task"]).toBeGreaterThan(0);
@@ -183,7 +213,15 @@ describe("context index", () => {
       limit: 2,
     });
 
+    expect(result.projectRoot).toBe(".");
     expect(result.matches.length).toBeGreaterThan(0);
+    for (const match of result.matches) {
+      expect(path.isAbsolute(match.entry.source_path)).toBe(false);
+      expect(match.entry.source_path).not.toContain(project);
+      expect(match.entry.stable_ref.length).toBeGreaterThan(0);
+      expect(match.entry.snippet.length).toBeGreaterThan(0);
+      expect(["current", "stale", "unknown"]).toContain(match.entry.freshness);
+    }
     expect(result.matches[0]!.entry).toMatchObject({
       kind: "ontology-rule",
       source_path: ".anamnesis/ontology/base.yaml",
@@ -202,6 +240,81 @@ describe("context index", () => {
 
     expect(
       result.entries.some(
+        (entry) =>
+          entry.source_path === ".anamnesis/handoff/active.md" &&
+          entry.freshness === "stale",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps querying valid entries when the JSONL index contains malformed or incomplete lines", () => {
+    const project = setupContextProject();
+    contextIndex({ projectRoot: project, write: true });
+    const before = readContextIndex(project);
+    const indexPath = path.join(project, ".anamnesis", "context", "index.jsonl");
+    fs.appendFileSync(
+      indexPath,
+      [
+        "not-json",
+        JSON.stringify({ schema_version: "wrong" }),
+        JSON.stringify({ ...before[0], freshness: "invalid" }),
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    expect(readContextIndex(project)).toHaveLength(before.length);
+    const result = contextQuery({
+      projectRoot: project,
+      query: "managed region",
+      kind: "ontology-rule",
+    });
+    expect(result.projectRoot).toBe(".");
+    expect(result.summary.entriesSearched).toBe(
+      before.filter((entry) => entry.kind === "ontology-rule").length,
+    );
+    expect(result.matches.length).toBeGreaterThan(0);
+  });
+
+  it("keeps source pointers indexed for context diagnostic follow-up reads", () => {
+    const project = setupContextProject();
+    fs.unlinkSync(
+      path.join(project, ".anamnesis", "handoff", "2026-06-19T00-00-00Z.md"),
+    );
+    fs.appendFileSync(
+      path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+      [
+        "not-json",
+        JSON.stringify({
+          schema_version: "anamnesis.evidence.v1",
+          kind: "benchmark-report",
+          generated_at: "2026-06-19T02:00:00.000Z",
+          command: ["anamnesis", "benchmark", "report"],
+          project: { name: "fixture" },
+          summary: { ok: false },
+          artifacts: { report: "docs/missing-report.md" },
+        }),
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const diagnostics = contextDiagnostics({ projectRoot: project });
+    expect(diagnostics.summary.warnings).toBeGreaterThan(0);
+    expect(diagnostics.summary.byCode["docs-bootstrap-conflict"]).toBe(1);
+    expect(diagnostics.summary.byCode["handoff-archive-missing"]).toBe(1);
+    expect(diagnostics.summary.byCode["evidence-invalid-record"]).toBe(1);
+    expect(diagnostics.summary.byCode["evidence-artifact-missing"]).toBe(1);
+
+    const index = contextIndex({ projectRoot: project });
+    const indexedSources = new Set(
+      index.entries.map((entry) => entry.source_path),
+    );
+    for (const issue of diagnostics.issues) {
+      expect(indexedSources.has(issue.source_path)).toBe(true);
+    }
+    expect(
+      index.entries.some(
         (entry) =>
           entry.source_path === ".anamnesis/handoff/active.md" &&
           entry.freshness === "stale",

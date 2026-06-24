@@ -127,6 +127,12 @@ const CONTEXT_KINDS = new Set<ContextIndexKind>([
   "doc-section",
 ]);
 
+const CONTEXT_FRESHNESS = new Set<ContextIndexFreshness>([
+  "current",
+  "stale",
+  "unknown",
+]);
+
 export function contextIndex(opts: ContextIndexOptions): ContextIndexResult {
   const projectRoot = path.resolve(opts.projectRoot);
   const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
@@ -144,7 +150,7 @@ export function contextIndex(opts: ContextIndexOptions): ContextIndexResult {
   const sortedEntries = dedupeEntries(entries).sort(compareEntries);
   const result: ContextIndexResult = {
     schema_version: CONTEXT_INDEX_SCHEMA_VERSION,
-    projectRoot,
+    projectRoot: ".",
     generatedAt,
     indexPath,
     entries: sortedEntries,
@@ -163,7 +169,6 @@ export function contextIndex(opts: ContextIndexOptions): ContextIndexResult {
     fs.writeFileSync(absPath, renderJsonl(sortedEntries), "utf8");
     return {
       ...result,
-      projectRoot: ".",
       writtenPath: displayPathFromProject(projectRoot, absPath),
     };
   }
@@ -194,7 +199,7 @@ export function contextQuery(opts: ContextQueryOptions): ContextQueryResult {
 
   return {
     schema_version: CONTEXT_INDEX_SCHEMA_VERSION,
-    projectRoot,
+    projectRoot: ".",
     indexPath,
     query,
     ...(kind ? { kind } : {}),
@@ -648,6 +653,7 @@ function isContextIndexEntry(value: unknown): value is ContextIndexEntry {
     typeof value.stable_ref === "string" &&
     typeof value.title === "string" &&
     typeof value.snippet === "string" &&
+    CONTEXT_FRESHNESS.has(value.freshness as ContextIndexFreshness) &&
     Array.isArray(value.tags) &&
     value.tags.every((tag) => typeof tag === "string")
   );
