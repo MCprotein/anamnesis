@@ -1001,19 +1001,36 @@ next step is to make agent work verifiable. v1.7 should promote the strongest
 Hada-radar signals around harnesses, rubrics, agentic review, and executable
 adapter safety into repo-native capabilities and diagnostics.
 
+Task harness storage must be lifecycle-bounded. The default design should
+separate one-task `current` harnesses from reusable task templates, inject at
+most one matched harness at session start, and leave the rest as indexed
+retrieval targets. Completed `current` harnesses should be removed from active
+startup context and either deleted or archived under bounded retention.
+Reusable harnesses should carry lifecycle metadata such as `last_used`,
+`use_count`, `deprecated`, and `superseded_by`, so old or replaced templates can
+be reported by `anamnesis gc --dry-run` before any deletion. The goal is not to
+grow an unbounded task-memory store; it is to keep a small, useful set of
+retrievable contracts with explicit disk and injection budgets.
+
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **`task_harness` capability design** | planned | Specify a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, and rubric. Preserve adapter parity semantics across Claude Code, Codex, and Cursor. |
-| 2 | **Base task harness fixture** | planned | Add one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture should target context/ontology/handoff continuity behavior. |
-| 3 | **Behavior benchmark expansion** | planned | Extend `benchmark task` fixtures to check whether agents preserve user edits, avoid direct managed-region edits, avoid hand-editing `.bootstrap.yaml`, refresh handoff state, and cite exact sources when compact context requires retrieval. |
-| 4 | **Executable capability side-effect metadata** | planned | Add metadata for read-only, local-write, git-hook, network, credential-touching, and external-production behavior on executable capabilities and rendered wrappers. |
-| 5 | **Executable adapter security diagnostics** | planned | Add `doctor` warnings for generated or managed hooks that write outside the project, access network unexpectedly, touch likely secrets, omit shell safety settings, or drift from managed wrapper content. |
-| 6 | **Malicious and unsafe-fragment fixtures** | planned | Add fixtures for unsafe executable adapters, suspicious native wrappers, network egress, repo-external writes, and stale hook registrations so security diagnostics are test-backed. |
-| 7 | **Review diagnostics for AI-agent config damage** | planned | Add advisory checks for copied handoff archives in startup context, generated docs that overclaim adapter parity, managed regions changed outside anchors, and bootstrap ontology files edited by hand. |
+| 1 | **`task_harness` capability design** | planned | Specify a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, rubric, lifecycle kind (`current` or `reusable`), and lifecycle metadata. Preserve adapter parity semantics across Claude Code, Codex, and Cursor. |
+| 2 | **Task harness retention and GC policy** | planned | Define bounded storage for harness artifacts: active `current` harnesses, optional short-lived archives, reusable templates, disk/injection budgets, `last_used`/`use_count` updates, deprecation/supersession behavior, and `anamnesis gc --dry-run` cleanup reporting before deletion. |
+| 3 | **Base task harness fixture** | planned | Add one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture should target context/ontology/handoff continuity behavior and prove that only the matched harness enters startup context while other harnesses remain retrievable. |
+| 4 | **Behavior benchmark expansion** | planned | Extend `benchmark task` fixtures to check whether agents preserve user edits, avoid direct managed-region edits, avoid hand-editing `.bootstrap.yaml`, refresh handoff state, cite exact sources when compact context requires retrieval, and avoid relying on non-matched harnesses at startup. |
+| 5 | **Executable capability side-effect metadata** | planned | Add metadata for read-only, local-write, git-hook, network, credential-touching, and external-production behavior on executable capabilities and rendered wrappers. |
+| 6 | **Executable adapter security diagnostics** | planned | Add `doctor` warnings for generated or managed hooks that write outside the project, access network unexpectedly, touch likely secrets, omit shell safety settings, or drift from managed wrapper content. |
+| 7 | **Malicious and unsafe-fragment fixtures** | planned | Add fixtures for unsafe executable adapters, suspicious native wrappers, network egress, repo-external writes, and stale hook registrations so security diagnostics are test-backed. |
+| 8 | **Review diagnostics for AI-agent config damage** | planned | Add advisory checks for copied handoff archives in startup context, generated docs that overclaim adapter parity, managed regions changed outside anchors, and bootstrap ontology files edited by hand. |
 
 Exit criteria:
 - `task_harness` has a documented schema or design decision and at least one
   adapter-parity fixture.
+- Harness lifecycle rules distinguish `current` and `reusable` artifacts,
+  update usage/deprecation metadata, bound disk growth, and keep non-matched
+  harnesses out of startup injection.
+- Cleanup remains preview-first: retention and stale-template candidates are
+  reported before deletion, and user-authored files are not silently removed.
 - Behavior benchmarks report numeric pass/fail dimensions separately from
   deterministic context-quality scorecards.
 - Executable adapter security diagnostics are visible in `doctor` or `status`
