@@ -96,10 +96,12 @@ snippets. Long task examples belong in docs or fixtures, not in harness bodies.
 - should receive `last_used`, `use_count`, `deprecated`, and `superseded_by`
   metadata when lifecycle tooling updates them.
 
-Cleanup is preview-first. Future `anamnesis gc --dry-run` should report
-retention candidates, stale `current` harnesses, deprecated reusable harnesses,
-superseded templates, and disk-budget breaches before deletion. User-authored
-files must not be silently removed.
+Cleanup is preview-first. `anamnesis gc --dry-run` reports retention
+candidates, stale `current` harnesses, deprecated reusable harnesses,
+superseded templates, count-budget pressure, disk-budget breaches, and whether a
+file is managed or user-authored. It does not delete files. Future apply-mode
+cleanup must keep user-authored files review-only unless the user explicitly
+opts in.
 
 ## Retrieval
 

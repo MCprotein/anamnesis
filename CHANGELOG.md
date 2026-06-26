@@ -15,6 +15,10 @@ could include breaking changes.
 - Added `task-harness` entries to `anamnesis context index/query` so harness
   contracts are retrievable without injecting every harness body at session
   startup.
+- Added preview-only `anamnesis gc --dry-run` task-harness lifecycle reporting
+  for stale current harnesses, deprecated/superseded reusable harnesses,
+  count-budget pressure, disk-budget pressure, and managed vs user-authored
+  cleanup recommendations.
 
 ## [1.6.0] — 2026-06-25
 

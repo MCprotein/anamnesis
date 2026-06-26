@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-546%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.6.0%20published-success)]()
+[![tests](https://img.shields.io/badge/tests-551%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.6.0%20published-success)]()
 
 ---
 
@@ -141,6 +141,7 @@ anamnesis context index --write  # build a local source-pointer index
 anamnesis context query "managed region"  # retrieve exact context pointers
 anamnesis context diagnose  # report handoff, ontology, docs/bootstrap, and evidence consistency issues
 anamnesis context resume  # print a compact resume bundle with size metrics
+anamnesis gc --dry-run  # preview task-harness retention and disk-budget cleanup candidates
 anamnesis benchmark report --append  # record deterministic context-quality scorecard evidence
 anamnesis benchmark compare --baseline before.json --after after.json --append  # record before/after deltas
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates
@@ -303,7 +304,7 @@ used for deterministic README score claims.
 | **v1.4** | Adoption automation and project context bootstrap | shipped 2026-05-11; latest patch 1.4.4 |
 | **v1.5** | Compact SessionStart defaults and session-context benchmark graphs | shipped 2026-06-19 |
 | **v1.6** | Repo-local context index/query/resume and contradiction diagnostics | shipped 2026-06-25 |
-| **v1.7** | Retrieval-only task harnesses and bounded lifecycle cleanup | in progress |
+| **v1.7** | Retrieval-only task harnesses and preview-first lifecycle cleanup | in progress |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

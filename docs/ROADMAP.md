@@ -1015,7 +1015,7 @@ retrievable contracts with explicit disk and injection budgets.
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **`task_harness` capability design** | done | Specified a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, rubric, lifecycle kind (`current` or `reusable`), and lifecycle metadata. Preserves adapter parity semantics across Claude Code, Codex, and Cursor through a shared repo-local retrieval file. Design: [`TASK-HARNESS-DESIGN.md`](TASK-HARNESS-DESIGN.md). |
-| 2 | **Task harness retention and GC policy** | design done; implementation planned | Defined bounded storage rules for harness artifacts: active `current` harnesses, optional short-lived archives, reusable templates, disk/injection budgets, `last_used`/`use_count` updates, deprecation/supersession behavior, and future `anamnesis gc --dry-run` cleanup reporting before deletion. |
+| 2 | **Task harness retention and GC policy** | preview shipped; deletion planned | Added preview-only cleanup reporting for active `current` harnesses, reusable templates, disk/count budgets, stale age, `last_used`/`use_count`, deprecation/supersession behavior, and managed vs user-authored cleanup recommendations. Deletion/apply mode remains planned. |
 | 3 | **Base task harness fixture** | done | Added one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture targets context/ontology/handoff continuity behavior and stays retrievable through `context index` without adding all harness bodies to startup context. |
 | 4 | **Behavior benchmark expansion** | planned | Extend `benchmark task` fixtures to check whether agents preserve user edits, avoid direct managed-region edits, avoid hand-editing `.bootstrap.yaml`, refresh handoff state, cite exact sources when compact context requires retrieval, and avoid relying on non-matched harnesses at startup. |
 | 5 | **Executable capability side-effect metadata** | planned | Add metadata for read-only, local-write, git-hook, network, credential-touching, and external-production behavior on executable capabilities and rendered wrappers. |
@@ -1045,6 +1045,9 @@ Progress notes:
   `context-continuity` harness fixture, adapter parity row, renderer tests, and
   context-index retrieval support. Runtime GC deletion remains planned; the
   current implementation only renders and indexes bounded harness files.
+- 2026-06-27: Added preview-only `anamnesis gc --dry-run` reporting for
+  task-harness lifecycle candidates. The dogfood repo currently reports one
+  managed reusable harness, 2026 bytes, and zero cleanup candidates.
 
 ---
 

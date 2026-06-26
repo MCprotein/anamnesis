@@ -96,6 +96,11 @@ import {
   type ContextResumeResult,
 } from "./commands/context_resume.js";
 import {
+  gc,
+  GcError,
+  type GcResult,
+} from "./commands/gc.js";
+import {
   promptDeltaGate,
   PromptDeltaGateError,
   type PromptDeltaGateResult,
@@ -247,6 +252,21 @@ function parseContextLimitFlag(
   return parsed;
 }
 
+function parseGcPositiveIntegerFlag(
+  value: string | boolean | undefined,
+  flagName: string,
+): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new GcError(`${flagName} requires a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new GcError(`${flagName} requires a positive integer`);
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Library root discovery
 // ---------------------------------------------------------------------------
@@ -293,6 +313,7 @@ Commands:
                                   conflicts, and missing evidence artifacts
   context resume                Print a compact resume bundle for current
                                   handoff, touched files, evidence, warnings
+  gc                            Preview task-harness lifecycle cleanup
   benchmark report             Generate a deterministic context-quality
                                   benchmark report for docs/BENCHMARKS.md
   benchmark compare            Compare two benchmark report JSON snapshots
@@ -398,6 +419,15 @@ Flags (context resume):
   --json                        Print structured JSON
   --write                       Write .anamnesis/context/resume.md
   --output <path>               Override resume bundle output path
+
+Flags (gc):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --dry-run                     Preview only; no files are deleted (default)
+  --max-current-age-days <n>    Current harness stale threshold (default: 14)
+  --max-current-harnesses <n>   Current harness count budget (default: 5)
+  --max-reusable-harnesses <n>  Reusable harness count budget (default: 50)
+  --max-total-bytes <n>         Task harness disk budget (default: 262144)
 
 Flags (benchmark report):
   --project-root <path>         Target directory (default: cwd)
@@ -1036,6 +1066,39 @@ function reportContextResume(result: ContextResumeResult): void {
   if (result.writtenPath) {
     console.log(`written: ${result.writtenPath}`);
   }
+}
+
+function reportGc(result: GcResult): void {
+  console.log("anamnesis gc — dry-run");
+  console.log(
+    `  task harnesses: total=${result.summary.total}, current=${result.summary.current}, reusable=${result.summary.reusable}, unknown=${result.summary.unknown}`,
+  );
+  console.log(
+    `  origin: managed=${result.summary.managed}, user-authored=${result.summary.userAuthored}`,
+  );
+  console.log(
+    `  disk: ${result.summary.totalBytes}/${result.thresholds.maxTotalBytes} bytes${result.summary.diskBudgetExceeded ? " (over budget)" : ""}`,
+  );
+  console.log(
+    `  candidates: ${result.summary.candidates} (delete=${result.summary.deleteCandidates}, review=${result.summary.reviewUserAuthored})`,
+  );
+  if (result.warnings.length > 0) {
+    console.log(`  warnings: ${result.warnings.length}`);
+    for (const warning of result.warnings.slice(0, 5)) {
+      console.log(`    - ${warning}`);
+    }
+  }
+  for (const candidate of result.candidates) {
+    console.log(
+      `  ${candidate.recommendation} ${candidate.path} ${candidate.lifecycle} ${candidate.origin}`,
+    );
+    console.log(`      reasons: ${candidate.reasons.join(", ")}`);
+    console.log(`      age=${candidate.ageDays}d bytes=${candidate.bytes}`);
+    if (candidate.supersededBy) {
+      console.log(`      superseded_by: ${candidate.supersededBy}`);
+    }
+  }
+  console.log("  (dry-run — no files deleted)");
 }
 
 function reportBenchmark(result: BenchmarkResult): void {
@@ -1711,6 +1774,44 @@ async function main(argv: string[]): Promise<number> {
         throw e;
       }
     }
+
+    case "gc":
+      try {
+        const result = gc({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          dryRun: flags["dry-run"] === true,
+          apply: flags["apply"] === true,
+          maxCurrentAgeDays: parseGcPositiveIntegerFlag(
+            flags["max-current-age-days"],
+            "--max-current-age-days",
+          ),
+          maxCurrentHarnesses: parseGcPositiveIntegerFlag(
+            flags["max-current-harnesses"],
+            "--max-current-harnesses",
+          ),
+          maxReusableHarnesses: parseGcPositiveIntegerFlag(
+            flags["max-reusable-harnesses"],
+            "--max-reusable-harnesses",
+          ),
+          maxTotalBytes: parseGcPositiveIntegerFlag(
+            flags["max-total-bytes"],
+            "--max-total-bytes",
+          ),
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportGc(result);
+        }
+        return 0;
+      } catch (e) {
+        if (e instanceof GcError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
 
     case "benchmark": {
       const sub = positional[0];
