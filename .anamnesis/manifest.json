@@ -259,6 +259,13 @@
       "fragment_version": 11,
       "last_applied_hash": "sha256:a9fadf72d929283721cb2a6846ffd04a36bbbd5e1e9e818d276051a9fe67170c",
       "current_user_hash": "sha256:a9fadf72d929283721cb2a6846ffd04a36bbbd5e1e9e818d276051a9fe67170c"
+    },
+    {
+      "path": ".anamnesis/task-harnesses/context-continuity.yaml",
+      "fragment_id": "base",
+      "fragment_version": 14,
+      "last_applied_hash": "sha256:6a0d037b43df1a9cba9afb501295f78103660c18bf99a0a87f37a6d68c56df97",
+      "current_user_hash": "sha256:6a0d037b43df1a9cba9afb501295f78103660c18bf99a0a87f37a6d68c56df97"
     }
   ]
 }

@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-539%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.6.0%20published-success)]()
+[![tests](https://img.shields.io/badge/tests-546%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.6.0%20published-success)]()
 
 ---
 
@@ -29,6 +29,9 @@ The word **anamnesis** (ἀνάμνησις) means *"not forgetting"* in Greek �
 - **Installs always-loaded context**: project memory, ontology slices,
   handoff instructions, operational reminders, skills, hooks, and command
   intent.
+- **Adds retrievable task contracts**: task harnesses live under
+  `.anamnesis/task-harnesses/` and are indexed for lookup instead of being
+  pasted wholesale into every startup context.
 - **Keeps context portable across agents**: the same Agentfile and
   fragment capabilities render to Claude Code, Codex, and Cursor so the
   next agent can continue without a bespoke "read these files first"
@@ -38,8 +41,8 @@ The word **anamnesis** (ἀνάμνησις) means *"not forgetting"* in Greek �
   …) and overlays the matching fragment.
 - **Re-syncs** as the library evolves, *preserving your edits* — files
   you've authored or modified are never overwritten without consent.
-- **Promotes** your project-local hooks/skills back into the library so
-  other projects benefit.
+- **Promotes** project-local hooks, skills, commands, and task harnesses back
+  into the library so other projects benefit.
 
 It is **not** an application scaffolder (no `package.json`, no source code generation). It manages the small markdown/yaml/shell ecosystem your AI agent reads, and can optionally scaffold project-facing docs when explicitly requested.
 
@@ -102,6 +105,7 @@ your-project/
 │   ├── manifest.json                            # region/file hashes for drift detection
 │   ├── ontology/{base,<fragment>}.yaml          # static ontology slices
 │   ├── ontology/*.bootstrap.yaml                # deterministic project facts
+│   ├── task-harnesses/context-continuity.yaml    # retrieval-only task contract
 │   └── handoff/active.md                        # current work index when handoff is used
 ├── .claude/                                     # Claude Code adapter output
 │   ├── hooks/{inject-ontology, remind-uncommitted, …}.sh
@@ -187,7 +191,7 @@ invariants, and open questions that future agents can reuse.
 
 | id | trigger | capabilities |
 |---|---|---|
-| `base` | always (auto-included) | project_memory, ontology, 4× executable_hook, 2× slash_command, 3× skill |
+| `base` | always (auto-included) | project_memory, ontology, 4× executable_hook, 2× slash_command, 3× skill, task_harness |
 | `prisma` | `@prisma/client` in `package.json` or `prisma/schema.prisma` | project_memory, ontology, executable_hook |
 | `k8s` | `k8s/` directory | project_memory, ontology, executable_hook (yaml-lint) |
 | `nestjs` | `@nestjs/core` in `package.json` | project_memory, ontology |
@@ -218,6 +222,7 @@ Each fragment declares one or more **capabilities** in `fragment.yaml`. Capabili
 | `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | native wrappers for Codex-supported lifecycle events; AGENTS fallback + optional git hook bridge | rules fallback |
 | `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | AGENTS.md section (fallback) | rules (fallback) |
 | `slash_command` | User-invoked command | `.claude/commands/<n>.md` | AGENTS.md section (fallback) | rules (fallback) |
+| `task_harness` | Retrieval-only task contract | `.anamnesis/task-harnesses/*.yaml` | `.anamnesis/task-harnesses/*.yaml` | `.anamnesis/task-harnesses/*.yaml` |
 
 The adapters do not promise identical native UI. Claude Code, Codex, and
 Cursor expose different primitives, so anamnesis targets **user-facing
@@ -298,6 +303,7 @@ used for deterministic README score claims.
 | **v1.4** | Adoption automation and project context bootstrap | shipped 2026-05-11; latest patch 1.4.4 |
 | **v1.5** | Compact SessionStart defaults and session-context benchmark graphs | shipped 2026-06-19 |
 | **v1.6** | Repo-local context index/query/resume and contradiction diagnostics | shipped 2026-06-25 |
+| **v1.7** | Retrieval-only task harnesses and bounded lifecycle cleanup | in progress |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
@@ -319,6 +325,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`docs/REPAIR.md`](docs/REPAIR.md) — repair playbook for existing managed projects
 - [`docs/FRAGMENT-AUTHORING.md`](docs/FRAGMENT-AUTHORING.md) —
   public fragment authoring guide, review checklist, versioning, and compatibility rules
+- [`docs/TASK-HARNESS-DESIGN.md`](docs/TASK-HARNESS-DESIGN.md) —
+  v1.7 retrieval-only task harness capability and lifecycle design
 - [`docs/FRAGMENT-REGISTRY.md`](docs/FRAGMENT-REGISTRY.md) —
   v0.9 registry metadata, discovery, version selection, cache, and trust-boundary design
 - [`docs/FRAGMENT-SIGNING.md`](docs/FRAGMENT-SIGNING.md) —

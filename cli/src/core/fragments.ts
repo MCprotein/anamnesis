@@ -45,12 +45,21 @@ const slashCommandCapSchema = z.object({
   source: z.string(),
 });
 
+const taskHarnessCapSchema = z.object({
+  type: z.literal("task_harness"),
+  name: z.string().regex(/^[a-z0-9][a-z0-9._-]*$/),
+  source: z.string(),
+  lifecycle: z.enum(["current", "reusable"]).default("reusable"),
+  adapters_supported: z.array(toolNameSchema).optional(),
+});
+
 export const capabilitySchema = z.discriminatedUnion("type", [
   projectMemoryCapSchema,
   ontologyCapSchema,
   executableHookCapSchema,
   skillCapSchema,
   slashCommandCapSchema,
+  taskHarnessCapSchema,
 ]);
 
 const ownsEntrySchema = z.union([

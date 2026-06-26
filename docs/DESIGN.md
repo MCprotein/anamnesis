@@ -107,7 +107,7 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 ```
 
 - **content**: 자유 형식. AGENTS.md 섹션 등 사람이 읽는 마크다운·YAML. 도구 무관.
-- **capabilities**: 중간 IR. `project_memory`·`ontology`·`executable_hook`·`skill`·`slash_command` 같은 **의미 단위**. 각 capability 는 어떤 도구가 어떻게 렌더링하는지 계약을 가진다.
+- **capabilities**: 중간 IR. `project_memory`·`ontology`·`executable_hook`·`skill`·`slash_command`·`task_harness` 같은 **의미 단위**. 각 capability 는 어떤 도구가 어떻게 렌더링하는지 계약을 가진다.
 - **adapters**: capability → 도구별 파일 변환. 예: `executable_hook` → CC 는 `.claude/hooks/*.sh` + `settings.json` 등록, Codex 는 native lifecycle wrapper + AGENTS.md 지시문 + git hook fallback.
 
 이 구조가 Codex 가 지적한 "중간 IR 필요" 를 해결한다.
@@ -121,6 +121,14 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 | 3 | `executable_hook` | 이벤트 기반 자동 실행 | `.claude/hooks/` + `settings.json` | native wrappers for Codex-supported events; git hook + LLM 지시문 fallback | git hook + LLM 지시문 |
 | 4 | `skill` | 재사용 가능한 작업 절차 | `.claude/skills/<name>/SKILL.md` | AGENTS.md 섹션으로 fallback | rules 로 fallback |
 | 5 | `slash_command` | 사용자 호출 커맨드 | `.claude/commands/*.md` | AGENTS.md 섹션으로 fallback | rules 로 fallback |
+| 6 | `task_harness` | 목표·범위·증거·테스트·rubric 작업 계약 | `.anamnesis/task-harnesses/*.yaml` 검색 대상 | `.anamnesis/task-harnesses/*.yaml` 검색 대상 | `.anamnesis/task-harnesses/*.yaml` 검색 대상 |
+
+`task_harness`는 자동 시작 컨텍스트가 아니라 repo-local retrieval target 이다.
+세션 시작에는 매칭된 harness 1개만 들어갈 수 있어야 하며, 나머지는
+context index/source pointer 로 검색한다. `current` harness 는 작업 종료 후
+active context 에서 제거되고, `reusable` harness 는 `last_used`,
+`use_count`, `deprecated`, `superseded_by` 같은 lifecycle metadata 와
+retention/GC 정책으로 관리한다.
 
 **향후 추가 후보**: `scoped_rule` (Cursor 네이티브 — glob 기반 조건부 주입), `pre_commit_check` (executable_hook 의 특수형).
 
@@ -166,6 +174,10 @@ capabilities:                  # 이 fragment 가 제공하는 capability
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/prisma-validate.sh
     adapters_supported: [claude-code]
+  - type: task_harness
+    name: context-continuity
+    source: task-harnesses/context-continuity.yaml
+    lifecycle: reusable
 owns:                          # 이 fragment 가 소유·관리하는 리전/파일
   - region: prisma in AGENTS.md
   - file: .claude/hooks/prisma-validate.sh
@@ -495,6 +507,7 @@ anamnesis/
 │   ├── manifest.json          # 리전·파일 해시 기록
 │   ├── ontology/              # static + bootstrap + enriched ontology
 │   ├── handoff/               # active.md + timestamped archives
+│   ├── task-harnesses/         # reusable/current task contracts
 │   ├── overrides/             # 사용자 승격된 로컬 오버라이드
 │   └── backups/               # update 전 백업
 ├── .claude/                   # Claude Code 어댑터 산출물
@@ -524,6 +537,7 @@ summary.
 | executable_hook | ✅ 네이티브 훅 | 🟡 native Codex lifecycle wrappers + AGENTS fallback + optional git pre-commit bridge | 🟡 `.cursor/rules` 지시 |
 | skill | ✅ `.claude/skills/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
 | slash_command | ✅ `.claude/commands/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
+| task_harness | 🟡 `.anamnesis/task-harnesses/*.yaml` retrieval | 🟡 `.anamnesis/task-harnesses/*.yaml` retrieval | 🟡 `.anamnesis/task-harnesses/*.yaml` retrieval |
 
 - ✅ = 네이티브 자동 동작
 - 🟡 = best-effort, LLM 지시문 + 외부 fallback

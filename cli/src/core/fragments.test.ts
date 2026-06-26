@@ -48,7 +48,7 @@ describe("loadFragment", () => {
     expect(frag.conflicts).toEqual([]);
   });
 
-  it("parses all five capability types", () => {
+  it("parses all six capability types", () => {
     const yaml = `
 id: everything
 version: 1
@@ -68,11 +68,14 @@ capabilities:
   - type: slash_command
     name: hello
     source: commands/hello.md
+  - type: task_harness
+    name: context-continuity
+    source: task-harnesses/context-continuity.yaml
 `;
     const lib = tmpLib();
     const dir = writeFragment(lib, "everything", yaml);
     const frag = loadFragment(dir);
-    expect(frag.capabilities).toHaveLength(5);
+    expect(frag.capabilities).toHaveLength(6);
     const types = frag.capabilities.map((c) => c.type);
     expect(types).toEqual([
       "project_memory",
@@ -80,7 +83,12 @@ capabilities:
       "executable_hook",
       "skill",
       "slash_command",
+      "task_harness",
     ]);
+    expect(frag.capabilities[5]).toMatchObject({
+      type: "task_harness",
+      lifecycle: "reusable",
+    });
   });
 
   it("parses dependency requirements with minimum versions", () => {

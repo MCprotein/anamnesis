@@ -3,7 +3,7 @@ import { RendererRegistry } from "../../core/render.js";
 import { registerCursor, cursorRenderers } from "./index.js";
 
 describe("registerCursor", () => {
-  it("registers all five capability renderers", () => {
+  it("registers all six capability renderers", () => {
     const registry = new RendererRegistry();
     registerCursor(registry);
     for (const t of [
@@ -12,6 +12,7 @@ describe("registerCursor", () => {
       "executable_hook",
       "skill",
       "slash_command",
+      "task_harness",
     ] as const) {
       expect(registry.get("cursor", t)).toBeDefined();
     }
@@ -31,14 +32,15 @@ describe("registerCursor", () => {
         "executable_hook",
         "skill",
         "slash_command",
+        "task_harness",
       ] as const) {
         expect(registry.get(adapter, t)).toBeDefined();
       }
     }
   });
 
-  it("exposes 5 renderers all with adapter cursor", () => {
-    expect(cursorRenderers).toHaveLength(5);
+  it("exposes 6 renderers all with adapter cursor", () => {
+    expect(cursorRenderers).toHaveLength(6);
     for (const r of cursorRenderers) {
       expect(r.adapter).toBe("cursor");
     }

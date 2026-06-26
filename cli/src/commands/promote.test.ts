@@ -28,6 +28,7 @@ function seededProject(): string {
   fs.mkdirSync(path.join(proj, ".claude/commands"), { recursive: true });
   fs.mkdirSync(path.join(proj, ".claude/skills/my-skill"), { recursive: true });
   fs.mkdirSync(path.join(proj, ".anamnesis/ontology"), { recursive: true });
+  fs.mkdirSync(path.join(proj, ".anamnesis/task-harnesses"), { recursive: true });
 
   fs.writeFileSync(
     path.join(proj, ".claude/hooks/my-validate.sh"),
@@ -49,6 +50,15 @@ function seededProject(): string {
     path.join(proj, ".anamnesis/ontology/my.yaml"),
     "key: value\n",
   );
+  fs.writeFileSync(
+    path.join(proj, ".anamnesis/task-harnesses/context-continuity.yaml"),
+    [
+      'schema_version: "anamnesis.task_harness.v1"',
+      'id: "context-continuity"',
+      'title: "Context continuity"',
+      "",
+    ].join("\n"),
+  );
   return proj;
 }
 
@@ -69,6 +79,12 @@ describe("detectCapabilityType", () => {
 
   it("infers from .anamnesis/ontology/", () => {
     expect(detectCapabilityType(".anamnesis/ontology/x.yaml")).toBe("ontology");
+  });
+
+  it("infers from .anamnesis/task-harnesses/", () => {
+    expect(detectCapabilityType(".anamnesis/task-harnesses/x.yaml")).toBe(
+      "task_harness",
+    );
   });
 
   it("falls back to extension for shell scripts", () => {
@@ -189,6 +205,32 @@ describe("promote — new fragment", () => {
       ),
     ).toBe(true);
   });
+
+  it("promotes a task_harness, deriving name from filename", () => {
+    const result = promote({
+      projectRoot: project,
+      libraryRoot: library,
+      source: ".anamnesis/task-harnesses/context-continuity.yaml",
+      fragmentId: "my-stack",
+    });
+
+    expect(result.capability.type).toBe("task_harness");
+    if (result.capability.type === "task_harness") {
+      expect(result.capability.name).toBe("context-continuity");
+      expect(result.capability.lifecycle).toBe("reusable");
+      expect(result.capability.source).toBe(
+        "task-harnesses/context-continuity.yaml",
+      );
+    }
+    expect(
+      fs.existsSync(
+        path.join(
+          library,
+          "fragments/my-stack/task-harnesses/context-continuity.yaml",
+        ),
+      ),
+    ).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -286,6 +328,29 @@ describe("promote — existing fragment", () => {
     );
     expect(ontologyContent).toContain("key: value");
     expect(ontologyContent).toContain("extra: data");
+  });
+
+  it("rejects duplicate task_harness name", () => {
+    promote({
+      projectRoot: project,
+      libraryRoot: library,
+      source: ".anamnesis/task-harnesses/context-continuity.yaml",
+      fragmentId: "my-stack",
+    });
+    fs.writeFileSync(
+      path.join(project, ".anamnesis/task-harnesses/other.yaml"),
+      'schema_version: "anamnesis.task_harness.v1"\n',
+    );
+
+    expect(() =>
+      promote({
+        projectRoot: project,
+        libraryRoot: library,
+        source: ".anamnesis/task-harnesses/other.yaml",
+        fragmentId: "my-stack",
+        name: "context-continuity",
+      }),
+    ).toThrow(/already declared/);
   });
 });
 

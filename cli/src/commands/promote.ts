@@ -1,9 +1,8 @@
 // `anamnesis promote` — lift a project-local file into the library as a
 // reusable fragment capability.
 //
-// v0.1 supports: executable_hook, slash_command, skill, ontology.
-// project_memory promotion (extracting an AGENTS.md region into a fragment)
-// is deferred to v0.2 — it requires region-aware extraction.
+// Supports project_memory, executable_hook, slash_command, skill, ontology,
+// and task_harness promotion as reusable fragment templates.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -65,6 +64,7 @@ const SUPPORTED_TYPES: PromotableType[] = [
   "slash_command",
   "skill",
   "ontology",
+  "task_harness",
 ];
 
 /**
@@ -76,6 +76,7 @@ export function detectCapabilityType(rel: string): PromotableType | undefined {
   if (norm.startsWith(".claude/hooks/")) return "executable_hook";
   if (norm.startsWith(".claude/commands/")) return "slash_command";
   if (norm.startsWith(".claude/skills/")) return "skill";
+  if (norm.startsWith(".anamnesis/task-harnesses/")) return "task_harness";
   if (norm.startsWith(".anamnesis/ontology/")) return "ontology";
   if (
     norm.endsWith(".sh") ||
@@ -193,7 +194,7 @@ export function promote(opts: PromoteOptions): PromoteResult {
   }
   if (!SUPPORTED_TYPES.includes(capabilityType)) {
     throw new PromoteError(
-      `capability type '${capabilityType}' is not supported by promote in v0.1. ` +
+      `capability type '${capabilityType}' is not supported by promote. ` +
         `Supported: ${SUPPORTED_TYPES.join(", ")}.`,
     );
   }
@@ -406,6 +407,37 @@ export function promote(opts: PromoteOptions): PromoteResult {
       newCapability = {
         type: "ontology",
         source: targetRel,
+      };
+      break;
+    }
+
+    case "task_harness": {
+      if (fs.statSync(sourceAbs).isDirectory()) {
+        throw new PromoteError(
+          `task_harness source must be a file, got directory: ${sourceAbs}`,
+        );
+      }
+      const name =
+        opts.name ?? path.basename(sourceRel, path.extname(sourceRel));
+      const targetRel = `task-harnesses/${name}.yaml`;
+      const targetAbs = path.join(fragmentDir, targetRel);
+      fs.mkdirSync(path.dirname(targetAbs), { recursive: true });
+      fs.copyFileSync(sourceAbs, targetAbs);
+      filesWritten.push(targetRel);
+
+      const dup = definition.capabilities.find(
+        (c) => c.type === "task_harness" && c.name === name,
+      );
+      if (dup) {
+        throw new PromoteError(
+          `task_harness '${name}' already declared in fragment '${opts.fragmentId}'.`,
+        );
+      }
+      newCapability = {
+        type: "task_harness",
+        name,
+        source: targetRel,
+        lifecycle: "reusable",
       };
       break;
     }

@@ -1,0 +1,56 @@
+schema_version: "anamnesis.task_harness.v1"
+id: "context-continuity"
+title: "Context continuity task harness"
+
+lifecycle:
+  kind: "reusable"
+  use_count: 0
+  deprecated: false
+
+goal: >
+  Preserve context, ontology, handoff, and evidence continuity while keeping
+  startup context compact and retrieval-first.
+
+stop_condition: >
+  The task is complete only after the agent has read exact source pointers for
+  claims it relies on, updated or confirmed handoff state when work remains,
+  and collected fresh verification evidence.
+
+scope:
+  read:
+    - "AGENTS.md"
+    - "system_graph.yaml"
+    - ".anamnesis/ontology/*.yaml"
+    - ".anamnesis/handoff/active.md"
+    - ".anamnesis/context/index.jsonl"
+  write:
+    - ".anamnesis/handoff/*.md"
+    - ".anamnesis/context/*.jsonl"
+    - ".anamnesis/evidence/events.jsonl"
+
+forbidden:
+  - "Do not paste full handoff archives into startup context when source pointers are enough."
+  - "Do not claim a project invariant without reading the exact source file first."
+  - "Do not hand-edit generated .bootstrap.yaml facts."
+  - "Do not leave completed current task state in active startup context."
+
+required_evidence:
+  - id: "source-pointer-read"
+    description: "The exact source file was opened before relying on a project fact."
+  - id: "verification-output"
+    description: "The relevant test, benchmark, doctor, status, or smoke output was run and read."
+  - id: "handoff-state"
+    description: "Open work has a current handoff pointer, or the completed task needs no handoff."
+
+test_commands:
+  - "anamnesis context index --write"
+  - "anamnesis context query \"current handoff\""
+  - "anamnesis status"
+
+rubric:
+  - id: "compact-startup"
+    pass: "Startup context includes concise summaries and source pointers, not full archives by default."
+  - id: "retrieval-before-claim"
+    pass: "Claims cite exact repo-local files or generated evidence."
+  - id: "bounded-lifecycle"
+    pass: "Completed current task state is removed from active injection or bounded by retention."

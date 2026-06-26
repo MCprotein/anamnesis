@@ -10,6 +10,7 @@ import { ontologyRenderer } from "./ontology.js";
 import { executableHookRenderer } from "./executable_hook.js";
 import { skillRenderer } from "./skill.js";
 import { slashCommandRenderer } from "./slash_command.js";
+import { taskHarnessRenderer } from "./task_harness.js";
 
 export const claudeCodeRenderers = [
   projectMemoryRenderer,
@@ -17,6 +18,7 @@ export const claudeCodeRenderers = [
   executableHookRenderer,
   skillRenderer,
   slashCommandRenderer,
+  taskHarnessRenderer,
 ] as const;
 
 export function registerClaudeCode(registry: RendererRegistry): void {
@@ -31,4 +33,5 @@ export {
   executableHookRenderer,
   skillRenderer,
   slashCommandRenderer,
+  taskHarnessRenderer,
 };

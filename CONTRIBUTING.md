@@ -39,9 +39,16 @@ capabilities:
     source: adapters/claude-code/hooks/my-validate.sh
     adapters_supported: [claude-code]
 
+  # Optional: reusable task contract
+  - type: task_harness
+    name: context-continuity
+    source: task-harnesses/context-continuity.yaml
+    lifecycle: reusable
+
 owns:                    # for reference / future cleanup tooling
   - region: my-stack in AGENTS.md
   - file: .anamnesis/ontology/my-stack.yaml
+  - file: .anamnesis/task-harnesses/context-continuity.yaml
 ```
 
 ### Capability types
@@ -53,6 +60,7 @@ owns:                    # for reference / future cleanup tooling
 | `executable_hook` | Shell script run on a Claude Code event | a shell script (mode 0755 set by adapter) |
 | `slash_command` | A markdown file → `.claude/commands/<name>.md` | markdown |
 | `skill` | Directory with `SKILL.md` (+ optional refs) → `.claude/skills/<name>/` | a directory |
+| `task_harness` | Reusable task contract rendered to `.anamnesis/task-harnesses/<name>.yaml` and indexed for retrieval | yaml |
 
 ### Trigger (rulebook)
 
@@ -86,7 +94,7 @@ Combinators: `any: [<expr>, …]`, `all: [<expr>, …]`. Triggers are *suggestio
 
 ### Promotion shortcut
 
-If you've already authored a hook/skill/command/ontology in a project, you don't need to write `fragment.yaml` by hand:
+If you've already authored a hook/skill/command/ontology/task harness in a project, you don't need to write `fragment.yaml` by hand:
 
 ```bash
 anamnesis promote .claude/hooks/my-validate.sh --as=my-stack

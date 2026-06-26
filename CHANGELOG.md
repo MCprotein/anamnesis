@@ -7,6 +7,15 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added the initial `task_harness` capability with a base
+  `context-continuity` fixture rendered to `.anamnesis/task-harnesses/` across
+  Claude Code, Codex, and Cursor adapters.
+- Added `task-harness` entries to `anamnesis context index/query` so harness
+  contracts are retrievable without injecting every harness body at session
+  startup.
+
 ## [1.6.0] — 2026-06-25
 
 ### Added

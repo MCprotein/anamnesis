@@ -14,6 +14,7 @@ material an AI coding agent needs to avoid starting blank:
 - optional deterministic Layer A bootstrap support
 - optional skills or slash-command procedures
 - optional executable adapter surfaces
+- optional task harnesses for reusable task contracts
 
 Good fragments help agents continue work with less re-briefing. They should
 encode stable project rules and known failure modes, not broad tutorials.
@@ -49,6 +50,7 @@ fragments/<id>/
       skills/
     codex/
     cursor/
+  task-harnesses/
   .versions/
     <old-version>/
       fragment.yaml
@@ -116,11 +118,42 @@ Rules:
 | `executable_hook` | `event`, `source`, optional `adapters_supported` | Renders hook automation for adapters that support it. |
 | `skill` | `name`, `source` | Provides a reusable procedure. Native in Claude Code, fallback elsewhere. |
 | `slash_command` | `name`, `source` | Provides a user-invoked command. Native in Claude Code, fallback elsewhere. |
+| `task_harness` | `name`, `source`, optional `lifecycle`, optional `adapters_supported` | Provides a repo-local task contract under `.anamnesis/task-harnesses/<name>.yaml`. It is indexed for retrieval, not injected wholesale into startup context. |
 
 Use `adapters_supported` only when a capability cannot render safely or
 meaningfully for every enabled adapter. `fragment.adapters` in Agentfile can
 disable a whole fragment per tool later, but the capability should still
 declare hard renderer limits.
+
+## Task Harnesses
+
+`task_harness` sources should be short YAML files using
+`schema_version: "anamnesis.task_harness.v1"`. They describe a task contract:
+goal, stop condition, read/write scope, forbidden actions, required evidence,
+test commands, rubric, and lifecycle metadata.
+
+Fragments should normally ship reusable harness templates:
+
+```yaml
+- type: task_harness
+  name: context-continuity
+  source: task-harnesses/context-continuity.yaml
+  lifecycle: reusable
+```
+
+Lifecycle rules:
+
+- `current` harnesses are one-task artifacts. They should leave active startup
+  context when the task is done and should be deleted or archived under bounded
+  retention.
+- `reusable` harnesses are templates. They may remain on disk, but should carry
+  metadata such as `last_used`, `use_count`, `deprecated`, and `superseded_by`
+  when project-local lifecycle tooling updates them.
+- Harness bodies should stay out of SessionStart injection by default. Agents
+  should retrieve a matched harness via source pointer or `anamnesis context
+  query --kind task-harness`.
+- Cleanup must be preview-first. Stale or superseded harnesses belong in a
+  future `anamnesis gc --dry-run` report before deletion.
 
 ## Project Memory Snippet
 

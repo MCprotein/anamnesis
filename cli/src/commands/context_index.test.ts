@@ -153,6 +153,27 @@ function setupContextProject(): string {
   );
   writeFile(
     project,
+    ".anamnesis/task-harnesses/context-continuity.yaml",
+    [
+      'schema_version: "anamnesis.task_harness.v1"',
+      'id: "context-continuity"',
+      'title: "Context continuity task harness"',
+      "lifecycle:",
+      '  kind: "reusable"',
+      "goal: >",
+      "  Preserve handoff, ontology, and context index continuity while keeping startup context compact.",
+      "stop_condition: >",
+      "  Required source pointers are read before claims and non-matched harnesses stay out of startup injection.",
+      "required_evidence:",
+      '  - id: "source-read"',
+      '    description: "Opened the exact source pointer before relying on it."',
+      "test_commands:",
+      '  - "anamnesis context index --write"',
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    project,
     "docs/ROADMAP.md",
     [
       "# Roadmap",
@@ -188,6 +209,7 @@ describe("context index", () => {
     expect(result.summary.byKind["manifest-entry"]).toBe(2);
     expect(result.summary.byKind["evidence-summary"]).toBe(1);
     expect(result.summary.byKind["doc-section"]).toBeGreaterThan(0);
+    expect(result.summary.byKind["task-harness"]).toBe(1);
 
     const indexPath = path.join(project, ".anamnesis", "context", "index.jsonl");
     const lines = fs.readFileSync(indexPath, "utf8").trim().split(/\r?\n/);
@@ -228,6 +250,28 @@ describe("context index", () => {
       stable_ref: "operational_notes[managed-region]",
     });
     expect(result.matches[0]!.entry.snippet).toContain("Managed regions");
+  });
+
+  it("indexes task harnesses as retrieval targets", () => {
+    const project = setupContextProject();
+    contextIndex({ projectRoot: project, write: true });
+
+    const result = contextQuery({
+      projectRoot: project,
+      query: "context continuity compact startup",
+      kind: "task-harness",
+      limit: 2,
+    });
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]!.entry).toMatchObject({
+      kind: "task-harness",
+      source_path: ".anamnesis/task-harnesses/context-continuity.yaml",
+      stable_ref: "harness:context-continuity",
+      title: "Context continuity task harness",
+      freshness: "current",
+    });
+    expect(result.matches[0]!.entry.snippet).toContain("startup context compact");
   });
 
   it("marks active handoff entries stale when referenced archives are missing", () => {

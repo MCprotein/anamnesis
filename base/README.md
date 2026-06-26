@@ -8,10 +8,12 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 11 capabilities (covers all 5 types; v11+)
+├── fragment.yaml                # 12 capabilities (covers all 6 types; v14+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
+├── task-harnesses/
+│   └── context-continuity.yaml  # → .anamnesis/task-harnesses/context-continuity.yaml
 ├── adapters/claude-code/
     ├── hooks/
     │   ├── inject-ontology.sh    # SessionStart: cats ontology slices recursively
@@ -35,12 +37,14 @@ base/
 
 ## Why every capability type?
 
-The base fragment intentionally exercises all five capabilities
-(project_memory, ontology, executable_hook, skill, slash_command). It
-serves as both the operational baseline and the smoke-test fixture for
+The base fragment intentionally exercises all six capabilities
+(project_memory, ontology, executable_hook, skill, slash_command,
+task_harness). It serves as both the operational baseline and the smoke-test
+fixture for
 the renderer/adapter pipeline. Adapter outputs differ by tool, but the
 base intent is the same: load context/ontology, preserve handoff
-continuity, and remind agents about operational guardrails.
+continuity, expose a bounded task contract, and remind agents about
+operational guardrails.
 
 ## Files installed into a project
 
@@ -50,6 +54,7 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 |---|---|
 | `content/agents.snippet.md` | `AGENTS.md` (region `anamnesis-base`) |
 | `content/ontology.snippet.yaml` | `.anamnesis/ontology/base.yaml` |
+| `task-harnesses/context-continuity.yaml` | `.anamnesis/task-harnesses/context-continuity.yaml` |
 | `adapters/codex/hooks/session-start.mjs` | `.anamnesis/codex-native-hooks/session-start.mjs` + `.codex/hooks.json` `SessionStart` registration |
 | `adapters/claude-code/hooks/remind-uncommitted.sh` | `.anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh` + `.anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs` + `.codex/hooks.json` `PostToolUse` registration |
 | `adapters/claude-code/hooks/handoff-reminder.sh` | `.anamnesis/codex-hooks/base-Stop-handoff-reminder.sh` + `.anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs` + `.codex/hooks.json` `Stop` registration |

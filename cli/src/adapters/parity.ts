@@ -22,6 +22,7 @@ export const ADAPTER_PARITY_ORDER = [
   "executable_hook",
   "skill",
   "slash_command",
+  "task_harness",
 ] as const satisfies readonly CapabilityType[];
 
 export const ADAPTER_ORDER = [
@@ -139,6 +140,27 @@ export const ADAPTER_PARITY_MATRIX = [
         level: "fallback",
         surface: "`.cursor/rules/<name>-cmd.mdc`",
         evidence: ["continuity acceptance", "cursor MDC tests"],
+      },
+    },
+  },
+  {
+    capability: "task_harness",
+    purpose: "Task contract for goal, scope, evidence, tests, rubric, and lifecycle",
+    adapters: {
+      "claude-code": {
+        level: "fallback",
+        surface: "repo-local `.anamnesis/task-harnesses/*.yaml` retrieval target",
+        evidence: ["task harness renderer tests", "context index tests"],
+      },
+      codex: {
+        level: "fallback",
+        surface: "repo-local `.anamnesis/task-harnesses/*.yaml` retrieval target",
+        evidence: ["task harness renderer tests", "context index tests"],
+      },
+      cursor: {
+        level: "fallback",
+        surface: "repo-local `.anamnesis/task-harnesses/*.yaml` retrieval target",
+        evidence: ["task harness renderer tests", "context index tests"],
       },
     },
   },

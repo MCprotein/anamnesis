@@ -2,6 +2,9 @@
 
 Status: v1.6 prototype hardened; MCP/API export deferred.
 
+v1.7 extends the same local index with task harness retrieval targets under
+`.anamnesis/task-harnesses/`.
+
 ## Goal
 
 After v1.5, SessionStart should stay compact. Agents need a local way to find
@@ -20,6 +23,7 @@ Index these public/local project sources first:
 - `system_graph.yaml` for user-managed project ontology.
 - `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, and `.enriched.yaml`.
 - `.anamnesis/handoff/active.md` plus referenced archive files.
+- `.anamnesis/task-harnesses/*.yaml` for bounded task contracts.
 - `.anamnesis/manifest.json` for installed fragment/render state.
 - `.anamnesis/evidence/events.jsonl` for latest runtime evidence summaries.
 - Selected docs under `docs/`, especially roadmap, benchmark, design, and
@@ -54,7 +58,8 @@ Required fields:
 - `id`: deterministic and stable across regenerations when the source entry is
   semantically the same.
 - `kind`: small enum such as `agent-rule`, `ontology-entity`,
-  `ontology-relationship`, `handoff-task`, `evidence-summary`, or `doc-section`.
+  `ontology-relationship`, `handoff-task`, `task-harness`,
+  `evidence-summary`, or `doc-section`.
 - `source_path`: repo-relative path to the authoritative source.
 - `source_hash`: hash of the source file or source slice.
 - `stable_ref`: source-local pointer, heading, YAML id, JSON pointer, or line
@@ -69,6 +74,7 @@ The first CLI surface should be read-only:
 anamnesis context index --write
 anamnesis context query "handoff current task"
 anamnesis context query --kind ontology-rule "managed region"
+anamnesis context query --kind task-harness "context continuity"
 anamnesis context resume
 anamnesis context resume --write
 ```

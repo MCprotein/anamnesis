@@ -1,11 +1,12 @@
 id: base
-version: 13
+version: 14
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
   the ontology-enrich lifecycle/schema contract, the agent-guided
-  anamnesis-init workflow, and the AGENTS.md baseline region. anamnesis init
-  auto-includes this fragment regardless of rulebook matches.
+  anamnesis-init workflow, the context-continuity task harness, and the
+  AGENTS.md baseline region. anamnesis init auto-includes this fragment
+  regardless of rulebook matches.
 capabilities:
   - type: project_memory
     source: content/agents.snippet.md
@@ -54,9 +55,15 @@ capabilities:
     name: anamnesis-init
     source: adapters/claude-code/skills/anamnesis-init
 
+  - type: task_harness
+    name: context-continuity
+    source: task-harnesses/context-continuity.yaml
+    lifecycle: reusable
+
 owns:
   - region: anamnesis-base in AGENTS.md
   - file: .anamnesis/ontology/base.yaml
+  - file: .anamnesis/task-harnesses/context-continuity.yaml
   - file: .anamnesis/codex-native-hooks/session-start.mjs
   - file: .anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs
   - file: .anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs

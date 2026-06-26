@@ -491,8 +491,9 @@ Flags (promote):
   --as <fragment-id>            Target fragment id (required)
   --type <capability>           Capability type (auto-detected from path if omitted)
                                   one of: project_memory | executable_hook |
-                                          slash_command | skill | ontology
-  --name <name>                 Override skill / slash_command name
+                                          slash_command | skill | ontology |
+                                          task_harness
+  --name <name>                 Override skill / slash_command / task_harness name
   --region <id>                 For project_memory: region id to extract from
                                   source AGENTS.md (defaults to fragment id)
   --description <text>          Set/override fragment description

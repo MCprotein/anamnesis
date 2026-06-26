@@ -6,7 +6,7 @@ import {
 } from "./index.js";
 
 describe("registerClaudeCode", () => {
-  it("registers all five capability renderers", () => {
+  it("registers all six capability renderers", () => {
     const registry = new RendererRegistry();
     registerClaudeCode(registry);
     expect(registry.get("claude-code", "project_memory")).toBeDefined();
@@ -14,10 +14,11 @@ describe("registerClaudeCode", () => {
     expect(registry.get("claude-code", "executable_hook")).toBeDefined();
     expect(registry.get("claude-code", "skill")).toBeDefined();
     expect(registry.get("claude-code", "slash_command")).toBeDefined();
+    expect(registry.get("claude-code", "task_harness")).toBeDefined();
   });
 
   it("exposes the full renderer set", () => {
-    expect(claudeCodeRenderers).toHaveLength(5);
+    expect(claudeCodeRenderers).toHaveLength(6);
     const types = claudeCodeRenderers.map((r) => r.type).sort();
     expect(types).toEqual(
       [
@@ -26,6 +27,7 @@ describe("registerClaudeCode", () => {
         "project_memory",
         "skill",
         "slash_command",
+        "task_harness",
       ].sort(),
     );
   });

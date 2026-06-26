@@ -35,6 +35,7 @@ project:
 | `executable_hook` | **Project-root only** for native/bridge files — Claude Code's `settings.json` and git hooks are root concerns |
 | `skill` | Native/fallback files such as `.claude/skills/` and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |
 | `slash_command` | Native/fallback files such as `.claude/commands/` and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |
+| `task_harness` | Project-root retrieval target: writes `.anamnesis/task-harnesses/<name>.yaml`; scope-specific applicability belongs in the harness body until scoped matching exists |
 
 Implication: scopes are most useful for **per-app guidance and ontology**.
 Native hook/skill/command surfaces stay repo-wide when the underlying tool

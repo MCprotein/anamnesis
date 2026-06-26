@@ -1014,9 +1014,9 @@ retrievable contracts with explicit disk and injection budgets.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **`task_harness` capability design** | planned | Specify a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, rubric, lifecycle kind (`current` or `reusable`), and lifecycle metadata. Preserve adapter parity semantics across Claude Code, Codex, and Cursor. |
-| 2 | **Task harness retention and GC policy** | planned | Define bounded storage for harness artifacts: active `current` harnesses, optional short-lived archives, reusable templates, disk/injection budgets, `last_used`/`use_count` updates, deprecation/supersession behavior, and `anamnesis gc --dry-run` cleanup reporting before deletion. |
-| 3 | **Base task harness fixture** | planned | Add one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture should target context/ontology/handoff continuity behavior and prove that only the matched harness enters startup context while other harnesses remain retrievable. |
+| 1 | **`task_harness` capability design** | done | Specified a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, rubric, lifecycle kind (`current` or `reusable`), and lifecycle metadata. Preserves adapter parity semantics across Claude Code, Codex, and Cursor through a shared repo-local retrieval file. Design: [`TASK-HARNESS-DESIGN.md`](TASK-HARNESS-DESIGN.md). |
+| 2 | **Task harness retention and GC policy** | design done; implementation planned | Defined bounded storage rules for harness artifacts: active `current` harnesses, optional short-lived archives, reusable templates, disk/injection budgets, `last_used`/`use_count` updates, deprecation/supersession behavior, and future `anamnesis gc --dry-run` cleanup reporting before deletion. |
+| 3 | **Base task harness fixture** | done | Added one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture targets context/ontology/handoff continuity behavior and stays retrievable through `context index` without adding all harness bodies to startup context. |
 | 4 | **Behavior benchmark expansion** | planned | Extend `benchmark task` fixtures to check whether agents preserve user edits, avoid direct managed-region edits, avoid hand-editing `.bootstrap.yaml`, refresh handoff state, cite exact sources when compact context requires retrieval, and avoid relying on non-matched harnesses at startup. |
 | 5 | **Executable capability side-effect metadata** | planned | Add metadata for read-only, local-write, git-hook, network, credential-touching, and external-production behavior on executable capabilities and rendered wrappers. |
 | 6 | **Executable adapter security diagnostics** | planned | Add `doctor` warnings for generated or managed hooks that write outside the project, access network unexpectedly, touch likely secrets, omit shell safety settings, or drift from managed wrapper content. |
@@ -1039,6 +1039,12 @@ Exit criteria:
   managed executable output; user-authored files are not auto-reverted.
 - README or public claims mention task harnesses or security diagnostics only
   after fixture and dogfood evidence exist.
+
+Progress notes:
+- 2026-06-27: Added the initial `task_harness` capability, base
+  `context-continuity` harness fixture, adapter parity row, renderer tests, and
+  context-index retrieval support. Runtime GC deletion remains planned; the
+  current implementation only renders and indexes bounded harness files.
 
 ---
 

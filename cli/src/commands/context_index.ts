@@ -14,7 +14,8 @@ export type ContextIndexKind =
   | "handoff-task"
   | "evidence-summary"
   | "manifest-entry"
-  | "doc-section";
+  | "doc-section"
+  | "task-harness";
 
 export type ContextIndexFreshness = "current" | "stale" | "unknown";
 
@@ -125,6 +126,7 @@ const CONTEXT_KINDS = new Set<ContextIndexKind>([
   "evidence-summary",
   "manifest-entry",
   "doc-section",
+  "task-harness",
 ]);
 
 const CONTEXT_FRESHNESS = new Set<ContextIndexFreshness>([
@@ -260,6 +262,9 @@ function discoverContextSources(projectRoot: string): ContextSource[] {
   for (const relPath of walkFiles(projectRoot, ".anamnesis/ontology")) {
     if (relPath.endsWith(".yaml") || relPath.endsWith(".yml")) add(relPath);
   }
+  for (const relPath of walkFiles(projectRoot, ".anamnesis/task-harnesses")) {
+    if (relPath.endsWith(".yaml") || relPath.endsWith(".yml")) add(relPath);
+  }
 
   const activeHandoff = ".anamnesis/handoff/active.md";
   add(activeHandoff);
@@ -360,6 +365,9 @@ function markdownEntries(ctx: SourceContext): ContextIndexEntry[] {
 
 function yamlEntries(ctx: SourceContext): ContextIndexEntry[] {
   const parsed = YAML.parse(ctx.content) as unknown;
+  if (ctx.source.relPath.startsWith(".anamnesis/task-harnesses/")) {
+    return taskHarnessEntries(ctx, parsed);
+  }
   const entries: ContextIndexEntry[] = [];
   collectStructuredEntries(ctx, parsed, [], entries);
   if (entries.length === 0) {
@@ -376,6 +384,61 @@ function yamlEntries(ctx: SourceContext): ContextIndexEntry[] {
     );
   }
   return entries;
+}
+
+function taskHarnessEntries(
+  ctx: SourceContext,
+  parsed: unknown,
+): ContextIndexEntry[] {
+  if (!isObject(parsed)) {
+    return [
+      makeEntry(ctx, {
+        kind: "task-harness",
+        stableRef: "file",
+        title: path.basename(ctx.source.relPath),
+        snippet: snippetFromLines(ctx.content.split(/\r?\n/)),
+        tags: tagsForSource(ctx.source.relPath),
+      }),
+    ];
+  }
+
+  const id =
+    stringField(parsed, "id") ??
+    path.basename(ctx.source.relPath).replace(/\.(ya?ml)$/i, "");
+  const lifecycle = objectField(parsed, "lifecycle");
+  const lifecycleKind = lifecycle ? stringField(lifecycle, "kind") : undefined;
+  const requiredEvidence = Array.isArray(parsed.required_evidence)
+    ? parsed.required_evidence.length
+    : 0;
+  const testCommands = Array.isArray(parsed.test_commands)
+    ? parsed.test_commands.length
+    : 0;
+  const snippet = [
+    stringField(parsed, "goal"),
+    stringField(parsed, "stop_condition"),
+    requiredEvidence > 0 ? `required_evidence=${requiredEvidence}` : undefined,
+    testCommands > 0 ? `test_commands=${testCommands}` : undefined,
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join(" ");
+
+  return [
+    makeEntry(ctx, {
+      kind: "task-harness",
+      stableRef: `harness:${id}`,
+      title: stringField(parsed, "title") ?? stringField(parsed, "name") ?? id,
+      snippet:
+        snippet.length > 0
+          ? snippet
+          : snippetFromLines(ctx.content.split(/\r?\n/)),
+      tags: [
+        ...tagsForSource(ctx.source.relPath),
+        "task-harness",
+        id,
+        ...(lifecycleKind ? [lifecycleKind] : []),
+      ],
+    }),
+  ];
 }
 
 function jsonEntries(ctx: SourceContext): ContextIndexEntry[] {
@@ -752,6 +815,9 @@ function tagsForSource(relPath: string): string[] {
     .filter((tag) => tag.length > 0);
   if (relPath.startsWith(".anamnesis/ontology/")) tags.push("ontology");
   if (relPath.startsWith(".anamnesis/handoff/")) tags.push("handoff");
+  if (relPath.startsWith(".anamnesis/task-harnesses/")) {
+    tags.push("task-harness");
+  }
   if (relPath.startsWith("docs/")) tags.push("docs");
   return uniqueStrings(tags);
 }
@@ -839,6 +905,14 @@ function uniqueStrings(values: readonly string[]): string[] {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function objectField(
+  value: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined {
+  const field = value[key];
+  return isObject(field) ? field : undefined;
 }
 
 function stringField(
