@@ -156,10 +156,21 @@ Not allowed:
 
 ## Current Runs
 
-The first committed public-safe pair is diagnostic only. It verifies that both
-full and compact SessionStart modes can complete the same fixed retrieval task,
-but it does not establish compact/full success parity. The task did not measure
-handoff recovery; the paired input JSON marks that limitation explicitly.
+Committed public-safe pairs are diagnostic only. The 2026-06-19 pair verifies
+that both full and compact SessionStart modes can complete the same fixed
+retrieval task, but it does not establish compact/full success parity.
+
+The 2026-06-29 v1.7 behavior pair adds source-citation and task-harness
+metrics. Both modes completed the fixed task with `4/4` required source reads,
+`4/4` source citations, zero missed invariants, zero hallucinated facts, zero
+managed-region or bootstrap edit attempts, and the matched
+`context-continuity` harness read. Compact used fewer total tokens in this
+pair, but still scored lower on the 5-point convenience score because elapsed
+time crossed the 60-second threshold. This remains evidence for the pipeline,
+not a parity claim.
+
+Neither committed task measures handoff recovery; the paired input JSON marks
+that limitation explicitly.
 
 Committed model-dependent inputs must avoid proprietary prompts, source
 snippets, credentials, and local absolute paths.
@@ -203,6 +214,139 @@ Summary:
 | Unnecessary context reads | 0 | 0 | 0 | same |
 | Elapsed | 21773 ms | 35541 ms | +13768 ms | compact-worse |
 | Total tokens | 83269 tokens | 185317 tokens | +102048 tokens | compact-worse |
+
+Claim boundary:
+- This is one paired model-dependent comparison, not deterministic product evidence.
+- Public compact/full success claims require repeated public-safe pairs on the same task suite.
+
+
+## Agent Task Benchmark — 2026-06-28T16:03:40.206Z
+
+Project: anamnesis
+Shape: self-dogfood
+Task: self-v17-behavior-context-continuity
+Agent/model: codex / gpt-5.5
+Session context mode: full
+Context state: static
+Score: 4/5
+
+| Metric | Value | Score |
+|---|---:|---:|
+| Questions before action | 0 | 1 |
+| Tool turns to context | 1 | 1 |
+| First correct action | yes | 1 |
+| Handoff recovered | no | 0 |
+| Elapsed | 59155 ms | 1 |
+| Task success | yes | 1 |
+| Required source reads | 4/4 | 100% |
+| Source citations | 4/4 | 100% |
+| Missed invariants | 0 | - |
+| Hallucinated facts | 0 | - |
+| Unnecessary context reads | 0 | - |
+| Managed region edit attempts | 0 | - |
+| Bootstrap edit attempts | 0 | - |
+| Handoff refresh | not required | - |
+| Matched harness read | yes | 1 |
+| Non-matched harness reads | 0 | - |
+| Input tokens | 268739 | - |
+| Output tokens | 2915 | - |
+| Total tokens | 271654 | - |
+
+Prompt:
+
+> Public-safe v1.7 benchmark task. Do not edit files. Before answering, inspect these exact required source files: docs/AGENT-TASK-BENCHMARKS.md, docs/ROADMAP.md, cli/src/commands/benchmark_task.ts, .anamnesis/task-harnesses/context-continuity.yaml. Then return only valid JSON with keys: task_success boolean, first_correct_action boolean, source_files_read array, source_citations array, answer_summary string, missed_invariant_count number, hallucinated_fact_count number, unnecessary_context_reads number, managed_region_edit_attempts number, bootstrap_edit_attempts number, handoff_refresh_required boolean, handoff_refreshed boolean, matched_harness_read boolean, nonmatched_harness_reads number. The correct answer_summary should mention v1.7 behavior metrics, compact AGENTS.md and CLAUDE.md as control-plane source pointers rather than full project fact dumps, the context-continuity task harness as the matched harness, and repeated public-safe full-vs-compact runs still being needed before parity claims.
+
+Limitations:
+- Single model-dependent diagnostic run; do not use for success parity claims.
+- This task measures v1.7 retrieval and behavior metrics, not handoff recovery.
+- Elapsed time is measured from the local command session wall time and is approximate.
+- Token usage comes from the codex exec JSON usage event for this exact run strategy.
+
+Evidence:
+- Observed with codex exec --json --ephemeral --sandbox read-only on 2026-06-29 KST.
+- Full run used config override shell_environment_policy.set.ANAMNESIS_SESSION_CONTEXT_MODE=full.
+- Final response read all four required source files and cited public-safe repo-local paths.
+
+
+## Agent Task Benchmark — 2026-06-28T16:03:45.264Z
+
+Project: anamnesis
+Shape: self-dogfood
+Task: self-v17-behavior-context-continuity
+Agent/model: codex / gpt-5.5
+Session context mode: compact
+Context state: static
+Score: 3.5/5
+
+| Metric | Value | Score |
+|---|---:|---:|
+| Questions before action | 0 | 1 |
+| Tool turns to context | 1 | 1 |
+| First correct action | yes | 1 |
+| Handoff recovered | no | 0 |
+| Elapsed | 60772 ms | 0.5 |
+| Task success | yes | 1 |
+| Required source reads | 4/4 | 100% |
+| Source citations | 4/4 | 100% |
+| Missed invariants | 0 | - |
+| Hallucinated facts | 0 | - |
+| Unnecessary context reads | 0 | - |
+| Managed region edit attempts | 0 | - |
+| Bootstrap edit attempts | 0 | - |
+| Handoff refresh | not required | - |
+| Matched harness read | yes | 1 |
+| Non-matched harness reads | 0 | - |
+| Input tokens | 141861 | - |
+| Output tokens | 2568 | - |
+| Total tokens | 144429 | - |
+
+Prompt:
+
+> Public-safe v1.7 benchmark task. Do not edit files. Before answering, inspect these exact required source files: docs/AGENT-TASK-BENCHMARKS.md, docs/ROADMAP.md, cli/src/commands/benchmark_task.ts, .anamnesis/task-harnesses/context-continuity.yaml. Then return only valid JSON with keys: task_success boolean, first_correct_action boolean, source_files_read array, source_citations array, answer_summary string, missed_invariant_count number, hallucinated_fact_count number, unnecessary_context_reads number, managed_region_edit_attempts number, bootstrap_edit_attempts number, handoff_refresh_required boolean, handoff_refreshed boolean, matched_harness_read boolean, nonmatched_harness_reads number. The correct answer_summary should mention v1.7 behavior metrics, compact AGENTS.md and CLAUDE.md as control-plane source pointers rather than full project fact dumps, the context-continuity task harness as the matched harness, and repeated public-safe full-vs-compact runs still being needed before parity claims.
+
+Limitations:
+- Single model-dependent diagnostic run; do not use for success parity claims.
+- This task measures v1.7 retrieval and behavior metrics, not handoff recovery.
+- Elapsed time is measured from the local command session wall time and is approximate.
+- Token usage comes from the codex exec JSON usage event for this exact run strategy.
+
+Evidence:
+- Observed with codex exec --json --ephemeral --sandbox read-only on 2026-06-29 KST.
+- Compact run used default compact SessionStart behavior.
+- Final response read all four required source files and cited public-safe repo-local paths.
+
+
+## Agent Task Benchmark Compare — 2026-06-28T16:03:51.303Z
+
+Project: anamnesis
+Task: self-v17-behavior-context-continuity
+Agent/model: codex / gpt-5.5
+Context state: static
+Full run: codex-v17-behavior-full-2026-06-29-001 (4/5)
+Compact run: codex-v17-behavior-compact-2026-06-29-001 (3.5/5)
+
+Summary:
+- compact task success within tolerance: yes
+- regressions: 2
+- failures: 0
+- compact token reduction: 46.833%
+
+| Metric | Full | Compact | Delta | Verdict |
+|---|---:|---:|---:|---|
+| 5-point score | 4 points | 3.5 points | -0.5 points | compact-worse |
+| Task success | 1 | 1 | 0 | same |
+| Required source read rate | 1 | 1 | 0 | same |
+| Source citation rate | 1 | 1 | 0 | same |
+| Missed invariants | 0 | 0 | 0 | same |
+| Hallucinated facts | 0 | 0 | 0 | same |
+| Unnecessary context reads | 0 | 0 | 0 | same |
+| Managed region edit attempts | 0 | 0 | 0 | same |
+| Bootstrap edit attempts | 0 | 0 | 0 | same |
+| Handoff refresh success | - | - | - | unknown |
+| Matched harness read | 1 | 1 | 0 | same |
+| Non-matched harness reads | 0 | 0 | 0 | same |
+| Elapsed | 59155 ms | 60772 ms | +1617 ms | compact-worse |
+| Total tokens | 271654 tokens | 144429 tokens | -127225 tokens | compact-better |
 
 Claim boundary:
 - This is one paired model-dependent comparison, not deterministic product evidence.

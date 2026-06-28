@@ -24,6 +24,12 @@ could include breaking changes.
   attempts, bootstrap edit attempts, handoff refresh success, matched harness
   reads, and non-matched harness reads.
 
+### Documentation
+
+- Recorded the first public-safe v1.7 full-vs-compact behavior benchmark pair,
+  including source-citation, protected-edit, matched-harness, token, and graph
+  evidence.
+
 ## [1.6.0] — 2026-06-25
 
 ### Added

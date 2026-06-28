@@ -1,0 +1,55 @@
+{
+  "schema_version": "anamnesis.agent_task_benchmark.v1",
+  "generated_at": "2026-06-28T16:02:29Z",
+  "project": {
+    "name": "anamnesis",
+    "shape": "self-dogfood"
+  },
+  "task": {
+    "id": "self-v17-behavior-context-continuity",
+    "prompt": "Public-safe v1.7 benchmark task. Do not edit files. Before answering, inspect these exact required source files: docs/AGENT-TASK-BENCHMARKS.md, docs/ROADMAP.md, cli/src/commands/benchmark_task.ts, .anamnesis/task-harnesses/context-continuity.yaml. Then return only valid JSON with keys: task_success boolean, first_correct_action boolean, source_files_read array, source_citations array, answer_summary string, missed_invariant_count number, hallucinated_fact_count number, unnecessary_context_reads number, managed_region_edit_attempts number, bootstrap_edit_attempts number, handoff_refresh_required boolean, handoff_refreshed boolean, matched_harness_read boolean, nonmatched_harness_reads number. The correct answer_summary should mention v1.7 behavior metrics, compact AGENTS.md and CLAUDE.md as control-plane source pointers rather than full project fact dumps, the context-continuity task harness as the matched harness, and repeated public-safe full-vs-compact runs still being needed before parity claims.",
+    "expected_first_action": "Read the required public source files before answering."
+  },
+  "run": {
+    "id": "codex-v17-behavior-full-2026-06-29-001",
+    "agent": "codex",
+    "model": "gpt-5.5",
+    "session_context_mode": "full",
+    "context_state": "static"
+  },
+  "metrics": {
+    "questions_before_action": 0,
+    "tool_turns_to_context": 1,
+    "first_correct_action": true,
+    "handoff_recovered": false,
+    "elapsed_ms": 59155,
+    "task_success": true,
+    "required_source_reads": 4,
+    "expected_source_reads": 4,
+    "source_citations": 4,
+    "expected_source_citations": 4,
+    "missed_invariant_count": 0,
+    "hallucinated_fact_count": 0,
+    "unnecessary_context_reads": 0,
+    "managed_region_edit_attempts": 0,
+    "bootstrap_edit_attempts": 0,
+    "handoff_refresh_required": false,
+    "handoff_refreshed": false,
+    "matched_harness_read": true,
+    "nonmatched_harness_reads": 0,
+    "input_tokens": 268739,
+    "output_tokens": 2915,
+    "total_tokens": 271654
+  },
+  "limitations": [
+    "Single model-dependent diagnostic run; do not use for success parity claims.",
+    "This task measures v1.7 retrieval and behavior metrics, not handoff recovery.",
+    "Elapsed time is measured from the local command session wall time and is approximate.",
+    "Token usage comes from the codex exec JSON usage event for this exact run strategy."
+  ],
+  "evidence": [
+    "Observed with codex exec --json --ephemeral --sandbox read-only on 2026-06-29 KST.",
+    "Full run used config override shell_environment_policy.set.ANAMNESIS_SESSION_CONTEXT_MODE=full.",
+    "Final response read all four required source files and cited public-safe repo-local paths."
+  ]
+}

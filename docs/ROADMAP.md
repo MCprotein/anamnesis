@@ -1053,6 +1053,13 @@ Progress notes:
   `CLAUDE.md` should act as compact control planes with source pointers, while
   project facts live in ontology/docs and behavior benchmarks verify that
   agents retrieve, cite, and protect those sources.
+- 2026-06-29: Recorded the first public-safe v1.7 behavior benchmark pair for
+  `context-continuity`. Full and compact modes both read and cited `4/4`
+  required sources, had zero missed invariants, zero hallucinated facts, zero
+  managed-region or bootstrap edit attempts, and read the matched harness.
+  Compact reduced total tokens by `46.833%` in this pair, but still scored
+  lower on convenience due elapsed time. This is diagnostic evidence only;
+  repeated pairs remain required before compact/full behavior parity claims.
 
 ---
 

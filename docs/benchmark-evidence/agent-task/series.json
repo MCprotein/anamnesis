@@ -1,11 +1,11 @@
 {
   "schema_version": "anamnesis.agent_task_benchmark_series.v1",
   "projectRoot": ".",
-  "generatedAt": "2026-06-28T14:33:52.854Z",
+  "generatedAt": "2026-06-28T16:04:00.427Z",
   "evidencePath": ".anamnesis/evidence/events.jsonl",
-  "evidenceRecords": 19,
+  "evidenceRecords": 22,
   "invalidEvidenceLines": 0,
-  "compareRecords": 1,
+  "compareRecords": 2,
   "groups": [
     {
       "id": "anamnesis/self-retrieval-v1-5-benchmark-state/codex/gpt-5.5/static",
@@ -72,15 +72,93 @@
       "regressions": 3,
       "failures": 0,
       "latest_generated_at": "2026-06-19T08:16:49.313Z"
+    },
+    {
+      "id": "anamnesis/self-v17-behavior-context-continuity/codex/gpt-5.5/static",
+      "project": "anamnesis",
+      "task_id": "self-v17-behavior-context-continuity",
+      "agent": "codex",
+      "model": "gpt-5.5",
+      "context_state": "static",
+      "pairs": 1,
+      "full_task_success_rate": 1,
+      "compact_task_success_rate": 1,
+      "compact_success_within_tolerance_rate": 1,
+      "full_required_source_read_rate": {
+        "count": 1,
+        "average": 1,
+        "min": 1,
+        "max": 1,
+        "stddev": 0
+      },
+      "compact_required_source_read_rate": {
+        "count": 1,
+        "average": 1,
+        "min": 1,
+        "max": 1,
+        "stddev": 0
+      },
+      "required_source_read_rate_delta": {
+        "count": 1,
+        "average": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "full_source_citation_rate": {
+        "count": 1,
+        "average": 1,
+        "min": 1,
+        "max": 1,
+        "stddev": 0
+      },
+      "compact_source_citation_rate": {
+        "count": 1,
+        "average": 1,
+        "min": 1,
+        "max": 1,
+        "stddev": 0
+      },
+      "source_citation_rate_delta": {
+        "count": 1,
+        "average": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "total_tokens_delta": {
+        "count": 1,
+        "average": -127225,
+        "min": -127225,
+        "max": -127225,
+        "stddev": 0
+      },
+      "elapsed_ms_delta": {
+        "count": 1,
+        "average": 1617,
+        "min": 1617,
+        "max": 1617,
+        "stddev": 0
+      },
+      "compact_token_reduction_pct": {
+        "count": 1,
+        "average": 46.833,
+        "min": 46.833,
+        "max": 46.833,
+        "stddev": 0
+      },
+      "regressions": 2,
+      "failures": 0,
+      "latest_generated_at": "2026-06-28T16:03:51.303Z"
     }
   ],
   "summary": {
-    "groups": 1,
-    "pairs": 1,
+    "groups": 2,
+    "pairs": 2,
     "failures": 0,
-    "regressions": 3
+    "regressions": 5
   },
-  "markdown": "# Agent Task Benchmark Series\n\nGenerated: 2026-06-28T14:33:52.854Z\nEvidence source: .anamnesis/evidence/events.jsonl (19 valid, 0 invalid)\nCompare records: 1\n\nSummary:\n- groups: 1\n- pairs: 1\n- regressions: 3\n- failures: 0\n\n| Series | Pairs | Full success | Compact success | Compact within tolerance | Required source read delta avg/stddev/min/max | Source citation delta avg/stddev/min/max | Token delta avg/stddev/min/max | Elapsed delta avg/stddev/min/max | Regressions | Failures |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n| anamnesis/self-retrieval-v1-5-benchmark-state/codex/gpt-5.5/static | 1 | 100% | 100% | 100% | 0 / 0 / 0 / 0 | - | 102048 / 0 / 102048 / 102048 | 13768 / 0 / 13768 / 13768 | 3 | 0 |\n\nClaim boundary:\n- This rollup summarizes model-dependent pairs only.\n- Compact/full parity claims require enough repeated public-safe pairs for the task suite.",
+  "markdown": "# Agent Task Benchmark Series\n\nGenerated: 2026-06-28T16:04:00.427Z\nEvidence source: .anamnesis/evidence/events.jsonl (22 valid, 0 invalid)\nCompare records: 2\n\nSummary:\n- groups: 2\n- pairs: 2\n- regressions: 5\n- failures: 0\n\n| Series | Pairs | Full success | Compact success | Compact within tolerance | Required source read delta avg/stddev/min/max | Source citation delta avg/stddev/min/max | Token delta avg/stddev/min/max | Elapsed delta avg/stddev/min/max | Regressions | Failures |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n| anamnesis/self-retrieval-v1-5-benchmark-state/codex/gpt-5.5/static | 1 | 100% | 100% | 100% | 0 / 0 / 0 / 0 | - | 102048 / 0 / 102048 / 102048 | 13768 / 0 / 13768 / 13768 | 3 | 0 |\n| anamnesis/self-v17-behavior-context-continuity/codex/gpt-5.5/static | 1 | 100% | 100% | 100% | 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 | -127225 / 0 / -127225 / -127225 | 1617 / 0 / 1617 / 1617 | 2 | 0 |\n\nClaim boundary:\n- This rollup summarizes model-dependent pairs only.\n- Compact/full parity claims require enough repeated public-safe pairs for the task suite.",
   "artifacts": {
     "outputDir": "docs/benchmark-evidence/agent-task",
     "json": "docs/benchmark-evidence/agent-task/series.json",
