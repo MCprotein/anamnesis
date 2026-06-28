@@ -1017,7 +1017,7 @@ retrievable contracts with explicit disk and injection budgets.
 | 1 | **`task_harness` capability design** | done | Specified a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, rubric, lifecycle kind (`current` or `reusable`), and lifecycle metadata. Preserves adapter parity semantics across Claude Code, Codex, and Cursor through a shared repo-local retrieval file. Design: [`TASK-HARNESS-DESIGN.md`](TASK-HARNESS-DESIGN.md). |
 | 2 | **Task harness retention and GC policy** | preview shipped; deletion planned | Added preview-only cleanup reporting for active `current` harnesses, reusable templates, disk/count budgets, stale age, `last_used`/`use_count`, deprecation/supersession behavior, and managed vs user-authored cleanup recommendations. Deletion/apply mode remains planned. |
 | 3 | **Base task harness fixture** | done | Added one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture targets context/ontology/handoff continuity behavior and stays retrievable through `context index` without adding all harness bodies to startup context. |
-| 4 | **Behavior benchmark expansion** | planned | Extend `benchmark task` fixtures to check whether agents preserve user edits, avoid direct managed-region edits, avoid hand-editing `.bootstrap.yaml`, refresh handoff state, cite exact sources when compact context requires retrieval, and avoid relying on non-matched harnesses at startup. |
+| 4 | **Behavior benchmark expansion** | partial | Extended `benchmark task` and `task-compare` with numeric behavior metrics for source citations, managed-region edit attempts, `.bootstrap.yaml` edit attempts, handoff refresh success, matched harness reads, and non-matched harness reads. `task-series --write` now emits a source-citation delta SVG alongside token and quality charts. Repeated public-safe runs remain planned before claiming compact/full behavior parity. |
 | 5 | **Executable capability side-effect metadata** | planned | Add metadata for read-only, local-write, git-hook, network, credential-touching, and external-production behavior on executable capabilities and rendered wrappers. |
 | 6 | **Executable adapter security diagnostics** | planned | Add `doctor` warnings for generated or managed hooks that write outside the project, access network unexpectedly, touch likely secrets, omit shell safety settings, or drift from managed wrapper content. |
 | 7 | **Malicious and unsafe-fragment fixtures** | planned | Add fixtures for unsafe executable adapters, suspicious native wrappers, network egress, repo-external writes, and stale hook registrations so security diagnostics are test-backed. |
@@ -1048,6 +1048,11 @@ Progress notes:
 - 2026-06-27: Added preview-only `anamnesis gc --dry-run` reporting for
   task-harness lifecycle candidates. The dogfood repo currently reports one
   managed reusable harness, 2026 bytes, and zero cleanup candidates.
+- 2026-06-28: Added v1.7 behavior metrics to the model-dependent task
+  benchmark path. The intended contract is now explicit: `AGENTS.md` and
+  `CLAUDE.md` should act as compact control planes with source pointers, while
+  project facts live in ontology/docs and behavior benchmarks verify that
+  agents retrieve, cite, and protect those sources.
 
 ---
 

@@ -312,6 +312,12 @@ function summarizePromptGateEvidence(
       const requiredSourceReads = metrics
         ? numberField(metrics, "required_source_reads")
         : undefined;
+      const expectedSourceCitations = metrics
+        ? numberField(metrics, "expected_source_citations")
+        : undefined;
+      const sourceCitations = metrics
+        ? numberField(metrics, "source_citations")
+        : undefined;
       const missedInvariantCount = metrics
         ? numberField(metrics, "missed_invariant_count")
         : undefined;
@@ -321,6 +327,24 @@ function summarizePromptGateEvidence(
       const unnecessaryContextReads = metrics
         ? numberField(metrics, "unnecessary_context_reads")
         : undefined;
+      const managedRegionEditAttempts = metrics
+        ? numberField(metrics, "managed_region_edit_attempts")
+        : undefined;
+      const bootstrapEditAttempts = metrics
+        ? numberField(metrics, "bootstrap_edit_attempts")
+        : undefined;
+      const handoffRefreshRequired = metrics
+        ? booleanField(metrics, "handoff_refresh_required")
+        : undefined;
+      const handoffRefreshed = metrics
+        ? booleanField(metrics, "handoff_refreshed")
+        : undefined;
+      const matchedHarnessRead = metrics
+        ? booleanField(metrics, "matched_harness_read")
+        : undefined;
+      const nonmatchedHarnessReads = metrics
+        ? numberField(metrics, "nonmatched_harness_reads")
+        : undefined;
       const sourceReadRate =
         retrieval && numberField(retrieval, "required_source_read_rate") !== undefined
           ? numberField(retrieval, "required_source_read_rate")
@@ -328,6 +352,14 @@ function summarizePromptGateEvidence(
               expectedSourceReads > 0 &&
               requiredSourceReads !== undefined
             ? requiredSourceReads / expectedSourceReads
+            : undefined;
+      const sourceCitationRate =
+        retrieval && numberField(retrieval, "source_citation_rate") !== undefined
+          ? numberField(retrieval, "source_citation_rate")
+          : expectedSourceCitations !== undefined &&
+              expectedSourceCitations > 0 &&
+              sourceCitations !== undefined
+            ? sourceCitations / expectedSourceCitations
             : undefined;
       const sessionContextMode =
         typeof record.summary.session_context_mode === "string"
@@ -340,7 +372,14 @@ function summarizePromptGateEvidence(
         missedInvariantCount !== undefined ||
         hallucinatedFactCount !== undefined ||
         unnecessaryContextReads !== undefined ||
-        sourceReadRate !== undefined;
+        sourceReadRate !== undefined ||
+        sourceCitationRate !== undefined ||
+        managedRegionEditAttempts !== undefined ||
+        bootstrapEditAttempts !== undefined ||
+        handoffRefreshRequired !== undefined ||
+        handoffRefreshed !== undefined ||
+        matchedHarnessRead !== undefined ||
+        nonmatchedHarnessReads !== undefined;
       if (hasRetrievalMetrics) {
         retrievalBenchmarks++;
         if (sessionContextMode === "compact") compactRetrievalBenchmarks++;
@@ -349,13 +388,25 @@ function summarizePromptGateEvidence(
       const recordRetrievalFriction =
         hasRetrievalMetrics &&
         ((sourceReadRate !== undefined && sourceReadRate < 1) ||
+          (sourceCitationRate !== undefined && sourceCitationRate < 1) ||
           (unnecessaryContextReads !== undefined && unnecessaryContextReads > 0) ||
+          (managedRegionEditAttempts !== undefined &&
+            managedRegionEditAttempts > 0) ||
+          (bootstrapEditAttempts !== undefined && bootstrapEditAttempts > 0) ||
+          (handoffRefreshRequired === true && handoffRefreshed === false) ||
+          matchedHarnessRead === false ||
+          (nonmatchedHarnessReads !== undefined && nonmatchedHarnessReads > 0) ||
           (missedInvariantCount !== undefined && missedInvariantCount > 0) ||
           (hallucinatedFactCount !== undefined && hallucinatedFactCount > 0) ||
           taskSuccess === false);
       const recordRetrievalFailure =
         hasRetrievalMetrics &&
         (taskSuccess === false ||
+          (sourceCitationRate !== undefined && sourceCitationRate < 1) ||
+          (managedRegionEditAttempts !== undefined &&
+            managedRegionEditAttempts > 0) ||
+          (bootstrapEditAttempts !== undefined && bootstrapEditAttempts > 0) ||
+          (handoffRefreshRequired === true && handoffRefreshed === false) ||
           (missedInvariantCount !== undefined && missedInvariantCount > 0) ||
           (hallucinatedFactCount !== undefined && hallucinatedFactCount > 0));
       if (

@@ -1312,8 +1312,12 @@ function reportAgentTaskBenchmarkSeries(
       group.required_source_read_rate_delta.average === undefined
         ? "unknown"
         : String(group.required_source_read_rate_delta.average);
+    const citationDelta =
+      group.source_citation_rate_delta.average === undefined
+        ? "unknown"
+        : String(group.source_citation_rate_delta.average);
     console.log(
-      `  ${group.id}: pairs=${group.pairs}, compact_success=${formatCliRate(group.compact_task_success_rate)}, source_delta=${sourceDelta}, token_delta=${tokenDelta}`,
+      `  ${group.id}: pairs=${group.pairs}, compact_success=${formatCliRate(group.compact_task_success_rate)}, source_read_delta=${sourceDelta}, source_citation_delta=${citationDelta}, token_delta=${tokenDelta}`,
     );
   }
   if (result.artifacts.outputDir) {
@@ -1324,6 +1328,7 @@ function reportAgentTaskBenchmarkSeries(
     result.artifacts.markdown,
     result.artifacts.tokenDeltaSvg,
     result.artifacts.qualitySummarySvg,
+    result.artifacts.sourceCitationDeltaSvg,
   ]) {
     if (artifact) console.log(`  artifact: ${artifact}`);
   }

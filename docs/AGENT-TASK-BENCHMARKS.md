@@ -1,6 +1,6 @@
 # Agent Task Benchmarks
 
-Status: v1.5 retrieval-aware model-dependent benchmark harness.
+Status: v1.7 retrieval- and behavior-aware model-dependent benchmark harness.
 
 This file is separate from [`BENCHMARKS.md`](BENCHMARKS.md). Deterministic
 benchmark reports measure context surfaces on disk. Agent task benchmarks
@@ -30,6 +30,9 @@ deciding whether Codex prompt-time context delta injection is justified. In
 v1.5, that signal includes optional compact/full retrieval metrics so the gate
 can distinguish "startup context is compact and the agent retrieved exact
 sources" from "startup context is compact and the agent missed required facts."
+v1.7 extends that signal with behavior metrics for source citation,
+managed-region safety, bootstrap safety, handoff freshness, and task-harness
+selection.
 
 `anamnesis benchmark task-compare` reads two task input JSON files, requires
 `run.session_context_mode=full` for one and `compact` for the other, verifies
@@ -64,6 +67,21 @@ Optional v1.5 retrieval metrics:
 - `input_tokens`, `output_tokens`, `total_tokens`: token usage from the model
   run when available
 
+Optional v1.7 behavior metrics:
+
+- `source_citations` / `expected_source_citations`: how many required exact
+  source paths or evidence references the agent cited before making claims
+- `managed_region_edit_attempts`: direct edits attempted inside generated
+  managed regions instead of updating the source fragment or renderer
+- `bootstrap_edit_attempts`: direct edits attempted in `.bootstrap.yaml`
+  ontology output instead of writing semantic enrichment or source changes
+- `handoff_refresh_required` / `handoff_refreshed`: whether the run needed to
+  refresh handoff state and actually did so
+- `matched_harness_read`: whether the agent read the one relevant task harness
+  when the task matched one
+- `nonmatched_harness_reads`: task harnesses read despite not matching the
+  current task
+
 ## Scoring
 
 The harness reports a 5-point convenience score:
@@ -84,7 +102,7 @@ not folded into that score so old runs remain comparable.
 
 ## Compact vs Full Retrieval Runs
 
-Use paired runs when evaluating v1.5 compact SessionStart behavior:
+Use paired runs when evaluating compact SessionStart and retrieval behavior:
 
 1. Same repo snapshot.
 2. Same task prompt and expected source list.
@@ -92,17 +110,20 @@ Use paired runs when evaluating v1.5 compact SessionStart behavior:
 4. One run with `ANAMNESIS_SESSION_CONTEXT_MODE=full`.
 5. One run with `ANAMNESIS_SESSION_CONTEXT_MODE=compact`.
 
-The comparison should look for task success, required-source-read rate, missed
-invariants, hallucinated facts, unnecessary context reads, elapsed time, and
-token usage. A single pair is diagnostic only. Public claims need repeated
-public-safe runs.
+The comparison should look for task success, required-source-read rate,
+source-citation rate, missed invariants, hallucinated facts, unnecessary
+context reads, protected-file edit attempts, handoff refresh success, matched
+task-harness use, elapsed time, and token usage. A single pair is diagnostic
+only. Public claims need repeated public-safe runs.
 
 `benchmark task-compare` reports:
 
 - compact task success delta and whether it stays within the current 5
   percentage-point tolerance
-- required-source-read-rate delta
+- required-source-read-rate and source-citation-rate deltas
 - missed invariant, hallucinated fact, and unnecessary context-read deltas
+- managed-region, bootstrap, handoff-refresh, matched-harness, and
+  non-matched-harness behavior deltas
 - elapsed-time and total-token deltas
 - regression/failure counts for prompt-gate consumption
 
@@ -110,8 +131,9 @@ public-safe runs.
 `agent-task-benchmark-compare` evidence records by project, task, agent, model,
 and context state. It reports pair count, full/compact task success rates,
 compact success-within-tolerance rate, average/stddev/min/max required-source
-read deltas, total-token deltas, and elapsed-time deltas. `--write` stores the
-rollup JSON, markdown, and dependency-free SVG charts under
+read deltas, source-citation deltas, total-token deltas, and elapsed-time
+deltas. `--write` stores the rollup JSON, markdown, and dependency-free SVG
+charts under
 `docs/benchmark-evidence/agent-task/`.
 
 ## Claim Boundary
@@ -121,6 +143,9 @@ Allowed:
 - "In this controlled task run, agent/model X scored Y/5."
 - "With the same fixed prompt and snapshot, context state A required fewer
   questions than context state B."
+- "`AGENTS.md` and `CLAUDE.md` can stay compact for this project shape when
+  they point to retrievable project sources and repeated behavior benchmarks
+  show agents read and cite those sources."
 
 Not allowed:
 
@@ -145,10 +170,13 @@ Current series artifacts:
 - [`series.md`](benchmark-evidence/agent-task/series.md)
 - [`series-token-delta.svg`](benchmark-evidence/agent-task/series-token-delta.svg)
 - [`series-quality-summary.svg`](benchmark-evidence/agent-task/series-quality-summary.svg)
+- [`series-source-citation-delta.svg`](benchmark-evidence/agent-task/series-source-citation-delta.svg)
 
 ![Task series token delta](benchmark-evidence/agent-task/series-token-delta.svg)
 
 ![Task series quality summary](benchmark-evidence/agent-task/series-quality-summary.svg)
+
+![Task series source citation delta](benchmark-evidence/agent-task/series-source-citation-delta.svg)
 
 ## Agent Task Benchmark Compare — 2026-06-19T08:16:49.313Z
 

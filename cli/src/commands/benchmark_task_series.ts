@@ -32,6 +32,9 @@ export interface AgentTaskBenchmarkSeriesGroup {
   full_required_source_read_rate: AgentTaskBenchmarkSeriesMetric;
   compact_required_source_read_rate: AgentTaskBenchmarkSeriesMetric;
   required_source_read_rate_delta: AgentTaskBenchmarkSeriesMetric;
+  full_source_citation_rate: AgentTaskBenchmarkSeriesMetric;
+  compact_source_citation_rate: AgentTaskBenchmarkSeriesMetric;
+  source_citation_rate_delta: AgentTaskBenchmarkSeriesMetric;
   total_tokens_delta: AgentTaskBenchmarkSeriesMetric;
   elapsed_ms_delta: AgentTaskBenchmarkSeriesMetric;
   compact_token_reduction_pct: AgentTaskBenchmarkSeriesMetric;
@@ -62,6 +65,7 @@ export interface AgentTaskBenchmarkSeriesResult {
     markdown?: string;
     tokenDeltaSvg?: string;
     qualitySummarySvg?: string;
+    sourceCitationDeltaSvg?: string;
   };
 }
 
@@ -92,6 +96,7 @@ interface CompareRecord {
   failures?: number;
   compactTaskSuccessDelta?: number;
   requiredSourceReadRateDelta?: number;
+  sourceCitationRateDelta?: number;
   elapsedMsDelta?: number;
   totalTokensDelta?: number;
   compactTokenReductionPct?: number;
@@ -99,6 +104,8 @@ interface CompareRecord {
   compactTaskSuccess?: boolean;
   fullRequiredSourceReadRate?: number;
   compactRequiredSourceReadRate?: number;
+  fullSourceCitationRate?: number;
+  compactSourceCitationRate?: number;
 }
 
 export function agentTaskBenchmarkSeries(
@@ -152,12 +159,20 @@ export function agentTaskBenchmarkSeries(
     const markdownPath = path.join(outputDir, "series.md");
     const tokenDeltaSvgPath = path.join(outputDir, "series-token-delta.svg");
     const qualitySummarySvgPath = path.join(outputDir, "series-quality-summary.svg");
+    const sourceCitationDeltaSvgPath = path.join(
+      outputDir,
+      "series-source-citation-delta.svg",
+    );
     const artifacts = {
       outputDir: displayPathFromProject(projectRoot, outputDir),
       json: displayPathFromProject(projectRoot, jsonPath),
       markdown: displayPathFromProject(projectRoot, markdownPath),
       tokenDeltaSvg: displayPathFromProject(projectRoot, tokenDeltaSvgPath),
       qualitySummarySvg: displayPathFromProject(projectRoot, qualitySummarySvgPath),
+      sourceCitationDeltaSvg: displayPathFromProject(
+        projectRoot,
+        sourceCitationDeltaSvgPath,
+      ),
     };
     const serializable: AgentTaskBenchmarkSeriesResult = {
       ...result,
@@ -174,6 +189,11 @@ export function agentTaskBenchmarkSeries(
     fs.writeFileSync(
       qualitySummarySvgPath,
       renderQualitySummarySvg(groups),
+      "utf8",
+    );
+    fs.writeFileSync(
+      sourceCitationDeltaSvgPath,
+      renderSourceCitationDeltaSvg(groups),
       "utf8",
     );
     return serializable;
@@ -229,6 +249,7 @@ function compareRecordFromEvidence(
       summary,
       "required_source_read_rate_delta",
     ),
+    sourceCitationRateDelta: numberField(summary, "source_citation_rate_delta"),
     elapsedMsDelta: numberField(summary, "elapsed_ms_delta"),
     totalTokensDelta: numberField(summary, "total_tokens_delta"),
     compactTokenReductionPct: numberField(
@@ -239,6 +260,8 @@ function compareRecordFromEvidence(
     compactTaskSuccess: booleanField(compactMetrics, "task_success"),
     fullRequiredSourceReadRate: sourceReadRate(fullMetrics),
     compactRequiredSourceReadRate: sourceReadRate(compactMetrics),
+    fullSourceCitationRate: sourceCitationRate(fullMetrics),
+    compactSourceCitationRate: sourceCitationRate(compactMetrics),
   };
 }
 
@@ -290,6 +313,15 @@ function summarizeCompareRecordGroup(
     required_source_read_rate_delta: metricSummary(
       records.map((record) => record.requiredSourceReadRateDelta),
     ),
+    full_source_citation_rate: metricSummary(
+      records.map((record) => record.fullSourceCitationRate),
+    ),
+    compact_source_citation_rate: metricSummary(
+      records.map((record) => record.compactSourceCitationRate),
+    ),
+    source_citation_rate_delta: metricSummary(
+      records.map((record) => record.sourceCitationRateDelta),
+    ),
     total_tokens_delta: metricSummary(
       records.map((record) => record.totalTokensDelta),
     ),
@@ -329,11 +361,11 @@ function renderAgentTaskBenchmarkSeriesMarkdown(input: {
     `- regressions: ${input.summary.regressions}`,
     `- failures: ${input.summary.failures}`,
     "",
-    "| Series | Pairs | Full success | Compact success | Compact within tolerance | Required source read delta avg/stddev/min/max | Token delta avg/stddev/min/max | Elapsed delta avg/stddev/min/max | Regressions | Failures |",
-    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    "| Series | Pairs | Full success | Compact success | Compact within tolerance | Required source read delta avg/stddev/min/max | Source citation delta avg/stddev/min/max | Token delta avg/stddev/min/max | Elapsed delta avg/stddev/min/max | Regressions | Failures |",
+    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ...input.groups.map(
       (group) =>
-        `| ${group.id} | ${group.pairs} | ${formatRate(group.full_task_success_rate)} | ${formatRate(group.compact_task_success_rate)} | ${formatRate(group.compact_success_within_tolerance_rate)} | ${formatMetricSpread(group.required_source_read_rate_delta)} | ${formatMetricSpread(group.total_tokens_delta)} | ${formatMetricSpread(group.elapsed_ms_delta)} | ${group.regressions} | ${group.failures} |`,
+        `| ${group.id} | ${group.pairs} | ${formatRate(group.full_task_success_rate)} | ${formatRate(group.compact_task_success_rate)} | ${formatRate(group.compact_success_within_tolerance_rate)} | ${formatMetricSpread(group.required_source_read_rate_delta)} | ${formatMetricSpread(group.source_citation_rate_delta)} | ${formatMetricSpread(group.total_tokens_delta)} | ${formatMetricSpread(group.elapsed_ms_delta)} | ${group.regressions} | ${group.failures} |`,
     ),
     "",
     "Claim boundary:",
@@ -374,6 +406,21 @@ function renderQualitySummarySvg(
     metric: (group) => group.compact_task_success_rate,
     valueLabel: (value) => `${Math.round(value * 100)}%`,
     domain: { min: 0, max: 1 },
+    positiveIsGood: true,
+    height: Math.max(220, 150 + groups.length * 48),
+  });
+}
+
+function renderSourceCitationDeltaSvg(
+  groups: readonly AgentTaskBenchmarkSeriesGroup[],
+): string {
+  return renderBarSvg({
+    title: "Agent Task Series Source Citation Delta",
+    subtitle: "compact - full; higher is better",
+    groups,
+    metric: (group) => group.source_citation_rate_delta.average,
+    valueLabel: (value) => `${Math.round(value * 100)} pts`,
+    positiveIsGood: true,
     height: Math.max(220, 150 + groups.length * 48),
   });
 }
@@ -385,6 +432,7 @@ function renderBarSvg(input: {
   metric: (group: AgentTaskBenchmarkSeriesGroup) => number | undefined;
   valueLabel: (value: number) => string;
   domain?: { min: number; max: number };
+  positiveIsGood?: boolean;
   height: number;
 }): string {
   const width = 920;
@@ -416,7 +464,8 @@ function renderBarSvg(input: {
       const valueX = marginLeft + ((row.value - min) / span) * chartWidth;
       const x = Math.min(zeroX, valueX);
       const barWidth = Math.max(2, Math.abs(valueX - zeroX));
-      const fill = row.value <= 0 ? "#168a5b" : "#c65f23";
+      const good = input.positiveIsGood === true ? row.value >= 0 : row.value <= 0;
+      const fill = good ? "#168a5b" : "#c65f23";
       return [
         `<text x="24" y="${y + 20}" class="label">${label}</text>`,
         `<rect x="${roundSvg(x)}" y="${y}" width="${roundSvg(barWidth)}" height="24" rx="3" fill="${fill}" />`,
@@ -463,6 +512,18 @@ function sourceReadRate(metrics: Record<string, unknown> | undefined): number | 
     return undefined;
   }
   return roundNumber(required / expected);
+}
+
+function sourceCitationRate(
+  metrics: Record<string, unknown> | undefined,
+): number | undefined {
+  if (!metrics) return undefined;
+  const citations = numberField(metrics, "source_citations");
+  const expected = numberField(metrics, "expected_source_citations");
+  if (citations === undefined || expected === undefined || expected <= 0) {
+    return undefined;
+  }
+  return roundNumber(citations / expected);
 }
 
 function metricSummary(

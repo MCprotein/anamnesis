@@ -417,9 +417,17 @@ describe("benchmarkReport", () => {
       task_success: true,
       required_source_reads: 2,
       expected_source_reads: 2,
+      source_citations: 2,
+      expected_source_citations: 2,
       missed_invariant_count: 0,
       hallucinated_fact_count: 0,
       unnecessary_context_reads: 0,
+      managed_region_edit_attempts: 0,
+      bootstrap_edit_attempts: 0,
+      handoff_refresh_required: true,
+      handoff_refreshed: true,
+      matched_harness_read: true,
+      nonmatched_harness_reads: 0,
       total_tokens: 9000,
     };
     const inputPath = path.join(project, "task-run.json");
@@ -439,10 +447,16 @@ describe("benchmarkReport", () => {
       handoff_recovered: 1,
       retrieval: {
         required_source_read_rate: 1,
+        source_citation_rate: 1,
         task_success: 1,
         missed_invariant_count: 0,
         hallucinated_fact_count: 0,
         unnecessary_context_reads: 0,
+        managed_region_edit_attempts: 0,
+        bootstrap_edit_attempts: 0,
+        handoff_refresh_success: 1,
+        matched_harness_read: 1,
+        nonmatched_harness_reads: 0,
         total_tokens: 9000,
       },
     });
@@ -451,6 +465,8 @@ describe("benchmarkReport", () => {
     expect(result.markdown).toContain("Agent Task Benchmark");
     expect(result.markdown).toContain("Session context mode: compact");
     expect(result.markdown).toContain("| Required source reads | 2/2 | 100% |");
+    expect(result.markdown).toContain("| Source citations | 2/2 | 100% |");
+    expect(result.markdown).toContain("| Handoff refresh | required / refreshed | 1 |");
     expect(result.markdown).toContain("Model-dependent result");
 
     const evidenceLines = fs
@@ -481,6 +497,7 @@ describe("benchmarkReport", () => {
         score: { points: 5, total: 5 },
         retrieval: {
           required_source_read_rate: 1,
+          source_citation_rate: 1,
           task_success: 1,
         },
       },
@@ -512,9 +529,17 @@ describe("benchmarkReport", () => {
       task_success: true,
       required_source_reads: 1,
       expected_source_reads: 3,
+      source_citations: 1,
+      expected_source_citations: 2,
       missed_invariant_count: 0,
       hallucinated_fact_count: 0,
       unnecessary_context_reads: 0,
+      managed_region_edit_attempts: 0,
+      bootstrap_edit_attempts: 0,
+      handoff_refresh_required: true,
+      handoff_refreshed: true,
+      matched_harness_read: true,
+      nonmatched_harness_reads: 0,
       total_tokens: 20000,
     };
     const compact = JSON.parse(JSON.stringify(full)) as typeof full;
@@ -522,6 +547,7 @@ describe("benchmarkReport", () => {
     compact.run.id = "compact-retrieval-compact-001";
     compact.run.session_context_mode = "compact";
     compact.metrics.required_source_reads = 3;
+    compact.metrics.source_citations = 2;
     compact.metrics.unnecessary_context_reads = 1;
     compact.metrics.elapsed_ms = 50000;
     compact.metrics.total_tokens = 10000;
@@ -543,10 +569,15 @@ describe("benchmarkReport", () => {
       regressions: 1,
       failures: 0,
       compact_task_success_within_tolerance: true,
+      source_citation_rate_delta: 0.5,
       compact_token_reduction_pct: 50,
     });
     expect(compare.deltas.find((delta) => delta.id === "required-source-read-rate")).toMatchObject({
       delta: 0.667,
+      verdict: "compact-better",
+    });
+    expect(compare.deltas.find((delta) => delta.id === "source-citation-rate")).toMatchObject({
+      delta: 0.5,
       verdict: "compact-better",
     });
     expect(compare.markdown).toContain("Agent Task Benchmark Compare");
@@ -638,15 +669,24 @@ describe("benchmarkReport", () => {
       task_success: true,
       required_source_reads: 1,
       expected_source_reads: 3,
+      source_citations: 1,
+      expected_source_citations: 2,
       missed_invariant_count: 0,
       hallucinated_fact_count: 0,
       unnecessary_context_reads: 0,
+      managed_region_edit_attempts: 0,
+      bootstrap_edit_attempts: 0,
+      handoff_refresh_required: true,
+      handoff_refreshed: true,
+      matched_harness_read: true,
+      nonmatched_harness_reads: 0,
       total_tokens: 20000,
     };
     const compact = JSON.parse(JSON.stringify(full)) as typeof full;
     compact.run.id = "compact-retrieval-compact-001";
     compact.run.session_context_mode = "compact";
     compact.metrics.required_source_reads = 3;
+    compact.metrics.source_citations = 2;
     compact.metrics.elapsed_ms = 50000;
     compact.metrics.total_tokens = 10000;
 
@@ -671,6 +711,7 @@ describe("benchmarkReport", () => {
     compact2.run.id = "compact-retrieval-compact-002";
     compact2.run.session_context_mode = "compact";
     compact2.metrics.required_source_reads = 2;
+    compact2.metrics.source_citations = 2;
     compact2.metrics.elapsed_ms = 70000;
     compact2.metrics.total_tokens = 24000;
 
@@ -707,6 +748,11 @@ describe("benchmarkReport", () => {
         min: -0.333,
         max: 0.667,
       },
+      source_citation_rate_delta: {
+        average: 0.5,
+        min: 0.5,
+        max: 0.5,
+      },
       total_tokens_delta: {
         average: -2000,
         min: -10000,
@@ -721,6 +767,7 @@ describe("benchmarkReport", () => {
       series.artifacts.markdown,
       series.artifacts.tokenDeltaSvg,
       series.artifacts.qualitySummarySvg,
+      series.artifacts.sourceCitationDeltaSvg,
     ]) {
       expect(artifact).toBeTruthy();
       expect(fs.existsSync(path.join(project, artifact!))).toBe(true);
@@ -731,6 +778,11 @@ describe("benchmarkReport", () => {
     );
     expect(svg).toContain("<svg");
     expect(svg).toContain("Agent Task Series Total Token Delta");
+    const sourceSvg = fs.readFileSync(
+      path.join(project, series.artifacts.sourceCitationDeltaSvg!),
+      "utf8",
+    );
+    expect(sourceSvg).toContain("Agent Task Series Source Citation Delta");
   });
 
   it("defers prompt-time context deltas when evidence is insufficient", () => {

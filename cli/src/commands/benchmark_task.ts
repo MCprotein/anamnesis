@@ -44,9 +44,17 @@ export interface AgentTaskBenchmarkInput {
     task_success?: boolean;
     required_source_reads?: number;
     expected_source_reads?: number;
+    source_citations?: number;
+    expected_source_citations?: number;
     missed_invariant_count?: number;
     hallucinated_fact_count?: number;
     unnecessary_context_reads?: number;
+    managed_region_edit_attempts?: number;
+    bootstrap_edit_attempts?: number;
+    handoff_refresh_required?: boolean;
+    handoff_refreshed?: boolean;
+    matched_harness_read?: boolean;
+    nonmatched_harness_reads?: number;
     input_tokens?: number;
     output_tokens?: number;
     total_tokens?: number;
@@ -65,10 +73,16 @@ export interface AgentTaskBenchmarkScore {
   elapsed_efficiency: number;
   retrieval?: {
     required_source_read_rate?: number;
+    source_citation_rate?: number;
     task_success?: number;
     missed_invariant_count?: number;
     hallucinated_fact_count?: number;
     unnecessary_context_reads?: number;
+    managed_region_edit_attempts?: number;
+    bootstrap_edit_attempts?: number;
+    handoff_refresh_success?: number;
+    matched_harness_read?: number;
+    nonmatched_harness_reads?: number;
     input_tokens?: number;
     output_tokens?: number;
     total_tokens?: number;
@@ -112,9 +126,15 @@ export interface AgentTaskBenchmarkCompareSummary {
   compact_task_success_within_tolerance?: boolean;
   compact_task_success_delta?: number;
   required_source_read_rate_delta?: number;
+  source_citation_rate_delta?: number;
   missed_invariant_delta?: number;
   hallucinated_fact_delta?: number;
   unnecessary_context_reads_delta?: number;
+  managed_region_edit_attempts_delta?: number;
+  bootstrap_edit_attempts_delta?: number;
+  handoff_refresh_success_delta?: number;
+  matched_harness_read_delta?: number;
+  nonmatched_harness_reads_delta?: number;
   elapsed_ms_delta?: number;
   total_tokens_delta?: number;
   compact_token_reduction_pct?: number;
@@ -202,9 +222,17 @@ export function agentTaskBenchmarkTemplate(now = new Date()): AgentTaskBenchmark
       task_success: true,
       required_source_reads: 2,
       expected_source_reads: 2,
+      source_citations: 2,
+      expected_source_citations: 2,
       missed_invariant_count: 0,
       hallucinated_fact_count: 0,
       unnecessary_context_reads: 0,
+      managed_region_edit_attempts: 0,
+      bootstrap_edit_attempts: 0,
+      handoff_refresh_required: true,
+      handoff_refreshed: true,
+      matched_harness_read: true,
+      nonmatched_harness_reads: 0,
       input_tokens: 12000,
       output_tokens: 2000,
       total_tokens: 14000,
@@ -227,6 +255,8 @@ export function agentTaskBenchmarkCompareTemplate(
   full.run.session_context_mode = "full";
   full.metrics.required_source_reads = 1;
   full.metrics.expected_source_reads = 2;
+  full.metrics.source_citations = 1;
+  full.metrics.expected_source_citations = 2;
   full.metrics.input_tokens = 24000;
   full.metrics.output_tokens = 2000;
   full.metrics.total_tokens = 26000;
@@ -236,6 +266,8 @@ export function agentTaskBenchmarkCompareTemplate(
   compact.run.session_context_mode = "compact";
   compact.metrics.required_source_reads = 2;
   compact.metrics.expected_source_reads = 2;
+  compact.metrics.source_citations = 2;
+  compact.metrics.expected_source_citations = 2;
   compact.metrics.input_tokens = 12000;
   compact.metrics.output_tokens = 2000;
   compact.metrics.total_tokens = 14000;
@@ -433,6 +465,12 @@ function parseAgentTaskBenchmarkInput(
     filePath,
   );
   const taskSuccess = optionalBooleanField(metrics, "task_success");
+  const handoffRefreshRequired = optionalBooleanField(
+    metrics,
+    "handoff_refresh_required",
+  );
+  const handoffRefreshed = optionalBooleanField(metrics, "handoff_refreshed");
+  const matchedHarnessRead = optionalBooleanField(metrics, "matched_harness_read");
   const input: AgentTaskBenchmarkInput = {
     schema_version: AGENT_TASK_BENCHMARK_SCHEMA_VERSION,
     generated_at: stringField(value, "generated_at", filePath),
@@ -473,9 +511,23 @@ function parseAgentTaskBenchmarkInput(
       ...(taskSuccess !== undefined ? { task_success: taskSuccess } : {}),
       ...optionalNonNegativeMetric(metrics, "required_source_reads", filePath),
       ...optionalNonNegativeMetric(metrics, "expected_source_reads", filePath),
+      ...optionalNonNegativeMetric(metrics, "source_citations", filePath),
+      ...optionalNonNegativeMetric(metrics, "expected_source_citations", filePath),
       ...optionalNonNegativeMetric(metrics, "missed_invariant_count", filePath),
       ...optionalNonNegativeMetric(metrics, "hallucinated_fact_count", filePath),
       ...optionalNonNegativeMetric(metrics, "unnecessary_context_reads", filePath),
+      ...optionalNonNegativeMetric(metrics, "managed_region_edit_attempts", filePath),
+      ...optionalNonNegativeMetric(metrics, "bootstrap_edit_attempts", filePath),
+      ...(handoffRefreshRequired !== undefined
+        ? { handoff_refresh_required: handoffRefreshRequired }
+        : {}),
+      ...(handoffRefreshed !== undefined
+        ? { handoff_refreshed: handoffRefreshed }
+        : {}),
+      ...(matchedHarnessRead !== undefined
+        ? { matched_harness_read: matchedHarnessRead }
+        : {}),
+      ...optionalNonNegativeMetric(metrics, "nonmatched_harness_reads", filePath),
       ...optionalNonNegativeMetric(metrics, "input_tokens", filePath),
       ...optionalNonNegativeMetric(metrics, "output_tokens", filePath),
       ...optionalNonNegativeMetric(metrics, "total_tokens", filePath),
@@ -540,9 +592,17 @@ function retrievalScore(
     metrics.task_success !== undefined ||
     metrics.required_source_reads !== undefined ||
     metrics.expected_source_reads !== undefined ||
+    metrics.source_citations !== undefined ||
+    metrics.expected_source_citations !== undefined ||
     metrics.missed_invariant_count !== undefined ||
     metrics.hallucinated_fact_count !== undefined ||
     metrics.unnecessary_context_reads !== undefined ||
+    metrics.managed_region_edit_attempts !== undefined ||
+    metrics.bootstrap_edit_attempts !== undefined ||
+    metrics.handoff_refresh_required !== undefined ||
+    metrics.handoff_refreshed !== undefined ||
+    metrics.matched_harness_read !== undefined ||
+    metrics.nonmatched_harness_reads !== undefined ||
     metrics.input_tokens !== undefined ||
     metrics.output_tokens !== undefined ||
     metrics.total_tokens !== undefined;
@@ -554,10 +614,25 @@ function retrievalScore(
     expected !== undefined && expected > 0 && required !== undefined
       ? required / expected
       : undefined;
+  const expectedCitations = metrics.expected_source_citations;
+  const citations = metrics.source_citations;
+  const sourceCitationRate =
+    expectedCitations !== undefined && expectedCitations > 0 && citations !== undefined
+      ? citations / expectedCitations
+      : undefined;
+  const handoffRefreshSuccess =
+    metrics.handoff_refresh_required === true && metrics.handoff_refreshed !== undefined
+      ? metrics.handoff_refreshed
+        ? 1
+        : 0
+      : undefined;
 
   return {
     ...(requiredSourceReadRate !== undefined
       ? { required_source_read_rate: requiredSourceReadRate }
+      : {}),
+    ...(sourceCitationRate !== undefined
+      ? { source_citation_rate: sourceCitationRate }
       : {}),
     ...(metrics.task_success !== undefined
       ? { task_success: metrics.task_success ? 1 : 0 }
@@ -570,6 +645,21 @@ function retrievalScore(
       : {}),
     ...(metrics.unnecessary_context_reads !== undefined
       ? { unnecessary_context_reads: metrics.unnecessary_context_reads }
+      : {}),
+    ...(metrics.managed_region_edit_attempts !== undefined
+      ? { managed_region_edit_attempts: metrics.managed_region_edit_attempts }
+      : {}),
+    ...(metrics.bootstrap_edit_attempts !== undefined
+      ? { bootstrap_edit_attempts: metrics.bootstrap_edit_attempts }
+      : {}),
+    ...(handoffRefreshSuccess !== undefined
+      ? { handoff_refresh_success: handoffRefreshSuccess }
+      : {}),
+    ...(metrics.matched_harness_read !== undefined
+      ? { matched_harness_read: metrics.matched_harness_read ? 1 : 0 }
+      : {}),
+    ...(metrics.nonmatched_harness_reads !== undefined
+      ? { nonmatched_harness_reads: metrics.nonmatched_harness_reads }
       : {}),
     ...(metrics.input_tokens !== undefined
       ? { input_tokens: metrics.input_tokens }
@@ -728,6 +818,13 @@ function compareAgentTaskBenchmarkDeltas(input: {
       compact: input.compactScore.retrieval?.required_source_read_rate,
     }),
     compareDelta({
+      id: "source-citation-rate",
+      label: "Source citation rate",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.source_citation_rate,
+      compact: input.compactScore.retrieval?.source_citation_rate,
+    }),
+    compareDelta({
       id: "missed-invariants",
       label: "Missed invariants",
       direction: "lower-is-better",
@@ -747,6 +844,41 @@ function compareAgentTaskBenchmarkDeltas(input: {
       direction: "lower-is-better",
       full: input.full.metrics.unnecessary_context_reads,
       compact: input.compact.metrics.unnecessary_context_reads,
+    }),
+    compareDelta({
+      id: "managed-region-edit-attempts",
+      label: "Managed region edit attempts",
+      direction: "lower-is-better",
+      full: input.full.metrics.managed_region_edit_attempts,
+      compact: input.compact.metrics.managed_region_edit_attempts,
+    }),
+    compareDelta({
+      id: "bootstrap-edit-attempts",
+      label: "Bootstrap edit attempts",
+      direction: "lower-is-better",
+      full: input.full.metrics.bootstrap_edit_attempts,
+      compact: input.compact.metrics.bootstrap_edit_attempts,
+    }),
+    compareDelta({
+      id: "handoff-refresh-success",
+      label: "Handoff refresh success",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.handoff_refresh_success,
+      compact: input.compactScore.retrieval?.handoff_refresh_success,
+    }),
+    compareDelta({
+      id: "matched-harness-read",
+      label: "Matched harness read",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.matched_harness_read,
+      compact: input.compactScore.retrieval?.matched_harness_read,
+    }),
+    compareDelta({
+      id: "nonmatched-harness-reads",
+      label: "Non-matched harness reads",
+      direction: "lower-is-better",
+      full: input.full.metrics.nonmatched_harness_reads,
+      compact: input.compact.metrics.nonmatched_harness_reads,
     }),
     compareDelta({
       id: "elapsed-ms",
@@ -779,11 +911,35 @@ function summarizeAgentTaskBenchmarkCompare(input: {
     input.deltas,
     "required-source-read-rate",
   )?.delta;
+  const sourceCitationRateDelta = deltaById(
+    input.deltas,
+    "source-citation-rate",
+  )?.delta;
   const missedInvariantDelta = deltaById(input.deltas, "missed-invariants")?.delta;
   const hallucinatedFactDelta = deltaById(input.deltas, "hallucinated-facts")?.delta;
   const unnecessaryContextReadsDelta = deltaById(
     input.deltas,
     "unnecessary-context-reads",
+  )?.delta;
+  const managedRegionEditAttemptsDelta = deltaById(
+    input.deltas,
+    "managed-region-edit-attempts",
+  )?.delta;
+  const bootstrapEditAttemptsDelta = deltaById(
+    input.deltas,
+    "bootstrap-edit-attempts",
+  )?.delta;
+  const handoffRefreshSuccessDelta = deltaById(
+    input.deltas,
+    "handoff-refresh-success",
+  )?.delta;
+  const matchedHarnessReadDelta = deltaById(
+    input.deltas,
+    "matched-harness-read",
+  )?.delta;
+  const nonmatchedHarnessReadsDelta = deltaById(
+    input.deltas,
+    "nonmatched-harness-reads",
   )?.delta;
   const elapsedMsDelta = deltaById(input.deltas, "elapsed-ms")?.delta;
   const totalTokensDelta = deltaById(input.deltas, "total-tokens")?.delta;
@@ -801,7 +957,17 @@ function summarizeAgentTaskBenchmarkCompare(input: {
   const failures =
     (compactTaskSuccessWithinTolerance === false ? 1 : 0) +
     (missedInvariantDelta !== undefined && missedInvariantDelta > 0 ? 1 : 0) +
-    (hallucinatedFactDelta !== undefined && hallucinatedFactDelta > 0 ? 1 : 0);
+    (hallucinatedFactDelta !== undefined && hallucinatedFactDelta > 0 ? 1 : 0) +
+    (input.compactScore.retrieval?.source_citation_rate !== undefined &&
+    input.compactScore.retrieval.source_citation_rate < 1
+      ? 1
+      : 0) +
+    ((input.compact.metrics.managed_region_edit_attempts ?? 0) > 0 ? 1 : 0) +
+    ((input.compact.metrics.bootstrap_edit_attempts ?? 0) > 0 ? 1 : 0) +
+    (input.compact.metrics.handoff_refresh_required === true &&
+    input.compact.metrics.handoff_refreshed === false
+      ? 1
+      : 0);
 
   return {
     regressions,
@@ -815,6 +981,9 @@ function summarizeAgentTaskBenchmarkCompare(input: {
     ...(requiredSourceReadRateDelta !== undefined
       ? { required_source_read_rate_delta: requiredSourceReadRateDelta }
       : {}),
+    ...(sourceCitationRateDelta !== undefined
+      ? { source_citation_rate_delta: sourceCitationRateDelta }
+      : {}),
     ...(missedInvariantDelta !== undefined
       ? { missed_invariant_delta: missedInvariantDelta }
       : {}),
@@ -823,6 +992,21 @@ function summarizeAgentTaskBenchmarkCompare(input: {
       : {}),
     ...(unnecessaryContextReadsDelta !== undefined
       ? { unnecessary_context_reads_delta: unnecessaryContextReadsDelta }
+      : {}),
+    ...(managedRegionEditAttemptsDelta !== undefined
+      ? { managed_region_edit_attempts_delta: managedRegionEditAttemptsDelta }
+      : {}),
+    ...(bootstrapEditAttemptsDelta !== undefined
+      ? { bootstrap_edit_attempts_delta: bootstrapEditAttemptsDelta }
+      : {}),
+    ...(handoffRefreshSuccessDelta !== undefined
+      ? { handoff_refresh_success_delta: handoffRefreshSuccessDelta }
+      : {}),
+    ...(matchedHarnessReadDelta !== undefined
+      ? { matched_harness_read_delta: matchedHarnessReadDelta }
+      : {}),
+    ...(nonmatchedHarnessReadsDelta !== undefined
+      ? { nonmatched_harness_reads_delta: nonmatchedHarnessReadsDelta }
       : {}),
     ...(elapsedMsDelta !== undefined ? { elapsed_ms_delta: elapsedMsDelta } : {}),
     ...(totalTokensDelta !== undefined ? { total_tokens_delta: totalTokensDelta } : {}),
@@ -980,9 +1164,17 @@ function retrievalMetricRows(
     input.metrics.task_success === undefined &&
     input.metrics.required_source_reads === undefined &&
     input.metrics.expected_source_reads === undefined &&
+    input.metrics.source_citations === undefined &&
+    input.metrics.expected_source_citations === undefined &&
     input.metrics.missed_invariant_count === undefined &&
     input.metrics.hallucinated_fact_count === undefined &&
     input.metrics.unnecessary_context_reads === undefined &&
+    input.metrics.managed_region_edit_attempts === undefined &&
+    input.metrics.bootstrap_edit_attempts === undefined &&
+    input.metrics.handoff_refresh_required === undefined &&
+    input.metrics.handoff_refreshed === undefined &&
+    input.metrics.matched_harness_read === undefined &&
+    input.metrics.nonmatched_harness_reads === undefined &&
     input.metrics.input_tokens === undefined &&
     input.metrics.output_tokens === undefined &&
     input.metrics.total_tokens === undefined
@@ -990,21 +1182,45 @@ function retrievalMetricRows(
     return [];
   }
 
-  const rate = retrievalScore(input)?.required_source_read_rate;
+  const retrieval = retrievalScore(input);
+  const rate = retrieval?.required_source_read_rate;
+  const citationRate = retrieval?.source_citation_rate;
   return [
     `| Task success | ${input.metrics.task_success === undefined ? "(unspecified)" : input.metrics.task_success ? "yes" : "no"} | ${score.retrieval?.task_success ?? "-"} |`,
     `| Required source reads | ${formatMaybeNumber(input.metrics.required_source_reads)}/${formatMaybeNumber(input.metrics.expected_source_reads)} | ${rate === undefined ? "-" : `${Math.round(rate * 100)}%`} |`,
+    `| Source citations | ${formatMaybeNumber(input.metrics.source_citations)}/${formatMaybeNumber(input.metrics.expected_source_citations)} | ${citationRate === undefined ? "-" : `${Math.round(citationRate * 100)}%`} |`,
     `| Missed invariants | ${formatMaybeNumber(input.metrics.missed_invariant_count)} | - |`,
     `| Hallucinated facts | ${formatMaybeNumber(input.metrics.hallucinated_fact_count)} | - |`,
     `| Unnecessary context reads | ${formatMaybeNumber(input.metrics.unnecessary_context_reads)} | - |`,
+    `| Managed region edit attempts | ${formatMaybeNumber(input.metrics.managed_region_edit_attempts)} | - |`,
+    `| Bootstrap edit attempts | ${formatMaybeNumber(input.metrics.bootstrap_edit_attempts)} | - |`,
+    `| Handoff refresh | ${formatHandoffRefresh(input.metrics)} | ${retrieval?.handoff_refresh_success ?? "-"} |`,
+    `| Matched harness read | ${formatMaybeMetricBoolean(input.metrics.matched_harness_read)} | ${retrieval?.matched_harness_read ?? "-"} |`,
+    `| Non-matched harness reads | ${formatMaybeNumber(input.metrics.nonmatched_harness_reads)} | - |`,
     `| Input tokens | ${formatMaybeNumber(input.metrics.input_tokens)} | - |`,
     `| Output tokens | ${formatMaybeNumber(input.metrics.output_tokens)} | - |`,
     `| Total tokens | ${formatMaybeNumber(input.metrics.total_tokens)} | - |`,
   ];
 }
 
+function formatHandoffRefresh(
+  metrics: AgentTaskBenchmarkInput["metrics"],
+): string {
+  if (metrics.handoff_refresh_required === undefined) return "-";
+  if (metrics.handoff_refresh_required === false) return "not required";
+  return metrics.handoff_refreshed === undefined
+    ? "required / unknown"
+    : metrics.handoff_refreshed
+      ? "required / refreshed"
+      : "required / stale";
+}
+
 function formatMaybeNumber(value: number | undefined): string {
   return value === undefined ? "-" : String(value);
+}
+
+function formatMaybeMetricBoolean(value: boolean | undefined): string {
+  return value === undefined ? "-" : value ? "yes" : "no";
 }
 
 function formatMaybeBoolean(value: boolean | undefined): string {

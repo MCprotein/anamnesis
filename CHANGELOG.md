@@ -19,6 +19,10 @@ could include breaking changes.
   for stale current harnesses, deprecated/superseded reusable harnesses,
   count-budget pressure, disk-budget pressure, and managed vs user-authored
   cleanup recommendations.
+- Added v1.7 behavior metrics to `anamnesis benchmark task`, `task-compare`,
+  `task-series`, and `prompt-gate` for source citations, managed-region edit
+  attempts, bootstrap edit attempts, handoff refresh success, matched harness
+  reads, and non-matched harness reads.
 
 ## [1.6.0] — 2026-06-25
 

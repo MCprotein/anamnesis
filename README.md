@@ -147,7 +147,7 @@ anamnesis benchmark compare --baseline before.json --after after.json --append  
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates
 anamnesis benchmark gallery --validate  # fail when gallery evidence is stale
 anamnesis benchmark trace --append  # roll up benchmark trace logs as runtime evidence
-anamnesis benchmark task --template  # create a model-dependent task/retrieval benchmark input
+anamnesis benchmark task --template  # create a model-dependent task/retrieval/behavior benchmark input
 anamnesis benchmark task --input task-run.json --append  # record an agent task run separately
 anamnesis benchmark task-compare --template  # create a paired full/compact task template
 anamnesis benchmark task-compare --full full.json --compact compact.json --append  # compare paired full/compact task runs
@@ -185,6 +185,13 @@ Layer A is intentionally a baseline, not a promise to model every framework
 in depth. The CLI extracts facts it can prove from files; Layer B uses the
 active agent to turn those facts into relationships, flows, intent,
 invariants, and open questions that future agents can reuse.
+
+`AGENTS.md` and `CLAUDE.md` are intentionally treated as compact control-plane
+surfaces: stable operating rules, source pointers, and retrieval instructions
+belong there, while project facts live in ontology, handoff, task-harness, and
+docs sources. This is safe only when those sources are current and behavior
+benchmarks show agents actually read and cite them; `benchmark task` v1.7 adds
+those checks.
 
 ---
 
