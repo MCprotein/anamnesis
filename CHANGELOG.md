@@ -27,6 +27,10 @@ could include breaking changes.
   commands so renderers and future diagnostics can distinguish read-only,
   local-write, repo-external-write, git-hook, network, credential-touching, and
   external-production behavior.
+- Added executable adapter security diagnostics to `anamnesis status` and
+  `doctor`, warning when managed hooks under-declare writes, repo-external
+  writes, network access, likely credential touches, external-production
+  commands, or shell safety settings.
 
 ### Documentation
 

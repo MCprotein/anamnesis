@@ -792,6 +792,23 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   console.log(
     `  context diagnostics: ${contextDiagnostics.ok ? "ok" : "issues"} (${contextDiagnostics.summary.warnings} warning(s)${contextInfo})`,
   );
+  const executableSecurity = result.executableSecurity;
+  const executableInfo =
+    executableSecurity.summary.info > 0
+      ? `, ${executableSecurity.summary.info} info`
+      : "";
+  console.log(
+    `  executable security: ${executableSecurity.ok ? "ok" : "issues"} (${executableSecurity.summary.warnings} warning(s)${executableInfo})`,
+  );
+  for (const issue of executableSecurity.issues.slice(0, 3)) {
+    console.log(`    ${issue.severity} ${issue.code}: ${issue.target}`);
+    console.log(`      ${issue.message}`);
+  }
+  if (executableSecurity.issues.length > 3) {
+    console.log(
+      `    ... ${executableSecurity.issues.length - 3} more executable security issue(s)`,
+    );
+  }
   for (const line of formatGenerationBoundaryLines(
     collectGenerationBoundaryStatus(projectRoot),
   )) {

@@ -7,10 +7,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {
   findAgentfile,
-  fragmentAdapterEnabled,
   readAgentfile,
-  type Fragment,
-  type ToolName,
 } from "../core/agentfile.js";
 import {
   emptyManifest,
@@ -22,21 +19,10 @@ import {
 import {
   loadAllFragments,
   loadBaseFragment,
-  loadFragment,
-  archivedFragmentDirOf,
-  fragmentDirOf,
-  type Capability,
   type FragmentDefinition,
 } from "../core/fragments.js";
 import { effectiveScopes } from "../core/scope.js";
-import {
-  RendererRegistry,
-  type RenderAction,
-  type RenderContext,
-} from "../core/render.js";
-import { registerClaudeCode } from "../adapters/claude-code/index.js";
-import { registerCodex } from "../adapters/codex/index.js";
-import { registerCursor } from "../adapters/cursor/index.js";
+import type { RenderAction } from "../core/render.js";
 import {
   hookRegistrationPresent,
   readSettings,
@@ -62,6 +48,14 @@ import {
   type ContextDiagnosticSeverity,
 } from "./context_diagnostics.js";
 import { status, type ContinuityCheck, type StatusResult } from "./status.js";
+import {
+  analyzeExecutableSecurity,
+  type ExecutableSecurityIssue,
+} from "../core/executable_security.js";
+import {
+  collectInstalledRenderActions,
+  type InstalledRenderPlanProblem,
+} from "./render_plan.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,6 +93,7 @@ export type DoctorIssueCode =
   | "ontology-bootstrap-missing"
   | "ontology-bootstrap-stale"
   | "ontology-enrichment-missing"
+  | ExecutableSecurityIssue["code"]
   | ContextDiagnosticIssue["code"];
 
 export interface DoctorIssue {
@@ -204,13 +199,18 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   }
 
   const library = libraryFragmentMap(libraryRoot);
-  const renderActions = addAdapterIssuesAndCollectActions({
+  const renderPlan = collectInstalledRenderActions({
     projectRoot,
     libraryRoot,
     library,
-    issues,
     scopes: effectiveScopes(agentfile),
   });
+  addRenderPlanProblems(renderPlan.problems, issues);
+  const renderActions = renderPlan.actions;
+  addExecutableSecurityIssues(
+    analyzeExecutableSecurity(renderActions).issues,
+    issues,
+  );
   addSettingsIssues(projectRoot, manifest, renderActions, issues);
   addCodexHookIssues(projectRoot, manifest, renderActions, issues);
 
@@ -273,12 +273,6 @@ export function doctor(opts: DoctorOptions): DoctorResult {
 
 type StatusEntry = ReturnType<typeof status>["entries"][number];
 type StatusFragment = ReturnType<typeof status>["fragments"][number];
-
-interface ResolvedFragment {
-  entry: Fragment;
-  fragment: FragmentDefinition;
-  fragmentDir: string;
-}
 
 function addStatusIssues(
   entries: StatusEntry[],
@@ -506,135 +500,35 @@ function continuityIssueCode(check: ContinuityCheck): DoctorIssueCode {
 // Adapter / settings diagnostics
 // ---------------------------------------------------------------------------
 
-function addAdapterIssuesAndCollectActions(opts: {
-  projectRoot: string;
-  libraryRoot: string;
-  library: Map<string, FragmentDefinition>;
-  issues: DoctorIssue[];
-  scopes: Array<{
-    path: string;
-    tools: ToolName[];
-    fragments: Fragment[];
-  }>;
-}): RenderAction[] {
-  const registry = buildRendererRegistry();
-  const actions: RenderAction[] = [];
-
-  for (const scope of opts.scopes) {
-    for (const installed of scope.fragments) {
-      const resolved = resolveInstalledFragmentForDoctor({
-        entry: installed,
-        libraryRoot: opts.libraryRoot,
-        library: opts.library,
-        issues: opts.issues,
-        scopePath: scope.path,
-      });
-      if (!resolved) continue;
-      const { entry, fragment, fragmentDir } = resolved;
-      const ctx: RenderContext = {
-        fragment,
-        fragmentDir,
-        projectRoot: opts.projectRoot,
-        scopePath: scope.path,
-        settings: DEFAULT_SETTINGS,
-        params: {},
-      };
-
-      for (const tool of scope.tools) {
-        if (!fragmentAdapterEnabled(entry, tool)) continue;
-        for (const cap of fragment.capabilities) {
-          if (!capabilitySupportsTool(cap, tool)) continue;
-          if (!registry.get(tool, cap.type)) {
-            opts.issues.push({
-              severity: "error",
-              code: "adapter-renderer-missing",
-              scopePath: scope.path,
-              fragmentId: fragment.id,
-              message: `no renderer for ${tool}:${cap.type} required by fragment '${fragment.id}'`,
-            });
-          }
-        }
-
-        try {
-          actions.push(...registry.planFragment(ctx, tool));
-        } catch (e) {
-          opts.issues.push({
-            severity: "error",
-            code: "render-plan-failed",
-            scopePath: scope.path,
-            fragmentId: fragment.id,
-            message: `failed to plan ${tool} output for fragment '${fragment.id}': ${(e as Error).message}`,
-          });
-        }
-      }
-    }
+function addRenderPlanProblems(
+  problems: readonly InstalledRenderPlanProblem[],
+  issues: DoctorIssue[],
+): void {
+  for (const problem of problems) {
+    issues.push({
+      severity: "error",
+      code: problem.code,
+      scopePath: problem.scopePath,
+      fragmentId: problem.fragmentId,
+      target: problem.target,
+      message: problem.message,
+    });
   }
-
-  return dedupeActions(actions);
 }
 
-function resolveInstalledFragmentForDoctor(opts: {
-  entry: Fragment;
-  libraryRoot: string;
-  library: Map<string, FragmentDefinition>;
-  issues: DoctorIssue[];
-  scopePath: string;
-}): ResolvedFragment | undefined {
-  const currentDir = fragmentDirOf(opts.libraryRoot, opts.entry.id);
-  const current = opts.library.get(opts.entry.id);
-
-  if (opts.entry.pinned !== true) {
-    return current
-      ? { entry: opts.entry, fragment: current, fragmentDir: currentDir }
-      : undefined;
-  }
-
-  if (current?.version === opts.entry.version) {
-    return { entry: opts.entry, fragment: current, fragmentDir: currentDir };
-  }
-
-  const archivedDir = archivedFragmentDirOf(
-    opts.libraryRoot,
-    opts.entry.id,
-    opts.entry.version,
-  );
-  const archivedPath = path.join(archivedDir, "fragment.yaml");
-  if (!fs.existsSync(archivedPath)) {
-    opts.issues.push({
-      severity: "error",
-      code: "fragment-library-missing",
-      scopePath: opts.scopePath,
-      fragmentId: opts.entry.id,
-      target: archivedPath,
-      message: `pinned fragment '${opts.entry.id}@${opts.entry.version}' is missing from the version archive`,
+function addExecutableSecurityIssues(
+  securityIssues: readonly ExecutableSecurityIssue[],
+  issues: DoctorIssue[],
+): void {
+  for (const issue of securityIssues) {
+    issues.push({
+      severity: issue.severity,
+      code: issue.code,
+      fragmentId: issue.fragmentId,
+      target: issue.target,
+      message: issue.message,
+      repair: issue.repair,
     });
-    return undefined;
-  }
-
-  try {
-    const fragment = loadFragment(archivedDir, { expectedId: opts.entry.id });
-    if (fragment.version !== opts.entry.version) {
-      opts.issues.push({
-        severity: "error",
-        code: "fragment-library-missing",
-        scopePath: opts.scopePath,
-        fragmentId: opts.entry.id,
-        target: archivedPath,
-        message: `pinned fragment '${opts.entry.id}@${opts.entry.version}' archive declares version ${fragment.version}`,
-      });
-      return undefined;
-    }
-    return { entry: opts.entry, fragment, fragmentDir: archivedDir };
-  } catch (e) {
-    opts.issues.push({
-      severity: "error",
-      code: "fragment-library-missing",
-      scopePath: opts.scopePath,
-      fragmentId: opts.entry.id,
-      target: archivedPath,
-      message: `pinned fragment '${opts.entry.id}@${opts.entry.version}' archive could not be loaded: ${(e as Error).message}`,
-    });
-    return undefined;
   }
 }
 
@@ -818,25 +712,6 @@ function codexHookOwnershipRepair(
   }
 }
 
-function capabilitySupportsTool(cap: Capability, tool: ToolName): boolean {
-  if (
-    "adapters_supported" in cap &&
-    cap.adapters_supported !== undefined &&
-    !cap.adapters_supported.includes(tool)
-  ) {
-    return false;
-  }
-  return true;
-}
-
-function buildRendererRegistry(): RendererRegistry {
-  const registry = new RendererRegistry();
-  registerClaudeCode(registry);
-  registerCodex(registry);
-  registerCursor(registry);
-  return registry;
-}
-
 function libraryFragmentMap(
   libraryRoot: string,
 ): Map<string, FragmentDefinition> {
@@ -844,21 +719,6 @@ function libraryFragmentMap(
   const base = loadBaseFragment(libraryRoot);
   if (base) fragments.set(base.id, base);
   return fragments;
-}
-
-function dedupeActions(actions: RenderAction[]): RenderAction[] {
-  const seen = new Set<string>();
-  const out: RenderAction[] = [];
-  for (const action of actions) {
-    const key =
-      action.kind === "region"
-        ? `region|${action.file}|${action.regionId}`
-        : `file|${action.path}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(action);
-  }
-  return out;
 }
 
 function renderDoctorMarkdown(input: {
@@ -937,9 +797,3 @@ function displayPathFromProject(projectRoot: string, targetPath: string): string
 function escapeCell(text: string): string {
   return text.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
-
-const DEFAULT_SETTINGS = {
-  ontology_file: "system_graph.yaml",
-  agents_md_path: "AGENTS.md",
-  claude_md_path: "CLAUDE.md",
-};

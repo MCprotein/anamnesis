@@ -64,6 +64,11 @@ import {
   contextDiagnostics,
   type ContextDiagnosticsResult,
 } from "./context_diagnostics.js";
+import {
+  analyzeExecutableSecurity,
+  type ExecutableSecurityStatus,
+} from "../core/executable_security.js";
+import { collectInstalledRenderActions } from "./render_plan.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,6 +190,8 @@ export interface StatusResult {
   dependencies: FragmentDependencyStatus;
   /** Advisory repo-local context consistency summary. */
   contextDiagnostics: ContextDiagnosticStatus;
+  /** Advisory executable adapter side-effect and shell-safety diagnostics. */
+  executableSecurity: ExecutableSecurityStatus;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -203,6 +210,8 @@ export interface StatusResult {
     dependencyProblems: number;
     contextDiagnosticWarnings: number;
     contextDiagnosticInfo: number;
+    executableSecurityWarnings: number;
+    executableSecurityInfo: number;
     suggestedCount: number;
     declinedCount: number;
     declinedStaleCount: number;
@@ -463,6 +472,14 @@ export function status(opts: StatusOptions): StatusResult {
     ok: contextDiagnosticResult.ok,
     summary: contextDiagnosticResult.summary,
   };
+  const executableSecurity = analyzeExecutableSecurity(
+    collectInstalledRenderActions({
+      projectRoot,
+      libraryRoot,
+      library,
+      scopes: effectiveScopeList,
+    }).actions,
+  );
 
   // Summary counts.
   const summary = {
@@ -485,6 +502,8 @@ export function status(opts: StatusOptions): StatusResult {
     dependencyProblems: dependencies.summary.total,
     contextDiagnosticWarnings: contextDiagnosticStatus.summary.warnings,
     contextDiagnosticInfo: contextDiagnosticStatus.summary.info,
+    executableSecurityWarnings: executableSecurity.summary.warnings,
+    executableSecurityInfo: executableSecurity.summary.info,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
     declinedStaleCount: declined.filter((d) => !d.matched).length,
@@ -507,6 +526,7 @@ export function status(opts: StatusOptions): StatusResult {
     evidence,
     dependencies,
     contextDiagnostics: contextDiagnosticStatus,
+    executableSecurity,
     suggested,
     declined,
     summary,

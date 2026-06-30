@@ -1601,14 +1601,16 @@ function scoreCriteria(
         doc.ok &&
         st.continuity.ready &&
         continuity.get("managed-drift")?.status === "pass" &&
-        codexHooksReady
+        codexHooksReady &&
+        st.executableSecurity.ok
           ? "pass"
           : "fail",
       detail:
         `doctor ${doc.summary.errors} error(s), ${doc.summary.warnings} warning(s); ` +
         `status continuity ready=${st.continuity.ready}; ` +
         `ontology gaps warnings=${st.ontology.summary.warnings}; ` +
-        `codex hook warnings=${st.codexHooks.summary.warnings}`,
+        `codex hook warnings=${st.codexHooks.summary.warnings}; ` +
+        `executable security warnings=${st.executableSecurity.summary.warnings}`,
     },
     {
       id: "verification-strength",

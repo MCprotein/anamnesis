@@ -16,9 +16,19 @@ function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-function makeLibrary(opts: { version?: number; extraHook?: boolean } = {}): string {
+function makeLibrary(
+  opts: {
+    version?: number;
+    extraHook?: boolean;
+    hookSideEffects?: string[];
+    hookContent?: string;
+  } = {},
+): string {
   const lib = tmpDir("anamnesis-doctor-lib-");
   const base = path.join(lib, "base");
+  const hookSideEffects = opts.hookSideEffects
+    ? `    side_effects: [${opts.hookSideEffects.join(", ")}]\n`
+    : "";
   fs.mkdirSync(path.join(base, "content"), { recursive: true });
   fs.mkdirSync(
     path.join(base, "adapters", "claude-code", "hooks"),
@@ -36,7 +46,7 @@ capabilities:
     event: SessionStart
     source: adapters/claude-code/hooks/test-hook.sh
     adapters_supported: [claude-code]
-${opts.extraHook === true ? `  - type: executable_hook
+${hookSideEffects}${opts.extraHook === true ? `  - type: executable_hook
     event: Stop
     source: adapters/claude-code/hooks/new-hook.sh
     adapters_supported: [claude-code]
@@ -49,12 +59,12 @@ ${opts.extraHook === true ? `  - type: executable_hook
   );
   fs.writeFileSync(
     path.join(base, "adapters", "claude-code", "hooks", "test-hook.sh"),
-    "#!/usr/bin/env bash\nexit 0\n",
+    opts.hookContent ?? "#!/usr/bin/env bash\nset -euo pipefail\nexit 0\n",
   );
   if (opts.extraHook === true) {
     fs.writeFileSync(
       path.join(base, "adapters", "claude-code", "hooks", "new-hook.sh"),
-      "#!/usr/bin/env bash\nexit 0\n",
+      "#!/usr/bin/env bash\nset -euo pipefail\nexit 0\n",
     );
   }
   return lib;
@@ -91,7 +101,7 @@ capabilities:
   );
   fs.writeFileSync(
     path.join(archive, "adapters", "claude-code", "hooks", "test-hook.sh"),
-    "#!/usr/bin/env bash\nexit 0\n",
+    "#!/usr/bin/env bash\nset -euo pipefail\nexit 0\n",
   );
 }
 
@@ -237,6 +247,55 @@ describe("doctor — installation integrity", () => {
     expect(result.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: "manifest-missing" }),
+      ]),
+    );
+  });
+
+  it("warns when executable hooks under-declare side effects", () => {
+    const library = makeLibrary({
+      hookSideEffects: ["read-only"],
+      hookContent: [
+        "#!/usr/bin/env bash",
+        'mkdir -p "$HOME/.cache/anamnesis"',
+        "curl https://example.com/hook-fixture",
+        "",
+      ].join("\n"),
+    });
+    const project = tmpDir("anamnesis-doctor-exec-security-");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: true,
+      noBootstrap: true,
+    });
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.summary.errors).toBe(0);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "executable-shell-safety-missing",
+          target: ".claude/hooks/test-hook.sh",
+        }),
+        expect.objectContaining({
+          severity: "warning",
+          code: "executable-readonly-write",
+          target: ".claude/hooks/test-hook.sh",
+        }),
+        expect.objectContaining({
+          severity: "warning",
+          code: "executable-network-undeclared",
+          target: ".claude/hooks/test-hook.sh",
+        }),
+        expect.objectContaining({
+          severity: "warning",
+          code: "executable-repo-external-write-undeclared",
+          target: ".claude/hooks/test-hook.sh",
+        }),
       ]),
     );
   });

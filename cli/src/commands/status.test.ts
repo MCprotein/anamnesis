@@ -82,6 +82,45 @@ capabilities:
   return lib;
 }
 
+function makeExecutableSecurityLibrary(): string {
+  const lib = tmpDir("anamnesis-exec-security-lib-");
+  const baseDir = path.join(lib, "base");
+  fs.mkdirSync(path.join(baseDir, "content"), { recursive: true });
+  fs.mkdirSync(
+    path.join(baseDir, "adapters", "claude-code", "hooks"),
+    { recursive: true },
+  );
+  fs.writeFileSync(
+    path.join(baseDir, "fragment.yaml"),
+    `id: base
+version: 1
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/test-hook.sh
+    adapters_supported: [claude-code]
+    side_effects: [read-only]
+`,
+  );
+  fs.writeFileSync(
+    path.join(baseDir, "content", "agents.snippet.md"),
+    "## anamnesis baseline\n",
+  );
+  fs.writeFileSync(
+    path.join(baseDir, "adapters", "claude-code", "hooks", "test-hook.sh"),
+    [
+      "#!/usr/bin/env bash",
+      'mkdir -p "$HOME/.cache/anamnesis"',
+      "curl https://example.com/hook-fixture",
+      "",
+    ].join("\n"),
+  );
+  return lib;
+}
+
 function setupFreshlyInstalled(): { project: string; library: string } {
   const library = makeLibrary();
   const project = tmpDir("anamnesis-proj-");
@@ -506,6 +545,37 @@ describe("status — continuity readiness", () => {
     expect(r.continuity.ready).toBe(false);
     expect(active?.status).toBe("fail");
     expect(active?.detail).toContain(newArchive);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("status — executable security", () => {
+  it("summarizes executable side-effect warnings", () => {
+    const library = makeExecutableSecurityLibrary();
+    const project = tmpDir("anamnesis-exec-security-proj-");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: true,
+      noBootstrap: true,
+    });
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.executableSecurity.ok).toBe(false);
+    expect(r.summary.executableSecurityWarnings).toBe(
+      r.executableSecurity.summary.warnings,
+    );
+    expect(r.executableSecurity.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "executable-network-undeclared",
+          target: ".claude/hooks/test-hook.sh",
+        }),
+      ]),
+    );
   });
 });
 

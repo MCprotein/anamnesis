@@ -1019,8 +1019,8 @@ retrievable contracts with explicit disk and injection budgets.
 | 3 | **Base task harness fixture** | done | Added one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture targets context/ontology/handoff continuity behavior and stays retrievable through `context index` without adding all harness bodies to startup context. |
 | 4 | **Behavior benchmark expansion** | partial | Extended `benchmark task` and `task-compare` with numeric behavior metrics for source citations, managed-region edit attempts, `.bootstrap.yaml` edit attempts, handoff refresh success, matched harness reads, and non-matched harness reads. `task-series --write` now emits a source-citation delta SVG alongside token and quality charts. Repeated public-safe runs remain planned before claiming compact/full behavior parity. |
 | 5 | **Executable capability side-effect metadata** | done | Added `side_effects` metadata for executable hooks, skills, and slash commands, covering read-only, local-write, repo-external-write, git-hook, network, credential-touching, and external-production behavior. Renderers propagate the metadata to planned actions, Codex/Cursor fallback text, and Codex native shell wrapper metadata. |
-| 6 | **Executable adapter security diagnostics** | planned | Add `doctor` warnings for generated or managed hooks that write outside the project, access network unexpectedly, touch likely secrets, omit shell safety settings, or drift from managed wrapper content. |
-| 7 | **Malicious and unsafe-fragment fixtures** | planned | Add fixtures for unsafe executable adapters, suspicious native wrappers, network egress, repo-external writes, and stale hook registrations so security diagnostics are test-backed. |
+| 6 | **Executable adapter security diagnostics** | done | Added shared executable-surface diagnostics to `doctor` and `status` for generated or managed hooks that under-declare writes, repo-external writes, network access, likely credential touches, external-production commands, or shell safety settings. Managed wrapper drift remains covered by existing tracked-entry drift diagnostics. |
+| 7 | **Malicious and unsafe-fragment fixtures** | partial | Added initial unsafe executable-hook fixtures for missing shell safety, network egress, read-only write mismatch, and repo-external writes. Suspicious native wrappers, credential-touching, external-production, and stale hook registration fixtures remain planned. |
 | 8 | **Review diagnostics for AI-agent config damage** | planned | Add advisory checks for copied handoff archives in startup context, generated docs that overclaim adapter parity, managed regions changed outside anchors, and bootstrap ontology files edited by hand. |
 
 Exit criteria:
@@ -1065,6 +1065,10 @@ Progress notes:
   executable/agent-action capabilities now declare their side effects, and
   promote defaults new hooks to `local-write`. Security diagnostics still
   remain a separate v1.7 step.
+- 2026-06-30: Added executable adapter security diagnostics shared by
+  `doctor` and `status`. Unsafe fixture tests now verify missing shell safety,
+  read-only/write mismatch, undeclared network egress, and undeclared
+  repo-external writes while keeping clean installs warning-free.
 
 ---
 
