@@ -87,6 +87,7 @@ capabilities:
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/prisma-validate.sh
     adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
 owns:
   - region: prisma in AGENTS.md
   - file: .anamnesis/ontology/prisma.yaml
@@ -115,15 +116,22 @@ Rules:
 |---|---|---|
 | `project_memory` | `source`, `region` | Inserts always-loaded guidance into `AGENTS.md`. |
 | `ontology` | `source` | Writes `.anamnesis/ontology/<id>.yaml`. |
-| `executable_hook` | `event`, `source`, optional `adapters_supported` | Renders hook automation for adapters that support it. |
-| `skill` | `name`, `source` | Provides a reusable procedure. Native in Claude Code, fallback elsewhere. |
-| `slash_command` | `name`, `source` | Provides a user-invoked command. Native in Claude Code, fallback elsewhere. |
+| `executable_hook` | `event`, `source`, optional `adapters_supported`, optional `side_effects` | Renders hook automation for adapters that support it. |
+| `skill` | `name`, `source`, optional `side_effects` | Provides a reusable procedure. Native in Claude Code, fallback elsewhere. |
+| `slash_command` | `name`, `source`, optional `side_effects` | Provides a user-invoked command. Native in Claude Code, fallback elsewhere. |
 | `task_harness` | `name`, `source`, optional `lifecycle`, optional `adapters_supported` | Provides a repo-local task contract under `.anamnesis/task-harnesses/<name>.yaml`. It is indexed for retrieval, not injected wholesale into startup context. |
 
 Use `adapters_supported` only when a capability cannot render safely or
 meaningfully for every enabled adapter. `fragment.adapters` in Agentfile can
 disable a whole fragment per tool later, but the capability should still
 declare hard renderer limits.
+
+Use `side_effects` on `executable_hook`, `skill`, and `slash_command` whenever
+the procedure can affect the filesystem, hooks, credentials, network, or
+external systems. Allowed values are `read-only`, `local-write`,
+`repo-external-write`, `git-hook`, `network`, `credential-touching`, and
+`external-production`. If an executable hook omits this metadata, renderers
+treat it conservatively as `local-write`.
 
 ## Task Harnesses
 

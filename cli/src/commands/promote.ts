@@ -296,6 +296,7 @@ export function promote(opts: PromoteOptions): PromoteResult {
         event: "PostToolUse:Edit",
         source: targetRel,
         adapters_supported: ["claude-code"],
+        side_effects: ["local-write"],
       };
       break;
     }

@@ -4,6 +4,7 @@
 // This wrapper adapts Codex JSON hook input into the environment expected by
 // legacy Claude Code shell hooks. The shell script remains the source of the
 // fragment-specific check; this file only handles Codex transport details.
+// Declared side effects: read-only
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -11,7 +12,10 @@ import { resolve } from "node:path";
 
 const CONFIG = {
   "event": "PostToolUse",
-  "scriptPath": ".anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh"
+  "scriptPath": ".anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh",
+  "sideEffects": [
+    "read-only"
+  ]
 };
 
 function safeObject(value) {

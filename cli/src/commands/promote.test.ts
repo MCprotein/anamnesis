@@ -130,7 +130,10 @@ describe("promote — new fragment", () => {
     expect(def.id).toBe("my-stack");
     expect(def.version).toBe(1);
     expect(def.capabilities).toHaveLength(1);
-    expect(def.capabilities[0]!.type).toBe("executable_hook");
+    expect(def.capabilities[0]).toMatchObject({
+      type: "executable_hook",
+      side_effects: ["local-write"],
+    });
 
     // Hook file is executable.
     const hookFp = path.join(dir, "adapters/claude-code/hooks/my-validate.sh");

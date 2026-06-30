@@ -15,6 +15,18 @@ import { z } from "zod";
 
 const toolNameSchema = z.enum(["claude-code", "codex", "cursor"]);
 
+export const capabilitySideEffectSchema = z.enum([
+  "read-only",
+  "local-write",
+  "repo-external-write",
+  "git-hook",
+  "network",
+  "credential-touching",
+  "external-production",
+]);
+
+const sideEffectsSchema = z.array(capabilitySideEffectSchema).min(1).optional();
+
 const projectMemoryCapSchema = z.object({
   type: z.literal("project_memory"),
   source: z.string(),
@@ -31,18 +43,21 @@ const executableHookCapSchema = z.object({
   event: z.string(),
   source: z.string(),
   adapters_supported: z.array(toolNameSchema).optional(),
+  side_effects: sideEffectsSchema,
 });
 
 const skillCapSchema = z.object({
   type: z.literal("skill"),
   name: z.string(),
   source: z.string(),
+  side_effects: sideEffectsSchema,
 });
 
 const slashCommandCapSchema = z.object({
   type: z.literal("slash_command"),
   name: z.string(),
   source: z.string(),
+  side_effects: sideEffectsSchema,
 });
 
 const taskHarnessCapSchema = z.object({
@@ -91,6 +106,7 @@ export const fragmentSchema = z.object({
 });
 
 export type FragmentRequirement = z.infer<typeof fragmentRequirementSchema>;
+export type CapabilitySideEffect = z.infer<typeof capabilitySideEffectSchema>;
 export type Capability = z.infer<typeof capabilitySchema>;
 export type FragmentDefinition = z.infer<typeof fragmentSchema>;
 

@@ -3,6 +3,8 @@ description: "Skill load-context (from anamnesis fragment base). Apply when the 
 agentRequested: true
 ---
 
+**Declared side effects:** `read-only`.
+
 # load-context
 
 When invoked, do the following — and only the following.

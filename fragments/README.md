@@ -41,6 +41,12 @@ Trigger conditions are defined in [`../rulebook.md`](../rulebook.md) — the for
 Public authoring guidance lives in
 [`../docs/FRAGMENT-AUTHORING.md`](../docs/FRAGMENT-AUTHORING.md).
 
+Executable or agent-action capabilities (`executable_hook`, `skill`,
+`slash_command`) may declare `side_effects` in `fragment.yaml`: `read-only`,
+`local-write`, `repo-external-write`, `git-hook`, `network`,
+`credential-touching`, or `external-production`. These declarations are
+rendered into fallback surfaces and feed later safety diagnostics.
+
 `implemented` means the fragment can install project memory and ontology
 snippets. It does not imply deep deterministic ontology bootstrap support.
 Built-in Layer A introspectors currently cover the subset documented in

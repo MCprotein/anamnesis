@@ -15,6 +15,7 @@ capabilities:
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/yaml-lint.sh
     adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
 
 owns:
   - region: k8s in AGENTS.md

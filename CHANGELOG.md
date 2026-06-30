@@ -23,6 +23,10 @@ could include breaking changes.
   `task-series`, and `prompt-gate` for source citations, managed-region edit
   attempts, bootstrap edit attempts, handoff refresh success, matched harness
   reads, and non-matched harness reads.
+- Added `side_effects` metadata for executable hooks, skills, and slash
+  commands so renderers and future diagnostics can distinguish read-only,
+  local-write, repo-external-write, git-hook, network, credential-touching, and
+  external-production behavior.
 
 ### Documentation
 

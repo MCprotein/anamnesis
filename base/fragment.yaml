@@ -19,41 +19,50 @@ capabilities:
     event: SessionStart
     source: adapters/claude-code/hooks/inject-ontology.sh
     adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
 
   - type: executable_hook
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/remind-uncommitted.sh
     adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
 
   - type: executable_hook
     event: SessionStart
     source: adapters/claude-code/hooks/inject-handoff.sh
     adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
 
   - type: executable_hook
     event: Stop
     source: adapters/claude-code/hooks/handoff-reminder.sh
     adapters_supported: [claude-code, codex]
+    side_effects: [local-write, repo-external-write]
 
   - type: slash_command
     name: load-context
     source: adapters/claude-code/commands/load-context.md
+    side_effects: [read-only]
 
   - type: slash_command
     name: handoff-prepare
     source: adapters/claude-code/commands/handoff-prepare.md
+    side_effects: [local-write]
 
   - type: skill
     name: load-context
     source: adapters/claude-code/skills/load-context
+    side_effects: [read-only]
 
   - type: skill
     name: ontology-enrich
     source: adapters/claude-code/skills/ontology-enrich
+    side_effects: [local-write]
 
   - type: skill
     name: anamnesis-init
     source: adapters/claude-code/skills/anamnesis-init
+    side_effects: [local-write]
 
   - type: task_harness
     name: context-continuity

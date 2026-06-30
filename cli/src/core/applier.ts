@@ -24,6 +24,7 @@ import {
 } from "./manifest.js";
 import { sha256 } from "../util/hash.js";
 import type { RenderAction, RegionAction, FileAction } from "./render.js";
+import type { CapabilitySideEffect } from "./fragments.js";
 
 // ---------------------------------------------------------------------------
 // Executable-adapter gate
@@ -76,6 +77,7 @@ export interface RegionChange {
   newFileText?: string;
   /** Full file text currently on disk (empty string if file absent). */
   currentFileText?: string;
+  sideEffects?: CapabilitySideEffect[];
   reason?: string;
 }
 
@@ -88,6 +90,7 @@ export interface FileChange {
   newContent?: string;
   currentContent?: string;
   mode?: number;
+  sideEffects?: CapabilitySideEffect[];
   reason?: string;
   /**
    * Propagated from the originating FileAction. Post-apply settings sync
@@ -204,6 +207,7 @@ function planRegion(
     fragmentId: action.fragmentId,
     fragmentVersion: action.fragmentVersion,
     status: "create",
+    sideEffects: action.sideEffects,
   };
 
   // Case 1: neither region nor manifest entry — fresh create.
@@ -331,6 +335,7 @@ function planFile(
     fragmentVersion: action.fragmentVersion,
     status: "create",
     mode: action.mode,
+    sideEffects: action.sideEffects,
     settingsHook: action.settingsHook,
     codexHook: action.codexHook,
   };

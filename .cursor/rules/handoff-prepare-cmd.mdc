@@ -3,6 +3,8 @@ description: "Command /handoff-prepare (from anamnesis fragment base). Apply whe
 agentRequested: true
 ---
 
+**Declared side effects:** `local-write`.
+
 Capture the current task state in a structured handoff file. The next agent — could be a fresh Claude session, Codex, Cursor, or anything else reading AGENTS.md and `.anamnesis/handoff/` — will load it on session start and pick up where you left off.
 
 ## When to invoke

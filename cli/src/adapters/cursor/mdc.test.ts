@@ -55,6 +55,7 @@ describe("cursor executable_hook → .cursor/rules/<id>.mdc", () => {
         type: "executable_hook",
         event: "PostToolUse:Edit",
         source: "adapters/claude-code/hooks/x.sh",
+        side_effects: ["read-only"],
       },
       makeContext(fragmentDir),
     );
@@ -64,7 +65,11 @@ describe("cursor executable_hook → .cursor/rules/<id>.mdc", () => {
       expect(actions[0]!.content).toMatch(/^---\n/);
       expect(actions[0]!.content).toContain("agentRequested: true");
       expect(actions[0]!.content).toContain("PostToolUse:Edit");
+      expect(actions[0]!.content).toContain(
+        "**Declared side effects:** `read-only`.",
+      );
       expect(actions[0]!.content).toContain("echo hi");
+      expect(actions[0]!.sideEffects).toEqual(["read-only"]);
     }
   });
 
@@ -97,14 +102,23 @@ describe("cursor skill → .cursor/rules/<name>.mdc", () => {
       "---\nname: myskill\n---\n\n## Steps\n\n1. step one\n",
     );
     const actions = skillRenderer.plan(
-      { type: "skill", name: "myskill", source: "skills/myskill" },
+      {
+        type: "skill",
+        name: "myskill",
+        source: "skills/myskill",
+        side_effects: ["local-write"],
+      },
       makeContext(fragmentDir),
     );
     if (actions[0]!.kind === "file") {
       expect(actions[0]!.path).toBe(".cursor/rules/myskill.mdc");
       expect(actions[0]!.content).toContain("agentRequested: true");
+      expect(actions[0]!.content).toContain(
+        "**Declared side effects:** `local-write`.",
+      );
       expect(actions[0]!.content).toContain("step one");
       expect(actions[0]!.content).not.toMatch(/name: myskill/);
+      expect(actions[0]!.sideEffects).toEqual(["local-write"]);
     }
   });
 
@@ -139,15 +153,20 @@ describe("cursor slash_command → .cursor/rules/<name>-cmd.mdc", () => {
         type: "slash_command",
         name: "foo",
         source: "adapters/claude-code/commands/foo.md",
+        side_effects: ["read-only"],
       },
       makeContext(fragmentDir),
     );
     if (actions[0]!.kind === "file") {
       expect(actions[0]!.path).toBe(".cursor/rules/foo-cmd.mdc");
       expect(actions[0]!.content).toContain("agentRequested: true");
+      expect(actions[0]!.content).toContain(
+        "**Declared side effects:** `read-only`.",
+      );
       expect(actions[0]!.content).toContain("/foo");
       expect(actions[0]!.content).toContain("Do foo");
       expect(actions[0]!.content).not.toContain("description: do foo");
+      expect(actions[0]!.sideEffects).toEqual(["read-only"]);
     }
   });
 });

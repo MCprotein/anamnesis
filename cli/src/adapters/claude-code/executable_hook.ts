@@ -7,6 +7,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { capabilitySideEffects } from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
@@ -27,6 +28,7 @@ export const executableHookRenderer: CapabilityRenderer = {
     }
     const basename = path.basename(capability.source);
     const content = fs.readFileSync(sourcePath, "utf8");
+    const sideEffects = capabilitySideEffects(capability);
 
     // Parse `event` into Claude Code settings.json layout:
     //   "PostToolUse:Edit" → { event: "PostToolUse", matcher: "Edit" }
@@ -48,6 +50,7 @@ export const executableHookRenderer: CapabilityRenderer = {
         fragmentVersion: ctx.fragment.version,
         content,
         mode: 0o755,
+        sideEffects,
         settingsHook,
       },
     ];

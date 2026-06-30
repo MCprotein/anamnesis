@@ -97,13 +97,16 @@ describe("planChanges — region", () => {
   });
 
   it("classifies new region as create", () => {
-    const { changes, nextManifest } = planChanges([regionAction()], {
+    const { changes, nextManifest } = planChanges([
+      regionAction({ sideEffects: ["read-only"] }),
+    ], {
       projectRoot: root,
       manifest: emptyManifest(),
       allowExecAdapters: false,
     });
     expect(changes).toHaveLength(1);
     expect(changes[0]!.status).toBe("create");
+    expect(changes[0]!.sideEffects).toEqual(["read-only"]);
     expect(nextManifest.regions).toHaveLength(1);
     expect(nextManifest.regions[0]!.region_id).toBe("prisma");
   });
@@ -222,12 +225,15 @@ describe("planChanges — file", () => {
   });
 
   it("classifies new file as create and records manifest entry", () => {
-    const { changes, nextManifest } = planChanges([fileAction()], {
+    const { changes, nextManifest } = planChanges([
+      fileAction({ sideEffects: ["local-write"] }),
+    ], {
       projectRoot: root,
       manifest: emptyManifest(),
       allowExecAdapters: false,
     });
     expect(changes[0]!.status).toBe("create");
+    expect(changes[0]!.sideEffects).toEqual(["local-write"]);
     expect(nextManifest.files).toHaveLength(1);
     expect(nextManifest.files[0]!.path).toBe("system_graph.yaml");
   });

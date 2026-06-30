@@ -5,6 +5,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { capabilitySideEffects } from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
@@ -24,6 +25,7 @@ export const slashCommandRenderer: CapabilityRenderer = {
       );
     }
     const content = fs.readFileSync(sourcePath, "utf8");
+    const sideEffects = capabilitySideEffects(capability);
     return [
       {
         kind: "file",
@@ -31,6 +33,7 @@ export const slashCommandRenderer: CapabilityRenderer = {
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
         content,
+        sideEffects,
       },
     ];
   },

@@ -62,12 +62,15 @@ capabilities:
     event: PreToolUse:Bash
     source: h.sh
     adapters_supported: [claude-code]
+    side_effects: [read-only, git-hook]
   - type: skill
     name: my-skill
     source: skills/my-skill
+    side_effects: [local-write]
   - type: slash_command
     name: hello
     source: commands/hello.md
+    side_effects: [read-only]
   - type: task_harness
     name: context-continuity
     source: task-harnesses/context-continuity.yaml
@@ -89,6 +92,33 @@ capabilities:
       type: "task_harness",
       lifecycle: "reusable",
     });
+    expect(frag.capabilities[2]).toMatchObject({
+      type: "executable_hook",
+      side_effects: ["read-only", "git-hook"],
+    });
+    expect(frag.capabilities[3]).toMatchObject({
+      type: "skill",
+      side_effects: ["local-write"],
+    });
+    expect(frag.capabilities[4]).toMatchObject({
+      type: "slash_command",
+      side_effects: ["read-only"],
+    });
+  });
+
+  it("rejects unknown capability side effects", () => {
+    const yaml = `
+id: bad
+version: 1
+capabilities:
+  - type: executable_hook
+    event: PostToolUse:Edit
+    source: h.sh
+    side_effects: [telepathy]
+`;
+    const lib = tmpLib();
+    const dir = writeFragment(lib, "bad", yaml);
+    expect(() => loadFragment(dir)).toThrow(FragmentParseError);
   });
 
   it("parses dependency requirements with minimum versions", () => {

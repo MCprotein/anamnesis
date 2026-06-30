@@ -6,9 +6,15 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  capabilitySideEffects,
+  formatSideEffects,
+  mergeSideEffects,
+} from "../../core/capability_side_effects.js";
 import { codexNativeNodeCommand } from "../../core/codex_native.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
+import type { CapabilitySideEffect } from "../../core/fragments.js";
 
 const PRE_COMMIT_PATH = ".git/hooks/pre-commit";
 const CODEX_NATIVE_SESSION_START_WRAPPER =
@@ -68,6 +74,7 @@ export const executableHookRenderer: CapabilityRenderer = {
     }
     const basename = path.basename(capability.source);
     const scriptContent = fs.readFileSync(sourcePath, "utf8");
+    const sideEffects = capabilitySideEffects(capability);
 
     // Region id: deterministic per fragment+hook so updates align.
     const regionId = `codex-hook-${basename.replace(/\.[^.]+$/, "")}`;
@@ -79,6 +86,7 @@ export const executableHookRenderer: CapabilityRenderer = {
       basename,
       event: capability.event,
       script: scriptContent,
+      sideEffects,
       gitPreCommitEnabled,
       nativeCodexHook: nativeShellHook,
     });
@@ -97,6 +105,7 @@ export const executableHookRenderer: CapabilityRenderer = {
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
         content,
+        sideEffects,
       },
     ];
 
@@ -114,6 +123,7 @@ export const executableHookRenderer: CapabilityRenderer = {
         fragmentVersion: ctx.fragment.version,
         content: fs.readFileSync(nativeSessionStart.templatePath, "utf8"),
         mode: 0o755,
+        sideEffects,
         codexHook: {
           event: "SessionStart",
           matcher: CODEX_NATIVE_SESSION_START_MATCHER,
@@ -136,6 +146,7 @@ export const executableHookRenderer: CapabilityRenderer = {
         fragmentVersion: ctx.fragment.version,
         content: scriptContent,
         mode: 0o755,
+        sideEffects,
       });
       scriptActionAdded = true;
     };
@@ -154,8 +165,10 @@ export const executableHookRenderer: CapabilityRenderer = {
         content: codexNativeShellWrapperContent({
           event: nativeShellHook.event,
           scriptPath: scriptActionPath,
+          sideEffects,
         }),
         mode: 0o755,
+        sideEffects,
         codexHook: {
           event: nativeShellHook.event,
           matcher: nativeShellHook.matcher,
@@ -175,6 +188,10 @@ export const executableHookRenderer: CapabilityRenderer = {
           fragmentVersion: ctx.fragment.version,
           content: PRE_COMMIT_CONTENT,
           mode: 0o755,
+          sideEffects: mergeSideEffects(sideEffects, [
+            "git-hook",
+            "local-write",
+          ]),
         },
       );
     }
@@ -252,6 +269,7 @@ function formatHookRegion(params: {
   basename: string;
   event: string;
   script: string;
+  sideEffects: readonly CapabilitySideEffect[];
   gitPreCommitEnabled: boolean;
   nativeCodexHook: { event: string; matcher?: string } | null;
 }): string {
@@ -268,6 +286,10 @@ function formatHookRegion(params: {
         ? "**Codex fallback:** eligible for best-effort Git `pre-commit` installation under `.anamnesis/codex-hooks/` when executable adapter writes are allowed and no user-owned hook blocks it."
         : "**Codex fallback:** documented here only; no `.git/hooks/` directory was present during rendering.",
     "",
+    params.sideEffects.length > 0
+      ? `**Declared side effects:** ${formatSideEffects(params.sideEffects)}.`
+      : "",
+    params.sideEffects.length > 0 ? "" : "",
     `**Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).`,
     "",
     "```bash",
@@ -279,6 +301,7 @@ function formatHookRegion(params: {
 function codexNativeShellWrapperContent(params: {
   event: string;
   scriptPath: string;
+  sideEffects: readonly CapabilitySideEffect[];
 }): string {
   const config = JSON.stringify(params, null, 2);
   return `#!/usr/bin/env node
@@ -287,6 +310,7 @@ function codexNativeShellWrapperContent(params: {
 // This wrapper adapts Codex JSON hook input into the environment expected by
 // legacy Claude Code shell hooks. The shell script remains the source of the
 // fragment-specific check; this file only handles Codex transport details.
+// Declared side effects: ${params.sideEffects.join(", ")}
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";

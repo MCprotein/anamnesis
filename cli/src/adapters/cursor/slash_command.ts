@@ -2,6 +2,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  capabilitySideEffects,
+  formatSideEffects,
+} from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
@@ -35,6 +39,7 @@ export const slashCommandRenderer: CapabilityRenderer = {
     }
     const raw = fs.readFileSync(sourcePath, "utf8");
     const body = stripFrontmatter(raw).trimStart().trimEnd();
+    const sideEffects = capabilitySideEffects(capability);
 
     const description =
       `Command /${capability.name} (from anamnesis fragment ${ctx.fragment.id}). Apply when the user invokes /${capability.name} or asks for "${capability.name}".`;
@@ -45,6 +50,9 @@ export const slashCommandRenderer: CapabilityRenderer = {
       "agentRequested: true",
       "---",
       "",
+      ...(sideEffects.length > 0
+        ? [`**Declared side effects:** ${formatSideEffects(sideEffects)}.`, ""]
+        : []),
       body,
       "",
     ].join("\n");
@@ -56,6 +64,7 @@ export const slashCommandRenderer: CapabilityRenderer = {
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
         content,
+        sideEffects,
       },
     ];
   },

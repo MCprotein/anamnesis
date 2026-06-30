@@ -5,7 +5,11 @@
 // the actions to disk) is a separate concern implemented later.
 
 import type { ToolName } from "./agentfile.js";
-import type { Capability, FragmentDefinition } from "./fragments.js";
+import type {
+  Capability,
+  CapabilitySideEffect,
+  FragmentDefinition,
+} from "./fragments.js";
 
 // ---------------------------------------------------------------------------
 // Action types
@@ -18,6 +22,7 @@ export interface RegionAction {
   fragmentId: string;
   fragmentVersion: number;
   content: string; // inner content (anchors added by applier)
+  sideEffects?: CapabilitySideEffect[];
 }
 
 export interface FileAction {
@@ -27,6 +32,7 @@ export interface FileAction {
   fragmentVersion: number;
   content: string;
   mode?: number; // chmod bits (e.g., 0o755 for executable hooks)
+  sideEffects?: CapabilitySideEffect[];
   /**
    * If set, the applier should also ensure this file is registered as a hook
    * in `.claude/settings.json`. The applier handles the JSON-structural merge

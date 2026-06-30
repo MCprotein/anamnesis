@@ -60,6 +60,26 @@ describe("slashCommandRenderer (claude-code)", () => {
     }
   });
 
+  it("propagates declared command side effects", () => {
+    fs.writeFileSync(
+      path.join(fragmentDir, "commands", "load-context.md"),
+      "# /load-context\n",
+    );
+    const actions = slashCommandRenderer.plan(
+      {
+        type: "slash_command",
+        name: "load-context",
+        source: "commands/load-context.md",
+        side_effects: ["read-only"],
+      },
+      makeContext(fragmentDir),
+    );
+    expect(actions[0]?.kind).toBe("file");
+    if (actions[0]?.kind === "file") {
+      expect(actions[0].sideEffects).toEqual(["read-only"]);
+    }
+  });
+
   it("throws when source is missing", () => {
     expect(() =>
       slashCommandRenderer.plan(

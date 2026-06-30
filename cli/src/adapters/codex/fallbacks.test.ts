@@ -75,7 +75,11 @@ describe("codex executable_hook fallback", () => {
       expect(actions[0]!.regionId).toBe("codex-hook-x");
       expect(actions[0]!.content).toContain("PostToolUse:Edit");
       expect(actions[0]!.content).toContain("Codex native path");
+      expect(actions[0]!.content).toContain(
+        "**Declared side effects:** `local-write`.",
+      );
       expect(actions[0]!.content).toContain("echo hi");
+      expect(actions[0]!.sideEffects).toEqual(["local-write"]);
     }
     const wrapper = actions.find(
       (a) =>
@@ -92,6 +96,9 @@ describe("codex executable_hook fallback", () => {
         ),
         statusMessage: "Running anamnesis PostToolUse hook",
       });
+      expect(wrapper.sideEffects).toEqual(["local-write"]);
+      expect(wrapper.content).toContain('"sideEffects": [');
+      expect(wrapper.content).toContain('"local-write"');
     }
   });
 
@@ -117,6 +124,7 @@ describe("codex executable_hook fallback", () => {
         event: "PostToolUse:Edit",
         source: "adapters/claude-code/hooks/x.sh",
         adapters_supported: ["codex"],
+        side_effects: ["read-only"],
       },
       makeContext(fragmentDir, fragment, ".", projectRoot),
     );
@@ -143,6 +151,11 @@ describe("codex executable_hook fallback", () => {
       expect(preCommit.mode).toBe(0o755);
       expect(preCommit.content).toContain(".anamnesis/codex-hooks");
       expect(preCommit.content).toContain("git diff --cached --name-only");
+      expect(preCommit.sideEffects).toEqual([
+        "read-only",
+        "git-hook",
+        "local-write",
+      ]);
     }
   });
 
@@ -415,6 +428,7 @@ describe("codex executable_hook fallback", () => {
           event: c.event,
           source: "adapters/claude-code/hooks/x.sh",
           adapters_supported: ["codex"],
+          side_effects: ["read-only"],
         },
         makeContext(fragmentDir, fragment),
       );
@@ -426,11 +440,15 @@ describe("codex executable_hook fallback", () => {
       if (wrapper?.kind === "file") {
         expect(wrapper.codexHook).toEqual(c.codexHook);
         expect(wrapper.content).toContain(`"event": "${c.codexHook.event}"`);
+        expect(wrapper.sideEffects).toEqual(["read-only"]);
       }
       const region = actions.find((a) => a.kind === "region");
       expect(region?.kind).toBe("region");
       if (region?.kind === "region") {
         expect(region.content).toContain("Codex native path");
+        expect(region.content).toContain(
+          "**Declared side effects:** `read-only`.",
+        );
       }
     }
   });
@@ -576,12 +594,21 @@ describe("codex skill fallback", () => {
       capabilities: [],
     };
     const actions = skillRenderer.plan(
-      { type: "skill", name: "myskill", source: "skills/myskill" },
+      {
+        type: "skill",
+        name: "myskill",
+        source: "skills/myskill",
+        side_effects: ["local-write"],
+      },
       makeContext(fragmentDir, fragment),
     );
     expect(actions).toHaveLength(1);
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.regionId).toBe("codex-skill-myskill");
+      expect(actions[0]!.sideEffects).toEqual(["local-write"]);
+      expect(actions[0]!.content).toContain(
+        "**Declared side effects:** `local-write`.",
+      );
       // Body present, frontmatter not.
       expect(actions[0]!.content).toContain("step one");
       expect(actions[0]!.content).not.toContain("description: a test skill");
@@ -636,12 +663,17 @@ describe("codex slash_command fallback", () => {
         type: "slash_command",
         name: "foo",
         source: "adapters/claude-code/commands/foo.md",
+        side_effects: ["read-only"],
       },
       makeContext(fragmentDir, fragment),
     );
     expect(actions).toHaveLength(1);
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.regionId).toBe("codex-cmd-foo");
+      expect(actions[0]!.sideEffects).toEqual(["read-only"]);
+      expect(actions[0]!.content).toContain(
+        "**Declared side effects:** `read-only`.",
+      );
       expect(actions[0]!.content).toContain("Do foo by");
       expect(actions[0]!.content).not.toContain("description: do foo");
       expect(actions[0]!.content).toContain("/foo");

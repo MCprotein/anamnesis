@@ -73,6 +73,28 @@ describe("executableHookRenderer (claude-code)", () => {
       expect(actions[0]!.path).toBe(".claude/hooks/prisma-validate.sh");
       expect(actions[0]!.mode).toBe(0o755);
       expect(actions[0]!.content).toContain("#!/bin/bash");
+      expect(actions[0]!.sideEffects).toEqual(["local-write"]);
+    }
+  });
+
+  it("propagates declared hook side effects", () => {
+    fs.writeFileSync(
+      path.join(fragmentDir, hookPath),
+      "#!/bin/bash\necho hi\n",
+    );
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "PostToolUse:Edit",
+        source: hookPath,
+        adapters_supported: ["claude-code"],
+        side_effects: ["read-only", "git-hook"],
+      },
+      makeContext(fragmentDir),
+    );
+    expect(actions[0]?.kind).toBe("file");
+    if (actions[0]?.kind === "file") {
+      expect(actions[0].sideEffects).toEqual(["read-only", "git-hook"]);
     }
   });
 

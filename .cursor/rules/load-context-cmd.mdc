@@ -3,6 +3,8 @@ description: "Command /load-context (from anamnesis fragment base). Apply when t
 agentRequested: true
 ---
 
+**Declared side effects:** `read-only`.
+
 Show the current project context — entities, relationships, invariants — by reading the ontology files anamnesis maintains.
 
 Steps:

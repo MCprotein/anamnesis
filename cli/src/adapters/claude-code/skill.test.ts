@@ -81,6 +81,26 @@ describe("skillRenderer (claude-code)", () => {
     }
   });
 
+  it("propagates declared skill side effects", () => {
+    fs.writeFileSync(
+      path.join(fragmentDir, "skills/prisma-helper/SKILL.md"),
+      "# Prisma Helper\n",
+    );
+    const actions = skillRenderer.plan(
+      {
+        type: "skill",
+        name: "prisma-helper",
+        source: "skills/prisma-helper",
+        side_effects: ["local-write"],
+      },
+      makeContext(fragmentDir),
+    );
+    expect(actions[0]?.kind).toBe("file");
+    if (actions[0]?.kind === "file") {
+      expect(actions[0].sideEffects).toEqual(["local-write"]);
+    }
+  });
+
   it("throws when SKILL.md is missing", () => {
     fs.writeFileSync(
       path.join(fragmentDir, "skills/prisma-helper/other.md"),

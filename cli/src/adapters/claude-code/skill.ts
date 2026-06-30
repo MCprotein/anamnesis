@@ -7,6 +7,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { capabilitySideEffects } from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
@@ -60,12 +61,15 @@ export const skillRenderer: CapabilityRenderer = {
       );
     }
 
+    const sideEffects = capabilitySideEffects(capability);
+
     return relFiles.map((rel) => ({
       kind: "file",
       path: path.posix.join(".claude/skills", capability.name, rel),
       fragmentId: ctx.fragment.id,
       fragmentVersion: ctx.fragment.version,
       content: fs.readFileSync(path.join(sourceDir, rel), "utf8"),
+      sideEffects,
     }));
   },
 };

@@ -4,6 +4,7 @@
 // This wrapper adapts Codex JSON hook input into the environment expected by
 // legacy Claude Code shell hooks. The shell script remains the source of the
 // fragment-specific check; this file only handles Codex transport details.
+// Declared side effects: local-write, repo-external-write
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -11,7 +12,11 @@ import { resolve } from "node:path";
 
 const CONFIG = {
   "event": "Stop",
-  "scriptPath": ".anamnesis/codex-hooks/base-Stop-handoff-reminder.sh"
+  "scriptPath": ".anamnesis/codex-hooks/base-Stop-handoff-reminder.sh",
+  "sideEffects": [
+    "local-write",
+    "repo-external-write"
+  ]
 };
 
 function safeObject(value) {

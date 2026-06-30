@@ -1018,7 +1018,7 @@ retrievable contracts with explicit disk and injection budgets.
 | 2 | **Task harness retention and GC policy** | preview shipped; deletion planned | Added preview-only cleanup reporting for active `current` harnesses, reusable templates, disk/count budgets, stale age, `last_used`/`use_count`, deprecation/supersession behavior, and managed vs user-authored cleanup recommendations. Deletion/apply mode remains planned. |
 | 3 | **Base task harness fixture** | done | Added one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture targets context/ontology/handoff continuity behavior and stays retrievable through `context index` without adding all harness bodies to startup context. |
 | 4 | **Behavior benchmark expansion** | partial | Extended `benchmark task` and `task-compare` with numeric behavior metrics for source citations, managed-region edit attempts, `.bootstrap.yaml` edit attempts, handoff refresh success, matched harness reads, and non-matched harness reads. `task-series --write` now emits a source-citation delta SVG alongside token and quality charts. Repeated public-safe runs remain planned before claiming compact/full behavior parity. |
-| 5 | **Executable capability side-effect metadata** | planned | Add metadata for read-only, local-write, git-hook, network, credential-touching, and external-production behavior on executable capabilities and rendered wrappers. |
+| 5 | **Executable capability side-effect metadata** | done | Added `side_effects` metadata for executable hooks, skills, and slash commands, covering read-only, local-write, repo-external-write, git-hook, network, credential-touching, and external-production behavior. Renderers propagate the metadata to planned actions, Codex/Cursor fallback text, and Codex native shell wrapper metadata. |
 | 6 | **Executable adapter security diagnostics** | planned | Add `doctor` warnings for generated or managed hooks that write outside the project, access network unexpectedly, touch likely secrets, omit shell safety settings, or drift from managed wrapper content. |
 | 7 | **Malicious and unsafe-fragment fixtures** | planned | Add fixtures for unsafe executable adapters, suspicious native wrappers, network egress, repo-external writes, and stale hook registrations so security diagnostics are test-backed. |
 | 8 | **Review diagnostics for AI-agent config damage** | planned | Add advisory checks for copied handoff archives in startup context, generated docs that overclaim adapter parity, managed regions changed outside anchors, and bootstrap ontology files edited by hand. |
@@ -1060,6 +1060,11 @@ Progress notes:
   Compact reduced total tokens by `46.833%` in this pair, but still scored
   lower on convenience due elapsed time. This is diagnostic evidence only;
   repeated pairs remain required before compact/full behavior parity claims.
+- 2026-06-30: Added executable capability `side_effects` metadata to the
+  fragment schema and render pipeline. Built-in base, Prisma, and Kubernetes
+  executable/agent-action capabilities now declare their side effects, and
+  promote defaults new hooks to `local-write`. Security diagnostics still
+  remain a separate v1.7 step.
 
 ---
 

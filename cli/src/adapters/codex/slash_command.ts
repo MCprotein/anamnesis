@@ -7,6 +7,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  capabilitySideEffects,
+  formatSideEffects,
+} from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
@@ -33,12 +37,16 @@ export const slashCommandRenderer: CapabilityRenderer = {
     }
     const raw = fs.readFileSync(sourcePath, "utf8");
     const body = stripFrontmatter(raw).trimStart();
+    const sideEffects = capabilitySideEffects(capability);
 
     const content = [
       `### Command: \`/${capability.name}\``,
       "",
       `When the user invokes \`/${capability.name}\` or asks for "${capability.name}", follow the steps below. (CC users get this as a native slash command; Codex agents follow it from this region.)`,
       "",
+      ...(sideEffects.length > 0
+        ? [`**Declared side effects:** ${formatSideEffects(sideEffects)}.`, ""]
+        : []),
       body.trimEnd(),
     ].join("\n");
 
@@ -55,6 +63,7 @@ export const slashCommandRenderer: CapabilityRenderer = {
         regionId: `codex-cmd-${capability.name}`,
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
+        sideEffects,
         content,
       },
     ];

@@ -74,10 +74,12 @@ Cursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 �
 Claude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-cmd-load-context fragment=base@6 -->
+<!-- anamnesis:region id=codex-cmd-load-context fragment=base@14 -->
 ### Command: `/load-context`
 
 When the user invokes `/load-context` or asks for "load-context", follow the steps below. (CC users get this as a native slash command; Codex agents follow it from this region.)
+
+**Declared side effects:** `read-only`.
 
 Show the current project context — entities, relationships, invariants — by reading the ontology files anamnesis maintains.
 
@@ -94,10 +96,12 @@ Steps:
 If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists, say so plainly and suggest running `anamnesis init`.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-cmd-handoff-prepare fragment=base@6 -->
+<!-- anamnesis:region id=codex-cmd-handoff-prepare fragment=base@14 -->
 ### Command: `/handoff-prepare`
 
 When the user invokes `/handoff-prepare` or asks for "handoff-prepare", follow the steps below. (CC users get this as a native slash command; Codex agents follow it from this region.)
+
+**Declared side effects:** `local-write`.
 
 Capture the current task state in a structured handoff file. The next agent — could be a fresh Claude session, Codex, Cursor, or anything else reading AGENTS.md and `.anamnesis/handoff/` — will load it on session start and pick up where you left off.
 
@@ -207,10 +211,12 @@ Capture the current task state in a structured handoff file. The next agent — 
 If the session is too short or trivial for a useful handoff (e.g., just a one-line fix already committed), say so plainly and skip writing — empty handoffs pollute future sessions.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-load-context fragment=base@6 -->
+<!-- anamnesis:region id=codex-skill-load-context fragment=base@14 -->
 ### Skill: `load-context`
 
 When the user asks for "load-context" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+
+**Declared side effects:** `read-only`.
 
 # load-context
 
@@ -244,10 +250,12 @@ If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists:
 Without it, every fresh session starts from zero project context. The agent re-derives the structure from filenames, package.json, etc. — slow, error-prone, and inconsistent across sessions. The ontology files are the single source of truth; this skill ensures the agent reads them first.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-ontology-enrich fragment=base@8 -->
+<!-- anamnesis:region id=codex-skill-ontology-enrich fragment=base@14 -->
 ### Skill: `ontology-enrich`
 
 When the user asks for "ontology-enrich" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+
+**Declared side effects:** `local-write`.
 
 # ontology-enrich
 
@@ -363,12 +371,14 @@ When in doubt, append rather than rewrite.
 - The project has no agent-discernible intent beyond what the static fragments already say (e.g., a tiny single-service repo)
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@13 -->
+<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@14 -->
 ### base hook: `inject-ontology.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
 
 **Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback.
+
+**Declared side effects:** `read-only`.
 
 **Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).
 
@@ -508,12 +518,14 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@13 -->
+<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@14 -->
 ### base hook: `inject-handoff.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
 
 **Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback.
+
+**Declared side effects:** `read-only`.
 
 **Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).
 
@@ -649,12 +661,14 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-remind-uncommitted fragment=base@10 -->
+<!-- anamnesis:region id=codex-hook-remind-uncommitted fragment=base@14 -->
 ### base hook: `remind-uncommitted.sh`
 
 **When:** `PostToolUse:Edit` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
 
 **Codex native path:** when executable adapter writes are allowed, anamnesis installs a JSON wrapper under `.anamnesis/codex-native-hooks/` and registers `PostToolUse:Edit|Write|apply_patch` in `.codex/hooks.json`. This region remains the manual fallback.
+
+**Declared side effects:** `read-only`.
 
 **Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).
 
@@ -684,12 +698,14 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-handoff-reminder fragment=base@12 -->
+<!-- anamnesis:region id=codex-hook-handoff-reminder fragment=base@14 -->
 ### base hook: `handoff-reminder.sh`
 
 **When:** `Stop` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
 
 **Codex native path:** when executable adapter writes are allowed, anamnesis installs a JSON wrapper under `.anamnesis/codex-native-hooks/` and registers `Stop` in `.codex/hooks.json`. This region remains the manual fallback.
+
+**Declared side effects:** `local-write`, `repo-external-write`.
 
 **Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).
 
@@ -886,10 +902,12 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-anamnesis-init fragment=base@11 -->
+<!-- anamnesis:region id=codex-skill-anamnesis-init fragment=base@14 -->
 ### Skill: `anamnesis-init`
 
 When the user asks for "anamnesis-init" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+
+**Declared side effects:** `local-write`.
 
 # anamnesis-init
 

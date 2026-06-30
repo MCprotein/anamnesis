@@ -7,6 +7,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  capabilitySideEffects,
+  formatSideEffects,
+} from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
@@ -28,6 +32,7 @@ export const executableHookRenderer: CapabilityRenderer = {
     const basename = path.basename(capability.source);
     const idRoot = basename.replace(/\.[^.]+$/, "");
     const scriptContent = fs.readFileSync(sourcePath, "utf8");
+    const sideEffects = capabilitySideEffects(capability);
 
     const description =
       `Run ${basename} on ${capability.event} (from anamnesis fragment ${ctx.fragment.id}).`;
@@ -37,6 +42,9 @@ export const executableHookRenderer: CapabilityRenderer = {
       "",
       `**Trigger event** (Claude Code convention): \`${capability.event}\``,
       "",
+      ...(sideEffects.length > 0
+        ? [`**Declared side effects:** ${formatSideEffects(sideEffects)}.`, ""]
+        : []),
       `Cursor doesn't run hooks. When the situation described above arises (e.g., the agent edits a file relevant to this hook), follow the script's intent. The script body is included for reference; Cursor agents should typically replicate the behavior using available tools.`,
       "",
       "```bash",
@@ -57,6 +65,7 @@ export const executableHookRenderer: CapabilityRenderer = {
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
         content: mdc,
+        sideEffects,
       },
     ];
   },

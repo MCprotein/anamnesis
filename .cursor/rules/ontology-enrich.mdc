@@ -3,6 +3,8 @@ description: "Skill ontology-enrich (from anamnesis fragment base). Apply when t
 agentRequested: true
 ---
 
+**Declared side effects:** `local-write`.
+
 # ontology-enrich
 
 `anamnesis ontology bootstrap` extracts factual structure (namespaces, services, models, routes) from project files via deterministic parsers. That is **Layer A**. It cannot infer intent — why this NodePort, what flow connects these services, which invariants must hold.

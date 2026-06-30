@@ -3,6 +3,8 @@ description: "Skill anamnesis-init (from anamnesis fragment base). Apply when th
 agentRequested: true
 ---
 
+**Declared side effects:** `local-write`.
+
 # anamnesis-init
 
 Use this skill when the user asks the agent to initialize a project with

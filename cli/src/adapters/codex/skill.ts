@@ -8,6 +8,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  capabilitySideEffects,
+  formatSideEffects,
+} from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
@@ -35,12 +39,16 @@ export const skillRenderer: CapabilityRenderer = {
     }
     const raw = fs.readFileSync(skillMdPath, "utf8");
     const body = stripFrontmatter(raw).trimStart();
+    const sideEffects = capabilitySideEffects(capability);
 
     const content = [
       `### Skill: \`${capability.name}\``,
       "",
       `When the user asks for "${capability.name}" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)`,
       "",
+      ...(sideEffects.length > 0
+        ? [`**Declared side effects:** ${formatSideEffects(sideEffects)}.`, ""]
+        : []),
       body.trimEnd(),
     ].join("\n");
 
@@ -57,6 +65,7 @@ export const skillRenderer: CapabilityRenderer = {
         regionId: `codex-skill-${capability.name}`,
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
+        sideEffects,
         content,
       },
     ];
