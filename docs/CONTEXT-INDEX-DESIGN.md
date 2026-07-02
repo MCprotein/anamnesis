@@ -5,8 +5,10 @@ Status: v1.6 prototype hardened; MCP/API export deferred.
 v1.7 extends the same local index with task harness retrieval targets under
 `.anamnesis/task-harnesses/`.
 
-v1.8 should use the same regenerable index for handoff lifecycle retrieval.
-Source markdown under `.anamnesis/handoff/` remains authoritative.
+v1.8 uses the same regenerable index direction for handoff lifecycle
+retrieval. Source markdown under `.anamnesis/handoff/` remains authoritative;
+the remaining follow-up is configurable retention policy rather than a
+separate storage backend.
 
 ## Goal
 
@@ -25,8 +27,8 @@ Index these public/local project sources first:
 - `AGENTS.md` and adapter entrypoint files for operating rules.
 - `system_graph.yaml` for user-managed project ontology.
 - `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, and `.enriched.yaml`.
-- `.anamnesis/handoff/active.md` plus referenced archive files, with
-  lifecycle tier metadata when v1.8 handoff lifecycle ships.
+- `.anamnesis/handoff/active.md` plus referenced archive files and lifecycle
+  tier metadata.
 - `.anamnesis/task-harnesses/*.yaml` for bounded task contracts.
 - `.anamnesis/manifest.json` for installed fragment/render state.
 - `.anamnesis/evidence/events.jsonl` for latest runtime evidence summaries.
@@ -137,10 +139,10 @@ Prototype behavior:
 - `anamnesis context diagnose` runs advisory checks over handoff files,
   ontology YAML, and runtime evidence.
 - It reports missing or stale active handoff archive pointers.
-- Future v1.8 diagnostics should also report structurally valid but
-  semantically stale active handoff entries, such as old closed tasks left in
-  `Current focus`, old git refs on clean worktrees, or newer archives that
-  supersede active work.
+- v1.8 diagnostics also report structurally valid but semantically stale
+  active handoff entries, such as old closed tasks left in `Current focus`,
+  old git refs on clean worktrees, or newer archives that supersede active
+  work.
 - It reports duplicate ontology entity IDs and relationship IDs whose
   endpoints differ across sources.
 - It reports semantic entries referenced by `supersedes` when the superseded

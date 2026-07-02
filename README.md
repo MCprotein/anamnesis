@@ -203,10 +203,10 @@ docs sources. This is safe only when those sources are current and behavior
 benchmarks show agents actually read and cite them; `benchmark task` v1.7 adds
 those checks.
 
-Handoff lifecycle automation is planned for v1.8. The intended model keeps
-handoff as bounded repo-local markdown: hot active state is summarized at
-startup, warm archives are source pointers, cold archives are query-only, and
-deprecated archives become GC candidates. See
+Handoff lifecycle automation now keeps handoff as bounded repo-local markdown:
+hot active state is summarized at startup, warm archives are source pointers,
+cold archives are query-only, and deprecated archives become GC candidates.
+The remaining v1.8 follow-up is configurable per-project retention policy. See
 [`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md).
 
 ---
@@ -351,7 +351,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`docs/TASK-HARNESS-DESIGN.md`](docs/TASK-HARNESS-DESIGN.md) —
   v1.7 retrieval-only task harness capability and lifecycle design
 - [`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md) —
-  planned v1.8 hot/warm/cold/deprecated handoff lifecycle design
+  hot/warm/cold/deprecated handoff lifecycle design and retention policy
+  follow-up
 - [`docs/FRAGMENT-REGISTRY.md`](docs/FRAGMENT-REGISTRY.md) —
   v0.9 registry metadata, discovery, version selection, cache, and trust-boundary design
 - [`docs/FRAGMENT-SIGNING.md`](docs/FRAGMENT-SIGNING.md) —
