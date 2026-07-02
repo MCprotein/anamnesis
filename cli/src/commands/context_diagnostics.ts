@@ -249,6 +249,7 @@ function ontologyIssues(projectRoot: string): ContextDiagnosticIssue[] {
   const records: OntologyRecord[] = [];
   const issues: ContextDiagnosticIssue[] = [];
   for (const relPath of ontologySourcePaths(projectRoot)) {
+    if (isBootstrapOntologyPath(relPath)) continue;
     const absPath = path.join(projectRoot, relPath);
     try {
       const parsed = YAML.parse(fs.readFileSync(absPath, "utf8")) as unknown;
@@ -532,10 +533,14 @@ function ontologySourcePaths(projectRoot: string): string[] {
   return [...paths].sort();
 }
 
+function isBootstrapOntologyPath(sourcePath: string): boolean {
+  return /\.bootstrap\.ya?ml$/.test(sourcePath);
+}
+
 function bootstrapFactsByKey(projectRoot: string): Map<string, BootstrapFact[]> {
   const byKey = new Map<string, BootstrapFact[]>();
-  for (const relPath of ontologySourcePaths(projectRoot).filter((sourcePath) =>
-    /\.bootstrap\.ya?ml$/.test(sourcePath),
+  for (const relPath of ontologySourcePaths(projectRoot).filter(
+    isBootstrapOntologyPath,
   )) {
     let parsed: unknown;
     try {

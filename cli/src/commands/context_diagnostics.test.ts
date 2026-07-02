@@ -322,4 +322,39 @@ describe("context diagnostics", () => {
       ]),
     );
   });
+
+  it("does not treat bootstrap generator metadata as ontology entities", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-bootstrap-metadata-");
+    writeFile(
+      project,
+      ".anamnesis/ontology/base.yaml",
+      [
+        "managed_by: anamnesis",
+        "schema_version: 1",
+        "anamnesis:",
+        "  doc: https://github.com/MCprotein/anamnesis",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/ontology/prisma.bootstrap.yaml",
+      [
+        'schema_version: "anamnesis.bootstrap.v1"',
+        "generator:",
+        "  introspector: prisma",
+        "  name: anamnesis",
+        "  version: 1.7.0",
+        "facts:",
+        "  datasources:",
+        "    - name: db",
+        "      provider: postgresql",
+        "",
+      ].join("\n"),
+    );
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.summary.byCode["ontology-duplicate-id"]).toBe(0);
+  });
 });
