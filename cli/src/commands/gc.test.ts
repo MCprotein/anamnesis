@@ -307,6 +307,102 @@ describe("gc", () => {
     ).toBe(false);
   });
 
+  it("uses Agentfile handoff retention policy for gc thresholds", () => {
+    const project = tmpDir("anamnesis-gc-handoff-policy-");
+    writeFile(
+      project,
+      "Agentfile",
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [codex]",
+        "fragments: []",
+        "settings:",
+        "  max_warm_handoff_archives: 0",
+        "  max_cold_handoff_age_days: 1",
+        "  max_handoff_bytes: 128",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-06-01T00-00-00Z.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "closed_at: 2026-06-01T00:00:00.000Z",
+        "---",
+        "# Handoff - old",
+        "padding: " + "x".repeat(200),
+        "",
+      ].join("\n"),
+    );
+
+    const result = gc({
+      projectRoot: project,
+      now: () => new Date("2026-07-02T00:00:00.000Z"),
+    });
+
+    expect(result.thresholds).toMatchObject({
+      maxWarmHandoffArchives: 0,
+      maxColdHandoffAgeDays: 1,
+      maxHandoffBytes: 128,
+    });
+    expect(result.handoff.thresholds).toEqual({
+      maxWarmArchives: 0,
+      maxColdAgeDays: 1,
+      maxTotalBytes: 128,
+    });
+    expect(result.handoff.summary.diskBudgetExceeded).toBe(true);
+    expect(result.handoff.candidates[0]?.reasons).toEqual(
+      expect.arrayContaining([
+        "handoff-disk-budget-exceeded",
+        "handoff-over-age",
+      ]),
+    );
+  });
+
+  it("lets gc CLI handoff flags override Agentfile policy", () => {
+    const project = tmpDir("anamnesis-gc-handoff-policy-override-");
+    writeFile(
+      project,
+      "Agentfile",
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [codex]",
+        "fragments: []",
+        "settings:",
+        "  max_warm_handoff_archives: 5",
+        "  max_cold_handoff_age_days: 365",
+        "  max_handoff_bytes: 1048576",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-06-01T00-00-00Z.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "closed_at: 2026-06-01T00:00:00.000Z",
+        "---",
+        "# Handoff - old",
+        "",
+      ].join("\n"),
+    );
+
+    const result = gc({
+      projectRoot: project,
+      maxColdHandoffAgeDays: 1,
+      now: () => new Date("2026-07-02T00:00:00.000Z"),
+    });
+
+    expect(result.thresholds.maxColdHandoffAgeDays).toBe(1);
+    expect(result.thresholds.maxHandoffBytes).toBe(1048576);
+    expect(result.handoff.candidates[0]?.reasons).toContain("handoff-over-age");
+  });
+
   it("apply deletes clean managed harness candidates and updates manifest", () => {
     const project = tmpDir("anamnesis-gc-apply-");
     writeManagedHarness(

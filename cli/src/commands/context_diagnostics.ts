@@ -2,7 +2,15 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import YAML from "yaml";
-import { analyzeHandoffLifecycle } from "../core/handoff_lifecycle.js";
+import {
+  analyzeHandoffLifecycle,
+  type HandoffLifecycleThresholds,
+} from "../core/handoff_lifecycle.js";
+import {
+  handoffPolicyToLifecycleThresholds,
+  resolveHandoffRetentionPolicy,
+  type HandoffRetentionPolicy,
+} from "../core/handoff_policy.js";
 
 export const CONTEXT_DIAGNOSTICS_SCHEMA_VERSION =
   "anamnesis.context_diagnostics.v1";
@@ -52,6 +60,7 @@ export interface ContextDiagnosticsResult {
 export interface ContextDiagnosticsOptions {
   projectRoot: string;
   now?: () => Date;
+  handoffRetentionPolicy?: Partial<HandoffRetentionPolicy>;
 }
 
 interface OntologyRecord {
@@ -103,20 +112,20 @@ const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
 
 const ACTIVE_GIT_REF_STALE_COMMIT_THRESHOLD = 3;
 
-const DEFAULT_HANDOFF_LIFECYCLE_THRESHOLDS = {
-  maxWarmArchives: 5,
-  maxColdAgeDays: 90,
-  maxTotalBytes: 512 * 1024,
-};
-
 export function contextDiagnostics(
   opts: ContextDiagnosticsOptions,
 ): ContextDiagnosticsResult {
   const projectRoot = path.resolve(opts.projectRoot);
   const now = (opts.now ?? (() => new Date()))();
   const generatedAt = now.toISOString();
+  const handoffThresholds = handoffPolicyToLifecycleThresholds(
+    resolveHandoffRetentionPolicy({
+      projectRoot,
+      overrides: opts.handoffRetentionPolicy,
+    }),
+  );
   const issues = [
-    ...handoffIssues(projectRoot, now),
+    ...handoffIssues(projectRoot, now, handoffThresholds),
     ...ontologyIssues(projectRoot),
     ...docsBootstrapIssues(projectRoot),
     ...evidenceIssues(projectRoot),
@@ -136,6 +145,7 @@ export function contextDiagnostics(
 function handoffIssues(
   projectRoot: string,
   now: Date,
+  thresholds: HandoffLifecycleThresholds,
 ): ContextDiagnosticIssue[] {
   const activeRel = ".anamnesis/handoff/active.md";
   const activeAbs = path.join(projectRoot, activeRel);
@@ -225,7 +235,7 @@ function handoffIssues(
   const lifecycle = analyzeHandoffLifecycle({
     projectRoot,
     now,
-    thresholds: DEFAULT_HANDOFF_LIFECYCLE_THRESHOLDS,
+    thresholds,
   });
   if (lifecycle.summary.diskBudgetExceeded) {
     issues.push({

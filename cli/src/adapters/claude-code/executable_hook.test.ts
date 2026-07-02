@@ -258,6 +258,43 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(full.stdout).not.toContain("active referenced archived handoff");
   });
 
+  it("respects zero warm handoff budget when active.md is absent", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [claude-code]",
+        "fragments: []",
+        "settings:",
+        "  max_warm_handoff_archives: 0",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(handoffDir, "latest.md"),
+      "# Latest archive\n\nSECRET_WARM_FALLBACK\n",
+      "utf8",
+    );
+
+    const hook = path.resolve("base/adapters/claude-code/hooks/inject-handoff.sh");
+    const compact = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+      encoding: "utf8",
+    });
+
+    expect(compact.status).toBe(0);
+    expect(compact.stderr).toBe("");
+    expect(compact.stdout).toBe("");
+  });
+
   it("dedupes handoff reminders for the same dirty git fingerprint", () => {
     if (process.platform === "win32") return;
 

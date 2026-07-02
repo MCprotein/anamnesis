@@ -53,6 +53,9 @@ declined:
 settings:
   commit_on_apply: true
   backup_retention: 5
+  max_warm_handoff_archives: 3
+  max_cold_handoff_age_days: 45
+  max_handoff_bytes: 131072
 overrides:
   regions:
     - file: AGENTS.md
@@ -68,6 +71,12 @@ overrides:
     });
     expect(result.fragments[1]!.pinned).toBe(true);
     expect(result.declined).toHaveLength(1);
+    expect(result.settings).toMatchObject({
+      backup_retention: 5,
+      max_warm_handoff_archives: 3,
+      max_cold_handoff_age_days: 45,
+      max_handoff_bytes: 131072,
+    });
     expect(result.overrides?.regions?.[0]?.locked).toBe(true);
   });
 

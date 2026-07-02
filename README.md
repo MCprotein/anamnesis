@@ -206,8 +206,8 @@ those checks.
 Handoff lifecycle automation now keeps handoff as bounded repo-local markdown:
 hot active state is summarized at startup, warm archives are source pointers,
 cold archives are query-only, and deprecated archives become GC candidates.
-The remaining v1.8 follow-up is configurable per-project retention policy. See
-[`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md).
+Retention budgets live in Agentfile settings and can be overridden for a
+single `gc` run. See [`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md).
 
 ---
 
@@ -328,7 +328,7 @@ used for deterministic README score claims.
 | **v1.5** | Compact SessionStart defaults and session-context benchmark graphs | shipped 2026-06-19 |
 | **v1.6** | Repo-local context index/query/resume and contradiction diagnostics | shipped 2026-06-25 |
 | **v1.7** | Retrieval-only task harnesses, lifecycle cleanup, handoff retention, and release parity | shipped 2026-07-02; latest patch 1.7.1 |
-| **v1.8** | Follow-up handoff lifecycle polish after v1.7 evidence | planned |
+| **v1.8** | Configurable bounded handoff retention policy | in progress |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

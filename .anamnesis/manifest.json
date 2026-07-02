@@ -75,11 +75,11 @@
       "file": "AGENTS.md",
       "region_id": "codex-hook-inject-handoff",
       "fragment_id": "base",
-      "fragment_version": 15,
-      "template_version": 15,
+      "fragment_version": 16,
+      "template_version": 16,
       "base_rendered_hash": "sha256:79e8ba2f8c838bdc56911fe2a09c58024b307679d516783834c7ded93b403447",
-      "last_applied_hash": "sha256:4bdb8d6997040c2d6a9553d68daf5d2e6e928b3248a370a80915ed159c49da60",
-      "current_user_hash": "sha256:4bdb8d6997040c2d6a9553d68daf5d2e6e928b3248a370a80915ed159c49da60"
+      "last_applied_hash": "sha256:cda9d4c8ba1923141778e6ef1d18172524872d2063183cf1067bed3db8cb0f07",
+      "current_user_hash": "sha256:cda9d4c8ba1923141778e6ef1d18172524872d2063183cf1067bed3db8cb0f07"
     },
     {
       "file": "AGENTS.md",
@@ -151,9 +151,9 @@
     {
       "path": ".claude/hooks/inject-handoff.sh",
       "fragment_id": "base",
-      "fragment_version": 15,
-      "last_applied_hash": "sha256:4071381ef7042eabd2c55d15ef88a388efcf0b090b70c3915c73d3da34827275",
-      "current_user_hash": "sha256:4071381ef7042eabd2c55d15ef88a388efcf0b090b70c3915c73d3da34827275"
+      "fragment_version": 16,
+      "last_applied_hash": "sha256:05ee71046333addb576fa2b12a7520e3e0b825f6d27f1542dad2858c85b39a83",
+      "current_user_hash": "sha256:05ee71046333addb576fa2b12a7520e3e0b825f6d27f1542dad2858c85b39a83"
     },
     {
       "path": ".claude/commands/handoff-prepare.md",
@@ -207,9 +207,9 @@
     {
       "path": ".anamnesis/codex-native-hooks/session-start.mjs",
       "fragment_id": "base",
-      "fragment_version": 15,
-      "last_applied_hash": "sha256:851e320413aecf34a5b018b1e27b5b319c540b544d869036cdee398017c63d73",
-      "current_user_hash": "sha256:851e320413aecf34a5b018b1e27b5b319c540b544d869036cdee398017c63d73"
+      "fragment_version": 16,
+      "last_applied_hash": "sha256:fc66e997d4ac4cac9145bfb4e134a7084775022d199c7eeea59e3cf6d2a8c931",
+      "current_user_hash": "sha256:fc66e997d4ac4cac9145bfb4e134a7084775022d199c7eeea59e3cf6d2a8c931"
     },
     {
       "path": ".anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh",

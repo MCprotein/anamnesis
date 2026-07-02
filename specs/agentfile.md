@@ -87,6 +87,9 @@ settings:
   claude_md_path: CLAUDE.md      # Claude Code entrypoint surface
   commit_on_apply: false       # future-reserved; 현재 CLI 는 자동 커밋하지 않음
   backup_retention: 10         # 최근 N개 백업만 유지
+  max_warm_handoff_archives: 5 # active.md 없을 때 startup/resume 이 warm 으로 보는 최신 archive 수
+  max_cold_handoff_age_days: 90 # cold archive 가 GC review 후보가 되는 age budget
+  max_handoff_bytes: 524288    # handoff 전체 byte budget; 초과 시 diagnostics/GC 경고
 
 overrides:
   regions:
@@ -172,6 +175,9 @@ rulebook 이 `declined` 에 있는 fragment 를 매칭해도 **다시 제안하�
 | `claude_md_path` | `string` | `CLAUDE.md` | Claude Code entrypoint 파일 경로. canonical project memory 는 AGENTS.md 이며 CLAUDE.md 는 그 위치를 가리키는 CC 특화 managed region 을 담음 |
 | `commit_on_apply` | `bool` | `false` | **v1 reserved no-op.** 현재 CLI 는 이 값을 읽어도 자동 커밋하지 않는다. 향후 자동 커밋은 이 필드를 조용히 활성화하지 말고 별도 UX 또는 schema migration 으로 다룬다. |
 | `backup_retention` | `int` | `10` | 백업 디렉토리 유지 개수. 0 = 무제한 |
+| `max_warm_handoff_archives` | `int` | `5` | active reference 가 없을 때 warm 으로 취급할 최신 handoff archive 개수. 0 = 자동 최신 archive fallback 없음 |
+| `max_cold_handoff_age_days` | `int` | `90` | cold handoff archive 가 review 후보가 되는 age budget |
+| `max_handoff_bytes` | `int` | `524288` | `.anamnesis/handoff` 전체 byte budget. 초과 시 `status`/`doctor`/`context diagnose`/`gc` 가 경고 또는 후보를 보고 |
 
 ### 4.7 `Overrides`
 

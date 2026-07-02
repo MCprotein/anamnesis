@@ -273,6 +273,48 @@ describe("context diagnostics", () => {
     );
   });
 
+  it("uses Agentfile handoff byte budget for diagnostics", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-handoff-policy-");
+    writeFile(
+      project,
+      "Agentfile",
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [codex]",
+        "fragments: []",
+        "settings:",
+        "  max_handoff_bytes: 64",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-06-01T00-00-00Z.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "closed_at: 2026-06-01T00:00:00.000Z",
+        "---",
+        "# Handoff - old",
+        "padding: " + "x".repeat(100),
+        "",
+      ].join("\n"),
+    );
+
+    const result = contextDiagnostics({
+      projectRoot: project,
+      now: () => new Date("2026-07-02T00:00:00.000Z"),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.summary.byCode["handoff-budget-exceeded"]).toBe(1);
+    expect(
+      result.issues.find((issue) => issue.code === "handoff-budget-exceeded")
+        ?.message,
+    ).toContain("exceeding budget 64 bytes");
+  });
+
   it("reports explicit docs-vs-bootstrap fact contradictions", () => {
     const project = tmpDir("anamnesis-context-diagnostics-docs-bootstrap-");
     writeFile(

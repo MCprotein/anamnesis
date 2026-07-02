@@ -31,6 +31,55 @@ shopt -u nullglob
 # considered startup-active; Recently completed archive pointers are history.
 active="$HANDOFF_DIR/active.md"
 
+agentfile_path() {
+  local candidate=""
+  for candidate in \
+    "$PROJECT_ROOT/Agentfile" \
+    "$PROJECT_ROOT/agentfile.yaml" \
+    "$PROJECT_ROOT/agentfile.yml" \
+    "$PROJECT_ROOT/.anamnesis/agentfile.yaml"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+agentfile_integer_setting() {
+  local key="$1"
+  local file=""
+  file="$(agentfile_path 2>/dev/null || true)"
+  [[ -n "$file" ]] || return 0
+  awk -F: -v key="$key" '
+    $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
+      value = $2
+      sub(/[[:space:]]*#.*/, "", value)
+      gsub(/[[:space:]]/, "", value)
+      if (value ~ /^[0-9]+$/) {
+        print value
+        exit
+      }
+    }
+  ' "$file"
+}
+
+nonnegative_or_default() {
+  local value="$1"
+  local fallback="$2"
+  if [[ "$value" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$fallback"
+  fi
+}
+
+MAX_WARM_HANDOFF_ARCHIVES="$(
+  nonnegative_or_default \
+    "${ANAMNESIS_MAX_WARM_HANDOFF_ARCHIVES:-$(agentfile_integer_setting max_warm_handoff_archives)}" \
+    "5"
+)"
+
 archive_is_inactive() {
   local file="$1"
   awk '
@@ -109,9 +158,11 @@ if [[ -f "$active" ]]; then
     selected_archives+=("$archive_abs")
   done < <(active_archive_refs "$active")
 else
-  latest="$(newest_eligible_archive)"
-  if [[ -n "$latest" ]]; then
-    selected_archives+=("$latest")
+  if (( MAX_WARM_HANDOFF_ARCHIVES > 0 )); then
+    latest="$(newest_eligible_archive)"
+    if [[ -n "$latest" ]]; then
+      selected_archives+=("$latest")
+    fi
   fi
 fi
 

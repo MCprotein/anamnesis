@@ -398,6 +398,41 @@ describe("codex executable_hook fallback", () => {
     expect(fullContext).not.toContain("active referenced archived handoff");
   });
 
+  it("respects zero warm handoff budget in native SessionStart without active.md", () => {
+    const projectRoot = tmpDir("anamnesis-codex-handoff-session-start-policy-");
+    const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [codex]",
+        "fragments: []",
+        "settings:",
+        "  max_warm_handoff_archives: 0",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(handoffDir, "latest.md"),
+      "# Latest archive\n\nSECRET_WARM_FALLBACK\n",
+      "utf8",
+    );
+
+    const wrapperPath = path.resolve("base/adapters/codex/hooks/session-start.mjs");
+    const compact = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      encoding: "utf8",
+    });
+
+    expect(compact.status).toBe(0);
+    expect(compact.stderr).toBe("");
+    expect(compact.stdout).toBe("");
+  });
+
   it("registers Stop hooks natively without a matcher", () => {
     fs.writeFileSync(
       path.join(fragmentDir, "adapters/claude-code/hooks/stop.sh"),

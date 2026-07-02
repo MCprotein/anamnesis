@@ -7,6 +7,21 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added configurable handoff retention policy settings to Agentfile:
+  `max_warm_handoff_archives`, `max_cold_handoff_age_days`, and
+  `max_handoff_bytes`.
+- Added a shared handoff retention policy resolver used by `gc`, context
+  diagnostics, and `context resume`, with `gc` CLI flags remaining one-run
+  overrides.
+
+### Changed
+
+- Bumped the base fragment to v16 so SessionStart hooks can honor
+  `max_warm_handoff_archives: 0` when `active.md` is absent, preventing an old
+  latest archive from being injected as startup fallback.
+
 ## [1.7.1] — 2026-07-02
 
 ### Fixed

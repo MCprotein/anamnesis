@@ -74,6 +74,9 @@ const settingsSchema = z
     claude_md_path: z.string().default("CLAUDE.md"),
     commit_on_apply: z.boolean().default(false),
     backup_retention: z.number().int().nonnegative().default(10),
+    max_warm_handoff_archives: z.number().int().nonnegative().default(5),
+    max_cold_handoff_age_days: z.number().int().nonnegative().default(90),
+    max_handoff_bytes: z.number().int().positive().default(512 * 1024),
   })
   .strict();
 

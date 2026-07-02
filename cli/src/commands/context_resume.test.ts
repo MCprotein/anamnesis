@@ -97,4 +97,34 @@ describe("context resume", () => {
       fs.readFileSync(path.join(project, ".anamnesis/context/resume.md"), "utf8"),
     ).toContain("# anamnesis resume bundle");
   });
+
+  it("uses Agentfile warm handoff budget for latest archive selection", () => {
+    const project = tmpDir("anamnesis-context-resume-policy-");
+    writeFile(
+      project,
+      "Agentfile",
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [codex]",
+        "fragments: []",
+        "settings:",
+        "  max_warm_handoff_archives: 0",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-06-21T00-00-00Z.md",
+      "# Handoff - latest\n",
+    );
+
+    const result = contextResume({
+      projectRoot: project,
+      now: () => new Date("2026-06-22T00:00:00.000Z"),
+    });
+
+    expect(result.latestArchive).toBeUndefined();
+    expect(result.bundle).toContain("latest_archive: (none)");
+  });
 });

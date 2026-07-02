@@ -12,6 +12,7 @@ import { join, relative, resolve, sep } from "node:path";
 
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOTAL_BYTES = 768 * 1024;
+const DEFAULT_MAX_WARM_HANDOFF_ARCHIVES = 5;
 const SKIP_DIRS = new Set([
   ".git",
   "node_modules",
@@ -132,6 +133,48 @@ function newestArchivedHandoff(handoffDir) {
   return newest;
 }
 
+function agentfilePath(projectRoot) {
+  for (const rel of [
+    "Agentfile",
+    "agentfile.yaml",
+    "agentfile.yml",
+    ".anamnesis/agentfile.yaml",
+  ]) {
+    const candidate = join(projectRoot, rel);
+    if (fileExists(candidate)) return candidate;
+  }
+  return "";
+}
+
+function integerSettingFromAgentfile(projectRoot, key) {
+  const filePath = agentfilePath(projectRoot);
+  if (!filePath) return undefined;
+  const text = readFileSync(filePath, "utf8");
+  const pattern = new RegExp(`^\\s*${key}\\s*:\\s*(\\d+)\\s*(?:#.*)?$`, "m");
+  const match = text.match(pattern);
+  return match ? Number.parseInt(match[1], 10) : undefined;
+}
+
+function nonnegativeInteger(value, fallback) {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value)
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+  return Number.isInteger(numeric) && numeric >= 0 ? numeric : fallback;
+}
+
+function handoffRetentionPolicy(projectRoot) {
+  return {
+    maxWarmHandoffArchives: nonnegativeInteger(
+      process.env.ANAMNESIS_MAX_WARM_HANDOFF_ARCHIVES ??
+        integerSettingFromAgentfile(projectRoot, "max_warm_handoff_archives"),
+      DEFAULT_MAX_WARM_HANDOFF_ARCHIVES,
+    ),
+  };
+}
+
 function activeHandoffArchiveRefs(activePath) {
   if (!fileExists(activePath)) return [];
   const refs = new Set();
@@ -200,7 +243,9 @@ function isInactiveHandoffArchive(filePath) {
 }
 
 function selectedHandoffArchives(projectRoot, activePath, handoffDir) {
+  const policy = handoffRetentionPolicy(projectRoot);
   if (!fileExists(activePath)) {
+    if (policy.maxWarmHandoffArchives <= 0) return [];
     const latest = newestArchivedHandoff(handoffDir);
     return latest ? [latest] : [];
   }

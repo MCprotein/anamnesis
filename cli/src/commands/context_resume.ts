@@ -3,6 +3,14 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { readEvidenceSummary } from "../core/evidence.js";
 import {
+  analyzeHandoffLifecycle,
+  type HandoffLifecycleReport,
+} from "../core/handoff_lifecycle.js";
+import {
+  handoffPolicyToLifecycleThresholds,
+  resolveHandoffRetentionPolicy,
+} from "../core/handoff_policy.js";
+import {
   contextDiagnostics,
   type ContextDiagnosticIssue,
 } from "./context_diagnostics.js";
@@ -64,13 +72,19 @@ export function contextResume(opts: ContextResumeOptions): ContextResumeResult {
   const maxTasks = opts.maxTasks ?? 4;
   const maxTouchedFiles = opts.maxTouchedFiles ?? 8;
   const maxDiagnostics = opts.maxDiagnostics ?? 5;
+  const handoffPolicy = resolveHandoffRetentionPolicy({ projectRoot });
+  const handoffLifecycle = analyzeHandoffLifecycle({
+    projectRoot,
+    now: new Date(generatedAt),
+    thresholds: handoffPolicyToLifecycleThresholds(handoffPolicy),
+  });
 
   const activeHandoff = activeHandoffPath(projectRoot);
   const activeTasks = readActiveTasks(projectRoot, activeHandoff).slice(
     0,
     maxTasks,
   );
-  const latestArchive = newestHandoffArchive(projectRoot)?.rel;
+  const latestArchive = latestWarmHandoffArchive(handoffLifecycle);
   const touchedFiles = gitTouchedFiles(projectRoot).slice(0, maxTouchedFiles);
   const evidence = readEvidenceSummary(projectRoot, {
     now: new Date(generatedAt),
@@ -85,6 +99,7 @@ export function contextResume(opts: ContextResumeOptions): ContextResumeResult {
   const diagnosticsResult = contextDiagnostics({
     projectRoot,
     now: () => new Date(generatedAt),
+    handoffRetentionPolicy: handoffPolicy,
   });
   const diagnosticIssues = diagnosticsResult.issues.slice(0, maxDiagnostics);
 
@@ -247,23 +262,15 @@ function cleanTaskLine(line: string): string {
   return cleanText(line.replace(/^\s*-\s*/, ""), 180);
 }
 
-function newestHandoffArchive(
-  projectRoot: string,
-): { rel: string; mtimeMs: number } | undefined {
-  const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
-  if (!fs.existsSync(handoffDir)) return undefined;
-  return fs
-    .readdirSync(handoffDir)
-    .filter((name) => name.endsWith(".md") && name !== "active.md")
-    .map((name) => {
-      const rel = path.join(".anamnesis", "handoff", name);
-      const abs = path.join(projectRoot, rel);
-      return {
-        rel: rel.split(path.sep).join("/"),
-        mtimeMs: fs.statSync(abs).mtimeMs,
-      };
-    })
-    .sort((a, b) => b.mtimeMs - a.mtimeMs || a.rel.localeCompare(b.rel))[0];
+function latestWarmHandoffArchive(
+  lifecycle: HandoffLifecycleReport,
+): string | undefined {
+  return lifecycle.entries
+    .filter((entry) => entry.kind === "archive" && entry.tier === "warm")
+    .sort(
+      (a, b) =>
+        Date.parse(b.mtime) - Date.parse(a.mtime) || a.path.localeCompare(b.path),
+    )[0]?.path;
 }
 
 function gitTouchedFiles(projectRoot: string): ContextResumeTouchedFile[] {

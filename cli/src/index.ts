@@ -281,6 +281,21 @@ function parseGcPositiveIntegerFlag(
   return parsed;
 }
 
+function parseGcNonnegativeIntegerFlag(
+  value: string | boolean | undefined,
+  flagName: string,
+): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new GcError(`${flagName} requires a nonnegative integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new GcError(`${flagName} requires a nonnegative integer`);
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Library root discovery
 // ---------------------------------------------------------------------------
@@ -473,10 +488,12 @@ Flags (gc):
   --max-reusable-harnesses <n>  Reusable harness count budget (default: 50)
   --max-total-bytes <n>         Task harness disk budget (default: 262144)
   --max-warm-handoff-archives <n>
-                                Warm handoff archive count budget (default: 5)
+                                Warm handoff archive count budget
+                                (project default: 5; 0 disables fallback)
   --max-cold-handoff-age-days <n>
-                                Cold handoff age threshold (default: 90)
-  --max-handoff-bytes <n>       Handoff archive disk budget (default: 524288)
+                                Cold handoff age threshold (project default: 90)
+  --max-handoff-bytes <n>       Handoff archive disk budget
+                                (project default: 524288)
 
 Flags (benchmark report):
   --project-root <path>         Target directory (default: cwd)
@@ -2041,11 +2058,11 @@ async function main(argv: string[]): Promise<number> {
             flags["max-total-bytes"],
             "--max-total-bytes",
           ),
-          maxWarmHandoffArchives: parseGcPositiveIntegerFlag(
+          maxWarmHandoffArchives: parseGcNonnegativeIntegerFlag(
             flags["max-warm-handoff-archives"],
             "--max-warm-handoff-archives",
           ),
-          maxColdHandoffAgeDays: parseGcPositiveIntegerFlag(
+          maxColdHandoffAgeDays: parseGcNonnegativeIntegerFlag(
             flags["max-cold-handoff-age-days"],
             "--max-cold-handoff-age-days",
           ),

@@ -12,6 +12,10 @@ import {
   type HandoffLifecycleReport,
 } from "../core/handoff_lifecycle.js";
 import {
+  handoffPolicyToLifecycleThresholds,
+  resolveHandoffRetentionPolicy,
+} from "../core/handoff_policy.js";
+import {
   appendEvidenceRecord,
   EVIDENCE_SCHEMA_VERSION,
   type RuntimeEvidenceRecord,
@@ -123,9 +127,6 @@ const DEFAULT_MAX_CURRENT_AGE_DAYS = 14;
 const DEFAULT_MAX_CURRENT_HARNESSES = 5;
 const DEFAULT_MAX_REUSABLE_HARNESSES = 50;
 const DEFAULT_MAX_TOTAL_BYTES = 256 * 1024;
-const DEFAULT_MAX_WARM_HANDOFF_ARCHIVES = 5;
-const DEFAULT_MAX_COLD_HANDOFF_AGE_DAYS = 90;
-const DEFAULT_MAX_HANDOFF_BYTES = 512 * 1024;
 
 export function gc(opts: GcOptions): GcResult {
   if (opts.apply === true && opts.dryRun === true) {
@@ -137,6 +138,14 @@ export function gc(opts: GcOptions): GcResult {
   const projectRoot = path.resolve(opts.projectRoot);
   const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
   const nowMs = Date.parse(generatedAt);
+  const handoffPolicy = resolveHandoffRetentionPolicy({
+    projectRoot,
+    overrides: {
+      maxWarmHandoffArchives: opts.maxWarmHandoffArchives,
+      maxColdHandoffAgeDays: opts.maxColdHandoffAgeDays,
+      maxHandoffBytes: opts.maxHandoffBytes,
+    },
+  });
   const thresholds = {
     maxCurrentAgeDays: opts.maxCurrentAgeDays ?? DEFAULT_MAX_CURRENT_AGE_DAYS,
     maxCurrentHarnesses:
@@ -144,22 +153,16 @@ export function gc(opts: GcOptions): GcResult {
     maxReusableHarnesses:
       opts.maxReusableHarnesses ?? DEFAULT_MAX_REUSABLE_HARNESSES,
     maxTotalBytes: opts.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES,
-    maxWarmHandoffArchives:
-      opts.maxWarmHandoffArchives ?? DEFAULT_MAX_WARM_HANDOFF_ARCHIVES,
-    maxColdHandoffAgeDays:
-      opts.maxColdHandoffAgeDays ?? DEFAULT_MAX_COLD_HANDOFF_AGE_DAYS,
-    maxHandoffBytes: opts.maxHandoffBytes ?? DEFAULT_MAX_HANDOFF_BYTES,
+    maxWarmHandoffArchives: handoffPolicy.maxWarmHandoffArchives,
+    maxColdHandoffAgeDays: handoffPolicy.maxColdHandoffAgeDays,
+    maxHandoffBytes: handoffPolicy.maxHandoffBytes,
   };
   const warnings: string[] = [];
   const manifest = readManifestForGc(projectRoot, warnings);
   const handoff = analyzeHandoffLifecycle({
     projectRoot,
     now: new Date(generatedAt),
-    thresholds: {
-      maxWarmArchives: thresholds.maxWarmHandoffArchives,
-      maxColdAgeDays: thresholds.maxColdHandoffAgeDays,
-      maxTotalBytes: thresholds.maxHandoffBytes,
-    },
+    thresholds: handoffPolicyToLifecycleThresholds(handoffPolicy),
   });
   const entries = discoverHarnessFiles(projectRoot).map((relPath) =>
     readHarnessEntry(projectRoot, relPath, manifest, nowMs, warnings),

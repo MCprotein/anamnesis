@@ -7,8 +7,8 @@ v1.7 extends the same local index with task harness retrieval targets under
 
 v1.8 uses the same regenerable index direction for handoff lifecycle
 retrieval. Source markdown under `.anamnesis/handoff/` remains authoritative;
-the remaining follow-up is configurable retention policy rather than a
-separate storage backend.
+configurable retention policy is project settings plus explicit CLI overrides,
+not a separate storage backend.
 
 ## Goal
 

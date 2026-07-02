@@ -113,6 +113,9 @@ describe("Agentfile v1 compatibility fixtures", () => {
       claude_md_path: "CLAUDE.md",
       commit_on_apply: false,
       backup_retention: 0,
+      max_warm_handoff_archives: 5,
+      max_cold_handoff_age_days: 90,
+      max_handoff_bytes: 524288,
     });
     expect(af.fragments[1]?.adapters).toEqual({
       "claude-code": true,

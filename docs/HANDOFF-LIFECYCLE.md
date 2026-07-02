@@ -37,6 +37,10 @@ Today, handoff is agent-authored:
 - `gc --dry-run` classifies handoff artifacts as hot, warm, cold, or
   deprecated, reports archive count and bytes, preserves active archive
   references, and lists review-only cleanup candidates.
+- Handoff lifecycle budgets resolve from Agentfile settings where available:
+  `max_warm_handoff_archives`, `max_cold_handoff_age_days`, and
+  `max_handoff_bytes`. `anamnesis gc` CLI flags override those budgets for one
+  run.
 - `gc --apply` may delete clean manifest-owned task harness candidates, but it
   still skips all handoff archive candidates and reports them as review-only.
 - `handoff draft` gathers git ref, recent commits, touched files, latest
@@ -136,7 +140,19 @@ Preview GC behavior:
   behavior leaves every handoff archive candidate review-only.
 
 Default budgets are conservative: 5 warm archives, 90 cold days, and 524288
-handoff bytes before review candidates are reported.
+handoff bytes before review candidates are reported. Projects can override
+them in Agentfile:
+
+```yaml
+settings:
+  max_warm_handoff_archives: 5
+  max_cold_handoff_age_days: 90
+  max_handoff_bytes: 524288
+```
+
+`anamnesis gc --max-warm-handoff-archives`,
+`--max-cold-handoff-age-days`, and `--max-handoff-bytes` are one-run
+overrides, not persistent project policy changes.
 
 ## Token Budget
 
