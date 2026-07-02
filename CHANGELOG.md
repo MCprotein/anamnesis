@@ -7,6 +7,12 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Improved `anamnesis upgrade` text output so it explicitly separates CLI
+  package upgrade from project-managed file updates and shows the next
+  `update` / `doctor` commands for managed projects.
+
 ### Documentation
 
 - Added the v1.9 upgrade compatibility and project-update planning roadmap,

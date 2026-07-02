@@ -1239,7 +1239,7 @@ Current behavior from the v1.8 audit:
 |---|---|---|---|
 | 1 | **Upgrade compatibility matrix** | planned | Add fixtures for representative old project states: clean v1.4/v1.5/v1.7 projects, old Agentfiles without new optional settings, pinned fragments, user-modified managed regions, missing executable adapter permission, partial adapter installs, stale hook registrations, and suggested-but-declined fragments. Each fixture should prove `upgrade -> update dry-run -> apply/repair -> doctor` behavior without losing local edits. |
 | 2 | **Project upgrade plan command** | planned | Add a command or mode that connects package upgrade to project state, e.g. `anamnesis upgrade plan` or `anamnesis doctor --upgrade-plan`. It should report current CLI version, latest registry version, Agentfile schema support, fragment updates, blocked executable surfaces, pinned blocks, user-modified surfaces, new optional settings, and the exact next command(s). |
-| 3 | **Upgrade-to-update handoff UX** | planned | After `upgrade --apply`, print an explicit next-step block: package upgraded, project-managed files are unchanged until `update` runs, and the safe path is `update --dry-run`, optional `update --apply`, then `doctor`. In an anamnesis project, surface detected gates such as `--allow-exec-adapters`, `--bump-pinned`, user-modified managed files, malformed hook config, and manual-merge needs. Keep non-interactive output scriptable, and allow a later interactive/TUI chooser to present the same choices without changing defaults. |
+| 3 | **Upgrade-to-update handoff UX** | partial | Text output now prints the package/project boundary and `update` / `doctor` next commands for managed projects. Remaining work: surface deeper detected gates such as pinned fragments, malformed hook config, and manual-merge needs, then expose an optional interactive/TUI chooser using the same deterministic plan. |
 | 4 | **Guided conflict choices** | planned | Convert common upgrade conflicts into explicit choices instead of only counts and prose: apply safe managed updates, include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or add suggestions to `declined`. Keep the default non-interactive path deterministic and safe. |
 | 5 | **Partial-upgrade state hardening** | planned | Audit whether `update --apply` can mark Agentfile fragment versions current while related managed surfaces stayed `user-modified` or `blocked`. If yes, record partial adoption explicitly or delay version bump for affected surfaces so `status`/`doctor` can distinguish fully upgraded fragments from preserved local drift. |
 | 6 | **Optional setting materialization policy** | planned | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
@@ -1284,6 +1284,10 @@ Progress notes:
   should hand off to project `update` guidance directly, with scriptable
   command output first and optional interactive/TUI conflict choices using the
   same underlying plan.
+- 2026-07-02: Implemented the first text-output pass for `upgrade` so managed
+  projects see the CLI/package boundary plus `update --dry-run`,
+  `update --apply`, and `doctor` next commands. Deeper gate detection and the
+  optional interactive/TUI chooser remain planned.
 
 ---
 

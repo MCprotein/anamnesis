@@ -23,6 +23,10 @@ import {
   type UpgradeResult,
 } from "./commands/upgrade.js";
 import {
+  detectUpgradeProjectGuidance,
+  formatUpgradeProjectGuidance,
+} from "./commands/upgrade_project_guidance.js";
+import {
   promote,
   PromoteError,
   type PromoteResult,
@@ -1663,7 +1667,7 @@ function reportUpdate(result: UpdateResult): void {
   }
 }
 
-function reportUpgrade(result: UpgradeResult): void {
+function reportUpgrade(result: UpgradeResult, projectRoot: string = process.cwd()): void {
   console.log(`anamnesis upgrade — ${result.packageName}`);
   console.log(`  registry: ${result.registry}`);
   console.log(`  version: ${result.currentVersion} -> ${result.latestVersion}`);
@@ -1679,6 +1683,12 @@ function reportUpgrade(result: UpgradeResult): void {
     console.log("  already up to date");
   } else {
     console.log("  could not compare versions; inspect the registry result before applying");
+  }
+  for (const line of formatUpgradeProjectGuidance(
+    result,
+    detectUpgradeProjectGuidance(projectRoot),
+  )) {
+    console.log(line);
   }
 }
 
@@ -1759,7 +1769,7 @@ async function main(argv: string[]): Promise<number> {
         if (flags["json"] === true) {
           console.log(JSON.stringify(result, null, 2));
         } else {
-          reportUpgrade(result);
+          reportUpgrade(result, process.cwd());
         }
         return 0;
       } catch (e) {
