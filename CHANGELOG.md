@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-07-02
+
 ### Added
 
 - Added the initial `task_harness` capability with a base

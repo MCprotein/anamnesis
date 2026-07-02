@@ -12,27 +12,27 @@ This section is generated from runtime evidence. It separates README-ready
 claim candidates from evidence that still needs more repo shapes or manual
 review.
 
-Generated: 2026-07-02T09:03:18.934Z
-Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (47 valid, 0 invalid)
+Generated: 2026-07-02T12:16:26.108Z
+Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (48 valid, 0 invalid)
 
 ## Evidence Entries
 
 | Project | Kind | Generated | Evidence | Result | Claim candidate |
 |---|---|---|---|---|---|
+| anamnesis | dogfood-check | 2026-07-02T12:16:26.108Z | docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl | dogfood 5/5; tools claude-code, codex, cursor | anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor. |
 | anamnesis | benchmark-report | 2026-07-02T09:03:18.934Z | docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl | ready layers 3/5; continuity 6/6; doctor 0 errors, 0 warnings | anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0. |
-| anamnesis | dogfood-check | 2026-07-02T09:03:04.400Z | docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl | dogfood 5/5; tools claude-code, codex, cursor | anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor. |
 | sanitized-nextjs-adoption | benchmark-compare | 2026-05-07T07:19:25.533Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | 3 improved, 0 regressed, 6 unchanged | sanitized-nextjs-adoption before/after benchmark improved 3 scorecard dimension(s) with 0 regressions. |
 | sanitized-nextjs-frontend | benchmark-report | 2026-05-07T07:15:06.340Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 4/5; continuity 6/6; doctor 0 errors, 1 warnings | sanitized-nextjs-frontend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0. |
 | sanitized-nest-k8s-backend | benchmark-report | 2026-05-07T07:15:06.340Z | docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl | ready layers 4/5; continuity 6/6; doctor 0 errors, 2 warnings | sanitized-nest-k8s-backend current benchmark has continuity 6/6, ready layers 4/5, and doctor errors 0. |
 
 ## README Claim Candidates
 
-- **benchmark-report-anamnesis**: anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0.
-  Evidence: docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl
-  Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
 - **dogfood-check-anamnesis**: anamnesis dogfood check passes 5/5 continuity criteria across claude-code, codex, cursor.
   Evidence: docs/DOGFOOD.md; .anamnesis/evidence/events.jsonl
   Boundary: Self-check evidence for this managed repo; skipped external smokes must stay disclosed.
+- **benchmark-report-anamnesis**: anamnesis current benchmark has continuity 6/6, ready layers 3/5, and doctor errors 0.
+  Evidence: docs/BENCHMARKS.md; .anamnesis/evidence/events.jsonl
+  Boundary: Current deterministic context surface only; limitations depend on installed fragments and missing Layer A/B targets.
 - **benchmark-compare-sanitized-nextjs-adoption**: sanitized-nextjs-adoption before/after benchmark improved 3 scorecard dimension(s) with 0 regressions.
   Evidence: docs/BENCHMARKS.md; docs/benchmark-evidence/public-shapes.jsonl
   Boundary: Same-repo deterministic scorecard delta only; not a model-intelligence benchmark.

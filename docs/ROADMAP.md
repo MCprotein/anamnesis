@@ -9,10 +9,10 @@ releases as user feedback and verified product evidence arrive.
 
 Release-state note: roadmap sections can describe main-branch design and WIP
 before the corresponding package is published. Verify public availability with
-the registries, not roadmap headings. On 2026-07-02, both npmjs.org and GitHub
-Packages reported `@mcprotein/anamnesis@0.7.0` as latest while this repository
-contained unreleased 1.x work; release prep must publish npmjs.org and GitHub
-Packages in parity before marking a version shipped.
+the registries, not roadmap headings. During the 2026-07-02 v1.7.0 release
+cut, both npmjs.org and GitHub Packages still reported
+`@mcprotein/anamnesis@0.7.0` as latest; release prep must publish npmjs.org and
+GitHub Packages in parity before marking the public package complete.
 
 Branch-state note: the current unreleased WIP line is allowed to remain in the
 existing branch state. Starting with the next version line, version-specific
@@ -1006,7 +1006,7 @@ Progress notes:
 
 ---
 
-## v1.7 — *unreleased WIP*
+## v1.7 — *release cut 2026-07-02*
 
 > **Theme: task harnesses, behavior verification, and adapter security**
 
@@ -1100,9 +1100,15 @@ Progress notes:
 
 ---
 
-## v1.8 — *unreleased WIP; release after v1.7*
+## v1.8 — *follow-up slot after v1.7 evidence*
 
 > **Theme: handoff lifecycle automation with bounded markdown retention**
+
+The core handoff lifecycle implementation landed during the v1.7 release cut
+because it is tightly coupled to lifecycle cleanup, semantic freshness
+diagnostics, and base@15 SessionStart guardrails. Keep this section as the
+design and follow-up acceptance record; do not cut a separate package version
+only to rename behavior that already shipped in v1.7.
 
 Handoff should become a lifecycle-managed project artifact, not an unbounded
 folder of session notes. anamnesis should keep handoff state as repo-local
