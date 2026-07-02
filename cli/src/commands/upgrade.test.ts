@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_UPGRADE_REGISTRY, upgrade, UpgradeError } from "./upgrade.js";
+import {
+  DEFAULT_UPGRADE_FETCH_TIMEOUT_MS,
+  DEFAULT_UPGRADE_REGISTRY,
+  upgrade,
+  UpgradeError,
+} from "./upgrade.js";
 
 describe("upgrade", () => {
   it("reports an available npm upgrade without applying by default", () => {
@@ -25,8 +30,8 @@ describe("upgrade", () => {
       "install",
       "-g",
       "@mcprotein/anamnesis@1.6.0",
-      "--registry",
-      DEFAULT_UPGRADE_REGISTRY,
+      ...npmRegistryArgs("@mcprotein/anamnesis"),
+      ...npmFetchArgs(),
     ]);
     expect(calls).toEqual([]);
   });
@@ -51,8 +56,8 @@ describe("upgrade", () => {
           "install",
           "-g",
           "@mcprotein/anamnesis@1.6.0",
-          "--registry",
-          DEFAULT_UPGRADE_REGISTRY,
+          ...npmRegistryArgs("@mcprotein/anamnesis"),
+          ...npmFetchArgs(),
         ],
       },
     ]);
@@ -95,10 +100,84 @@ describe("upgrade", () => {
           "view",
           "@mcprotein/anamnesis@latest",
           "version",
-          "--registry",
-          DEFAULT_UPGRADE_REGISTRY,
+          ...npmRegistryArgs("@mcprotein/anamnesis"),
+          ...npmFetchArgs(),
         ],
       },
+    ]);
+  });
+
+  it("passes a command timeout to registry lookup and install calls", () => {
+    const calls: Array<{
+      command: string;
+      args: string[];
+      timeout?: number;
+      stdio?: "pipe" | "inherit";
+    }> = [];
+    const result = upgrade({
+      currentVersion: "0.7.0",
+      apply: true,
+      commandTimeoutMs: 1234,
+      fetchTimeoutMs: 567,
+      runner(command, args, options) {
+        calls.push({
+          command,
+          args,
+          timeout: options.timeout,
+          stdio: options.stdio,
+        });
+        return "1.6.0\n";
+      },
+    });
+
+    expect(result.applied).toBe(true);
+    expect(calls).toEqual([
+      {
+        command: "npm",
+        args: [
+          "view",
+          "@mcprotein/anamnesis@latest",
+          "version",
+          ...npmRegistryArgs("@mcprotein/anamnesis"),
+          "--fetch-timeout=567",
+          "--fetch-retries=0",
+        ],
+        timeout: 1234,
+        stdio: undefined,
+      },
+      {
+        command: "npm",
+        args: [
+          "install",
+          "-g",
+          "@mcprotein/anamnesis@1.6.0",
+          ...npmRegistryArgs("@mcprotein/anamnesis"),
+          "--fetch-timeout=567",
+          "--fetch-retries=0",
+        ],
+        timeout: 1234,
+        stdio: "inherit",
+      },
+    ]);
+  });
+
+  it("does not add scoped registry overrides for unscoped packages", () => {
+    const calls: Array<{ args: string[] }> = [];
+    upgrade({
+      currentVersion: "0.7.0",
+      packageName: "anamnesis-test",
+      runner(_command, args) {
+        calls.push({ args });
+        return "1.6.0\n";
+      },
+    });
+
+    expect(calls[0]?.args).toEqual([
+      "view",
+      "anamnesis-test@latest",
+      "version",
+      `--registry=${DEFAULT_UPGRADE_REGISTRY}`,
+      ...npmFetchArgs(),
     ]);
   });
 
@@ -113,3 +192,19 @@ describe("upgrade", () => {
     ).toThrow(UpgradeError);
   });
 });
+
+function npmRegistryArgs(packageName: string): string[] {
+  const args = [`--registry=${DEFAULT_UPGRADE_REGISTRY}`];
+  const scope = packageName.match(/^(@[^/]+)\//)?.[1];
+  if (scope) {
+    args.push(`--${scope}:registry=${DEFAULT_UPGRADE_REGISTRY}`);
+  }
+  return args;
+}
+
+function npmFetchArgs(): string[] {
+  return [
+    `--fetch-timeout=${DEFAULT_UPGRADE_FETCH_TIMEOUT_MS}`,
+    "--fetch-retries=0",
+  ];
+}

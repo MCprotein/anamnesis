@@ -2,6 +2,8 @@ import { execFileSync } from "node:child_process";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "../core/version.js";
 
 export const DEFAULT_UPGRADE_REGISTRY = "https://registry.npmjs.org";
+export const DEFAULT_UPGRADE_FETCH_TIMEOUT_MS = 10_000;
+export const DEFAULT_UPGRADE_COMMAND_TIMEOUT_MS = 15_000;
 
 export type UpgradeStatus =
   | "up-to-date"
@@ -26,13 +28,19 @@ export interface UpgradeOptions {
   currentVersion?: string;
   latestVersion?: string;
   packageName?: string;
+  fetchTimeoutMs?: number;
+  commandTimeoutMs?: number;
   runner?: CommandRunner;
 }
 
 type CommandRunner = (
   command: string,
   args: string[],
-  options: { encoding?: BufferEncoding; stdio?: "pipe" | "inherit" },
+  options: {
+    encoding?: BufferEncoding;
+    stdio?: "pipe" | "inherit";
+    timeout?: number;
+  },
 ) => string | Buffer;
 
 export class UpgradeError extends Error {
@@ -46,9 +54,19 @@ export function upgrade(opts: UpgradeOptions = {}): UpgradeResult {
   const packageName = opts.packageName ?? PACKAGE_NAME;
   const registry = opts.registry ?? DEFAULT_UPGRADE_REGISTRY;
   const currentVersion = opts.currentVersion ?? PACKAGE_VERSION;
+  const fetchTimeoutMs = opts.fetchTimeoutMs ?? DEFAULT_UPGRADE_FETCH_TIMEOUT_MS;
+  const commandTimeoutMs =
+    opts.commandTimeoutMs ?? DEFAULT_UPGRADE_COMMAND_TIMEOUT_MS;
   const runner = opts.runner ?? defaultRunner;
   const latestVersion =
-    opts.latestVersion ?? readLatestVersion({ packageName, registry, runner });
+    opts.latestVersion ??
+    readLatestVersion({
+      packageName,
+      registry,
+      fetchTimeoutMs,
+      commandTimeoutMs,
+      runner,
+    });
   const status = upgradeStatus(currentVersion, latestVersion);
   const updateAvailable = status === "update-available";
   const installCommand = updateAvailable
@@ -57,13 +75,16 @@ export function upgrade(opts: UpgradeOptions = {}): UpgradeResult {
         "install",
         "-g",
         `${packageName}@${latestVersion}`,
-        "--registry",
-        registry,
+        ...npmRegistryArgs(packageName, registry),
+        ...npmFetchArgs(fetchTimeoutMs),
       ]
     : [];
 
   if (opts.apply === true && updateAvailable) {
-    runner("npm", installCommand.slice(1), { stdio: "inherit" });
+    runner("npm", installCommand.slice(1), {
+      stdio: "inherit",
+      timeout: commandTimeoutMs,
+    });
   }
 
   return {
@@ -81,13 +102,21 @@ export function upgrade(opts: UpgradeOptions = {}): UpgradeResult {
 function readLatestVersion(input: {
   packageName: string;
   registry: string;
+  fetchTimeoutMs: number;
+  commandTimeoutMs: number;
   runner: CommandRunner;
 }): string {
   try {
     const output = input.runner(
       "npm",
-      ["view", `${input.packageName}@latest`, "version", "--registry", input.registry],
-      { encoding: "utf8" },
+      [
+        "view",
+        `${input.packageName}@latest`,
+        "version",
+        ...npmRegistryArgs(input.packageName, input.registry),
+        ...npmFetchArgs(input.fetchTimeoutMs),
+      ],
+      { encoding: "utf8", timeout: input.commandTimeoutMs },
     );
     const latest = String(output).trim();
     if (latest.length === 0) {
@@ -100,6 +129,22 @@ function readLatestVersion(input: {
       `could not read ${input.packageName}@latest from ${input.registry}: ${(e as Error).message}`,
     );
   }
+}
+
+function npmRegistryArgs(packageName: string, registry: string): string[] {
+  const args = [`--registry=${registry}`];
+  const scope = packageName.match(/^(@[^/]+)\//)?.[1];
+  if (scope) {
+    args.push(`--${scope}:registry=${registry}`);
+  }
+  return args;
+}
+
+function npmFetchArgs(fetchTimeoutMs: number): string[] {
+  return [
+    `--fetch-timeout=${fetchTimeoutMs}`,
+    "--fetch-retries=0",
+  ];
 }
 
 function upgradeStatus(currentVersion: string, latestVersion: string): UpgradeStatus {
@@ -141,7 +186,11 @@ function parseSemver(
 function defaultRunner(
   command: string,
   args: string[],
-  options: { encoding?: BufferEncoding; stdio?: "pipe" | "inherit" },
+  options: {
+    encoding?: BufferEncoding;
+    stdio?: "pipe" | "inherit";
+    timeout?: number;
+  },
 ): string | Buffer {
   return execFileSync(command, args, options);
 }

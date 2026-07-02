@@ -12,6 +12,9 @@ could include breaking changes.
 - Improved `anamnesis upgrade` text output so it explicitly separates CLI
   package upgrade from project-managed file updates and shows the next
   `update` / `doctor` commands for managed projects.
+- Hardened `anamnesis upgrade` registry calls so scoped package lookups
+  explicitly use the requested registry, disable fetch retries, and time out
+  instead of waiting indefinitely on a slow registry/auth path.
 
 ### Documentation
 
