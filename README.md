@@ -328,7 +328,7 @@ used for deterministic README score claims.
 | **v1.5** | Compact SessionStart defaults and session-context benchmark graphs | shipped 2026-06-19 |
 | **v1.6** | Repo-local context index/query/resume and contradiction diagnostics | shipped 2026-06-25 |
 | **v1.7** | Retrieval-only task harnesses, lifecycle cleanup, handoff retention, and release parity | shipped 2026-07-02; latest patch 1.7.1 |
-| **v1.8** | Configurable bounded handoff retention policy | in progress |
+| **v1.8** | Configurable bounded handoff retention policy | shipped 2026-07-02 |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

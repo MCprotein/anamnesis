@@ -1107,17 +1107,15 @@ Progress notes:
 
 ---
 
-## v1.8 — *follow-up slot after v1.7 evidence*
+## v1.8 — *shipped 2026-07-02*
 
 > **Theme: handoff lifecycle automation with bounded markdown retention**
 
 The core handoff lifecycle implementation landed during the v1.7 release cut
 because it is tightly coupled to lifecycle cleanup, semantic freshness
-diagnostics, and base@15 SessionStart guardrails. Keep this section as the
-design and follow-up acceptance record; do not cut a separate package version
-only to rename behavior that already shipped in v1.7. The remaining v1.8 work
-is to finish configurable lifecycle policy and keep startup injection,
-diagnostics, resume, and GC from drifting.
+diagnostics, and base@15 SessionStart guardrails. v1.8 completed the
+configurable lifecycle policy layer and aligned startup injection, diagnostics,
+resume, and GC on the same retention settings.
 
 Handoff should become a lifecycle-managed project artifact, not an unbounded
 folder of session notes. anamnesis should keep handoff state as repo-local
@@ -1134,7 +1132,7 @@ Design: [`docs/HANDOFF-LIFECYCLE.md`](HANDOFF-LIFECYCLE.md)
 | 4 | **Handoff retention in GC** | review-only shipped | Extended `anamnesis gc --dry-run` beyond task harnesses to report handoff archive count, byte budgets, active references, cold/deprecated review candidates, and protected active references. `gc --apply` still leaves handoff archives review-only; close/deprecate removes them from startup context without deleting the markdown record. |
 | 5 | **Semantic freshness diagnostics** | done | Taught `status`, `doctor`, and `context diagnose` to warn when `active.md` is structurally valid but semantically stale: old git ref on a clean worktree, completed entries under active sections, missing referenced files, inactive active-referenced archives, or handoff byte-budget pressure. |
 | 6 | **SessionStart budget guardrails** | done | Updated Claude Code and Codex SessionStart handoff injection to keep startup bounded: hot summary only, warm active archive source pointers only, cold/deprecated/superseded archives excluded, and full archive bodies available only through explicit debug mode for eligible active archives. Shipped through base@15. |
-| 7 | **Configurable bounded retention policy** | in progress | Handoff lifecycle thresholds are moving from code-only defaults into project policy. `max_warm_handoff_archives`, `max_cold_handoff_age_days`, and `max_handoff_bytes` resolve from Agentfile settings, with CLI flags remaining one-run overrides. `gc`, `status`, `doctor`, and `context resume` now share the resolver path; SessionStart hooks use the warm fallback count when `active.md` is absent. Deletion stays explicit and backup/hash gated; automatic policy enforcement must not silently remove user-authored handoff records. |
+| 7 | **Configurable bounded retention policy** | done | Handoff lifecycle thresholds moved from code-only defaults into project policy. `max_warm_handoff_archives`, `max_cold_handoff_age_days`, and `max_handoff_bytes` resolve from Agentfile settings, with CLI flags remaining one-run overrides. `gc`, `status`, `doctor`, and `context resume` share the resolver path; SessionStart hooks use the warm fallback count when `active.md` is absent. Deletion stays explicit and backup/hash gated; automatic policy enforcement must not silently remove user-authored handoff records. |
 
 Exit criteria:
 - Handoff startup context stays compact and does not inject full archives by

@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-07-02
+
 ### Added
 
 - Added configurable handoff retention policy settings to Agentfile:
