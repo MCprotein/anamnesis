@@ -44,7 +44,8 @@ Branch roles:
 - `main` is the stable release line. It should not carry next-version WIP before
   the current version is published.
 - `release/vX.Y` owns one minor release line. Create it before starting
-  version-specific implementation work.
+  version-specific implementation work. Delete it after the verified release
+  is merged, tagged, published, and no longer needed for patch recovery.
 - `feat/vX.Y/<topic>` owns focused work for that release line and merges back
   into `release/vX.Y`.
 - `hotfix/vX.Y.Z` is reserved for urgent patch work from the released state.
@@ -58,7 +59,17 @@ Release flow from the next version line onward:
 4. Run the release readiness checks on the release branch.
 5. Merge the verified release branch into `main`, tag `vX.Y.Z`, then push
    `main` and the tag.
-6. Do not start `release/vX.(Y+1)` work on `main` until `vX.Y.Z` is published
+6. After both registries and the post-publish smoke gate pass, delete the
+   merged release branch locally and remotely:
+
+   ```bash
+   git branch -d release/vX.Y
+   git push origin --delete release/vX.Y
+   ```
+
+   Keep the branch only when a documented release blocker or immediate patch
+   recovery need still exists.
+7. Do not start `release/vX.(Y+1)` work on `main` until `vX.Y.Z` is published
    or explicitly documented as blocked / intentionally unpublished.
 
 ## Release Steps

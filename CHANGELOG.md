@@ -22,6 +22,12 @@ could include breaking changes.
   `max_warm_handoff_archives: 0` when `active.md` is absent, preventing an old
   latest archive from being injected as startup fallback.
 
+### Documentation
+
+- Clarified release branch lifecycle policy: develop version work on
+  `release/vX.Y`, merge verified releases back to `main`, then delete the
+  merged release branch locally and remotely after publish smoke passes.
+
 ## [1.7.1] — 2026-07-02
 
 ### Fixed

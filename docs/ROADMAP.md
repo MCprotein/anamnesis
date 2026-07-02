@@ -18,8 +18,10 @@ Branch-state note: the current unreleased WIP line is allowed to remain in the
 existing branch state. Starting with the next version line, version-specific
 work should happen on `release/vX.Y` branches with focused `feat/vX.Y/<topic>`
 branches, then merge to `main` only when that release line is verified and
-ready to tag. This keeps roadmap WIP, package version, and registry state from
-drifting apart.
+ready to tag. After publish and post-publish smoke pass, delete the merged
+release branch locally and remotely unless a documented blocker or immediate
+patch recovery need remains. This keeps roadmap WIP, package version, registry
+state, and branch inventory from drifting apart.
 
 ## Product north star
 
