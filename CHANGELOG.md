@@ -12,6 +12,9 @@ could include breaking changes.
 - Added the v1.9 upgrade compatibility and project-update planning roadmap,
   including the current v1.8 upgrade audit findings, conflict choice gaps, and
   compatibility fixture targets.
+- Clarified the v1.9 upgrade UX target: package upgrade should hand off to
+  project `update` / `doctor` guidance, with room for interactive/TUI conflict
+  choices while keeping safe non-interactive defaults.
 - Refreshed repair guidance for active handoff diagnostics now that v1.8
   semantic freshness and lifecycle checks have shipped.
 

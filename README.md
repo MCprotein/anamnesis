@@ -75,6 +75,15 @@ anamnesis upgrade
 anamnesis upgrade --apply   # runs npm install -g only when a newer version exists
 ```
 
+Package upgrade only updates the installed CLI. In an existing managed project,
+preview project-managed file changes separately before applying them:
+
+```bash
+anamnesis update --dry-run --allow-exec-adapters
+anamnesis update --apply --allow-exec-adapters
+anamnesis doctor
+```
+
 Building from source instead (during development or for forks):
 
 ```bash

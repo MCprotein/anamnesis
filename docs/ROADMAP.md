@@ -1210,6 +1210,9 @@ Current behavior from the v1.8 audit:
 - `anamnesis upgrade --apply` upgrades the global CLI package only. It does not
   automatically run project `update`, `migrate agentfile`, `doctor`, ontology
   bootstrap, or adapter smoke checks.
+- The current `upgrade` report does not yet hand off clearly into the project
+  update flow. Users must already know that package upgrade and project-managed
+  surface update are separate steps.
 - `anamnesis update` is dry-run first, reads the existing Agentfile and
   manifest, preserves user-modified managed files, backs up files before
   writing updates, auto-adds required dependency fragments, and bumps
@@ -1236,18 +1239,23 @@ Current behavior from the v1.8 audit:
 |---|---|---|---|
 | 1 | **Upgrade compatibility matrix** | planned | Add fixtures for representative old project states: clean v1.4/v1.5/v1.7 projects, old Agentfiles without new optional settings, pinned fragments, user-modified managed regions, missing executable adapter permission, partial adapter installs, stale hook registrations, and suggested-but-declined fragments. Each fixture should prove `upgrade -> update dry-run -> apply/repair -> doctor` behavior without losing local edits. |
 | 2 | **Project upgrade plan command** | planned | Add a command or mode that connects package upgrade to project state, e.g. `anamnesis upgrade plan` or `anamnesis doctor --upgrade-plan`. It should report current CLI version, latest registry version, Agentfile schema support, fragment updates, blocked executable surfaces, pinned blocks, user-modified surfaces, new optional settings, and the exact next command(s). |
-| 3 | **Guided conflict choices** | planned | Convert common upgrade conflicts into explicit choices instead of only counts and prose: apply safe managed updates, include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or add suggestions to `declined`. Keep the default non-interactive path deterministic and safe. |
-| 4 | **Partial-upgrade state hardening** | planned | Audit whether `update --apply` can mark Agentfile fragment versions current while related managed surfaces stayed `user-modified` or `blocked`. If yes, record partial adoption explicitly or delay version bump for affected surfaces so `status`/`doctor` can distinguish fully upgraded fragments from preserved local drift. |
-| 5 | **Optional setting materialization policy** | planned | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
-| 6 | **Agentfile migration integration** | planned | Keep `anamnesis migrate agentfile` dry-run/apply/backup-first, but make `update` and the upgrade plan detect when a schema migration is required before rendering. No fragment render or managed file write should happen from a CLI that cannot parse the project schema safely. |
-| 7 | **Post-upgrade verification gate** | planned | Add a repeatable verification bundle for upgraded projects: `status`, `doctor`, update evidence, manifest drift summary, hook registration check, and one published-package fixture smoke. This should become the standard evidence for release notes when a release changes upgrade behavior. |
-| 8 | **Repair docs refresh** | planned | Update `docs/REPAIR.md`, README lifecycle notes, and any stale v1.8 handoff lifecycle language so users see the same upgrade flow as the CLI reports. Docs should distinguish package upgrade, project update, schema migration, and semantic agent tasks such as `/ontology-enrich` or `/handoff-prepare`. |
+| 3 | **Upgrade-to-update handoff UX** | planned | After `upgrade --apply`, print an explicit next-step block: package upgraded, project-managed files are unchanged until `update` runs, and the safe path is `update --dry-run`, optional `update --apply`, then `doctor`. In an anamnesis project, surface detected gates such as `--allow-exec-adapters`, `--bump-pinned`, user-modified managed files, malformed hook config, and manual-merge needs. Keep non-interactive output scriptable, and allow a later interactive/TUI chooser to present the same choices without changing defaults. |
+| 4 | **Guided conflict choices** | planned | Convert common upgrade conflicts into explicit choices instead of only counts and prose: apply safe managed updates, include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or add suggestions to `declined`. Keep the default non-interactive path deterministic and safe. |
+| 5 | **Partial-upgrade state hardening** | planned | Audit whether `update --apply` can mark Agentfile fragment versions current while related managed surfaces stayed `user-modified` or `blocked`. If yes, record partial adoption explicitly or delay version bump for affected surfaces so `status`/`doctor` can distinguish fully upgraded fragments from preserved local drift. |
+| 6 | **Optional setting materialization policy** | planned | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
+| 7 | **Agentfile migration integration** | planned | Keep `anamnesis migrate agentfile` dry-run/apply/backup-first, but make `update` and the upgrade plan detect when a schema migration is required before rendering. No fragment render or managed file write should happen from a CLI that cannot parse the project schema safely. |
+| 8 | **Post-upgrade verification gate** | planned | Add a repeatable verification bundle for upgraded projects: `status`, `doctor`, update evidence, manifest drift summary, hook registration check, and one published-package fixture smoke. This should become the standard evidence for release notes when a release changes upgrade behavior. |
+| 9 | **Repair docs refresh** | planned | Update `docs/REPAIR.md`, README lifecycle notes, and any stale v1.8 handoff lifecycle language so users see the same upgrade flow as the CLI reports. Docs should distinguish package upgrade, project update, schema migration, and semantic agent tasks such as `/ontology-enrich` or `/handoff-prepare`. |
 
 Exit criteria:
 
 - A user who has an older managed project can run one read-only command and
   understand whether the CLI package, Agentfile schema, fragment versions,
   managed files, hooks, ontology, and handoff lifecycle are current.
+- After `upgrade --apply`, the CLI explicitly tells users whether they are in
+  an anamnesis-managed project and which project `update` / `doctor` command
+  to run next; users should not confuse package upgrade with project surface
+  upgrade.
 - Clean old projects can upgrade through a documented command sequence without
   losing user-authored content, with backups and runtime evidence written on
   apply.
@@ -1272,6 +1280,10 @@ Progress notes:
   semantic memory by agent workflows. This is safe but fragmented, so v1.9
   should turn the existing primitives into a coherent upgrade plan and conflict
   choice flow.
+- 2026-07-02: Clarified the user-facing upgrade UX requirement. `upgrade`
+  should hand off to project `update` guidance directly, with scriptable
+  command output first and optional interactive/TUI conflict choices using the
+  same underlying plan.
 
 ---
 
