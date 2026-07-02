@@ -78,10 +78,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
           {
             echo "@mcprotein:registry=https://npm.pkg.github.com"
             echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
-          } >> ~/.npmrc
+          } >> "$npmrc"
 
       - name: Check GitHub Packages published version
         id: github_packages_published
