@@ -99,14 +99,14 @@ function walkOntologyFiles(projectRoot) {
   return out.sort((a, b) => relative(projectRoot, a).localeCompare(relative(projectRoot, b)));
 }
 
-function newestArchivedHandoff(handoffDir) {
-  let newest = "";
-  let newestMtime = -1;
+function newestArchivedHandoffs(handoffDir, limit) {
+  if (limit <= 0) return [];
+  const candidates = [];
   let entries;
   try {
     entries = readdirSync(handoffDir, { withFileTypes: true });
   } catch {
-    return "";
+    return [];
   }
   for (const entry of entries) {
     if (!entry.isFile()) continue;
@@ -125,12 +125,12 @@ function newestArchivedHandoff(handoffDir) {
     } catch {
       continue;
     }
-    if (mtime > newestMtime) {
-      newestMtime = mtime;
-      newest = abs;
-    }
+    candidates.push({ abs, mtime });
   }
-  return newest;
+  return candidates
+    .sort((a, b) => b.mtime - a.mtime || a.abs.localeCompare(b.abs))
+    .slice(0, limit)
+    .map((candidate) => candidate.abs);
 }
 
 function agentfilePath(projectRoot) {
@@ -245,9 +245,10 @@ function isInactiveHandoffArchive(filePath) {
 function selectedHandoffArchives(projectRoot, activePath, handoffDir) {
   const policy = handoffRetentionPolicy(projectRoot);
   if (!fileExists(activePath)) {
-    if (policy.maxWarmHandoffArchives <= 0) return [];
-    const latest = newestArchivedHandoff(handoffDir);
-    return latest ? [latest] : [];
+    return newestArchivedHandoffs(
+      handoffDir,
+      policy.maxWarmHandoffArchives,
+    );
   }
   return activeHandoffArchiveRefs(activePath)
     .map((ref) => archivePathFromRef(projectRoot, ref))
@@ -418,17 +419,21 @@ function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
     if (summary.length > 0) {
       sections.push("", "Active task summary:", ...summary);
     }
-    const retrieval =
-      archives.length > 0
+    const retrieval = fileExists(active)
+      ? archives.length > 0
         ? "Retrieval rule: read active.md and the referenced warm archive before continuing non-trivial in-flight work."
-        : "Retrieval rule: read active.md before continuing non-trivial in-flight work; no warm archive is startup-active.";
+        : "Retrieval rule: read active.md before continuing non-trivial in-flight work; no warm archive is startup-active."
+      : "Retrieval rule: read the referenced warm archive before continuing non-trivial in-flight work.";
     sections.push("", retrieval, "--- end of handoff ---");
     return sections.join("\n");
   }
   pushFileSection(sections, projectRoot, `Source: ${relative(projectRoot, active).split(sep).join("/")}`, active, budget);
   for (const archive of archives) {
     const rel = relative(projectRoot, archive).split(sep).join("/");
-    pushFileSection(sections, projectRoot, `--- active referenced archived handoff: ${rel} ---`, archive, budget);
+    const label = fileExists(active)
+      ? "active referenced archived handoff"
+      : "warm archived handoff";
+    pushFileSection(sections, projectRoot, `--- ${label}: ${rel} ---`, archive, budget);
   }
   sections.push("--- end of handoff ---");
   return sections.join("\n\n");

@@ -18,9 +18,10 @@ could include breaking changes.
 
 ### Changed
 
-- Bumped the base fragment to v16 so SessionStart hooks can honor
-  `max_warm_handoff_archives: 0` when `active.md` is absent, preventing an old
-  latest archive from being injected as startup fallback.
+- Bumped the base fragment to v17 so SessionStart hooks can honor
+  `max_warm_handoff_archives` when `active.md` is absent: `0` disables latest
+  archive fallback, and positive values include only the newest N warm archive
+  pointers.
 
 ### Documentation
 

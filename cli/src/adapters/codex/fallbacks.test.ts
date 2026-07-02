@@ -433,6 +433,65 @@ describe("codex executable_hook fallback", () => {
     expect(compact.stdout).toBe("");
   });
 
+  it("uses warm handoff budget as archive count in native SessionStart without active.md", () => {
+    const projectRoot = tmpDir("anamnesis-codex-handoff-session-start-budget-");
+    const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [codex]",
+        "fragments: []",
+        "settings:",
+        "  max_warm_handoff_archives: 2",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    for (const name of ["old", "middle", "new"]) {
+      fs.writeFileSync(
+        path.join(handoffDir, `${name}.md`),
+        `# ${name}\n\n${name.toUpperCase()}_BODY\n`,
+        "utf8",
+      );
+    }
+    fs.utimesSync(
+      path.join(handoffDir, "old.md"),
+      new Date("2026-06-01T00:00:00.000Z"),
+      new Date("2026-06-01T00:00:00.000Z"),
+    );
+    fs.utimesSync(
+      path.join(handoffDir, "middle.md"),
+      new Date("2026-06-02T00:00:00.000Z"),
+      new Date("2026-06-02T00:00:00.000Z"),
+    );
+    fs.utimesSync(
+      path.join(handoffDir, "new.md"),
+      new Date("2026-06-03T00:00:00.000Z"),
+      new Date("2026-06-03T00:00:00.000Z"),
+    );
+
+    const wrapperPath = path.resolve("base/adapters/codex/hooks/session-start.mjs");
+    const compact = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      encoding: "utf8",
+    });
+
+    expect(compact.status).toBe(0);
+    expect(compact.stderr).toBe("");
+    const output = JSON.parse(compact.stdout) as {
+      hookSpecificOutput?: { additionalContext?: string };
+    };
+    const context = output.hookSpecificOutput?.additionalContext ?? "";
+    expect(context).toContain("- .anamnesis/handoff/new.md");
+    expect(context).toContain("- .anamnesis/handoff/middle.md");
+    expect(context).not.toContain("- .anamnesis/handoff/old.md");
+    expect(context).toContain("Retrieval rule: read the referenced warm archive");
+  });
+
   it("registers Stop hooks natively without a matcher", () => {
     fs.writeFileSync(
       path.join(fragmentDir, "adapters/claude-code/hooks/stop.sh"),

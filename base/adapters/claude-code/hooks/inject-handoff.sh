@@ -123,9 +123,7 @@ archive_abs_from_ref() {
   printf '%s/%s\n' "$PROJECT_ROOT" "$ref"
 }
 
-newest_eligible_archive() {
-  local newest=""
-  local newest_mtime=0
+eligible_archives() {
   local f=""
   local name=""
   local mtime=""
@@ -141,12 +139,8 @@ newest_eligible_archive() {
     else
       continue
     fi
-    if (( mtime > newest_mtime )); then
-      newest_mtime=$mtime
-      newest="$f"
-    fi
-  done
-  printf '%s\n' "$newest"
+    printf '%s\t%s\n' "$mtime" "$f"
+  done | sort -rn | awk -F '\t' '{ print $2 }'
 }
 
 selected_archives=()
@@ -159,10 +153,13 @@ if [[ -f "$active" ]]; then
   done < <(active_archive_refs "$active")
 else
   if (( MAX_WARM_HANDOFF_ARCHIVES > 0 )); then
-    latest="$(newest_eligible_archive)"
-    if [[ -n "$latest" ]]; then
-      selected_archives+=("$latest")
-    fi
+    selected_count=0
+    while IFS= read -r archive; do
+      [[ -n "$archive" ]] || continue
+      selected_archives+=("$archive")
+      selected_count=$((selected_count + 1))
+      (( selected_count >= MAX_WARM_HANDOFF_ARCHIVES )) && break
+    done < <(eligible_archives)
   fi
 fi
 
@@ -222,10 +219,12 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
     active_summary "$active"
   fi
   echo
-  if (( ${#selected_archives[@]} > 0 )); then
+  if [[ -f "$active" && ${#selected_archives[@]} -gt 0 ]]; then
     echo "Retrieval rule: read active.md and the referenced warm archive before continuing non-trivial in-flight work."
-  else
+  elif [[ -f "$active" ]]; then
     echo "Retrieval rule: read active.md before continuing non-trivial in-flight work; no warm archive is startup-active."
+  else
+    echo "Retrieval rule: read the referenced warm archive before continuing non-trivial in-flight work."
   fi
   echo "--- end of handoff ---"
   exit 0
@@ -242,7 +241,11 @@ fi
 if (( ${#selected_archives[@]} > 0 )); then
   for archive in "${selected_archives[@]}"; do
     rel="${archive#$PROJECT_ROOT/}"
-    echo "--- active referenced archived handoff: $rel ---"
+    if [[ -f "$active" ]]; then
+      echo "--- active referenced archived handoff: $rel ---"
+    else
+      echo "--- warm archived handoff: $rel ---"
+    fi
     echo
     cat "$archive"
     echo

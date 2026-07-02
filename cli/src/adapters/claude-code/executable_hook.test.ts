@@ -295,6 +295,65 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(compact.stdout).toBe("");
   });
 
+  it("uses warm handoff budget as an archive count when active.md is absent", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      [
+        "version: 1",
+        "project: { name: fixture }",
+        "tools: [claude-code]",
+        "fragments: []",
+        "settings:",
+        "  max_warm_handoff_archives: 2",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    for (const name of ["old", "middle", "new"]) {
+      fs.writeFileSync(
+        path.join(handoffDir, `${name}.md`),
+        `# ${name}\n\n${name.toUpperCase()}_BODY\n`,
+        "utf8",
+      );
+    }
+    fs.utimesSync(
+      path.join(handoffDir, "old.md"),
+      new Date("2026-06-01T00:00:00.000Z"),
+      new Date("2026-06-01T00:00:00.000Z"),
+    );
+    fs.utimesSync(
+      path.join(handoffDir, "middle.md"),
+      new Date("2026-06-02T00:00:00.000Z"),
+      new Date("2026-06-02T00:00:00.000Z"),
+    );
+    fs.utimesSync(
+      path.join(handoffDir, "new.md"),
+      new Date("2026-06-03T00:00:00.000Z"),
+      new Date("2026-06-03T00:00:00.000Z"),
+    );
+
+    const hook = path.resolve("base/adapters/claude-code/hooks/inject-handoff.sh");
+    const compact = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+      encoding: "utf8",
+    });
+
+    expect(compact.status).toBe(0);
+    expect(compact.stderr).toBe("");
+    expect(compact.stdout).toContain("- .anamnesis/handoff/new.md");
+    expect(compact.stdout).toContain("- .anamnesis/handoff/middle.md");
+    expect(compact.stdout).not.toContain("- .anamnesis/handoff/old.md");
+    expect(compact.stdout).toContain(
+      "Retrieval rule: read the referenced warm archive",
+    );
+  });
+
   it("dedupes handoff reminders for the same dirty git fingerprint", () => {
     if (process.platform === "win32") return;
 

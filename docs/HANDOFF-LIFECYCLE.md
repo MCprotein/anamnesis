@@ -41,6 +41,9 @@ Today, handoff is agent-authored:
   `max_warm_handoff_archives`, `max_cold_handoff_age_days`, and
   `max_handoff_bytes`. `anamnesis gc` CLI flags override those budgets for one
   run.
+- When `active.md` is absent, Claude Code and Codex SessionStart hooks include
+  only the newest N eligible warm archive pointers, where N is
+  `max_warm_handoff_archives`; `0` disables that fallback.
 - `gc --apply` may delete clean manifest-owned task harness candidates, but it
   still skips all handoff archive candidates and reports them as review-only.
 - `handoff draft` gathers git ref, recent commits, touched files, latest
