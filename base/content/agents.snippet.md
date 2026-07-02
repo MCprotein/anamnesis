@@ -15,7 +15,7 @@
 
 - `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.
 - `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.
-  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 compact 요약과 source pointer 로 자동 주입됨.
+  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.
 - `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
@@ -26,7 +26,7 @@
 
 1. `.anamnesis/handoff/` 디렉토리 존재 확인.
 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.
-3. active.md 가 가리키는 archive 또는 가장 최근 mtime 의 timestamp `*.md` 파일 1개를 추가로 읽기 (`active.md` 제외).
+3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.
 4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
 5. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
 

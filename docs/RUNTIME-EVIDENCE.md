@@ -16,6 +16,7 @@ need machine-readable proof beyond terminal output.
 - `anamnesis hooks summary --append`
 - `anamnesis init`
 - `anamnesis update --apply`
+- `anamnesis gc --apply`
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
 - `anamnesis benchmark trace --append`
@@ -25,9 +26,9 @@ need machine-readable proof beyond terminal output.
 Each record includes:
 
 - `kind`: `dogfood-check`, `doctor-check`, `hook-log-summary`,
-  `init-install`, `update-apply`, `fragment-lifecycle`, `benchmark-report`,
-  `benchmark-compare`, `benchmark-trace-rollup`, `agent-task-benchmark`, or
-  `prompt-delta-gate`
+  `init-install`, `update-apply`, `fragment-lifecycle`, `gc-apply`,
+  `benchmark-report`, `benchmark-compare`, `benchmark-trace-rollup`,
+  `agent-task-benchmark`, or `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -71,6 +72,11 @@ alongside successful `init` and `update --apply` runs. Summary schema
 Current runs do not send webhook traffic; the JSONL record is the local update
 notification surface.
 
+GC apply records use kind `gc-apply` and are written automatically when
+`anamnesis gc --apply` runs. The record captures deleted clean managed task
+harnesses, backup location, skipped user-authored or user-modified harnesses,
+review-only handoff candidates, and warning counts.
+
 Benchmark compare evidence records include before/after scorecard deltas and
 summary counts for improved, regressed, and unchanged dimensions.
 
@@ -112,7 +118,7 @@ such as missing before/after comparisons or insufficient public-safe repo
 shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
 non-gallery records such as `doctor-check`, `hook-log-summary`,
-`init-install`, `update-apply`, `benchmark-trace-rollup`,
+`init-install`, `update-apply`, `gc-apply`, `benchmark-trace-rollup`,
 `agent-task-benchmark`, and `prompt-delta-gate`.
 
 ## Boundary

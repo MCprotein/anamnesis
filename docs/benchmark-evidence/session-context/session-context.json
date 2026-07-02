@@ -1,6 +1,6 @@
 {
   "schema_version": "anamnesis.session_context_benchmark.v1",
-  "generatedAt": "2026-06-19T03:47:03.664Z",
+  "generatedAt": "2026-07-02T08:32:31.471Z",
   "fixtures": [
     {
       "id": "tiny",
@@ -427,5 +427,5 @@
     "fixtureGrowthSvg": "docs/benchmark-evidence/session-context/fixture-growth.svg",
     "capSuccessSummarySvg": "docs/benchmark-evidence/session-context/cap-success-summary.svg"
   },
-  "markdown": "# Session Context Benchmark — 2026-06-19T03:47:03.664Z\n\nDeterministic benchmark comparing full SessionStart file injection with compact source-pointer startup context.\n\nFixtures: 7\nCompact required rules present: 7/7\nLarge fixture compact token reduction: 94%\nCap exceeded: compact 0, full 2\n\n| Fixture | Full tokens | Compact tokens | Reduction | Compact source pointers | Compact cap | Required rules |\n|---|---:|---:|---:|---:|---|---:|\n| Tiny project | 88 | 126 | -43% | 2 | ok | 1/1 |\n| Normal handoff | 439 | 235 | 46% | 4 | ok | 1/1 |\n| Large ontology | 5352 | 298 | 94% | 5 | ok | 1/1 |\n| Stale handoff | 495 | 207 | 58% | 3 | ok | 1/1 |\n| Conflicting ontology | 744 | 229 | 69% | 3 | ok | 1/1 |\n| Missing handoff | 196 | 165 | 16% | 2 | ok | 1/1 |\n| Multi-scope repo | 238 | 237 | 0% | 3 | ok | 1/1 |\n\n## Charts\n\n![Token by mode](token-by-mode.svg)\n![Payload composition](payload-composition.svg)\n![Fixture growth](fixture-growth.svg)\n![Cap success summary](cap-success-summary.svg)"
+  "markdown": "# Session Context Benchmark — 2026-07-02T08:32:31.471Z\n\nDeterministic benchmark comparing full SessionStart file injection with compact source-pointer startup context.\n\nFixtures: 7\nCompact required rules present: 7/7\nLarge fixture compact token reduction: 94%\nCap exceeded: compact 0, full 2\n\n| Fixture | Full tokens | Compact tokens | Reduction | Compact source pointers | Compact cap | Required rules |\n|---|---:|---:|---:|---:|---|---:|\n| Tiny project | 88 | 126 | -43% | 2 | ok | 1/1 |\n| Normal handoff | 439 | 235 | 46% | 4 | ok | 1/1 |\n| Large ontology | 5352 | 298 | 94% | 5 | ok | 1/1 |\n| Stale handoff | 495 | 207 | 58% | 3 | ok | 1/1 |\n| Conflicting ontology | 744 | 229 | 69% | 3 | ok | 1/1 |\n| Missing handoff | 196 | 165 | 16% | 2 | ok | 1/1 |\n| Multi-scope repo | 238 | 237 | 0% | 3 | ok | 1/1 |\n\n## Charts\n\n![Token by mode](token-by-mode.svg)\n![Payload composition](payload-composition.svg)\n![Fixture growth](fixture-growth.svg)\n![Cap success summary](cap-success-summary.svg)"
 }

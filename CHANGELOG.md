@@ -15,10 +15,10 @@ could include breaking changes.
 - Added `task-harness` entries to `anamnesis context index/query` so harness
   contracts are retrievable without injecting every harness body at session
   startup.
-- Added preview-only `anamnesis gc --dry-run` task-harness lifecycle reporting
-  for stale current harnesses, deprecated/superseded reusable harnesses,
-  count-budget pressure, disk-budget pressure, and managed vs user-authored
-  cleanup recommendations.
+- Added `anamnesis gc --dry-run` task-harness lifecycle reporting for stale
+  current harnesses, deprecated/superseded reusable harnesses, count-budget
+  pressure, disk-budget pressure, and managed vs user-authored cleanup
+  recommendations.
 - Added v1.7 behavior metrics to `anamnesis benchmark task`, `task-compare`,
   `task-series`, and `prompt-gate` for source citations, managed-region edit
   attempts, bootstrap edit attempts, handoff refresh success, matched harness
@@ -31,14 +31,57 @@ could include breaking changes.
   `doctor`, warning when managed hooks under-declare writes, repo-external
   writes, network access, likely credential touches, external-production
   commands, or shell safety settings.
+- Added stale Codex native hook registration warnings when an
+  anamnesis-managed hook command points at a missing wrapper file, plus fixture
+  coverage for credential-touching and external-production executable hooks.
+- Added advisory agent-config damage diagnostics to `anamnesis status` and
+  `doctor`, warning about full handoff archives copied into startup context,
+  adapter-parity overclaims in docs, hand-authored `.bootstrap.yaml` files, and
+  duplicated managed region markers.
+- Added preview-only handoff lifecycle reporting to `anamnesis gc --dry-run`,
+  classifying active handoff state into hot, warm, cold, and deprecated tiers
+  while preserving active archive references.
+- Added `anamnesis handoff draft`, a preview-safe handoff drafting command
+  that gathers git state, recent commits, touched files, latest evidence, and
+  existing handoff pointers without finalizing `active.md`.
+- Added preview-first `anamnesis handoff close` and `handoff deprecate`
+  commands to mark finalized archives closed, deprecated, or superseded and
+  remove matching active entries without deleting archive files.
+- Added semantic freshness diagnostics for active handoff state to
+  `anamnesis context diagnose`, `status`, and `doctor`, covering completed
+  entries left open, inactive active-referenced archives, missing file
+  pointers, clean-worktree stale git refs, and handoff byte-budget pressure.
+- Added safe `anamnesis gc --apply` cleanup for clean manifest-owned task
+  harness candidates. Apply mode backs up deleted harnesses under
+  `.anamnesis/backups/`, updates the manifest, records `gc-apply` runtime
+  evidence, and keeps user-authored, user-modified, and handoff candidates
+  review-only.
+- Added `anamnesis upgrade`, a CLI self-update helper that checks npmjs.org
+  for the latest published `@mcprotein/anamnesis` version and runs
+  `npm install -g` only with `--apply` when the registry version is newer.
+
+### Changed
+
+- Changed handoff lifecycle active-reference detection to use only `Current
+  focus` and `Active tasks`; `Recently completed` archive pointers no longer
+  keep closed archives hot or protected from lifecycle review.
+- Bumped the base fragment to v15 so existing projects can receive
+  lifecycle-aware SessionStart handoff guardrails through `anamnesis update`.
+- Changed the release workflow to publish the same `package.json` version to
+  both npmjs.org and GitHub Packages, then verify registry parity.
+- Replaced the README's static published-version badge with a live npm registry
+  badge so main-branch docs do not overclaim a version that was not published.
 
 ### Documentation
 
 - Recorded the first public-safe v1.7 full-vs-compact behavior benchmark pair,
   including source-citation, protected-edit, matched-harness, token, and graph
   evidence.
-- Added the planned v1.8 handoff lifecycle design, documenting hot/warm/cold
-  and deprecated handoff tiers with bounded markdown retention.
+- Added the v1.8 handoff lifecycle design, documenting hot/warm/cold and
+  deprecated handoff tiers with bounded markdown retention.
+- Documented the release branch policy: keep the current WIP line as-is, then
+  use version-scoped `release/vX.Y` branches for future version work before
+  merging verified releases back to `main`.
 - Moved historical Agentfile/docs audit records under `docs/deprecated/` and
   updated active documentation links to point at current sources.
 

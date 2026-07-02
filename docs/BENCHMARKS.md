@@ -100,3 +100,372 @@ Boundary:
   covered.
 - Private validation may inform internal prioritization, but it must not be
   copied into public docs or package artifacts.
+
+
+## Benchmark Report — 2026-07-02T07:45:35.483Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 25 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 25 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T07:56:38.583Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 27 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 27 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T08:02:38.792Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 29 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 29 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T08:12:35.026Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 31 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 31 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T08:22:49.470Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 34 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 34 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T08:33:08.410Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 38 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 38 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T08:43:57.196Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 40 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 40 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T08:46:17.336Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 42 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 42 valid, 0 invalid
+
+
+## Benchmark Report — 2026-07-02T09:03:18.934Z
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Ready layers: 3/5
+
+Scorecard:
+
+| Dimension | Value |
+|---|---:|
+| Ready layers | 3/5 |
+| Continuity checks | 6/6 |
+| Ontology warnings | 0 |
+| Doctor errors | 0 |
+| Doctor warnings | 0 |
+| Codex hook warnings | 0 |
+| Adapter surfaces | 1/1 |
+| Evidence records | 44 valid / 0 invalid |
+
+| Layer | Status | Score | Detail |
+|---|---|---:|---|
+| Static ontology | ready | 1/1 | 1 static ontology file(s) found |
+| Layer A bootstrap | partial | 0/0 | 0 bootstrap file(s) found; no stale or missing Layer A warnings |
+| Layer B enrichment | partial | 0/0 | 0 enriched file(s) found; no missing semantic enrichment warnings |
+| Context continuity | ready | 6/6 | 6/6 continuity checks passing |
+| Adapter surfaces | ready | 1/1 | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+
+Ontology files:
+- static: `.anamnesis/ontology/base.yaml`
+- bootstrap: (none)
+- enriched: (none)
+
+Bootstrap dry-run outcomes: skipped-no-introspector=1
+Continuity: ready (6/6)
+Ontology gaps: 0 warning(s), 1 info
+Doctor: ok (0 error(s), 0 warning(s))
+Codex hook warnings: 0
+Evidence records: 44 valid, 0 invalid

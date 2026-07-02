@@ -1,0 +1,89 @@
+id: base
+version: 14
+description: >
+  Always-installed baseline. Provides ontology injection, uncommitted-changes
+  reminder, handoff injection/reminders, the load-context slash command/skill,
+  the ontology-enrich lifecycle/schema contract, the agent-guided
+  anamnesis-init workflow, the context-continuity task harness, and the
+  AGENTS.md baseline region. anamnesis init auto-includes this fragment
+  regardless of rulebook matches.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/inject-ontology.sh
+    adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
+
+  - type: executable_hook
+    event: PostToolUse:Edit
+    source: adapters/claude-code/hooks/remind-uncommitted.sh
+    adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
+
+  - type: executable_hook
+    event: SessionStart
+    source: adapters/claude-code/hooks/inject-handoff.sh
+    adapters_supported: [claude-code, codex]
+    side_effects: [read-only]
+
+  - type: executable_hook
+    event: Stop
+    source: adapters/claude-code/hooks/handoff-reminder.sh
+    adapters_supported: [claude-code, codex]
+    side_effects: [local-write, repo-external-write]
+
+  - type: slash_command
+    name: load-context
+    source: adapters/claude-code/commands/load-context.md
+    side_effects: [read-only]
+
+  - type: slash_command
+    name: handoff-prepare
+    source: adapters/claude-code/commands/handoff-prepare.md
+    side_effects: [local-write]
+
+  - type: skill
+    name: load-context
+    source: adapters/claude-code/skills/load-context
+    side_effects: [read-only]
+
+  - type: skill
+    name: ontology-enrich
+    source: adapters/claude-code/skills/ontology-enrich
+    side_effects: [local-write]
+
+  - type: skill
+    name: anamnesis-init
+    source: adapters/claude-code/skills/anamnesis-init
+    side_effects: [local-write]
+
+  - type: task_harness
+    name: context-continuity
+    source: task-harnesses/context-continuity.yaml
+    lifecycle: reusable
+
+owns:
+  - region: anamnesis-base in AGENTS.md
+  - file: .anamnesis/ontology/base.yaml
+  - file: .anamnesis/task-harnesses/context-continuity.yaml
+  - file: .anamnesis/codex-native-hooks/session-start.mjs
+  - file: .anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs
+  - file: .anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs
+  - file: .anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh
+  - file: .anamnesis/codex-hooks/base-Stop-handoff-reminder.sh
+  - file: .claude/hooks/inject-ontology.sh
+  - file: .claude/hooks/remind-uncommitted.sh
+  - file: .claude/hooks/inject-handoff.sh
+  - file: .claude/hooks/handoff-reminder.sh
+  - file: .claude/commands/load-context.md
+  - file: .claude/commands/handoff-prepare.md
+  - file: .claude/skills/load-context/SKILL.md
+  - file: .claude/skills/ontology-enrich/SKILL.md
+  - file: .claude/skills/anamnesis-init/SKILL.md

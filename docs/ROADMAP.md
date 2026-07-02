@@ -7,6 +7,20 @@ v1.0 and later follow semver. Before v1.0, minor version bumps could include
 breaking changes. Feature timing is best-effort; items can move between
 releases as user feedback and verified product evidence arrive.
 
+Release-state note: roadmap sections can describe main-branch design and WIP
+before the corresponding package is published. Verify public availability with
+the registries, not roadmap headings. On 2026-07-02, both npmjs.org and GitHub
+Packages reported `@mcprotein/anamnesis@0.7.0` as latest while this repository
+contained unreleased 1.x work; release prep must publish npmjs.org and GitHub
+Packages in parity before marking a version shipped.
+
+Branch-state note: the current unreleased WIP line is allowed to remain in the
+existing branch state. Starting with the next version line, version-specific
+work should happen on `release/vX.Y` branches with focused `feat/vX.Y/<topic>`
+branches, then merge to `main` only when that release line is verified and
+ready to tag. This keeps roadmap WIP, package version, and registry state from
+drifting apart.
+
 ## Product north star
 
 anamnesis exists to make AI coding agents remember a project without the
@@ -992,7 +1006,7 @@ Progress notes:
 
 ---
 
-## v1.7 — *in progress*
+## v1.7 — *unreleased WIP*
 
 > **Theme: task harnesses, behavior verification, and adapter security**
 
@@ -1015,13 +1029,13 @@ retrievable contracts with explicit disk and injection budgets.
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **`task_harness` capability design** | done | Specified a tool-agnostic capability for task goal, stop condition, read/write scope, required evidence, test commands, role/subagent hints, rubric, lifecycle kind (`current` or `reusable`), and lifecycle metadata. Preserves adapter parity semantics across Claude Code, Codex, and Cursor through a shared repo-local retrieval file. Design: [`TASK-HARNESS-DESIGN.md`](TASK-HARNESS-DESIGN.md). |
-| 2 | **Task harness retention and GC policy** | preview shipped; deletion planned | Added preview-only cleanup reporting for active `current` harnesses, reusable templates, disk/count budgets, stale age, `last_used`/`use_count`, deprecation/supersession behavior, and managed vs user-authored cleanup recommendations. Deletion/apply mode remains planned. |
+| 2 | **Task harness retention and GC policy** | managed apply shipped | Added cleanup reporting for active `current` harnesses, reusable templates, disk/count budgets, stale age, `last_used`/`use_count`, deprecation/supersession behavior, and managed vs user-authored cleanup recommendations. `gc --apply` backs up and deletes only clean manifest-owned task harness candidates, updates the manifest, and leaves user-authored or user-modified files review-only. |
 | 3 | **Base task harness fixture** | done | Added one base-fragment harness fixture and adapter-rendering tests before expanding to stack-specific harnesses. The first fixture targets context/ontology/handoff continuity behavior and stays retrievable through `context index` without adding all harness bodies to startup context. |
 | 4 | **Behavior benchmark expansion** | partial | Extended `benchmark task` and `task-compare` with numeric behavior metrics for source citations, managed-region edit attempts, `.bootstrap.yaml` edit attempts, handoff refresh success, matched harness reads, and non-matched harness reads. `task-series --write` now emits a source-citation delta SVG alongside token and quality charts. Repeated public-safe runs remain planned before claiming compact/full behavior parity. |
 | 5 | **Executable capability side-effect metadata** | done | Added `side_effects` metadata for executable hooks, skills, and slash commands, covering read-only, local-write, repo-external-write, git-hook, network, credential-touching, and external-production behavior. Renderers propagate the metadata to planned actions, Codex/Cursor fallback text, and Codex native shell wrapper metadata. |
 | 6 | **Executable adapter security diagnostics** | done | Added shared executable-surface diagnostics to `doctor` and `status` for generated or managed hooks that under-declare writes, repo-external writes, network access, likely credential touches, external-production commands, or shell safety settings. Managed wrapper drift remains covered by existing tracked-entry drift diagnostics. |
-| 7 | **Malicious and unsafe-fragment fixtures** | partial | Added initial unsafe executable-hook fixtures for missing shell safety, network egress, read-only write mismatch, and repo-external writes. Suspicious native wrappers, credential-touching, external-production, and stale hook registration fixtures remain planned. |
-| 8 | **Review diagnostics for AI-agent config damage** | planned | Add advisory checks for copied handoff archives in startup context, generated docs that overclaim adapter parity, managed regions changed outside anchors, and bootstrap ontology files edited by hand. |
+| 7 | **Malicious and unsafe-fragment fixtures** | done | Added unsafe executable-hook and native-hook fixtures for missing shell safety, network egress, read-only write mismatch, repo-external writes, credential-touching, external-production, relative/duplicate native wrappers, and stale Codex hook registrations. |
+| 8 | **Review diagnostics for AI-agent config damage** | done | Added advisory `status` / `doctor` checks for copied handoff archives in startup context, generated docs that overclaim adapter parity, duplicated managed region markers, and bootstrap ontology files edited by hand. |
 
 Exit criteria:
 - `task_harness` has a documented schema or design decision and at least one
@@ -1069,10 +1083,24 @@ Progress notes:
   `doctor` and `status`. Unsafe fixture tests now verify missing shell safety,
   read-only/write mismatch, undeclared network egress, and undeclared
   repo-external writes while keeping clean installs warning-free.
+- 2026-07-02: Closed the unsafe-fragment fixture set with credential-touching,
+  external-production, and stale Codex native hook registration coverage.
+  Codex hook ownership diagnostics now warn when anamnesis-managed hook
+  commands point at missing wrapper files.
+- 2026-07-02: Added advisory agent-config damage diagnostics shared by
+  `doctor` and `status`. Fixture tests now verify full handoff archives copied
+  into startup context, adapter-parity overclaims in docs, hand-authored
+  `.bootstrap.yaml` files, and duplicated managed region markers while keeping
+  the dogfood repo warning-free.
+- 2026-07-02: Added safe `anamnesis gc --apply` cleanup for managed task
+  harness candidates. Apply mode deletes only clean files still matching their
+  manifest `last_applied_hash`, backs them up under `.anamnesis/backups/`,
+  removes those entries from the manifest, writes `gc-apply` runtime evidence,
+  and skips user-authored, user-modified, and handoff candidates.
 
 ---
 
-## v1.8 — *planned*
+## v1.8 — *unreleased WIP; release after v1.7*
 
 > **Theme: handoff lifecycle automation with bounded markdown retention**
 
@@ -1085,12 +1113,12 @@ Design: [`docs/HANDOFF-LIFECYCLE.md`](HANDOFF-LIFECYCLE.md)
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Handoff lifecycle tiers** | planned | Add a documented hot/warm/cold/deprecated model. `hot` means active current work in `active.md`; `warm` means recent or active-referenced archives; `cold` means older completed archives available only through query/resume; `deprecated` means superseded, too old, or semantically stale and never injected. |
-| 2 | **Auto-draft handoff flow** | planned | Add a safe draft path that gathers git status, recent commits, changed files, latest evidence, current active handoff, and latest archive. The CLI may prepare structure, but the agent must confirm decisions, blockers, rejected options, and next steps before finalizing. |
-| 3 | **Handoff close/deprecate workflow** | planned | Add a way to close completed active entries, mark archives superseded/deprecated, and remove completed work from startup summaries without deleting the underlying archive immediately. |
-| 4 | **Handoff retention in GC** | planned | Extend `anamnesis gc --dry-run` beyond task harnesses to report handoff archive count, byte budgets, active references, cold/deprecated candidates, and delete-candidate recommendations. Keep deletion preview-first; do not silently remove user-authored handoff files. |
-| 5 | **Semantic freshness diagnostics** | planned | Teach `status`, `doctor`, and `context diagnose` to warn when `active.md` is structurally valid but semantically stale: old git ref, clean worktree, completed entries under active sections, missing referenced files, or newer archives that supersede active work. |
-| 6 | **SessionStart budget guardrails** | planned | Keep startup injection bounded: hot summary only, warm source pointers only, cold/deprecated excluded, and full archive injection available only through explicit debug mode. Add benchmark/diagnostic evidence that the lifecycle model does not increase default startup tokens. |
+| 1 | **Handoff lifecycle tiers** | done | Added a documented and code-backed hot/warm/cold/deprecated model. `hot` means active current work in `active.md`; `warm` means recent or active-referenced archives; `cold` means older completed archives available only through query/resume; `deprecated` means superseded, too old, or semantically stale and never injected. |
+| 2 | **Auto-draft handoff flow** | done | Added `anamnesis handoff draft`, a safe draft path that gathers git status, recent commits, changed files, latest evidence, current active handoff, and latest archive. The CLI prepares structure only; the agent must confirm decisions, blockers, rejected options, and next steps before finalizing. |
+| 3 | **Handoff close/deprecate workflow** | done | Added preview-first `anamnesis handoff close` and `handoff deprecate`. With `--apply`, they mark finalized archives closed, deprecated, or superseded, remove matching active entries from `active.md`, and preserve the underlying archive file. |
+| 4 | **Handoff retention in GC** | review-only shipped | Extended `anamnesis gc --dry-run` beyond task harnesses to report handoff archive count, byte budgets, active references, cold/deprecated review candidates, and protected active references. `gc --apply` still leaves handoff archives review-only; close/deprecate removes them from startup context without deleting the markdown record. |
+| 5 | **Semantic freshness diagnostics** | done | Taught `status`, `doctor`, and `context diagnose` to warn when `active.md` is structurally valid but semantically stale: old git ref on a clean worktree, completed entries under active sections, missing referenced files, inactive active-referenced archives, or handoff byte-budget pressure. |
+| 6 | **SessionStart budget guardrails** | done | Updated Claude Code and Codex SessionStart handoff injection to keep startup bounded: hot summary only, warm active archive source pointers only, cold/deprecated/superseded archives excluded, and full archive bodies available only through explicit debug mode for eligible active archives. Shipped through base@15. |
 
 Exit criteria:
 - Handoff startup context stays compact and does not inject full archives by
@@ -1103,6 +1131,33 @@ Exit criteria:
   useful historical archives immediately.
 - No hosted service or separate handoff storage backend is introduced for
   handoff continuity.
+
+Progress notes:
+- 2026-07-02: Added `core/handoff_lifecycle` and `gc --dry-run` handoff
+  lifecycle preview. The CLI now reports hot/warm/cold/deprecated handoff
+  counts, active archive references, handoff byte budget pressure, and
+  review-only candidates while protecting archives referenced by `active.md`.
+- 2026-07-02: Added `anamnesis handoff draft` as the v1.8 auto-draft path.
+  It gathers git ref, recent commits, touched files, latest evidence, active
+  handoff, and latest archive, then emits a TODO-marked draft without changing
+  `active.md` or creating a finalized archive.
+- 2026-07-02: Added preview-first `anamnesis handoff close` and
+  `handoff deprecate`. The commands reject drafts and `active.md` as lifecycle
+  targets, update finalized archive frontmatter only with `--apply`, and remove
+  matching active entries while keeping archives on disk.
+- 2026-07-02: Added semantic freshness diagnostics for active handoff state.
+  `context diagnose`, `status`, and `doctor` now flag completed entries left
+  under active sections, active references to closed/deprecated/superseded
+  archives, missing file pointers, clean-worktree stale git refs, and handoff
+  byte-budget pressure. Lifecycle active-reference detection now treats only
+  `Current focus` and `Active tasks` bullets as hot references; `Recently
+  completed` archive links are historical breadcrumbs.
+- 2026-07-02: Added SessionStart budget guardrails for handoff lifecycle.
+  Claude Code and Codex native startup surfaces now inject active summaries
+  plus warm active archive pointers only; cold/deprecated/superseded archive
+  bodies are excluded even when `Recently completed` links remain in
+  `active.md`. The behavior ships through base@15 and is covered by hook
+  tests plus dogfood/update evidence.
 
 ---
 

@@ -1,6 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { spawnSync } from "node:child_process";
 import YAML from "yaml";
+import { analyzeHandoffLifecycle } from "../core/handoff_lifecycle.js";
 
 export const CONTEXT_DIAGNOSTICS_SCHEMA_VERSION =
   "anamnesis.context_diagnostics.v1";
@@ -9,8 +11,13 @@ export type ContextDiagnosticSeverity = "warning" | "info";
 
 export type ContextDiagnosticCode =
   | "docs-bootstrap-conflict"
+  | "handoff-active-archive-inactive"
+  | "handoff-active-completed-entry"
+  | "handoff-active-file-missing"
+  | "handoff-active-git-ref-stale"
   | "handoff-archive-missing"
   | "handoff-archive-stale"
+  | "handoff-budget-exceeded"
   | "ontology-duplicate-id"
   | "ontology-relationship-conflict"
   | "ontology-superseded-entry-current"
@@ -70,10 +77,22 @@ interface DocFactClaim {
   value: string;
 }
 
+interface HandoffFrontmatter {
+  gitRef?: string;
+  handoffStatus?: string;
+  retentionTier?: string;
+  supersededBy?: string;
+}
+
 const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
   "docs-bootstrap-conflict",
+  "handoff-active-archive-inactive",
+  "handoff-active-completed-entry",
+  "handoff-active-file-missing",
+  "handoff-active-git-ref-stale",
   "handoff-archive-missing",
   "handoff-archive-stale",
+  "handoff-budget-exceeded",
   "ontology-duplicate-id",
   "ontology-relationship-conflict",
   "ontology-superseded-entry-current",
@@ -82,13 +101,22 @@ const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
   "evidence-invalid-record",
 ];
 
+const ACTIVE_GIT_REF_STALE_COMMIT_THRESHOLD = 3;
+
+const DEFAULT_HANDOFF_LIFECYCLE_THRESHOLDS = {
+  maxWarmArchives: 5,
+  maxColdAgeDays: 90,
+  maxTotalBytes: 512 * 1024,
+};
+
 export function contextDiagnostics(
   opts: ContextDiagnosticsOptions,
 ): ContextDiagnosticsResult {
   const projectRoot = path.resolve(opts.projectRoot);
-  const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+  const now = (opts.now ?? (() => new Date()))();
+  const generatedAt = now.toISOString();
   const issues = [
-    ...handoffIssues(projectRoot),
+    ...handoffIssues(projectRoot, now),
     ...ontologyIssues(projectRoot),
     ...docsBootstrapIssues(projectRoot),
     ...evidenceIssues(projectRoot),
@@ -105,39 +133,112 @@ export function contextDiagnostics(
   };
 }
 
-function handoffIssues(projectRoot: string): ContextDiagnosticIssue[] {
+function handoffIssues(
+  projectRoot: string,
+  now: Date,
+): ContextDiagnosticIssue[] {
   const activeRel = ".anamnesis/handoff/active.md";
   const activeAbs = path.join(projectRoot, activeRel);
-  if (!fs.existsSync(activeAbs)) return [];
-
-  const activeText = fs.readFileSync(activeAbs, "utf8");
-  const refs = extractArchiveRefs(activeText);
   const issues: ContextDiagnosticIssue[] = [];
-  const missingRefs = refs.filter((ref) => !safeProjectFileExists(projectRoot, ref));
-  for (const ref of missingRefs) {
-    issues.push({
-      severity: "warning",
-      code: "handoff-archive-missing",
-      message: `active handoff references missing archive ${ref}`,
-      source_path: activeRel,
-      stable_ref: `archive:${ref}`,
-      related: [ref],
-      repair:
-        "Update active.md to point at an existing archive, or run /handoff-prepare to refresh handoff state.",
-    });
+
+  if (fs.existsSync(activeAbs)) {
+    const activeText = fs.readFileSync(activeAbs, "utf8");
+    const openTaskLines = activeHandoffOpenTaskLines(activeText);
+    const refs = extractArchiveRefs(openTaskLines.join("\n"));
+    const missingRefs = refs.filter(
+      (ref) => !safeProjectFileExists(projectRoot, ref),
+    );
+    for (const ref of missingRefs) {
+      issues.push({
+        severity: "warning",
+        code: "handoff-archive-missing",
+        message: `active handoff references missing archive ${ref}`,
+        source_path: activeRel,
+        stable_ref: `archive:${ref}`,
+        related: [ref],
+        repair:
+          "Update active.md to point at an existing archive, or run /handoff-prepare to refresh handoff state.",
+      });
+    }
+
+    for (const line of openTaskLines.filter(isCompletedHandoffTaskLine)) {
+      issues.push({
+        severity: "warning",
+        code: "handoff-active-completed-entry",
+        message: `active handoff keeps a completed or superseded task open: ${line}`,
+        source_path: activeRel,
+        stable_ref: `line:${stableLineRef(line)}`,
+        repair:
+          "Move completed or superseded entries out of Current focus / Active tasks, or run `anamnesis handoff close --apply`.",
+      });
+    }
+
+    for (const target of missingActiveFilePointers(projectRoot, openTaskLines)) {
+      issues.push({
+        severity: "warning",
+        code: "handoff-active-file-missing",
+        message: `active handoff mentions missing project file ${target}`,
+        source_path: activeRel,
+        stable_ref: `file:${target}`,
+        related: [target],
+        repair:
+          "Refresh the handoff entry so open tasks point at existing files, or remove stale file references.",
+      });
+    }
+
+    for (const ref of refs.filter((ref) => safeProjectFileExists(projectRoot, ref))) {
+      const archive = readHandoffFrontmatter(projectRoot, ref);
+      if (!isInactiveHandoffArchive(archive)) continue;
+      const status = archive.handoffStatus ?? archive.retentionTier ?? "inactive";
+      issues.push({
+        severity: "warning",
+        code: "handoff-active-archive-inactive",
+        message: `active handoff references ${status} archive ${ref}`,
+        source_path: activeRel,
+        stable_ref: `archive:${ref}`,
+        related: archive.supersededBy ? [ref, archive.supersededBy] : [ref],
+        repair:
+          "Remove the closed/deprecated archive from active.md or point the task at the current replacement archive.",
+      });
+    }
+
+    if (openTaskLines.length > 0) {
+      const gitRefIssue = staleActiveGitRefIssue(projectRoot, activeText, activeRel);
+      if (gitRefIssue) issues.push(gitRefIssue);
+    }
+
+    const newest = newestHandoffArchive(projectRoot);
+    if (newest && refs.length > 0 && !refs.includes(newest.rel)) {
+      issues.push({
+        severity: "warning",
+        code: "handoff-archive-stale",
+        message: `active handoff does not reference newest archive ${newest.rel}`,
+        source_path: activeRel,
+        stable_ref: "archive:newest",
+        related: [newest.rel, ...refs],
+        repair:
+          "Review active.md and update open tasks to the latest relevant archive if current work is still in flight.",
+      });
+    }
   }
 
-  const newest = newestHandoffArchive(projectRoot);
-  if (newest && refs.length > 0 && !refs.includes(newest.rel)) {
+  const lifecycle = analyzeHandoffLifecycle({
+    projectRoot,
+    now,
+    thresholds: DEFAULT_HANDOFF_LIFECYCLE_THRESHOLDS,
+  });
+  if (lifecycle.summary.diskBudgetExceeded) {
     issues.push({
       severity: "warning",
-      code: "handoff-archive-stale",
-      message: `active handoff does not reference newest archive ${newest.rel}`,
-      source_path: activeRel,
-      stable_ref: "archive:newest",
-      related: [newest.rel, ...refs],
+      code: "handoff-budget-exceeded",
+      message:
+        `handoff archives use ${lifecycle.summary.totalBytes} bytes, ` +
+        `exceeding budget ${lifecycle.thresholds.maxTotalBytes} bytes`,
+      source_path: ".anamnesis/handoff",
+      stable_ref: "budget:archives",
+      related: lifecycle.candidates.map((candidate) => candidate.path),
       repair:
-        "Review active.md and update open tasks to the latest relevant archive if current work is still in flight.",
+        "Run `anamnesis gc --dry-run` and review cold/deprecated handoff archive candidates.",
     });
   }
 
@@ -556,6 +657,170 @@ function stripFactMarker(value: string): string {
 
 function quoteValue(value: string): string {
   return `'${value}'`;
+}
+
+function activeHandoffOpenTaskLines(text: string): string[] {
+  const lines: string[] = [];
+  let inOpenSection = false;
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (/^##\s+(Current focus|Active tasks)\s*$/i.test(trimmed)) {
+      inOpenSection = true;
+      continue;
+    }
+    if (/^##\s+/.test(trimmed)) {
+      inOpenSection = false;
+      continue;
+    }
+    if (inOpenSection && trimmed.startsWith("-")) lines.push(trimmed);
+  }
+  return lines;
+}
+
+function isCompletedHandoffTaskLine(line: string): boolean {
+  return (
+    /\[(done|completed|closed|deprecated|superseded)\]/i.test(line) ||
+    /\bcompleted in\b/i.test(line) ||
+    /\bclosed (at|in)\b/i.test(line) ||
+    /\bdeprecated (at|by|in)\b/i.test(line) ||
+    /\bsuperseded by\b/i.test(line)
+  );
+}
+
+function missingActiveFilePointers(
+  projectRoot: string,
+  openTaskLines: readonly string[],
+): string[] {
+  const targets = new Set<string>();
+  for (const line of openTaskLines) {
+    for (const target of extractBacktickLocalPaths(line)) {
+      if (isHandoffArchivePath(target)) continue;
+      if (!looksLikeLocalFilePointer(target)) continue;
+      if (!safeProjectFileExists(projectRoot, target)) targets.add(target);
+    }
+  }
+  return [...targets].sort();
+}
+
+function extractBacktickLocalPaths(text: string): string[] {
+  const paths = new Set<string>();
+  for (const match of text.matchAll(/`([^`]+)`/g)) {
+    const candidate = normalizeInlinePath(match[1]!);
+    if (candidate) paths.add(candidate);
+  }
+  return [...paths].sort();
+}
+
+function normalizeInlinePath(value: string): string | undefined {
+  const trimmed = value.trim().replace(/^\.\/+/, "");
+  if (trimmed.length === 0) return undefined;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return undefined;
+  if (path.isAbsolute(trimmed)) return undefined;
+  if (trimmed.startsWith("~")) return undefined;
+  if (/[\s*?[\]{}<>|]/.test(trimmed)) return undefined;
+  if (trimmed.startsWith("-")) return undefined;
+  return trimmed.replace(/[.,;)]+$/g, "");
+}
+
+function looksLikeLocalFilePointer(value: string): boolean {
+  if (value.includes("/")) return true;
+  return /\.[A-Za-z0-9]+$/.test(value);
+}
+
+function isHandoffArchivePath(value: string): boolean {
+  return /^\.anamnesis\/handoff\/(?!active\.md)(?!draft\.md).+\.md$/.test(value);
+}
+
+function readHandoffFrontmatter(
+  projectRoot: string,
+  relPath: string,
+): HandoffFrontmatter {
+  const absPath = path.join(projectRoot, relPath);
+  if (!fs.existsSync(absPath)) return {};
+  return parseHandoffFrontmatter(fs.readFileSync(absPath, "utf8"));
+}
+
+function parseHandoffFrontmatter(text: string): HandoffFrontmatter {
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) return {};
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(match[1] ?? "") as unknown;
+  } catch {
+    return {};
+  }
+  if (!isObject(parsed)) return {};
+  return {
+    gitRef: stringField(parsed, "git_ref"),
+    handoffStatus: stringField(parsed, "handoff_status"),
+    retentionTier: stringField(parsed, "retention_tier"),
+    supersededBy: stringField(parsed, "superseded_by"),
+  };
+}
+
+function isInactiveHandoffArchive(frontmatter: HandoffFrontmatter): boolean {
+  const status = frontmatter.handoffStatus?.toLowerCase();
+  const tier = frontmatter.retentionTier?.toLowerCase();
+  return (
+    status === "closed" ||
+    status === "deprecated" ||
+    status === "superseded" ||
+    tier === "cold" ||
+    tier === "deprecated" ||
+    frontmatter.supersededBy !== undefined
+  );
+}
+
+function staleActiveGitRefIssue(
+  projectRoot: string,
+  activeText: string,
+  activeRel: string,
+): ContextDiagnosticIssue | undefined {
+  const gitRef = parseHandoffFrontmatter(activeText).gitRef;
+  if (!gitRef || !/^[0-9a-f]{7,40}$/i.test(gitRef)) return undefined;
+  if (!gitWorktreeClean(projectRoot)) return undefined;
+
+  const head = runGit(projectRoot, ["rev-parse", "HEAD"]);
+  if (!head || head === gitRef) return undefined;
+
+  const behindRaw = runGit(projectRoot, ["rev-list", "--count", `${gitRef}..HEAD`]);
+  if (!behindRaw) return undefined;
+  const behind = Number.parseInt(behindRaw, 10);
+  if (!Number.isFinite(behind) || behind < ACTIVE_GIT_REF_STALE_COMMIT_THRESHOLD) {
+    return undefined;
+  }
+
+  return {
+    severity: "warning",
+    code: "handoff-active-git-ref-stale",
+    message:
+      `active handoff git_ref is ${behind} commit(s) behind HEAD while worktree is clean`,
+    source_path: activeRel,
+    stable_ref: "frontmatter:git_ref",
+    related: [gitRef, head],
+    repair:
+      "Refresh active.md after confirming whether the referenced task is still in flight.",
+  };
+}
+
+function gitWorktreeClean(projectRoot: string): boolean {
+  const status = runGit(projectRoot, ["status", "--porcelain"]);
+  return status !== undefined && status.trim() === "";
+}
+
+function runGit(projectRoot: string, args: readonly string[]): string | undefined {
+  const result = spawnSync("git", ["-C", projectRoot, ...args], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) return undefined;
+  return result.stdout.trim();
+}
+
+function stableLineRef(line: string): string {
+  return line
+    .replace(/[^A-Za-z0-9._/-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 96);
 }
 
 function extractArchiveRefs(text: string): string[] {

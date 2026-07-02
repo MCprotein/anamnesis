@@ -198,7 +198,8 @@ function expectTargetResumeSurface(
   const agents = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
   expect(agents).toContain("Session start: handoff");
   expect(agents).toContain(".anamnesis/handoff/active.md");
-  expect(agents).toContain("active.md 가 가리키는 archive");
+  expect(agents).toContain("Current focus");
+  expect(agents).toContain("cold/deprecated archive");
   expect(agents).toContain("stale");
 }
 

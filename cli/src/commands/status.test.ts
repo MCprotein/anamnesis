@@ -581,6 +581,87 @@ describe("status — executable security", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("status — agent config damage", () => {
+  it("summarizes copied startup context and overclaim warnings", () => {
+    const { project, library } = setupContinuityProject();
+    fs.appendFileSync(
+      path.join(project, "CLAUDE.md"),
+      [
+        "",
+        "# Handoff — copied archive",
+        "",
+        "## Goal",
+        "Preserve context without pasting archives.",
+        "",
+        "## Done so far",
+        "- copied archive body",
+        "",
+        "## In flight",
+        "- continue diagnostics",
+        "",
+        "## Decisions",
+        "- source pointers are enough",
+        "",
+        "## Next steps",
+        "1. remove copied archive",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.mkdirSync(path.join(project, "docs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, "docs", "PARITY.md"),
+      "anamnesis guarantees identical native UI across Claude Code, Codex, and Cursor.\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(project, ".anamnesis", "ontology", "manual.bootstrap.yaml"),
+      "schema_version: anamnesis.bootstrap.v1\nfacts:\n  routes: []\n",
+      "utf8",
+    );
+    fs.appendFileSync(
+      path.join(project, "AGENTS.md"),
+      [
+        "",
+        "<!-- anamnesis:region id=anamnesis-base fragment=base@1 -->",
+        "copied managed region",
+        "<!-- /anamnesis:region -->",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.agentConfigDamage.ok).toBe(false);
+    expect(r.summary.agentConfigDamageWarnings).toBe(
+      r.agentConfigDamage.summary.warnings,
+    );
+    expect(r.agentConfigDamage.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "startup-handoff-archive-inlined",
+          target: "CLAUDE.md",
+        }),
+        expect.objectContaining({
+          code: "docs-adapter-parity-overclaim",
+          target: "docs/PARITY.md:1",
+        }),
+        expect.objectContaining({
+          code: "bootstrap-ontology-hand-edited",
+          target: ".anamnesis/ontology/manual.bootstrap.yaml",
+        }),
+        expect.objectContaining({
+          code: "managed-region-marker-duplicated",
+          target: "AGENTS.md [region:anamnesis-base]",
+        }),
+      ]),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("status — runtime evidence", () => {
   it("reports evidence freshness by kind", () => {
     const { project, library } = setupContinuityProject();

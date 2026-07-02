@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 12 capabilities (covers all 6 types; v14+)
+├── fragment.yaml                # 12 capabilities (covers all 6 types; v15+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -17,7 +17,7 @@ base/
 ├── adapters/claude-code/
     ├── hooks/
     │   ├── inject-ontology.sh    # SessionStart: cats ontology slices recursively
-    │   ├── inject-handoff.sh     # SessionStart: cats active.md + recent handoff archive
+    │   ├── inject-handoff.sh     # SessionStart: active.md + warm active archive pointers
     │   ├── handoff-reminder.sh   # Stop: deduped dirty-work handoff reminder
     │   └── remind-uncommitted.sh # PostToolUse:Edit: nags on dirty git tree
     ├── commands/
@@ -44,7 +44,10 @@ fixture for
 the renderer/adapter pipeline. Adapter outputs differ by tool, but the
 base intent is the same: load context/ontology, preserve handoff
 continuity, expose a bounded task contract, and remind agents about
-operational guardrails.
+operational guardrails. Handoff startup context stays lifecycle-aware:
+`Current focus` / `Active tasks` get compact summaries, warm active archive
+pointers are exposed for retrieval, and cold/deprecated archives stay out of
+SessionStart unless the user explicitly opens them.
 
 ## Files installed into a project
 

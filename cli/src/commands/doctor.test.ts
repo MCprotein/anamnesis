@@ -11,6 +11,7 @@ import {
   writeAgentfile,
   type ToolName,
 } from "../core/agentfile.js";
+import { codexNativeNodeCommand } from "../core/codex_native.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -300,6 +301,111 @@ describe("doctor — installation integrity", () => {
     );
   });
 
+  it("warns when executable hooks touch credentials or production without side-effect metadata", () => {
+    const library = makeLibrary({
+      hookSideEffects: ["read-only"],
+      hookContent: [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        'printf "%s\\n" "$OPENAI_API_KEY"',
+        "kubectl apply -f deploy/prod.yaml",
+        "",
+      ].join("\n"),
+    });
+    const project = tmpDir("anamnesis-doctor-exec-sensitive-");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: true,
+      noBootstrap: true,
+    });
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "executable-credential-touch-undeclared",
+          target: ".claude/hooks/test-hook.sh",
+        }),
+        expect.objectContaining({
+          severity: "warning",
+          code: "executable-external-production-undeclared",
+          target: ".claude/hooks/test-hook.sh",
+        }),
+      ]),
+    );
+  });
+
+  it("surfaces agent config damage diagnostics as advisory warnings", () => {
+    const { project, library } = installContinuityProject();
+    fs.appendFileSync(
+      path.join(project, "CLAUDE.md"),
+      [
+        "",
+        "# Handoff — copied archive",
+        "",
+        "## Goal",
+        "Preserve context without pasting archives.",
+        "",
+        "## Done so far",
+        "- copied archive body",
+        "",
+        "## In flight",
+        "- continue diagnostics",
+        "",
+        "## Decisions",
+        "- source pointers are enough",
+        "",
+        "## Next steps",
+        "1. remove copied archive",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.mkdirSync(path.join(project, "docs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, "docs", "PARITY.md"),
+      "anamnesis guarantees identical native UI across Claude Code, Codex, and Cursor.\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(project, ".anamnesis", "ontology", "manual.bootstrap.yaml"),
+      "schema_version: anamnesis.bootstrap.v1\nfacts:\n  routes: []\n",
+      "utf8",
+    );
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.summary.errors).toBe(0);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "startup-handoff-archive-inlined",
+          target: "CLAUDE.md",
+          repair: expect.stringContaining("source pointers"),
+        }),
+        expect.objectContaining({
+          severity: "warning",
+          code: "docs-adapter-parity-overclaim",
+          target: "docs/PARITY.md:1",
+          repair: expect.stringContaining("user-facing parity"),
+        }),
+        expect.objectContaining({
+          severity: "warning",
+          code: "bootstrap-ontology-hand-edited",
+          target: ".anamnesis/ontology/manual.bootstrap.yaml",
+          repair: expect.stringContaining(".enriched.yaml"),
+        }),
+      ]),
+    );
+  });
+
   it("reports fragment dependency problems as errors", () => {
     const { project, library } = installProject();
     fs.writeFileSync(
@@ -563,6 +669,36 @@ fragments:
           target: ".codex/hooks.json",
           message: expect.stringContaining("relative project path"),
           repair: expect.stringContaining("--allow-exec-adapters"),
+        }),
+      ]),
+    );
+  });
+
+  it("reports stale Codex native hook registrations", () => {
+    const { project, library } = installContinuityProject();
+    const hooksPath = path.join(project, ".codex", "hooks.json");
+    const hooksConfig = JSON.parse(fs.readFileSync(hooksPath, "utf8")) as {
+      hooks: Record<string, Array<{ hooks: Array<Record<string, unknown>> }>>;
+    };
+    hooksConfig.hooks.SessionStart![0]!.hooks.push({
+      type: "command",
+      command: codexNativeNodeCommand(
+        ".anamnesis/codex-native-hooks/missing-wrapper.mjs",
+      ),
+    });
+    fs.writeFileSync(hooksPath, JSON.stringify(hooksConfig, null, 2));
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "codex-hook-ownership-warning",
+          target: ".codex/hooks.json",
+          message: expect.stringContaining("missing-wrapper.mjs"),
+          repair: expect.stringContaining("stale Codex hook registration"),
         }),
       ]),
     );

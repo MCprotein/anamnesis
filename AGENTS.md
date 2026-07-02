@@ -35,7 +35,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@13 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@15 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -53,7 +53,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 - `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.
 - `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.
-  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 compact 요약과 source pointer 로 자동 주입됨.
+  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.
 - `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
@@ -64,7 +64,7 @@ v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break 
 
 1. `.anamnesis/handoff/` 디렉토리 존재 확인.
 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.
-3. active.md 가 가리키는 archive 또는 가장 최근 mtime 의 timestamp `*.md` 파일 1개를 추가로 읽기 (`active.md` 제외).
+3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.
 4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
 5. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
 
@@ -518,7 +518,7 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@14 -->
+<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@15 -->
 ### base hook: `inject-handoff.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
@@ -533,8 +533,8 @@ exit 0
 #!/bin/bash
 # anamnesis SessionStart hook — inject active and recent agent handoff context.
 #
-# Looks for `.anamnesis/handoff/active.md` plus the most recent archived
-# handoff, then emits a compact active-task summary plus source pointers.
+# Looks for `.anamnesis/handoff/active.md` plus active-referenced warm
+# archives, then emits a compact active-task summary plus source pointers.
 # This bridges sessions across token-limit boundaries and across different
 # agents (Claude → Codex, etc.) without injecting full archives by default.
 #
@@ -559,35 +559,95 @@ shopt -u nullglob
 (( ${#files[@]} > 0 )) || exit 0
 
 # Prefer active.md when present. It is the multi-task index maintained by
-# /handoff-prepare. Also include the newest timestamped archive for detail.
+# /handoff-prepare. Only Current focus / Active tasks archive references are
+# considered startup-active; Recently completed archive pointers are history.
 active="$HANDOFF_DIR/active.md"
 
-# Find newest archived handoff by mtime — portable across BSD (macOS) and
-# GNU stat. Exclude active.md because it is an index, not an archive.
-latest=""
-latest_mtime=0
-for f in "${files[@]}"; do
-  [[ "$(basename "$f")" != "active.md" ]] || continue
-  if mtime=$(stat -f '%m' "$f" 2>/dev/null); then
-    : # BSD stat (macOS)
-  elif mtime=$(stat -c '%Y' "$f" 2>/dev/null); then
-    : # GNU stat (Linux)
-  else
-    continue
-  fi
-  if (( mtime > latest_mtime )); then
-    latest_mtime=$mtime
-    latest="$f"
-  fi
-done
+archive_is_inactive() {
+  local file="$1"
+  awk '
+    BEGIN { in_fm = 0; inactive = 0 }
+    NR == 1 && $0 == "---" { in_fm = 1; next }
+    in_fm && $0 == "---" { in_fm = 0; next }
+    in_fm {
+      line = tolower($0)
+      gsub(/["'\''"]/, "", line)
+      if (line ~ /^handoff_status:[[:space:]]*(closed|deprecated|superseded)([[:space:]]|$)/) inactive = 1
+      if (line ~ /^retention_tier:[[:space:]]*(cold|deprecated)([[:space:]]|$)/) inactive = 1
+      if (line ~ /^superseded_by:[[:space:]]*[^[:space:]]+/) inactive = 1
+    }
+    END { exit inactive ? 0 : 1 }
+  ' "$file"
+}
 
-[[ -f "$active" || -n "$latest" ]] || exit 0
+active_archive_refs() {
+  local file="$1"
+  {
+    awk '
+      /^## Current focus$/ { section = 1; next }
+      /^## Active tasks$/ { section = 1; next }
+      /^## / { section = 0; next }
+      section == 1 && /^- / { print }
+    ' "$file" |
+      grep -Eo '\.anamnesis/handoff/[^`[:space:])]+\.md' |
+      grep -Ev '^\.anamnesis/handoff/(active|draft)\.md$|^\.anamnesis/handoff/drafts/' |
+      sort -u
+  } || true
+}
 
-echo "=== anamnesis: handoff ==="
-echo
-echo "이전 세션이 남긴 작업 인계서. active.md 요약을 먼저 보고, 세부 내용은 원본 archive 를 직접 읽는다."
-echo "git history 기준으로 stale 이면 무시하고 새 작업으로 진행한다."
-echo
+archive_abs_from_ref() {
+  local ref="$1"
+  case "$ref" in
+    .anamnesis/handoff/*.md) ;;
+    *) return 1 ;;
+  esac
+  [[ "$ref" != *".."* ]] || return 1
+  [[ "$ref" != .anamnesis/handoff/drafts/* ]] || return 1
+  printf '%s/%s\n' "$PROJECT_ROOT" "$ref"
+}
+
+newest_eligible_archive() {
+  local newest=""
+  local newest_mtime=0
+  local f=""
+  local name=""
+  local mtime=""
+
+  for f in "${files[@]}"; do
+    name="$(basename "$f")"
+    [[ "$name" != "active.md" && "$name" != "draft.md" ]] || continue
+    archive_is_inactive "$f" && continue
+    if mtime=$(stat -f '%m' "$f" 2>/dev/null); then
+      : # BSD stat (macOS)
+    elif mtime=$(stat -c '%Y' "$f" 2>/dev/null); then
+      : # GNU stat (Linux)
+    else
+      continue
+    fi
+    if (( mtime > newest_mtime )); then
+      newest_mtime=$mtime
+      newest="$f"
+    fi
+  done
+  printf '%s\n' "$newest"
+}
+
+selected_archives=()
+if [[ -f "$active" ]]; then
+  while IFS= read -r ref; do
+    archive_abs="$(archive_abs_from_ref "$ref" || true)"
+    [[ -n "${archive_abs:-}" && -f "$archive_abs" ]] || continue
+    archive_is_inactive "$archive_abs" && continue
+    selected_archives+=("$archive_abs")
+  done < <(active_archive_refs "$active")
+else
+  latest="$(newest_eligible_archive)"
+  if [[ -n "$latest" ]]; then
+    selected_archives+=("$latest")
+  fi
+fi
+
+[[ -f "$active" || ${#selected_archives[@]} -gt 0 ]] || exit 0
 
 file_stats() {
   local file="$1"
@@ -598,6 +658,12 @@ file_stats() {
   lines=$(wc -l < "$file" | tr -d ' ')
   printf '%s bytes, %s lines' "$bytes" "$lines"
 }
+
+echo "=== anamnesis: handoff ==="
+echo
+echo "이전 세션이 남긴 작업 인계서. active.md 요약을 먼저 보고, 세부 내용은 active archive pointer 를 직접 읽는다."
+echo "cold/deprecated archive 는 SessionStart 에 주입하지 않는다. git history 기준으로 stale 이면 무시하고 새 작업으로 진행한다."
+echo
 
 source_pointer() {
   local file="$1"
@@ -626,8 +692,10 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
   if [[ -f "$active" ]]; then
     source_pointer "$active"
   fi
-  if [[ -n "$latest" ]]; then
-    source_pointer "$latest"
+  if (( ${#selected_archives[@]} > 0 )); then
+    for archive in "${selected_archives[@]}"; do
+      source_pointer "$archive"
+    done
   fi
   if [[ -f "$active" ]]; then
     echo
@@ -635,7 +703,11 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
     active_summary "$active"
   fi
   echo
-  echo "Retrieval rule: read active.md and the referenced archive before continuing non-trivial in-flight work."
+  if (( ${#selected_archives[@]} > 0 )); then
+    echo "Retrieval rule: read active.md and the referenced warm archive before continuing non-trivial in-flight work."
+  else
+    echo "Retrieval rule: read active.md before continuing non-trivial in-flight work; no warm archive is startup-active."
+  fi
   echo "--- end of handoff ---"
   exit 0
 fi
@@ -648,12 +720,14 @@ if [[ -f "$active" ]]; then
   echo
 fi
 
-if [[ -n "$latest" ]]; then
-  rel="${latest#$PROJECT_ROOT/}"
-  echo "--- most recent archived handoff: $rel ---"
-  echo
-  cat "$latest"
-  echo
+if (( ${#selected_archives[@]} > 0 )); then
+  for archive in "${selected_archives[@]}"; do
+    rel="${archive#$PROJECT_ROOT/}"
+    echo "--- active referenced archived handoff: $rel ---"
+    echo
+    cat "$archive"
+    echo
+  done
 fi
 
 echo "--- end of handoff ---"

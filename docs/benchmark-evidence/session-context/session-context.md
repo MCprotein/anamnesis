@@ -1,4 +1,4 @@
-# Session Context Benchmark — 2026-06-19T03:47:03.664Z
+# Session Context Benchmark — 2026-07-02T08:32:31.471Z
 
 Deterministic benchmark comparing full SessionStart file injection with compact source-pointer startup context.
 

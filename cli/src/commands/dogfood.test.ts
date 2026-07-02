@@ -106,6 +106,7 @@ describe("dogfoodCheck", () => {
 
     const text = fs.readFileSync(path.join(project, "docs", "DOGFOOD.md"), "utf8");
     expect(text).toContain("Automated Self-Check — 2026-04-30T08:00:00.000Z");
+    expect(text.endsWith("\n")).toBe(true);
     expect(text).toContain("Continuity readiness score: 5/5 (new baseline)");
     expect(text).toContain("Tools: claude-code, codex, cursor");
     expect(text).toContain("Codex hooks:");
@@ -118,7 +119,9 @@ describe("dogfoodCheck", () => {
     expect(text).toContain("`anamnesis dogfood real-codex-project-hook-smoke`");
     expect(text).toContain("`anamnesis dogfood real-codex-user-prompt-smoke`");
     expect(text).toContain("`anamnesis dogfood real-codex-tool-turn-smoke`");
-    expect(text).toContain("active.md and latest archive source pointers injected");
+    expect(text).toContain(
+      "active.md and warm active archive source pointers injected",
+    );
     expect(text).toContain("status and doctor detect active.md");
     expect(text).toContain("synthetic Codex JSON dispatch");
 

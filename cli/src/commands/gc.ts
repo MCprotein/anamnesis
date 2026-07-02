@@ -4,8 +4,19 @@ import YAML from "yaml";
 import {
   ManifestParseError,
   readManifest,
+  writeManifest,
   type Manifest,
 } from "../core/manifest.js";
+import {
+  analyzeHandoffLifecycle,
+  type HandoffLifecycleReport,
+} from "../core/handoff_lifecycle.js";
+import {
+  appendEvidenceRecord,
+  EVIDENCE_SCHEMA_VERSION,
+  type RuntimeEvidenceRecord,
+} from "../core/evidence.js";
+import { sha256 } from "../util/hash.js";
 
 export const GC_SCHEMA_VERSION = "anamnesis.gc.v1";
 
@@ -46,13 +57,16 @@ export interface GcResult {
   schema_version: typeof GC_SCHEMA_VERSION;
   projectRoot: string;
   generatedAt: string;
-  mode: "dry-run";
-  applied: false;
+  mode: "dry-run" | "apply";
+  applied: boolean;
   thresholds: {
     maxCurrentAgeDays: number;
     maxCurrentHarnesses: number;
     maxReusableHarnesses: number;
     maxTotalBytes: number;
+    maxWarmHandoffArchives: number;
+    maxColdHandoffAgeDays: number;
+    maxHandoffBytes: number;
   };
   summary: {
     total: number;
@@ -69,7 +83,19 @@ export interface GcResult {
     warnings: number;
   };
   candidates: GcCandidate[];
+  handoff: HandoffLifecycleReport;
+  deleted: {
+    taskHarnesses: string[];
+  };
+  backedUpTaskHarnesses: string[];
+  backupDir?: string;
+  skipped: {
+    userAuthoredTaskHarnesses: string[];
+    userModifiedTaskHarnesses: string[];
+    handoffs: string[];
+  };
   warnings: string[];
+  evidencePath?: string;
 }
 
 export interface GcOptions {
@@ -80,6 +106,9 @@ export interface GcOptions {
   maxCurrentHarnesses?: number;
   maxReusableHarnesses?: number;
   maxTotalBytes?: number;
+  maxWarmHandoffArchives?: number;
+  maxColdHandoffAgeDays?: number;
+  maxHandoffBytes?: number;
   now?: () => Date;
 }
 
@@ -94,11 +123,14 @@ const DEFAULT_MAX_CURRENT_AGE_DAYS = 14;
 const DEFAULT_MAX_CURRENT_HARNESSES = 5;
 const DEFAULT_MAX_REUSABLE_HARNESSES = 50;
 const DEFAULT_MAX_TOTAL_BYTES = 256 * 1024;
+const DEFAULT_MAX_WARM_HANDOFF_ARCHIVES = 5;
+const DEFAULT_MAX_COLD_HANDOFF_AGE_DAYS = 90;
+const DEFAULT_MAX_HANDOFF_BYTES = 512 * 1024;
 
 export function gc(opts: GcOptions): GcResult {
-  if (opts.apply === true) {
+  if (opts.apply === true && opts.dryRun === true) {
     throw new GcError(
-      "gc apply is not implemented yet; run `anamnesis gc --dry-run` to preview cleanup candidates",
+      "choose either --dry-run or --apply, not both",
     );
   }
 
@@ -112,9 +144,23 @@ export function gc(opts: GcOptions): GcResult {
     maxReusableHarnesses:
       opts.maxReusableHarnesses ?? DEFAULT_MAX_REUSABLE_HARNESSES,
     maxTotalBytes: opts.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES,
+    maxWarmHandoffArchives:
+      opts.maxWarmHandoffArchives ?? DEFAULT_MAX_WARM_HANDOFF_ARCHIVES,
+    maxColdHandoffAgeDays:
+      opts.maxColdHandoffAgeDays ?? DEFAULT_MAX_COLD_HANDOFF_AGE_DAYS,
+    maxHandoffBytes: opts.maxHandoffBytes ?? DEFAULT_MAX_HANDOFF_BYTES,
   };
   const warnings: string[] = [];
   const manifest = readManifestForGc(projectRoot, warnings);
+  const handoff = analyzeHandoffLifecycle({
+    projectRoot,
+    now: new Date(generatedAt),
+    thresholds: {
+      maxWarmArchives: thresholds.maxWarmHandoffArchives,
+      maxColdAgeDays: thresholds.maxColdHandoffAgeDays,
+      maxTotalBytes: thresholds.maxHandoffBytes,
+    },
+  });
   const entries = discoverHarnessFiles(projectRoot).map((relPath) =>
     readHarnessEntry(projectRoot, relPath, manifest, nowMs, warnings),
   );
@@ -144,6 +190,19 @@ export function gc(opts: GcOptions): GcResult {
     })
     .sort(compareCandidates);
 
+  const applyResult =
+    opts.apply === true
+      ? applyGcCleanup({
+          projectRoot,
+          manifest,
+          candidates,
+          handoff,
+          generatedAt,
+          warnings,
+        })
+      : emptyApplyResult();
+
+  const allWarnings = [...warnings, ...handoff.warnings];
   const summary = {
     total: entries.length,
     current: entries.filter((entry) => entry.lifecycle === "current").length,
@@ -163,19 +222,211 @@ export function gc(opts: GcOptions): GcResult {
     reviewUserAuthored: candidates.filter(
       (candidate) => candidate.recommendation === "review-user-authored",
     ).length,
-    warnings: warnings.length,
+    warnings: allWarnings.length,
   };
 
-  return {
+  const result: GcResult = {
     schema_version: GC_SCHEMA_VERSION,
     projectRoot: ".",
     generatedAt,
-    mode: "dry-run",
-    applied: false,
+    mode: opts.apply === true ? "apply" : "dry-run",
+    applied: opts.apply === true,
     thresholds,
     summary,
     candidates,
-    warnings,
+    handoff,
+    deleted: {
+      taskHarnesses: applyResult.deletedTaskHarnesses,
+    },
+    backedUpTaskHarnesses: applyResult.backedUpTaskHarnesses,
+    ...(applyResult.backupDir ? { backupDir: applyResult.backupDir } : {}),
+    skipped: {
+      userAuthoredTaskHarnesses: applyResult.skippedUserAuthoredTaskHarnesses,
+      userModifiedTaskHarnesses: applyResult.skippedUserModifiedTaskHarnesses,
+      handoffs: applyResult.skippedHandoffs,
+    },
+    warnings: allWarnings,
+  };
+  if (opts.apply === true) {
+    result.evidencePath = appendEvidenceRecord(
+      projectRoot,
+      gcApplyEvidenceRecord({
+        generatedAt,
+        projectRoot,
+        result,
+      }),
+    );
+  }
+  return result;
+}
+
+interface GcApplyResult {
+  deletedTaskHarnesses: string[];
+  skippedUserAuthoredTaskHarnesses: string[];
+  skippedUserModifiedTaskHarnesses: string[];
+  skippedHandoffs: string[];
+  backedUpTaskHarnesses: string[];
+  backupDir?: string;
+}
+
+function emptyApplyResult(): GcApplyResult {
+  return {
+    deletedTaskHarnesses: [],
+    skippedUserAuthoredTaskHarnesses: [],
+    skippedUserModifiedTaskHarnesses: [],
+    skippedHandoffs: [],
+    backedUpTaskHarnesses: [],
+  };
+}
+
+function applyGcCleanup(input: {
+  projectRoot: string;
+  manifest: Manifest;
+  candidates: GcCandidate[];
+  handoff: HandoffLifecycleReport;
+  generatedAt: string;
+  warnings: string[];
+}): GcApplyResult {
+  const result = emptyApplyResult();
+  const deleted = new Set<string>();
+
+  for (const candidate of input.candidates) {
+    if (candidate.recommendation !== "delete-candidate") {
+      result.skippedUserAuthoredTaskHarnesses.push(candidate.path);
+      continue;
+    }
+
+    const absPath = safeTaskHarnessPath(input.projectRoot, candidate.path);
+    if (!absPath) {
+      input.warnings.push(`refusing to delete unsafe task harness path ${candidate.path}`);
+      continue;
+    }
+
+    const fileEntry = input.manifest.files.find(
+      (entry) => normalizeRelPath(entry.path) === normalizeRelPath(candidate.path),
+    );
+    if (!fileEntry) {
+      result.skippedUserAuthoredTaskHarnesses.push(candidate.path);
+      continue;
+    }
+    if (!fs.existsSync(absPath)) {
+      input.warnings.push(`task harness candidate already missing: ${candidate.path}`);
+      continue;
+    }
+    const currentHash = sha256(fs.readFileSync(absPath));
+    if (currentHash !== fileEntry.last_applied_hash) {
+      result.skippedUserModifiedTaskHarnesses.push(candidate.path);
+      continue;
+    }
+
+    const backupDir = ensureGcBackupDir(input.projectRoot, input.generatedAt, result);
+    const backupPath = path.join(input.projectRoot, backupDir, candidate.path);
+    fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+    fs.copyFileSync(absPath, backupPath);
+    result.backedUpTaskHarnesses.push(candidate.path);
+    fs.unlinkSync(absPath);
+    pruneEmptyHarnessDirs(input.projectRoot, path.dirname(absPath));
+    result.deletedTaskHarnesses.push(candidate.path);
+    deleted.add(normalizeRelPath(candidate.path));
+  }
+
+  if (deleted.size > 0) {
+    const nextManifest: Manifest = {
+      ...input.manifest,
+      files: input.manifest.files.filter(
+        (entry) => !deleted.has(normalizeRelPath(entry.path)),
+      ),
+    };
+    writeManifest(input.projectRoot, nextManifest);
+  }
+
+  result.skippedHandoffs.push(
+    ...input.handoff.candidates.map((candidate) => candidate.path),
+  );
+  return result;
+}
+
+function ensureGcBackupDir(
+  projectRoot: string,
+  generatedAt: string,
+  result: GcApplyResult,
+): string {
+  if (result.backupDir) return result.backupDir;
+  const stamp = generatedAt.replace(/[:.]/g, "-");
+  const backupDir = path.join(".anamnesis", "backups", `gc-${stamp}`);
+  fs.mkdirSync(path.join(projectRoot, backupDir), { recursive: true });
+  result.backupDir = normalizeRelPath(backupDir);
+  return result.backupDir;
+}
+
+function safeTaskHarnessPath(projectRoot: string, relPath: string): string | undefined {
+  const normalized = normalizeRelPath(relPath);
+  if (
+    path.isAbsolute(relPath) ||
+    normalized.startsWith("../") ||
+    normalized.includes("/../") ||
+    !/\.ya?ml$/i.test(normalized)
+  ) {
+    return undefined;
+  }
+  const harnessRoot = path.resolve(projectRoot, ".anamnesis", "task-harnesses");
+  const absPath = path.resolve(projectRoot, normalized);
+  const relative = path.relative(harnessRoot, absPath);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    return undefined;
+  }
+  return absPath;
+}
+
+function pruneEmptyHarnessDirs(projectRoot: string, startDir: string): void {
+  const harnessRoot = path.resolve(projectRoot, ".anamnesis", "task-harnesses");
+  let current = path.resolve(startDir);
+  while (current !== harnessRoot) {
+    const relative = path.relative(harnessRoot, current);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) return;
+    try {
+      fs.rmdirSync(current);
+    } catch {
+      return;
+    }
+    current = path.dirname(current);
+  }
+}
+
+function gcApplyEvidenceRecord(input: {
+  generatedAt: string;
+  projectRoot: string;
+  result: GcResult;
+}): RuntimeEvidenceRecord {
+  return {
+    schema_version: EVIDENCE_SCHEMA_VERSION,
+    kind: "gc-apply",
+    generated_at: input.generatedAt,
+    command: ["anamnesis", "gc", "--apply"],
+    project: { name: path.basename(input.projectRoot) || "project" },
+    summary: {
+      deleted_task_harnesses: input.result.deleted.taskHarnesses.length,
+      backed_up_task_harnesses: input.result.backedUpTaskHarnesses.length,
+      backup_dir: input.result.backupDir,
+      skipped_user_authored_task_harnesses:
+        input.result.skipped.userAuthoredTaskHarnesses.length,
+      skipped_user_modified_task_harnesses:
+        input.result.skipped.userModifiedTaskHarnesses.length,
+      handoff_review_only: input.result.skipped.handoffs.length,
+      candidates: input.result.summary.candidates,
+      handoff_candidates: input.result.handoff.summary.candidates,
+      warnings: input.result.warnings.length,
+    },
+    details: {
+      deleted_task_harnesses: input.result.deleted.taskHarnesses,
+      backed_up_task_harnesses: input.result.backedUpTaskHarnesses,
+      backup_dir: input.result.backupDir,
+      skipped_user_authored_task_harnesses:
+        input.result.skipped.userAuthoredTaskHarnesses,
+      skipped_user_modified_task_harnesses:
+        input.result.skipped.userModifiedTaskHarnesses,
+      handoff_review_only: input.result.skipped.handoffs,
+    },
   };
 }
 

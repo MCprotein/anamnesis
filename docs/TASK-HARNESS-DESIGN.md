@@ -99,9 +99,12 @@ snippets. Long task examples belong in docs or fixtures, not in harness bodies.
 Cleanup is preview-first. `anamnesis gc --dry-run` reports retention
 candidates, stale `current` harnesses, deprecated reusable harnesses,
 superseded templates, count-budget pressure, disk-budget breaches, and whether a
-file is managed or user-authored. It does not delete files. Future apply-mode
-cleanup must keep user-authored files review-only unless the user explicitly
-opts in.
+file is managed or user-authored. `anamnesis gc --apply` deletes only clean
+manifest-owned task harness candidates whose current content still matches the
+manifest `last_applied_hash`, backs them up under `.anamnesis/backups/`,
+removes their manifest entries, and records `gc-apply` runtime evidence.
+User-authored and user-modified files stay review-only unless a future explicit
+opt-in is designed.
 
 ## Retrieval
 

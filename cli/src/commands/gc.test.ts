@@ -3,6 +3,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { gc, GcError } from "./gc.js";
+import { EVIDENCE_LOG_PATH } from "../core/evidence.js";
+import { readManifest } from "../core/manifest.js";
+import { sha256 } from "../util/hash.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -33,6 +36,41 @@ function writeManifest(project: string, managedPaths: string[]): void {
           last_applied_hash: `sha256:${String(index + 1).repeat(64)}`,
           current_user_hash: `sha256:${String(index + 1).repeat(64)}`,
         })),
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function writeManagedHarness(
+  project: string,
+  name: string,
+  body: string,
+  opts: { userModified?: boolean } = {},
+): void {
+  const relPath = `.anamnesis/task-harnesses/${name}.yaml`;
+  writeFile(project, relPath, body);
+  const appliedHash = sha256(body);
+  if (opts.userModified) {
+    writeFile(project, relPath, `${body}# user note\n`);
+  }
+  writeFile(
+    project,
+    ".anamnesis/manifest.json",
+    JSON.stringify(
+      {
+        version: 1,
+        regions: [],
+        files: [
+          {
+            path: relPath,
+            fragment_id: "base",
+            fragment_version: 14,
+            last_applied_hash: appliedHash,
+            current_user_hash: appliedHash,
+          },
+        ],
       },
       null,
       2,
@@ -193,9 +231,215 @@ describe("gc", () => {
     ).toBe(true);
   });
 
-  it("refuses apply mode because deletion is not implemented yet", () => {
-    const project = tmpDir("anamnesis-gc-apply-");
+  it("reports handoff lifecycle candidates without deleting active references", () => {
+    const project = tmpDir("anamnesis-gc-handoff-");
+    const activeArchive = ".anamnesis/handoff/2026-07-01T00-00-00Z.md";
+    writeFile(
+      project,
+      activeArchive,
+      [
+        "---",
+        "created: 2026-07-01T00:00:00.000Z",
+        "---",
+        "# Handoff - active",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-01-01T00-00-00Z.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "closed_at: 2026-01-01T00:00:00.000Z",
+        "---",
+        "# Handoff - old",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-02-01T00-00-00Z.md",
+      [
+        "---",
+        "handoff_status: superseded",
+        `superseded_by: ${activeArchive}`,
+        "---",
+        "# Handoff - superseded",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/active.md",
+      [
+        "---",
+        "updated: 2026-07-02T00:00:00.000Z",
+        "---",
+        "# Active handoff index",
+        "",
+        "## Current focus",
+        `- continue task - archive: \`${activeArchive}\``,
+        "",
+      ].join("\n"),
+    );
 
-    expect(() => gc({ projectRoot: project, apply: true })).toThrow(GcError);
+    const result = gc({
+      projectRoot: project,
+      maxWarmHandoffArchives: 1,
+      maxColdHandoffAgeDays: 30,
+      now: () => new Date("2026-07-02T00:00:00.000Z"),
+    });
+
+    expect(result.handoff.summary).toMatchObject({
+      archives: 3,
+      activeReferences: 1,
+      protectedByActiveReference: 1,
+      candidates: 2,
+      reviewUserAuthored: 2,
+    });
+    expect(result.handoff.candidates.map((candidate) => candidate.path)).toEqual([
+      ".anamnesis/handoff/2026-02-01T00-00-00Z.md",
+      ".anamnesis/handoff/2026-01-01T00-00-00Z.md",
+    ]);
+    expect(
+      result.handoff.candidates.some((candidate) => candidate.path === activeArchive),
+    ).toBe(false);
+  });
+
+  it("apply deletes clean managed harness candidates and updates manifest", () => {
+    const project = tmpDir("anamnesis-gc-apply-");
+    writeManagedHarness(
+      project,
+      "old-current",
+      [
+        'schema_version: "anamnesis.task_harness.v1"',
+        'id: "old-current"',
+        "lifecycle:",
+        '  kind: "current"',
+        '  last_used: "2026-06-01T00:00:00.000Z"',
+        "",
+      ].join("\n"),
+    );
+
+    const result = gc({
+      projectRoot: project,
+      apply: true,
+      maxCurrentAgeDays: 14,
+      now: () => new Date("2026-06-27T00:00:00.000Z"),
+    });
+
+    expect(result.mode).toBe("apply");
+    expect(result.applied).toBe(true);
+    expect(result.deleted.taskHarnesses).toEqual([
+      ".anamnesis/task-harnesses/old-current.yaml",
+    ]);
+    expect(result.backedUpTaskHarnesses).toEqual([
+      ".anamnesis/task-harnesses/old-current.yaml",
+    ]);
+    expect(result.backupDir).toBe(
+      ".anamnesis/backups/gc-2026-06-27T00-00-00-000Z",
+    );
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis/task-harnesses/old-current.yaml"),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(
+          project,
+          ".anamnesis/backups/gc-2026-06-27T00-00-00-000Z/.anamnesis/task-harnesses/old-current.yaml",
+        ),
+      ),
+    ).toBe(true);
+    expect(readManifest(project).files).toEqual([]);
+    expect(
+      fs.existsSync(path.join(project, EVIDENCE_LOG_PATH)),
+    ).toBe(true);
+    expect(fs.readFileSync(path.join(project, EVIDENCE_LOG_PATH), "utf8")).toContain(
+      '"kind":"gc-apply"',
+    );
+  });
+
+  it("apply keeps user-authored, user-modified, and handoff candidates review-only", () => {
+    const project = tmpDir("anamnesis-gc-apply-safe-");
+    const managedBody = [
+      'schema_version: "anamnesis.task_harness.v1"',
+      'id: "managed-edited"',
+      "lifecycle:",
+      '  kind: "current"',
+      '  last_used: "2026-06-01T00:00:00.000Z"',
+      "",
+    ].join("\n");
+    writeManagedHarness(project, "managed-edited", managedBody, {
+      userModified: true,
+    });
+    writeHarness(
+      project,
+      "user-template",
+      [
+        'schema_version: "anamnesis.task_harness.v1"',
+        'id: "user-template"',
+        "lifecycle:",
+        '  kind: "reusable"',
+        "  deprecated: true",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-01-01T00-00-00Z.md",
+      [
+        "---",
+        "handoff_status: deprecated",
+        "retention_tier: deprecated",
+        "---",
+        "# Handoff - old",
+        "",
+      ].join("\n"),
+    );
+
+    const result = gc({
+      projectRoot: project,
+      apply: true,
+      maxCurrentAgeDays: 14,
+      maxColdHandoffAgeDays: 1,
+      now: () => new Date("2026-07-02T00:00:00.000Z"),
+    });
+
+    expect(result.deleted.taskHarnesses).toEqual([]);
+    expect(result.skipped.userAuthoredTaskHarnesses).toEqual([
+      ".anamnesis/task-harnesses/user-template.yaml",
+    ]);
+    expect(result.skipped.userModifiedTaskHarnesses).toEqual([
+      ".anamnesis/task-harnesses/managed-edited.yaml",
+    ]);
+    expect(result.skipped.handoffs).toEqual([
+      ".anamnesis/handoff/2026-01-01T00-00-00Z.md",
+    ]);
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis/task-harnesses/managed-edited.yaml"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis/task-harnesses/user-template.yaml"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(project, ".anamnesis/handoff/2026-01-01T00-00-00Z.md"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects conflicting dry-run and apply flags", () => {
+    const project = tmpDir("anamnesis-gc-flags-");
+
+    expect(() => gc({ projectRoot: project, dryRun: true, apply: true })).toThrow(
+      GcError,
+    );
   });
 });

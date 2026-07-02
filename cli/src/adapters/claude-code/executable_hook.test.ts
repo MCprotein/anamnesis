@@ -189,6 +189,75 @@ describe("executableHookRenderer (claude-code)", () => {
     );
   });
 
+  it("excludes closed recently completed archives from handoff SessionStart context", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(handoffDir, "active.md"),
+      [
+        "# Active handoff index",
+        "",
+        "## Current focus",
+        "",
+        "## Active tasks",
+        "",
+        "## Recently completed",
+        "- completed task — archive: `.anamnesis/handoff/closed.md`",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(handoffDir, "closed.md"),
+      [
+        "---",
+        "handoff_status: closed",
+        "retention_tier: cold",
+        "---",
+        "",
+        "# Closed archive",
+        "",
+        "SECRET_COLD_BODY",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const hook = path.resolve("base/adapters/claude-code/hooks/inject-handoff.sh");
+    const compact = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+      encoding: "utf8",
+    });
+
+    expect(compact.status).toBe(0);
+    expect(compact.stderr).toBe("");
+    expect(compact.stdout).toContain("Mode: compact");
+    expect(compact.stdout).toContain("- .anamnesis/handoff/active.md");
+    expect(compact.stdout).not.toContain("- .anamnesis/handoff/closed.md");
+    expect(compact.stdout).not.toContain("SECRET_COLD_BODY");
+    expect(compact.stdout).toContain("no warm archive is startup-active");
+
+    const full = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: projectRoot,
+        ANAMNESIS_SESSION_CONTEXT_MODE: "full",
+      },
+      encoding: "utf8",
+    });
+
+    expect(full.status).toBe(0);
+    expect(full.stderr).toBe("");
+    expect(full.stdout).toContain("Source: .anamnesis/handoff/active.md");
+    expect(full.stdout).not.toContain("SECRET_COLD_BODY");
+    expect(full.stdout).not.toContain("active referenced archived handoff");
+  });
+
   it("dedupes handoff reminders for the same dirty git fingerprint", () => {
     if (process.platform === "win32") return;
 

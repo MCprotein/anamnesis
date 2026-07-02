@@ -53,6 +53,10 @@ import {
   type ExecutableSecurityIssue,
 } from "../core/executable_security.js";
 import {
+  analyzeAgentConfigDamage,
+  type AgentConfigDamageIssue,
+} from "../core/agent_config_damage.js";
+import {
   collectInstalledRenderActions,
   type InstalledRenderPlanProblem,
 } from "./render_plan.js";
@@ -94,6 +98,7 @@ export type DoctorIssueCode =
   | "ontology-bootstrap-stale"
   | "ontology-enrichment-missing"
   | ExecutableSecurityIssue["code"]
+  | AgentConfigDamageIssue["code"]
   | ContextDiagnosticIssue["code"];
 
 export interface DoctorIssue {
@@ -209,6 +214,10 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   const renderActions = renderPlan.actions;
   addExecutableSecurityIssues(
     analyzeExecutableSecurity(renderActions).issues,
+    issues,
+  );
+  addAgentConfigDamageIssues(
+    analyzeAgentConfigDamage({ projectRoot, manifest }).issues,
     issues,
   );
   addSettingsIssues(projectRoot, manifest, renderActions, issues);
@@ -532,6 +541,21 @@ function addExecutableSecurityIssues(
   }
 }
 
+function addAgentConfigDamageIssues(
+  damageIssues: readonly AgentConfigDamageIssue[],
+  issues: DoctorIssue[],
+): void {
+  for (const issue of damageIssues) {
+    issues.push({
+      severity: issue.severity,
+      code: issue.code,
+      target: issue.target,
+      message: issue.message,
+      repair: issue.repair,
+    });
+  }
+}
+
 function addSettingsIssues(
   projectRoot: string,
   manifest: Manifest,
@@ -680,14 +704,15 @@ function addCodexHookIssues(
     });
   }
 
-  addCodexHookOwnershipWarnings(hooksContent, issues);
+  addCodexHookOwnershipWarnings(projectRoot, hooksContent, issues);
 }
 
 function addCodexHookOwnershipWarnings(
+  projectRoot: string,
   hooksContent: string,
   issues: DoctorIssue[],
 ): void {
-  const ownership = analyzeCodexHookOwnership(hooksContent);
+  const ownership = analyzeCodexHookOwnership(hooksContent, { projectRoot });
   for (const warning of ownership.warnings) {
     issues.push({
       severity: "warning",
@@ -707,6 +732,8 @@ function codexHookOwnershipRepair(
       return "Remove the duplicate hook entry, or re-run `anamnesis update --apply --allow-exec-adapters` so managed anamnesis hook commands are refreshed without duplicating user hooks.";
     case "relative-managed-command":
       return "Re-run `anamnesis update --apply --allow-exec-adapters` to replace older relative anamnesis hook commands with Git-root-resolving wrappers.";
+    case "stale-managed-command":
+      return "Remove the stale Codex hook registration or re-run `anamnesis update --apply --allow-exec-adapters` to regenerate managed hook wrappers and registrations.";
     case "malformed-entry":
       return "Fix `.codex/hooks.json` so every event maps to matcher entries with a `hooks` array, then re-run `anamnesis doctor`.";
   }

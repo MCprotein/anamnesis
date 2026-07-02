@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const PACKAGE_NAME = "@mcprotein/anamnesis";
+export const PACKAGE_NAME = "@mcprotein/anamnesis";
 const UNKNOWN_VERSION = "0.0.0-dev";
 
 interface PackageJson {

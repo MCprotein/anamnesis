@@ -161,10 +161,12 @@ Lifecycle rules:
   should retrieve a matched harness via source pointer or `anamnesis context
   query --kind task-harness`.
 - Cleanup must be preview-first. Stale or superseded harnesses belong in a
-  `anamnesis gc --dry-run` report before deletion. The current preview command
-  separates managed delete candidates from user-authored review candidates and
-  reports stale current harnesses, deprecated/superseded reusable harnesses,
-  count pressure, and disk-budget pressure.
+  `anamnesis gc --dry-run` report before deletion. `anamnesis gc --apply`
+  backs up and deletes only clean manifest-owned task harness candidates and
+  removes their manifest entries; user-authored, user-modified, and handoff
+  candidates remain review-only. The report separates stale current harnesses,
+  deprecated/superseded reusable harnesses, count pressure, and disk-budget
+  pressure.
 
 ## Project Memory Snippet
 

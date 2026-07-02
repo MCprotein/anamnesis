@@ -18,6 +18,11 @@ import {
   type UpdateResult,
 } from "./commands/update.js";
 import {
+  upgrade,
+  UpgradeError,
+  type UpgradeResult,
+} from "./commands/upgrade.js";
+import {
   promote,
   PromoteError,
   type PromoteResult,
@@ -95,6 +100,15 @@ import {
   contextResume,
   type ContextResumeResult,
 } from "./commands/context_resume.js";
+import {
+  handoffAction,
+  HandoffActionError,
+  type HandoffActionResult,
+} from "./commands/handoff_action.js";
+import {
+  handoffDraft,
+  type HandoffDraftResult,
+} from "./commands/handoff_draft.js";
 import {
   gc,
   GcError,
@@ -299,6 +313,7 @@ Usage:
 Commands:
   init                          First-time setup for the current project
   update                        Re-apply library state (dry-run by default)
+  upgrade                       Check or update the installed anamnesis CLI
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
   hooks summary                 Summarize hook execution logs and optionally
@@ -313,7 +328,14 @@ Commands:
                                   conflicts, and missing evidence artifacts
   context resume                Print a compact resume bundle for current
                                   handoff, touched files, evidence, warnings
-  gc                            Preview task-harness lifecycle cleanup
+  handoff draft                 Draft a handoff from git status, evidence,
+                                  and existing handoff pointers
+  handoff close                 Close a finalized handoff archive and remove
+                                  matching active entries (dry-run by default)
+  handoff deprecate             Mark a finalized handoff archive deprecated or
+                                  superseded (dry-run by default)
+  gc                            Review lifecycle cleanup; --apply deletes
+                                  clean managed task-harness candidates only
   benchmark report             Generate a deterministic context-quality
                                   benchmark report for docs/BENCHMARKS.md
   benchmark compare            Compare two benchmark report JSON snapshots
@@ -370,6 +392,11 @@ Flags (update):
   --allow-exec-adapters         Permit executable adapter writes
                                   (.claude/*, .cursor/rules, Codex hooks)
 
+Flags (upgrade):
+  --registry <url>              Package registry (default: https://registry.npmjs.org)
+  --apply                       Run npm install -g when a newer version exists
+  --json                        Print structured JSON
+
 Flags (status / doctor):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
@@ -420,14 +447,36 @@ Flags (context resume):
   --write                       Write .anamnesis/context/resume.md
   --output <path>               Override resume bundle output path
 
+Flags (handoff draft):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write .anamnesis/handoff/drafts/latest.md
+  --output <path>               Override draft output path
+
+Flags (handoff close/deprecate):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --archive <path>              Finalized .anamnesis/handoff/*.md archive
+  --apply                       Write archive frontmatter and active.md changes
+  --summary <text>              Override active.md completed-entry summary
+  --reason <text>               Store lifecycle_note in archive frontmatter
+  --superseded-by <path>        Replacement archive for handoff deprecate
+
 Flags (gc):
   --project-root <path>         Target directory (default: cwd)
   --json                        Print structured JSON
   --dry-run                     Preview only; no files are deleted (default)
+  --apply                       Delete clean managed task-harness candidates;
+                                handoffs and user-authored files stay review-only
   --max-current-age-days <n>    Current harness stale threshold (default: 14)
   --max-current-harnesses <n>   Current harness count budget (default: 5)
   --max-reusable-harnesses <n>  Reusable harness count budget (default: 50)
   --max-total-bytes <n>         Task harness disk budget (default: 262144)
+  --max-warm-handoff-archives <n>
+                                Warm handoff archive count budget (default: 5)
+  --max-cold-handoff-age-days <n>
+                                Cold handoff age threshold (default: 90)
+  --max-handoff-bytes <n>       Handoff archive disk budget (default: 524288)
 
 Flags (benchmark report):
   --project-root <path>         Target directory (default: cwd)
@@ -809,6 +858,23 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
       `    ... ${executableSecurity.issues.length - 3} more executable security issue(s)`,
     );
   }
+  const agentConfigDamage = result.agentConfigDamage;
+  const damageInfo =
+    agentConfigDamage.summary.info > 0
+      ? `, ${agentConfigDamage.summary.info} info`
+      : "";
+  console.log(
+    `  agent config damage: ${agentConfigDamage.ok ? "ok" : "issues"} (${agentConfigDamage.summary.warnings} warning(s)${damageInfo})`,
+  );
+  for (const issue of agentConfigDamage.issues.slice(0, 3)) {
+    console.log(`    ${issue.severity} ${issue.code}: ${issue.target}`);
+    console.log(`      ${issue.message}`);
+  }
+  if (agentConfigDamage.issues.length > 3) {
+    console.log(
+      `    ... ${agentConfigDamage.issues.length - 3} more agent config damage issue(s)`,
+    );
+  }
   for (const line of formatGenerationBoundaryLines(
     collectGenerationBoundaryStatus(projectRoot),
   )) {
@@ -1085,8 +1151,23 @@ function reportContextResume(result: ContextResumeResult): void {
   }
 }
 
+function reportHandoffDraft(result: HandoffDraftResult): void {
+  console.log(result.draft);
+  console.log("");
+  console.log(
+    `summary: ${result.summary.lines} lines, ${result.summary.chars} chars, ~${result.summary.estimatedTokens} tokens`,
+  );
+  if (result.writtenPath) {
+    console.log(`written: ${result.writtenPath}`);
+  }
+}
+
+function reportHandoffAction(result: HandoffActionResult): void {
+  console.log(result.preview);
+}
+
 function reportGc(result: GcResult): void {
-  console.log("anamnesis gc — dry-run");
+  console.log(`anamnesis gc — ${result.mode}`);
   console.log(
     `  task harnesses: total=${result.summary.total}, current=${result.summary.current}, reusable=${result.summary.reusable}, unknown=${result.summary.unknown}`,
   );
@@ -1098,6 +1179,15 @@ function reportGc(result: GcResult): void {
   );
   console.log(
     `  candidates: ${result.summary.candidates} (delete=${result.summary.deleteCandidates}, review=${result.summary.reviewUserAuthored})`,
+  );
+  console.log(
+    `  handoffs: archives=${result.handoff.summary.archives}, active_refs=${result.handoff.summary.activeReferences}, hot=${result.handoff.summary.hot}, warm=${result.handoff.summary.warm}, cold=${result.handoff.summary.cold}, deprecated=${result.handoff.summary.deprecated}`,
+  );
+  console.log(
+    `  handoff disk: ${result.handoff.summary.totalBytes}/${result.handoff.thresholds.maxTotalBytes} bytes${result.handoff.summary.diskBudgetExceeded ? " (over budget)" : ""}`,
+  );
+  console.log(
+    `  handoff candidates: ${result.handoff.summary.candidates} (review=${result.handoff.summary.reviewUserAuthored}, protected=${result.handoff.summary.protectedByActiveReference})`,
   );
   if (result.warnings.length > 0) {
     console.log(`  warnings: ${result.warnings.length}`);
@@ -1115,7 +1205,41 @@ function reportGc(result: GcResult): void {
       console.log(`      superseded_by: ${candidate.supersededBy}`);
     }
   }
-  console.log("  (dry-run — no files deleted)");
+  for (const candidate of result.handoff.candidates) {
+    console.log(
+      `  ${candidate.recommendation} ${candidate.path} ${candidate.tier}`,
+    );
+    console.log(`      reasons: ${candidate.reasons.join(", ")}`);
+    console.log(`      age=${candidate.ageDays}d bytes=${candidate.bytes}`);
+    if (candidate.supersededBy) {
+      console.log(`      superseded_by: ${candidate.supersededBy}`);
+    }
+  }
+  if (result.applied) {
+    console.log(
+      `  deleted task harnesses: ${result.deleted.taskHarnesses.length}`,
+    );
+    if (result.backupDir) {
+      console.log(`  backup: ${result.backupDir}`);
+    }
+    for (const deleted of result.deleted.taskHarnesses.slice(0, 10)) {
+      console.log(`    - ${deleted}`);
+    }
+    console.log(
+      `  skipped user-authored task harnesses: ${result.skipped.userAuthoredTaskHarnesses.length}`,
+    );
+    console.log(
+      `  skipped user-modified task harnesses: ${result.skipped.userModifiedTaskHarnesses.length}`,
+    );
+    console.log(
+      `  skipped handoff archives: ${result.skipped.handoffs.length} (review-only)`,
+    );
+    if (result.evidencePath) {
+      console.log(`  evidence: ${result.evidencePath}`);
+    }
+  } else {
+    console.log("  (dry-run — no files deleted)");
+  }
 }
 
 function reportBenchmark(result: BenchmarkResult): void {
@@ -1522,6 +1646,25 @@ function reportUpdate(result: UpdateResult): void {
   }
 }
 
+function reportUpgrade(result: UpgradeResult): void {
+  console.log(`anamnesis upgrade — ${result.packageName}`);
+  console.log(`  registry: ${result.registry}`);
+  console.log(`  version: ${result.currentVersion} -> ${result.latestVersion}`);
+  console.log(`  status: ${result.status}`);
+  if (result.updateAvailable) {
+    console.log(`  command: ${result.installCommand.join(" ")}`);
+    if (!result.applied) {
+      console.log("  (dry-run — re-run with --apply to install)");
+    }
+  } else if (result.status === "local-ahead") {
+    console.log("  local package.json is ahead of the registry; no downgrade run");
+  } else if (result.status === "up-to-date") {
+    console.log("  already up to date");
+  } else {
+    console.log("  could not compare versions; inspect the registry result before applying");
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -1584,6 +1727,26 @@ async function main(argv: string[]): Promise<number> {
         return 0;
       } catch (e) {
         if (e instanceof UpdateError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+
+    case "upgrade":
+      try {
+        const result = upgrade({
+          registry: flags["registry"] as string | undefined,
+          apply: flags["apply"] === true,
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportUpgrade(result);
+        }
+        return 0;
+      } catch (e) {
+        if (e instanceof UpgradeError) {
           console.error(`error: ${e.message}`);
           return 1;
         }
@@ -1797,6 +1960,64 @@ async function main(argv: string[]): Promise<number> {
       }
     }
 
+    case "handoff": {
+      const sub = positional[0];
+      if (sub !== "draft" && sub !== "close" && sub !== "deprecate") {
+        console.error(
+          `error: unknown 'handoff' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(
+          `usage: anamnesis handoff draft [--json] [--write] [--output=<path>]`,
+        );
+        console.error(
+          `       anamnesis handoff close --archive=<path> [--apply] [--summary=<text>] [--reason=<text>]`,
+        );
+        console.error(
+          `       anamnesis handoff deprecate --archive=<path> [--apply] [--superseded-by=<path>] [--summary=<text>] [--reason=<text>]`,
+        );
+        return 1;
+      }
+      try {
+        if (sub === "draft") {
+          const result = handoffDraft({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            write: flags["write"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportHandoffDraft(result);
+          }
+          return 0;
+        }
+
+        const result = handoffAction({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          mode: sub,
+          archive: flags["archive"] as string | undefined,
+          apply: flags["apply"] === true,
+          summary: flags["summary"] as string | undefined,
+          reason: flags["reason"] as string | undefined,
+          supersededBy: flags["superseded-by"] as string | undefined,
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportHandoffAction(result);
+        }
+        return 0;
+      } catch (e) {
+        if (e instanceof HandoffActionError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
+
     case "gc":
       try {
         const result = gc({
@@ -1819,6 +2040,18 @@ async function main(argv: string[]): Promise<number> {
           maxTotalBytes: parseGcPositiveIntegerFlag(
             flags["max-total-bytes"],
             "--max-total-bytes",
+          ),
+          maxWarmHandoffArchives: parseGcPositiveIntegerFlag(
+            flags["max-warm-handoff-archives"],
+            "--max-warm-handoff-archives",
+          ),
+          maxColdHandoffAgeDays: parseGcPositiveIntegerFlag(
+            flags["max-cold-handoff-age-days"],
+            "--max-cold-handoff-age-days",
+          ),
+          maxHandoffBytes: parseGcPositiveIntegerFlag(
+            flags["max-handoff-bytes"],
+            "--max-handoff-bytes",
           ),
         });
         if (flags["json"] === true) {

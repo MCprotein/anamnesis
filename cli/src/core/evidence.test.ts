@@ -25,10 +25,16 @@ function record(
     "init-install": ["anamnesis", "init"],
     "update-apply": ["anamnesis", "update", "--apply"],
     "fragment-lifecycle": ["anamnesis", "update", "--apply"],
+    "gc-apply": ["anamnesis", "gc", "--apply"],
     "benchmark-report": ["anamnesis", "benchmark", "report"],
     "benchmark-compare": ["anamnesis", "benchmark", "compare"],
     "benchmark-trace-rollup": ["anamnesis", "benchmark", "trace"],
     "agent-task-benchmark": ["anamnesis", "benchmark", "task"],
+    "agent-task-benchmark-compare": [
+      "anamnesis",
+      "benchmark",
+      "task-compare",
+    ],
     "prompt-delta-gate": ["anamnesis", "benchmark", "prompt-gate"],
   };
   return {
@@ -139,6 +145,30 @@ describe("runtime evidence", () => {
     });
     expect(summary.byKind[0]).toMatchObject({
       kind: "fragment-lifecycle",
+      total: 1,
+      stale: false,
+    });
+  });
+
+  it("accepts gc apply evidence records", () => {
+    const project = tmpDir("anamnesis-evidence-gc-");
+
+    appendEvidenceRecord(
+      project,
+      record("gc-apply", "2026-07-02T02:30:00.000Z"),
+    );
+
+    const summary = readEvidenceSummary(project, {
+      now: new Date("2026-07-02T02:30:01.000Z"),
+    });
+
+    expect(summary.total).toBe(1);
+    expect(summary.latest).toMatchObject({
+      kind: "gc-apply",
+      command: ["anamnesis", "gc", "--apply"],
+    });
+    expect(summary.byKind[0]).toMatchObject({
+      kind: "gc-apply",
       total: 1,
       stale: false,
     });

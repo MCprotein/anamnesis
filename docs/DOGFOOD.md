@@ -254,3 +254,318 @@ Ontology bootstrap dry-run: skipped-no-introspector=1
 | `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
 | `npm run typecheck` | pass | 916 | passed |
 | `npm test` | pass | 6288 | passed |
+
+
+## Automated Self-Check — 2026-07-02T07:45:35.483Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (333ms); anamnesis dogfood simulate-stale-handoff: pass (27ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1224ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (960ms); npm test: pass (6757ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 333 | active.md and latest archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 27 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1224 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 960 | passed |
+| `npm test` | pass | 6757 | passed |
+
+
+## Automated Self-Check — 2026-07-02T07:56:38.583Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (221ms); anamnesis dogfood simulate-stale-handoff: pass (30ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1340ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (949ms); npm test: pass (7080ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 221 | active.md and latest archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 30 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1340 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 949 | passed |
+| `npm test` | pass | 7080 | passed |
+
+
+## Automated Self-Check — 2026-07-02T08:02:38.601Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (175ms); anamnesis dogfood simulate-stale-handoff: pass (31ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1168ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (953ms); npm test: pass (6600ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 175 | active.md and latest archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 31 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1168 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 953 | passed |
+| `npm test` | pass | 6600 | passed |
+
+
+## Automated Self-Check — 2026-07-02T08:12:34.733Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (245ms); anamnesis dogfood simulate-stale-handoff: pass (33ms); anamnesis dogfood simulate-codex-native-dispatch: pass (2038ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (1029ms); npm test: pass (6715ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 245 | active.md and latest archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 33 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 2038 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 1029 | passed |
+| `npm test` | pass | 6715 | passed |
+
+
+## Automated Self-Check — 2026-07-02T08:22:35.459Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@14:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (214ms); anamnesis dogfood simulate-stale-handoff: pass (28ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1186ms); anamnesis dogfood real-codex-native-smoke: skipped (1ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (974ms); npm test: pass (6822ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 214 | active.md and latest archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 28 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1186 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 1 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 974 | passed |
+| `npm test` | pass | 6822 | passed |
+
+
+## Automated Self-Check — 2026-07-02T08:32:53.436Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (217ms); anamnesis dogfood simulate-stale-handoff: pass (29ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1249ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (1007ms); npm test: pass (7196ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 217 | active.md and warm active archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 29 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1249 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 1007 | passed |
+| `npm test` | pass | 7196 | passed |
+
+
+## Automated Self-Check — 2026-07-02T08:43:42.205Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (317ms); anamnesis dogfood simulate-stale-handoff: pass (29ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1159ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (964ms); npm test: pass (6660ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 317 | active.md and warm active archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 29 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1159 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 964 | passed |
+| `npm test` | pass | 6660 | passed |
+
+
+## Automated Self-Check — 2026-07-02T08:46:02.894Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (179ms); anamnesis dogfood simulate-stale-handoff: pass (29ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1138ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (959ms); npm test: pass (6630ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 179 | active.md and warm active archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 29 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1138 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 959 | passed |
+| `npm test` | pass | 6630 | passed |
+
+
+## Automated Self-Check — 2026-07-02T09:03:04.400Z
+
+Continuity readiness score: 5/5 (unchanged vs previous 5/5)
+
+Project: anamnesis
+Tools: claude-code, codex, cursor
+Fragments: base@15:in-sync
+Drift: 33 clean, 0 modified, 0 missing
+Status continuity: ready (6/6)
+Codex hooks: 3 total (anamnesis 3, omx 0, plugin 0, user 0, invalid 0, warnings 0)
+Doctor: ok (0 errors, 0 warnings)
+Ontology gaps: 0 warning(s), 1 info
+Ontology bootstrap dry-run: skipped-no-introspector=1
+
+| Criterion | Result | Detail |
+|---|---|---|
+| Context continuity | pass | enabled tools: claude-code, codex, cursor; status continuity 6/6 |
+| Ontology availability | pass | 1 clean ontology file(s) are tracked |
+| Adapter parity surface | pass | enabled adapters have clean native or fallback surfaces (claude-code, codex, cursor) |
+| Diagnostics quality | pass | doctor 0 error(s), 0 warning(s); status continuity ready=true; ontology gaps warnings=0; codex hook warnings=0; executable security warnings=0 |
+| Verification strength | pass | anamnesis dogfood simulate-handoff: pass (321ms); anamnesis dogfood simulate-stale-handoff: pass (30ms); anamnesis dogfood simulate-codex-native-dispatch: pass (1141ms); anamnesis dogfood real-codex-native-smoke: skipped (0ms); anamnesis dogfood real-codex-project-hook-smoke: skipped (0ms); anamnesis dogfood real-codex-user-prompt-smoke: skipped (0ms); anamnesis dogfood real-codex-tool-turn-smoke: skipped (0ms); npm run typecheck: pass (956ms); npm test: pass (6719ms) |
+
+| Verification command | Result | ms | Detail |
+|---|---|---:|---|
+| `anamnesis dogfood simulate-handoff` | pass | 321 | active.md and warm active archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present |
+| `anamnesis dogfood simulate-stale-handoff` | pass | 30 | status and doctor detect active.md that does not reference the newest archive |
+| `anamnesis dogfood simulate-codex-native-dispatch` | pass | 1141 | synthetic Codex JSON dispatch covered SessionStart, PostToolUse, and Stop wrappers |
+| `anamnesis dogfood real-codex-native-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI hook smoke |
+| `anamnesis dogfood real-codex-project-hook-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI project hook smoke |
+| `anamnesis dogfood real-codex-user-prompt-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_SMOKE=1 to run the external Codex CLI UserPromptSubmit smoke |
+| `anamnesis dogfood real-codex-tool-turn-smoke` | skipped | 0 | set ANAMNESIS_REAL_CODEX_TOOL_SMOKE=1 to run the authenticated Codex CLI tool-turn smoke |
+| `npm run typecheck` | pass | 956 | passed |
+| `npm test` | pass | 6719 | passed |

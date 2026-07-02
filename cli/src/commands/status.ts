@@ -38,7 +38,7 @@ import {
   type Rule,
 } from "../core/rulebook.js";
 import { ProjectContext } from "../core/triggers.js";
-import { findRegion } from "../core/regions.js";
+import { findRegion, RegionParseError } from "../core/regions.js";
 import { sha256 } from "../util/hash.js";
 import { CLAUDE_MD_REGION_ID } from "../adapters/claude-code/claude_md.js";
 import {
@@ -68,6 +68,10 @@ import {
   analyzeExecutableSecurity,
   type ExecutableSecurityStatus,
 } from "../core/executable_security.js";
+import {
+  analyzeAgentConfigDamage,
+  type AgentConfigDamageStatus,
+} from "../core/agent_config_damage.js";
 import { collectInstalledRenderActions } from "./render_plan.js";
 
 // ---------------------------------------------------------------------------
@@ -192,6 +196,8 @@ export interface StatusResult {
   contextDiagnostics: ContextDiagnosticStatus;
   /** Advisory executable adapter side-effect and shell-safety diagnostics. */
   executableSecurity: ExecutableSecurityStatus;
+  /** Advisory checks for copied or over-expanded agent configuration context. */
+  agentConfigDamage: AgentConfigDamageStatus;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -212,6 +218,8 @@ export interface StatusResult {
     contextDiagnosticInfo: number;
     executableSecurityWarnings: number;
     executableSecurityInfo: number;
+    agentConfigDamageWarnings: number;
+    agentConfigDamageInfo: number;
     suggestedCount: number;
     declinedCount: number;
     declinedStaleCount: number;
@@ -239,7 +247,13 @@ function regionDrift(entry: RegionEntry, projectRoot: string): Drift {
   const fp = path.join(projectRoot, entry.file);
   if (!fs.existsSync(fp)) return "missing";
   const text = fs.readFileSync(fp, "utf8");
-  const region = findRegion(text, entry.region_id);
+  let region: ReturnType<typeof findRegion>;
+  try {
+    region = findRegion(text, entry.region_id);
+  } catch (e) {
+    if (e instanceof RegionParseError) return "user-modified";
+    throw e;
+  }
   if (!region) return "missing";
   const currentHash = sha256(region.content);
   return currentHash === entry.last_applied_hash ? "clean" : "user-modified";
@@ -480,6 +494,10 @@ export function status(opts: StatusOptions): StatusResult {
       scopes: effectiveScopeList,
     }).actions,
   );
+  const agentConfigDamage = analyzeAgentConfigDamage({
+    projectRoot,
+    manifest,
+  });
 
   // Summary counts.
   const summary = {
@@ -504,6 +522,8 @@ export function status(opts: StatusOptions): StatusResult {
     contextDiagnosticInfo: contextDiagnosticStatus.summary.info,
     executableSecurityWarnings: executableSecurity.summary.warnings,
     executableSecurityInfo: executableSecurity.summary.info,
+    agentConfigDamageWarnings: agentConfigDamage.summary.warnings,
+    agentConfigDamageInfo: agentConfigDamage.summary.info,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
     declinedStaleCount: declined.filter((d) => !d.matched).length,
@@ -527,6 +547,7 @@ export function status(opts: StatusOptions): StatusResult {
     dependencies,
     contextDiagnostics: contextDiagnosticStatus,
     executableSecurity,
+    agentConfigDamage,
     suggested,
     declined,
     summary,
@@ -656,7 +677,6 @@ function validateActiveHandoff(projectRoot: string): ContinuityCheck {
   }
 
   const activeText = fs.readFileSync(activePath, "utf8");
-  const activeArchiveRefs = extractArchiveRefs(activeText);
   const openTaskLines = activeHandoffOpenTaskLines(activeText);
   if (openTaskLines.length === 0) {
     return {
@@ -705,7 +725,7 @@ function validateActiveHandoff(projectRoot: string): ContinuityCheck {
   }
 
   const newest = newestHandoffArchive(projectRoot);
-  if (newest !== undefined && !activeArchiveRefs.includes(newest.rel)) {
+  if (newest !== undefined && !archiveRefs.includes(newest.rel)) {
     return {
       id: "active-handoff",
       label: "Active handoff state",
@@ -761,8 +781,10 @@ function activeHandoffOpenTaskLines(text: string): string[] {
 
 function isCompletedHandoffTaskLine(line: string): boolean {
   return (
-    /\[(done|completed|superseded)\]/i.test(line) ||
+    /\[(done|completed|closed|deprecated|superseded)\]/i.test(line) ||
     /\bcompleted in\b/i.test(line) ||
+    /\bclosed (at|in)\b/i.test(line) ||
+    /\bdeprecated (at|by|in)\b/i.test(line) ||
     /\bsuperseded by\b/i.test(line)
   );
 }
@@ -920,12 +942,16 @@ function analyzeProjectCodexHookOwnership(
   projectRoot: string,
 ): CodexHookOwnershipReport {
   const fp = path.join(projectRoot, CODEX_HOOKS_PATH);
-  if (!fs.existsSync(fp)) return analyzeCodexHookOwnership(undefined);
+  if (!fs.existsSync(fp)) {
+    return analyzeCodexHookOwnership(undefined, { projectRoot });
+  }
   try {
-    return analyzeCodexHookOwnership(fs.readFileSync(fp, "utf8"));
+    return analyzeCodexHookOwnership(fs.readFileSync(fp, "utf8"), {
+      projectRoot,
+    });
   } catch (e) {
     return {
-      ...analyzeCodexHookOwnership(undefined),
+      ...analyzeCodexHookOwnership(undefined, { projectRoot }),
       parseError: `${CODEX_HOOKS_PATH} could not be read: ${(e as Error).message}`,
     };
   }
@@ -952,7 +978,12 @@ function readRegionContent(
 ): string | undefined {
   const fp = path.join(projectRoot, file);
   if (!fs.existsSync(fp)) return undefined;
-  return findRegion(fs.readFileSync(fp, "utf8"), regionId)?.content;
+  try {
+    return findRegion(fs.readFileSync(fp, "utf8"), regionId)?.content;
+  } catch (e) {
+    if (e instanceof RegionParseError) return undefined;
+    throw e;
+  }
 }
 
 /**

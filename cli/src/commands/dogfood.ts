@@ -154,7 +154,7 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
       fs.existsSync(outputPath) && fs.readFileSync(outputPath, "utf8").trim() !== ""
         ? "\n\n"
         : "";
-    fs.appendFileSync(outputPath, `${prefix}${markdown}`, "utf8");
+    fs.appendFileSync(outputPath, `${prefix}${markdown}\n`, "utf8");
     appendedPath = path.relative(projectRoot, outputPath);
     evidencePath = appendEvidenceRecord(
       projectRoot,
@@ -419,7 +419,7 @@ function runActiveHandoffSimulation(libraryRoot: string): CommandCheck {
       command,
       start,
       "pass",
-      "active.md and latest archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present",
+      "active.md and warm active archive source pointers injected; Codex native SessionStart and Cursor fallback instructions present",
     );
   } catch (e) {
     return handoffSimulationResult(
@@ -1253,7 +1253,7 @@ function writeActiveHandoffFixture(project: string): void {
       "- verify Codex native dispatch",
       "",
       "## Decisions",
-      "- SessionStart includes active.md and latest archive.",
+      "- SessionStart includes active.md and warm active archive pointers.",
       "",
       "## Open questions / blockers",
       "- none",

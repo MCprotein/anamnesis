@@ -184,6 +184,95 @@ describe("context diagnostics", () => {
     expect(result.summary.issues).toBe(0);
   });
 
+  it("reports semantic freshness issues in active handoff state", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-handoff-freshness-");
+    writeFile(
+      project,
+      ".anamnesis/handoff/active.md",
+      [
+        "# Active handoff index",
+        "",
+        "## Current focus",
+        "- [completed] finished cleanup - archive: `.anamnesis/handoff/closed.md`",
+        "",
+        "## Active tasks",
+        "- continue missing-file work - next: inspect `docs/MISSING.md` - archive: `.anamnesis/handoff/current.md`",
+        "- continue superseded work - archive: `.anamnesis/handoff/superseded.md`",
+        "",
+        "## Recently completed",
+        "- already moved here - archive: `.anamnesis/handoff/closed.md`",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/current.md",
+      "# Handoff - current\n\n## Goal\ncurrent\n\n## Next steps\n1. Continue\n",
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/closed.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "retention_tier: cold",
+        "---",
+        "",
+        "# Handoff - closed",
+        "",
+        "## Goal",
+        "closed",
+        "",
+        "## Next steps",
+        "1. None",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/superseded.md",
+      [
+        "---",
+        "handoff_status: superseded",
+        "retention_tier: deprecated",
+        "superseded_by: .anamnesis/handoff/current.md",
+        "---",
+        "",
+        "# Handoff - superseded",
+        "",
+        "## Goal",
+        "superseded",
+        "",
+        "## Next steps",
+        "1. None",
+        "",
+      ].join("\n"),
+    );
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.ok).toBe(false);
+    expect(result.summary.byCode["handoff-active-completed-entry"]).toBe(1);
+    expect(result.summary.byCode["handoff-active-file-missing"]).toBe(1);
+    expect(result.summary.byCode["handoff-active-archive-inactive"]).toBe(2);
+    expect(result.summary.byCode["handoff-archive-missing"]).toBe(0);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "handoff-active-file-missing",
+          related: ["docs/MISSING.md"],
+        }),
+        expect.objectContaining({
+          code: "handoff-active-archive-inactive",
+          related: expect.arrayContaining([
+            ".anamnesis/handoff/superseded.md",
+            ".anamnesis/handoff/current.md",
+          ]),
+        }),
+      ]),
+    );
+  });
+
   it("reports explicit docs-vs-bootstrap fact contradictions", () => {
     const project = tmpDir("anamnesis-context-diagnostics-docs-bootstrap-");
     writeFile(

@@ -45,6 +45,7 @@ export interface CodexHookOwnershipEntry {
 export type CodexHookOwnershipWarningKind =
   | "duplicate-command"
   | "relative-managed-command"
+  | "stale-managed-command"
   | "malformed-entry";
 
 export interface CodexHookOwnershipWarning {
@@ -65,6 +66,10 @@ export interface CodexHookOwnershipReport {
     duplicates: number;
     warnings: number;
   };
+}
+
+export interface CodexHookOwnershipOptions {
+  projectRoot?: string;
 }
 
 type JsonObject = Record<string, unknown>;
@@ -104,6 +109,7 @@ export function codexHooksFeatureEnabled(content: string): boolean {
 
 export function analyzeCodexHookOwnership(
   content: string | null | undefined,
+  opts: CodexHookOwnershipOptions = {},
 ): CodexHookOwnershipReport {
   const entries: CodexHookOwnershipEntry[] = [];
   const warnings: CodexHookOwnershipWarning[] = [];
@@ -245,6 +251,25 @@ export function analyzeCodexHookOwnership(
               "anamnesis-managed Codex hook command uses a relative project path; refresh it so it resolves from the Git root.",
           });
         }
+        if (
+          owner === "anamnesis" &&
+          command !== undefined &&
+          opts.projectRoot !== undefined
+        ) {
+          const relPath = managedAnamnesisHookRelPath(command);
+          if (
+            relPath !== null &&
+            !fs.existsSync(path.join(opts.projectRoot, relPath))
+          ) {
+            warnings.push({
+              kind: "stale-managed-command",
+              event,
+              matcher,
+              command,
+              detail: `anamnesis-managed Codex hook command points to missing ${relPath}`,
+            });
+          }
+        }
       });
     });
   }
@@ -326,6 +351,14 @@ function codexManagedCommandIsRelative(command: string): boolean {
     !normalized.includes("git rev-parse --show-toplevel") &&
     !normalized.includes("$root/.anamnesis/")
   );
+}
+
+function managedAnamnesisHookRelPath(command: string): string | null {
+  const normalized = command.replace(/\\/g, "/");
+  const match = normalized.match(
+    /(\.anamnesis\/(?:codex-native-hooks|codex-hooks)\/[^"'\s;]+)/,
+  );
+  return match?.[1] ?? null;
 }
 
 export function upsertCodexHooksFeatureFlag(content: string): string {

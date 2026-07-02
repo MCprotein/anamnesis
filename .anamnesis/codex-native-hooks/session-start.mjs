@@ -109,8 +109,15 @@ function newestArchivedHandoff(handoffDir) {
   }
   for (const entry of entries) {
     if (!entry.isFile()) continue;
-    if (!entry.name.endsWith(".md") || entry.name === "active.md") continue;
+    if (
+      !entry.name.endsWith(".md") ||
+      entry.name === "active.md" ||
+      entry.name === "draft.md"
+    ) {
+      continue;
+    }
     const abs = join(handoffDir, entry.name);
+    if (isInactiveHandoffArchive(abs)) continue;
     let mtime = 0;
     try {
       mtime = statSync(abs).mtimeMs;
@@ -123,6 +130,84 @@ function newestArchivedHandoff(handoffDir) {
     }
   }
   return newest;
+}
+
+function activeHandoffArchiveRefs(activePath) {
+  if (!fileExists(activePath)) return [];
+  const refs = new Set();
+  const lines = readFileSync(activePath, "utf8").split(/\r?\n/);
+  let inOpenSection = false;
+  const pattern =
+    /\.anamnesis\/handoff\/(?!active\.md)(?!draft\.md)(?!drafts\/)[^`\s)]+\.md/g;
+  for (const line of lines) {
+    if (line === "## Current focus" || line === "## Active tasks") {
+      inOpenSection = true;
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      inOpenSection = false;
+      continue;
+    }
+    if (!inOpenSection || !line.startsWith("- ")) continue;
+    for (const match of line.matchAll(pattern)) {
+      refs.add(match[0]);
+    }
+  }
+  return [...refs].sort();
+}
+
+function archivePathFromRef(projectRoot, ref) {
+  if (
+    typeof ref !== "string" ||
+    ref.includes("..") ||
+    !ref.startsWith(".anamnesis/handoff/") ||
+    !ref.endsWith(".md") ||
+    ref.startsWith(".anamnesis/handoff/drafts/")
+  ) {
+    return "";
+  }
+  const abs = resolve(projectRoot, ref);
+  if (abs !== projectRoot && !abs.startsWith(`${projectRoot}${sep}`)) return "";
+  return abs;
+}
+
+function handoffFrontmatter(filePath) {
+  if (!fileExists(filePath)) return {};
+  const text = readFileSync(filePath, "utf8");
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) return {};
+  const out = {};
+  for (const line of (match[1] ?? "").split(/\r?\n/)) {
+    const item = line.match(/^([A-Za-z_][A-Za-z0-9_]*):\s*(.*?)\s*$/);
+    if (!item) continue;
+    out[item[1]] = item[2].replace(/^['"]|['"]$/g, "").trim();
+  }
+  return out;
+}
+
+function isInactiveHandoffArchive(filePath) {
+  const frontmatter = handoffFrontmatter(filePath);
+  const status = safeString(frontmatter.handoff_status).toLowerCase();
+  const tier = safeString(frontmatter.retention_tier).toLowerCase();
+  return (
+    status === "closed" ||
+    status === "deprecated" ||
+    status === "superseded" ||
+    tier === "cold" ||
+    tier === "deprecated" ||
+    safeString(frontmatter.superseded_by).length > 0
+  );
+}
+
+function selectedHandoffArchives(projectRoot, activePath, handoffDir) {
+  if (!fileExists(activePath)) {
+    const latest = newestArchivedHandoff(handoffDir);
+    return latest ? [latest] : [];
+  }
+  return activeHandoffArchiveRefs(activePath)
+    .map((ref) => archivePathFromRef(projectRoot, ref))
+    .filter((filePath) => filePath && fileExists(filePath))
+    .filter((filePath) => !isInactiveHandoffArchive(filePath));
 }
 
 function fileExists(filePath) {
@@ -268,36 +353,37 @@ function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
   if (!dirExists(handoffDir)) return null;
 
   const active = join(handoffDir, "active.md");
-  const latest = newestArchivedHandoff(handoffDir);
-  if (!fileExists(active) && !latest) return null;
+  const archives = selectedHandoffArchives(projectRoot, active, handoffDir);
+  if (!fileExists(active) && archives.length === 0) return null;
 
   const sections = [
     [
       "=== anamnesis: handoff ===",
       "",
-      "Previous-session handoff. Use active.md as the compact index; read the referenced archive for detail.",
+      "Previous-session handoff. Use active.md as the compact index; read active warm archive pointers for detail.",
+      "Cold/deprecated archives are excluded from SessionStart.",
     ].join("\n"),
   ];
   if (mode !== "full") {
     sections.push("Mode: compact (set ANAMNESIS_SESSION_CONTEXT_MODE=full for full file injection)");
     sections.push("Source pointers:");
     if (fileExists(active)) sections.push(sourcePointer(projectRoot, active));
-    if (latest) sections.push(sourcePointer(projectRoot, latest));
+    for (const archive of archives) sections.push(sourcePointer(projectRoot, archive));
     const summary = activeHandoffSummary(active);
     if (summary.length > 0) {
       sections.push("", "Active task summary:", ...summary);
     }
-    sections.push(
-      "",
-      "Retrieval rule: read active.md and the referenced archive before continuing non-trivial in-flight work.",
-      "--- end of handoff ---",
-    );
+    const retrieval =
+      archives.length > 0
+        ? "Retrieval rule: read active.md and the referenced warm archive before continuing non-trivial in-flight work."
+        : "Retrieval rule: read active.md before continuing non-trivial in-flight work; no warm archive is startup-active.";
+    sections.push("", retrieval, "--- end of handoff ---");
     return sections.join("\n");
   }
   pushFileSection(sections, projectRoot, `Source: ${relative(projectRoot, active).split(sep).join("/")}`, active, budget);
-  if (latest) {
-    const rel = relative(projectRoot, latest).split(sep).join("/");
-    pushFileSection(sections, projectRoot, `--- most recent archived handoff: ${rel} ---`, latest, budget);
+  for (const archive of archives) {
+    const rel = relative(projectRoot, archive).split(sep).join("/");
+    pushFileSection(sections, projectRoot, `--- active referenced archived handoff: ${rel} ---`, archive, budget);
   }
   sections.push("--- end of handoff ---");
   return sections.join("\n\n");

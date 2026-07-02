@@ -323,6 +323,81 @@ describe("codex executable_hook fallback", () => {
     );
   });
 
+  it("excludes closed recently completed archives from native handoff SessionStart context", () => {
+    const projectRoot = tmpDir("anamnesis-codex-handoff-session-start-");
+    const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(handoffDir, "active.md"),
+      [
+        "# Active handoff index",
+        "",
+        "## Current focus",
+        "",
+        "## Active tasks",
+        "",
+        "## Recently completed",
+        "- completed task — archive: `.anamnesis/handoff/closed.md`",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(handoffDir, "closed.md"),
+      [
+        "---",
+        "handoff_status: closed",
+        "retention_tier: cold",
+        "---",
+        "",
+        "# Closed archive",
+        "",
+        "SECRET_COLD_BODY",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const wrapperPath = path.resolve("base/adapters/codex/hooks/session-start.mjs");
+    const compact = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      encoding: "utf8",
+    });
+
+    expect(compact.status).toBe(0);
+    expect(compact.stderr).toBe("");
+    const output = JSON.parse(compact.stdout) as {
+      hookSpecificOutput?: { additionalContext?: string };
+    };
+    const context = output.hookSpecificOutput?.additionalContext ?? "";
+    expect(context).toContain("Mode: compact");
+    expect(context).toContain("- .anamnesis/handoff/active.md");
+    expect(context).not.toContain("- .anamnesis/handoff/closed.md");
+    expect(context).not.toContain("SECRET_COLD_BODY");
+    expect(context).toContain("no warm archive is startup-active");
+
+    const full = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      env: {
+        ...process.env,
+        ANAMNESIS_SESSION_CONTEXT_MODE: "full",
+      },
+      encoding: "utf8",
+    });
+
+    expect(full.status).toBe(0);
+    expect(full.stderr).toBe("");
+    const fullOutput = JSON.parse(full.stdout) as {
+      hookSpecificOutput?: { additionalContext?: string };
+    };
+    const fullContext = fullOutput.hookSpecificOutput?.additionalContext ?? "";
+    expect(fullContext).toContain("Source: .anamnesis/handoff/active.md");
+    expect(fullContext).not.toContain("SECRET_COLD_BODY");
+    expect(fullContext).not.toContain("active referenced archived handoff");
+  });
+
   it("registers Stop hooks natively without a matcher", () => {
     fs.writeFileSync(
       path.join(fragmentDir, "adapters/claude-code/hooks/stop.sh"),

@@ -5,11 +5,11 @@
       "file": "AGENTS.md",
       "region_id": "anamnesis-base",
       "fragment_id": "base",
-      "fragment_version": 13,
-      "template_version": 13,
+      "fragment_version": 15,
+      "template_version": 15,
       "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "last_applied_hash": "sha256:72964d6013541061a858f8e1a654c1d91a62f098eed8ee0a039bb2a8fd35268d",
-      "current_user_hash": "sha256:72964d6013541061a858f8e1a654c1d91a62f098eed8ee0a039bb2a8fd35268d"
+      "last_applied_hash": "sha256:0b7c1ab84216615136e409f788e97ff9d660604522cf5a4ea6396337596d5920",
+      "current_user_hash": "sha256:0b7c1ab84216615136e409f788e97ff9d660604522cf5a4ea6396337596d5920"
     },
     {
       "file": "AGENTS.md",
@@ -75,11 +75,11 @@
       "file": "AGENTS.md",
       "region_id": "codex-hook-inject-handoff",
       "fragment_id": "base",
-      "fragment_version": 14,
-      "template_version": 14,
+      "fragment_version": 15,
+      "template_version": 15,
       "base_rendered_hash": "sha256:79e8ba2f8c838bdc56911fe2a09c58024b307679d516783834c7ded93b403447",
-      "last_applied_hash": "sha256:9acd3c4a0d405a3aea44a0f54b0d0a5d003ab8681254d4c6dcc56394d6d97226",
-      "current_user_hash": "sha256:9acd3c4a0d405a3aea44a0f54b0d0a5d003ab8681254d4c6dcc56394d6d97226"
+      "last_applied_hash": "sha256:4bdb8d6997040c2d6a9553d68daf5d2e6e928b3248a370a80915ed159c49da60",
+      "current_user_hash": "sha256:4bdb8d6997040c2d6a9553d68daf5d2e6e928b3248a370a80915ed159c49da60"
     },
     {
       "file": "AGENTS.md",
@@ -151,9 +151,9 @@
     {
       "path": ".claude/hooks/inject-handoff.sh",
       "fragment_id": "base",
-      "fragment_version": 13,
-      "last_applied_hash": "sha256:5a7a223786011d22db9b43ab493215f7b024bbbd1f203426e71e937860e59b2a",
-      "current_user_hash": "sha256:5a7a223786011d22db9b43ab493215f7b024bbbd1f203426e71e937860e59b2a"
+      "fragment_version": 15,
+      "last_applied_hash": "sha256:4071381ef7042eabd2c55d15ef88a388efcf0b090b70c3915c73d3da34827275",
+      "current_user_hash": "sha256:4071381ef7042eabd2c55d15ef88a388efcf0b090b70c3915c73d3da34827275"
     },
     {
       "path": ".claude/commands/handoff-prepare.md",
@@ -207,9 +207,9 @@
     {
       "path": ".anamnesis/codex-native-hooks/session-start.mjs",
       "fragment_id": "base",
-      "fragment_version": 13,
-      "last_applied_hash": "sha256:f62df52e79a61a08a1728922ee70070a2df4f044acde2972d5ef75d0ea7451e6",
-      "current_user_hash": "sha256:f62df52e79a61a08a1728922ee70070a2df4f044acde2972d5ef75d0ea7451e6"
+      "fragment_version": 15,
+      "last_applied_hash": "sha256:851e320413aecf34a5b018b1e27b5b319c540b544d869036cdee398017c63d73",
+      "current_user_hash": "sha256:851e320413aecf34a5b018b1e27b5b319c540b544d869036cdee398017c63d73"
     },
     {
       "path": ".anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh",
