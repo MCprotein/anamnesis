@@ -361,7 +361,7 @@ Exit criteria met:
 
 Progress:
 - 2026-05-04: Started the Agentfile schema audit in
-  `docs/AGENTFILE-SCHEMA-AUDIT.md` and added compatibility fixtures for
+  `docs/deprecated/AGENTFILE-SCHEMA-AUDIT.md` and added compatibility fixtures for
   historical Claude Code-only, current all-adapter single-scope, and
   multi-scope pinned Agentfiles in `cli/src/core/agentfile.compat.test.ts`.
 - 2026-05-04: Updated `specs/agentfile.md` to distinguish parser-level hard
@@ -433,7 +433,7 @@ Progress:
   executable-hook safety, Layer A vs Layer B boundaries, versioning,
   verification, review checklist, and compatibility rules for future public
   fragments.
-- 2026-05-04: Added `docs/DOCS-SITE-PLAN.md` as the v0.9 docs-site
+- 2026-05-04: Added `docs/deprecated/DOCS-SITE-PLAN.md` as the v0.9 docs-site
   decision. Documentation stays GitHub-first through v1.0; the plan defines
   user/audience entry points, future site navigation, site trigger criteria,
   and maintenance rules so a generated site can mirror repo markdown later
@@ -494,7 +494,7 @@ Progress:
   and unsigned remote escape hatches are post-v1.0; v1.0 keeps built-in and
   local-library fragments as the only installable sources.
 - 2026-05-04: Closed the public documentation completeness item with
-  `docs/DOCS-V1-AUDIT.md`, mapping install, lifecycle, adapter parity,
+  `docs/deprecated/DOCS-V1-AUDIT.md`, mapping install, lifecycle, adapter parity,
   ontology generation, handoff, monorepo, release, fragment authoring,
   troubleshooting, schema/API/migration, registry/sync scope, and evidence
   docs to canonical repo entry points plus known v1.0 limitations.
@@ -992,7 +992,7 @@ Progress notes:
 
 ---
 
-## v1.7 — *planned*
+## v1.7 — *in progress*
 
 > **Theme: task harnesses, behavior verification, and adapter security**
 
@@ -1069,6 +1069,40 @@ Progress notes:
   `doctor` and `status`. Unsafe fixture tests now verify missing shell safety,
   read-only/write mismatch, undeclared network egress, and undeclared
   repo-external writes while keeping clean installs warning-free.
+
+---
+
+## v1.8 — *planned*
+
+> **Theme: handoff lifecycle automation with bounded markdown retention**
+
+Handoff should become a lifecycle-managed project artifact, not an unbounded
+folder of session notes. anamnesis should keep handoff state as repo-local
+markdown plus regenerable context-index entries, then use lifecycle tiers to
+decide what enters startup context.
+
+Design: [`docs/HANDOFF-LIFECYCLE.md`](HANDOFF-LIFECYCLE.md)
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Handoff lifecycle tiers** | planned | Add a documented hot/warm/cold/deprecated model. `hot` means active current work in `active.md`; `warm` means recent or active-referenced archives; `cold` means older completed archives available only through query/resume; `deprecated` means superseded, too old, or semantically stale and never injected. |
+| 2 | **Auto-draft handoff flow** | planned | Add a safe draft path that gathers git status, recent commits, changed files, latest evidence, current active handoff, and latest archive. The CLI may prepare structure, but the agent must confirm decisions, blockers, rejected options, and next steps before finalizing. |
+| 3 | **Handoff close/deprecate workflow** | planned | Add a way to close completed active entries, mark archives superseded/deprecated, and remove completed work from startup summaries without deleting the underlying archive immediately. |
+| 4 | **Handoff retention in GC** | planned | Extend `anamnesis gc --dry-run` beyond task harnesses to report handoff archive count, byte budgets, active references, cold/deprecated candidates, and delete-candidate recommendations. Keep deletion preview-first; do not silently remove user-authored handoff files. |
+| 5 | **Semantic freshness diagnostics** | planned | Teach `status`, `doctor`, and `context diagnose` to warn when `active.md` is structurally valid but semantically stale: old git ref, clean worktree, completed entries under active sections, missing referenced files, or newer archives that supersede active work. |
+| 6 | **SessionStart budget guardrails** | planned | Keep startup injection bounded: hot summary only, warm source pointers only, cold/deprecated excluded, and full archive injection available only through explicit debug mode. Add benchmark/diagnostic evidence that the lifecycle model does not increase default startup tokens. |
+
+Exit criteria:
+- Handoff startup context stays compact and does not inject full archives by
+  default.
+- `status` or `doctor` can distinguish structural validity from semantic
+  freshness for active handoff state.
+- `gc --dry-run` reports handoff lifecycle candidates with age/count/byte
+  reasons and preserves active references.
+- Completed work can be removed from active startup context without deleting
+  useful historical archives immediately.
+- No hosted service or separate handoff storage backend is introduced for
+  handoff continuity.
 
 ---
 

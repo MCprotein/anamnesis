@@ -37,6 +37,10 @@ could include breaking changes.
 - Recorded the first public-safe v1.7 full-vs-compact behavior benchmark pair,
   including source-citation, protected-edit, matched-harness, token, and graph
   evidence.
+- Added the planned v1.8 handoff lifecycle design, documenting hot/warm/cold
+  and deprecated handoff tiers with bounded markdown retention.
+- Moved historical Agentfile/docs audit records under `docs/deprecated/` and
+  updated active documentation links to point at current sources.
 
 ## [1.6.0] — 2026-06-25
 
@@ -321,7 +325,7 @@ could include breaking changes.
 - Added `docs/REGISTRY-V1-DECISION.md`, the v1.0 decision record that defers
   remote registry/signing implementation post-v1.0 while preserving built-in
   and local-library fragment safety.
-- Added `docs/DOCS-V1-AUDIT.md`, the v1.0 public documentation coverage map
+- Added `docs/deprecated/DOCS-V1-AUDIT.md`, the v1.0 public documentation coverage map
   for install, lifecycle, parity, ontology, handoff, monorepo, release,
   fragment authoring, troubleshooting, and limitations.
 - Added `docs/README-CLAIMS.md`, the v1.0 evidence ledger that maps README
@@ -356,7 +360,7 @@ could include breaking changes.
 - Added `docs/FRAGMENT-AUTHORING.md`, a public fragment authoring guide with
   capability examples, rulebook guidance, executable-hook safety rules,
   versioning expectations, tests, review checklist, and compatibility rules.
-- Added `docs/DOCS-SITE-PLAN.md`, the v0.9 decision to stay GitHub-first
+- Added `docs/deprecated/DOCS-SITE-PLAN.md`, the v0.9 decision to stay GitHub-first
   through v1.0 while defining the future docs-site information architecture
   and trigger criteria.
 - Added `docs/BENCHMARK-GALLERY.md`, a public-safe benchmark evidence surface
@@ -388,7 +392,7 @@ could include breaking changes.
 - Replanned the post-v0.7 roadmap into v0.8 schema/API/migration
   stabilization, v0.9 registry/signing/docs readiness, and v1.0 surface
   freeze criteria.
-- Added `docs/AGENTFILE-SCHEMA-AUDIT.md` and compatibility fixture tests for
+- Added `docs/deprecated/AGENTFILE-SCHEMA-AUDIT.md` and compatibility fixture tests for
   historical Claude Code-only, current all-adapter single-scope, and
   multi-scope pinned Agentfile shapes.
 - Added `docs/AGENTFILE-MIGRATIONS.md` to define the planned
@@ -717,7 +721,7 @@ two-layer design.
 - **`Introspector` interface + `IntrospectorRegistry`**
   (`cli/src/core/introspector.ts`). Each fragment that wants bootstrap
   support registers an Introspector keyed by its fragment id with two
-  hooks: `appliesTo(ctx)` (cheap pre-flight) and `introspect(ctx)`
+  hooks: `appliesTo(project)` (cheap pre-flight) and `introspect(project)`
   (returns plain JS object → YAML).
 - **`anamnesis ontology bootstrap`** command
   (`cli/src/commands/ontology.ts`) — Layer A entrypoint. Walks the
@@ -957,7 +961,7 @@ and rounds out the fragment catalog.
 - **Fragment catalog expansion** — Rails, Django, Go, Rust, sveltekit, etc.
 - **`anamnesis status --json`** — structured output for CI.
 
-Full breakdown in [`docs/ROADMAP.md`](../docs/ROADMAP.md).
+Full breakdown in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 

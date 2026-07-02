@@ -139,9 +139,9 @@ export interface OntologyFacts {
 export interface Introspector {
   fragmentId: string;
   /** Quick check: does this project have anything for this introspector to read? */
-  appliesTo(ctx: ProjectContext): boolean;
+  appliesTo(project: ProjectContext): boolean;
   /** Parse project files, return facts as plain JS object (will be YAML-serialized). */
-  introspect(ctx: ProjectContext): OntologyFacts;
+  introspect(project: ProjectContext): OntologyFacts;
 }
 
 export class IntrospectorRegistry {
@@ -154,8 +154,8 @@ export class IntrospectorRegistry {
 The bootstrap command:
 1. Loads installed fragments from `Agentfile`.
 2. For each fragment, looks up its introspector.
-3. Runs `appliesTo(ctx)` — skip if false.
-4. Runs `introspect(ctx)` — get facts.
+3. Runs `appliesTo(project)` — skip if false.
+4. Runs `introspect(project)` — get facts.
 5. Wraps in metadata header + writes `<id>.bootstrap.yaml`.
 
 ---

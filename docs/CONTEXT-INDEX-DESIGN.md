@@ -5,6 +5,9 @@ Status: v1.6 prototype hardened; MCP/API export deferred.
 v1.7 extends the same local index with task harness retrieval targets under
 `.anamnesis/task-harnesses/`.
 
+v1.8 should use the same regenerable index for handoff lifecycle retrieval.
+Source markdown under `.anamnesis/handoff/` remains authoritative.
+
 ## Goal
 
 After v1.5, SessionStart should stay compact. Agents need a local way to find
@@ -22,7 +25,8 @@ Index these public/local project sources first:
 - `AGENTS.md` and adapter entrypoint files for operating rules.
 - `system_graph.yaml` for user-managed project ontology.
 - `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, and `.enriched.yaml`.
-- `.anamnesis/handoff/active.md` plus referenced archive files.
+- `.anamnesis/handoff/active.md` plus referenced archive files, with
+  lifecycle tier metadata when v1.8 handoff lifecycle ships.
 - `.anamnesis/task-harnesses/*.yaml` for bounded task contracts.
 - `.anamnesis/manifest.json` for installed fragment/render state.
 - `.anamnesis/evidence/events.jsonl` for latest runtime evidence summaries.
@@ -118,6 +122,7 @@ blocking supported agent workflows.
 The index enables v1.6 diagnostics that are hard with plain startup context:
 
 - stale `active.md` archive pointers
+- semantically stale active handoff state once v1.8 lifecycle metadata exists
 - duplicate ontology entity IDs
 - contradictory relationship claims across `system_graph.yaml`, bootstrap, and
   enriched ontology
@@ -132,6 +137,10 @@ Prototype behavior:
 - `anamnesis context diagnose` runs advisory checks over handoff files,
   ontology YAML, and runtime evidence.
 - It reports missing or stale active handoff archive pointers.
+- Future v1.8 diagnostics should also report structurally valid but
+  semantically stale active handoff entries, such as old closed tasks left in
+  `Current focus`, old git refs on clean worktrees, or newer archives that
+  supersede active work.
 - It reports duplicate ontology entity IDs and relationship IDs whose
   endpoints differ across sources.
 - It reports semantic entries referenced by `supersedes` when the superseded
@@ -148,6 +157,7 @@ Prototype behavior:
 
 - No network service.
 - No embedding dependency in the first version.
+- No separate storage backend for handoff lifecycle.
 - No automatic prompt-time injection from query results.
 - No secret scanning beyond conservative exclusion of known sensitive paths.
 - No claim that indexed snippets are authoritative without source reads.

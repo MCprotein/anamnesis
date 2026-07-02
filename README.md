@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-551%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.6.0%20published-success)]()
+[![tests](https://img.shields.io/badge/tests-557%20passing-success)]() [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![status](https://img.shields.io/badge/status-v1.6.0%20published-success)]()
 
 ---
 
@@ -193,6 +193,12 @@ docs sources. This is safe only when those sources are current and behavior
 benchmarks show agents actually read and cite them; `benchmark task` v1.7 adds
 those checks.
 
+Handoff lifecycle automation is planned for v1.8. The intended model keeps
+handoff as bounded repo-local markdown: hot active state is summarized at
+startup, warm archives are source pointers, cold archives are query-only, and
+deprecated archives become GC candidates. See
+[`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md).
+
 ---
 
 ## Fragment catalog
@@ -312,6 +318,7 @@ used for deterministic README score claims.
 | **v1.5** | Compact SessionStart defaults and session-context benchmark graphs | shipped 2026-06-19 |
 | **v1.6** | Repo-local context index/query/resume and contradiction diagnostics | shipped 2026-06-25 |
 | **v1.7** | Retrieval-only task harnesses and preview-first lifecycle cleanup | in progress |
+| **v1.8** | Handoff lifecycle automation with bounded markdown retention | planned |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
@@ -323,8 +330,6 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — version-by-version plan
 - [`docs/AGENT-SWITCHING-GUIDE.md`](docs/AGENT-SWITCHING-GUIDE.md) —
   install once, switch agents, and continue work without re-briefing
-- [`docs/AGENTFILE-SCHEMA-AUDIT.md`](docs/AGENTFILE-SCHEMA-AUDIT.md) —
-  v0.8 audit of Agentfile fields, compatibility fixtures, and v1.0 freeze risks
 - [`docs/AGENTFILE-V1-FREEZE.md`](docs/AGENTFILE-V1-FREEZE.md) —
   v1 Agentfile freeze decisions, reserved fields, and strict parser policy
 - [`docs/AGENTFILE-MIGRATIONS.md`](docs/AGENTFILE-MIGRATIONS.md) —
@@ -335,16 +340,14 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   public fragment authoring guide, review checklist, versioning, and compatibility rules
 - [`docs/TASK-HARNESS-DESIGN.md`](docs/TASK-HARNESS-DESIGN.md) —
   v1.7 retrieval-only task harness capability and lifecycle design
+- [`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md) —
+  planned v1.8 hot/warm/cold/deprecated handoff lifecycle design
 - [`docs/FRAGMENT-REGISTRY.md`](docs/FRAGMENT-REGISTRY.md) —
   v0.9 registry metadata, discovery, version selection, cache, and trust-boundary design
 - [`docs/FRAGMENT-SIGNING.md`](docs/FRAGMENT-SIGNING.md) —
   v0.9 remote fragment checksum, signature, trust-store, and rejection policy
 - [`docs/REGISTRY-V1-DECISION.md`](docs/REGISTRY-V1-DECISION.md) —
   v1.0 decision to keep remote registry/signing implementation post-v1.0
-- [`docs/DOCS-SITE-PLAN.md`](docs/DOCS-SITE-PLAN.md) —
-  v0.9 GitHub-first docs decision, information architecture, and future site trigger
-- [`docs/DOCS-V1-AUDIT.md`](docs/DOCS-V1-AUDIT.md) —
-  v1.0 public documentation coverage and known limitation audit
 - [`docs/REMOTE-SYNC-STRATEGY.md`](docs/REMOTE-SYNC-STRATEGY.md) —
   v1.0 decision to omit broad `sync` and keep registry refresh/update explicit
 - [`docs/ADAPTER-PARITY.md`](docs/ADAPTER-PARITY.md) — tested capability
@@ -367,6 +370,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
 - [`rulebook.md`](rulebook.md) — auto-detection rules and trigger DSL
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — adding fragments, writing capabilities
 - [`CHANGELOG.md`](CHANGELOG.md) — release notes
+- [`docs/deprecated/`](docs/deprecated/) — archived historical audits and
+  superseded planning docs; not current operating guidance
 
 ---
 

@@ -111,6 +111,14 @@ completed or superseded entries from open sections.
 
 Run `anamnesis status` again. The `active-handoff` continuity check should pass.
 
+Current diagnostics are mostly structural: missing archive refs, active
+entries that point away from the newest archive, completed markers left under
+open sections, or archives missing required sections. If `active.md` is
+structurally valid but obviously old for the current work, refresh it with
+`/handoff-prepare` before switching agents, or clear the open sections when no
+work remains. v1.8 plans semantic freshness diagnostics and GC lifecycle
+tiers for hot/warm/cold/deprecated handoff archives.
+
 ## Ontology Gaps
 
 For missing or stale deterministic Layer A facts:

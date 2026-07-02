@@ -1,5 +1,9 @@
 # Agentfile Schema Audit
 
+Deprecated: historical v0.8 audit. Current guidance lives in
+`specs/agentfile.md`, `docs/AGENTFILE-V1-FREEZE.md`, and
+`docs/AGENTFILE-MIGRATIONS.md`.
+
 This is the v0.8 audit log for deciding what can become stable in v1.0.
 The implementation source of truth is `cli/src/core/agentfile.ts`; the human
 schema reference is `specs/agentfile.md`.

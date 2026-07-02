@@ -1,8 +1,12 @@
 # Official Docs Site Plan
 
+Deprecated: historical v0.9 docs-site plan. The active documentation index
+lives in `README.md`; v1.0 audit history is archived in
+`docs/deprecated/DOCS-V1-AUDIT.md`.
+
 Status: v0.9 plan. No separate documentation site has shipped yet.
 V1.0 GitHub-first documentation coverage is audited in
-`docs/DOCS-V1-AUDIT.md`.
+`docs/deprecated/DOCS-V1-AUDIT.md`.
 
 ## Decision
 
@@ -102,7 +106,7 @@ Recommended future navigation:
 | Ontology | `docs/ONTOLOGY-BOOTSTRAP.md` |
 | Monorepos | `docs/MONOREPO.md` |
 | Fragment Ecosystem | `docs/FRAGMENT-AUTHORING.md`, `docs/FRAGMENT-REGISTRY.md`, `docs/FRAGMENT-SIGNING.md` |
-| Evidence | `docs/DOGFOOD.md`, `docs/BENCHMARKS.md`, `docs/DOGFOOD-MATRIX.md` |
+| Evidence | `docs/DOGFOOD.md`, `docs/BENCHMARKS.md`, `docs/BENCHMARK-GALLERY.md` |
 | Reference | `specs/agentfile.md`, `docs/API.md`, `docs/DESIGN.md`, `docs/RELEASING.md`, `CHANGELOG.md` |
 
 ## Site Trigger

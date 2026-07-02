@@ -87,6 +87,13 @@ The archive should capture the goal, done work, in-flight files, decisions,
 open questions, and concrete next steps. This is the durable bridge between
 agents.
 
+Current releases do not automatically finalize this archive. Stop hooks can
+warn when dirty work is newer than the latest handoff, and SessionStart hooks
+can inject compact pointers, but the departing agent still owns the semantic
+summary. v1.8 plans an auto-draft plus lifecycle model so completed handoffs
+can move from hot active context to warm/cold/deprecated retention tiers
+without becoming an unbounded startup payload.
+
 ## 4. Resume In The Next Agent
 
 Start the target agent in the same repository. The target agent should load:
@@ -108,6 +115,10 @@ Adapter resume surfaces:
 Expected result: the new agent can continue the current task from the handoff
 and ontology state without the user writing a custom "read these files first"
 prompt.
+
+Do not paste all timestamped handoff archives into the next session. The
+normal path is compact active summary first, then source-pointer retrieval only
+when the active task needs detail.
 
 The ordered 3x3 source/target matrix is documented in
 [`SWITCHING-SCENARIOS.md`](SWITCHING-SCENARIOS.md).

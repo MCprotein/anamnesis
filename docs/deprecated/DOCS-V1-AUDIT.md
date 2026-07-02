@@ -1,5 +1,8 @@
 # Docs V1 Audit
 
+Deprecated: historical v1.0 documentation audit. Current navigation lives in
+`README.md`; current public claim boundaries live in `docs/README-CLAIMS.md`.
+
 Status: v1.0 documentation completeness audit.
 
 This audit maps the v1.0 public documentation requirement to the canonical
@@ -20,16 +23,16 @@ entry point without relying on conversation history.
 | Troubleshooting and repair | `docs/REPAIR.md`, `README.md` `status` / `doctor` lifecycle | Covered |
 | Release and publish | `docs/RELEASING.md`, `docs/DOGFOOD.md` published smoke evidence | Covered |
 | Fragment authoring | `docs/FRAGMENT-AUTHORING.md`, `CONTRIBUTING.md`, `rulebook.md` | Covered |
-| Agentfile schema freeze | `specs/agentfile.md`, `docs/AGENTFILE-V1-FREEZE.md`, `docs/AGENTFILE-SCHEMA-AUDIT.md` | Covered |
+| Agentfile schema freeze | `specs/agentfile.md`, `docs/AGENTFILE-V1-FREEZE.md`, `docs/deprecated/AGENTFILE-SCHEMA-AUDIT.md` | Covered |
 | Agentfile migration | `docs/AGENTFILE-MIGRATIONS.md`, `README.md` lifecycle | Covered |
 | Public TypeScript API | `docs/API.md`, `package.json` exports, `cli/src/api.ts` | Covered |
 | Registry/signing scope | `docs/REGISTRY-V1-DECISION.md`, `docs/FRAGMENT-REGISTRY.md`, `docs/FRAGMENT-SIGNING.md` | Covered |
 | Remote sync scope | `docs/REMOTE-SYNC-STRATEGY.md` | Covered |
-| Evidence-backed claims | `docs/README-CLAIMS.md`, `docs/BENCHMARK-GALLERY.md`, `docs/BENCHMARKS.md`, `docs/DOGFOOD-MATRIX.md`, `docs/DOGFOOD.md` | Covered |
+| Evidence-backed claims | `docs/README-CLAIMS.md`, `docs/BENCHMARK-GALLERY.md`, `docs/BENCHMARKS.md`, `docs/DOGFOOD.md` | Covered |
 
 ## Known Limitations To Keep Visible
 
-- Documentation remains GitHub-first through v1.0. `docs/DOCS-SITE-PLAN.md`
+- Documentation remains GitHub-first through v1.0. `docs/deprecated/DOCS-SITE-PLAN.md`
   defines the future generated docs-site path, but no separate site is
   required for v1.0.
 - Remote fragment registry installation and signing verification are not

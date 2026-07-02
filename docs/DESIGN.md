@@ -130,6 +130,30 @@ active context 에서 제거되고, `reusable` harness 는 `last_used`,
 `use_count`, `deprecated`, `superseded_by` 같은 lifecycle metadata 와
 retention/GC 정책으로 관리한다.
 
+### 4.2.1 Handoff lifecycle direction
+
+`handoff`는 에이전트 전환이나 새 세션 재개를 위한 curated task-state
+artifact 로 남겨야 한다.
+
+현재 구현은 `/handoff-prepare`가 `.anamnesis/handoff/active.md`와
+timestamped archive 를 쓰고, SessionStart 훅이 compact summary 와 source
+pointer 를 주입하며, Stop 훅이 dirty work 기준으로 handoff refresh 를
+알린다. 이 구조는 컨텍스트 유지에는 충분하지만 archive 생명주기를 자동
+관리하지는 않는다.
+
+v1.8 방향은 repo-local markdown 과 regenerable context index 로 관리하는
+것이다:
+
+- `hot`: `active.md`의 현재 작업. SessionStart 에 짧은 요약만 주입.
+- `warm`: 최근 또는 active 가 참조하는 archive. SessionStart 에는 source
+  pointer 만 주입.
+- `cold`: 오래된 완료 archive. 시작 컨텍스트에는 넣지 않고 query/resume
+  대상으로만 유지.
+- `deprecated`: 너무 오래됐거나 superseded/stale 인 archive. 주입 금지,
+  GC 후보로만 보고.
+
+상세 설계는 [HANDOFF-LIFECYCLE.md](HANDOFF-LIFECYCLE.md)에 둔다.
+
 **향후 추가 후보**: `scoped_rule` (Cursor 네이티브 — glob 기반 조건부 주입), `pre_commit_check` (executable_hook 의 특수형).
 
 **중요**: `executable_hook` 은 도구마다 보장 수준이 다르다. CC 는 전용 훅 표면을 쓰고, Codex 는 현재 지원되는 lifecycle event 에 native wrapper 를 쓰되 fallback 으로 AGENTS 지시문과 git hook bridge 를 유지한다. Cursor 는 best-effort rules 지시문이다. 이 한계는 어댑터 문서에 명시한다.
@@ -521,7 +545,7 @@ anamnesis/
 ├── .anamnesis/
 │   ├── manifest.json          # 리전·파일 해시 기록
 │   ├── ontology/              # static + bootstrap + enriched ontology
-│   ├── handoff/               # active.md + timestamped archives
+│   ├── handoff/               # active.md + timestamped archives; v1.8 lifecycle tiers planned
 │   ├── task-harnesses/         # reusable/current task contracts
 │   ├── overrides/             # 사용자 승격된 로컬 오버라이드
 │   └── backups/               # update 전 백업

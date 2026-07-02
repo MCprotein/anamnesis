@@ -53,7 +53,7 @@ Input files use `schema_version: anamnesis.agent_task_benchmark.v1` and include:
 - `metrics`: questions before action, tool turns to locate context,
   first-correct-action success, handoff recovery success, and elapsed time
 - `limitations`: why the result should not be overgeneralized
-- `evidence`: transcript, run log, or deterministic benchmark evidence paths
+- `evidence`: session note, run log, or deterministic benchmark evidence paths
 
 Optional v1.5 retrieval metrics:
 
