@@ -1097,6 +1097,11 @@ Progress notes:
   manifest `last_applied_hash`, backs them up under `.anamnesis/backups/`,
   removes those entries from the manifest, writes `gc-apply` runtime evidence,
   and skips user-authored, user-modified, and handoff candidates.
+- 2026-07-02: Prepared v1.7.1 from the `release/v1.7` branch after the v1.7.0
+  published-package fixture smoke exposed a context-diagnostics false positive.
+  Generated `.bootstrap.yaml` provenance remains available for
+  docs-vs-bootstrap fact checks, but no longer participates in semantic
+  ontology duplicate-ID diagnostics.
 
 ---
 

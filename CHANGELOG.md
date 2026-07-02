@@ -7,6 +7,15 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-07-02
+
+### Fixed
+
+- Fixed a context diagnostics false positive where generated
+  `.bootstrap.yaml` provenance metadata such as `generator.name: anamnesis`
+  could be treated as a semantic ontology entity and reported as a duplicate
+  ID during `anamnesis doctor` / `status`.
+
 ## [1.7.0] — 2026-07-02
 
 ### Added
