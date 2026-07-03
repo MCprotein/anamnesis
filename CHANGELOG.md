@@ -7,6 +7,11 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Documentation
+
+- Added a v1.9 post-release roadmap audit that separates the published
+  v1.9.0 scope from v1.9.1 patch candidates and v1.10 feature work.
+
 ## [1.9.0] — 2026-07-03
 
 ### Changed

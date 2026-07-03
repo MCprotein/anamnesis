@@ -1204,7 +1204,9 @@ manifest drift detection, user-modified preservation, backup-on-apply, pinned
 fragment rendering, hook config merge, repair diagnostics, a read-only
 `upgrade plan`, and a release readiness gate all exist. The remaining gap is
 interactive conflict choice UX: the deterministic plan exists, while a TUI-style
-chooser and optional setting materialization policy stay post-1.9 work.
+chooser and optional setting materialization policy stay post-1.9 work. The
+post-release audit below treats these as v1.10 feature candidates, not missing
+v1.9.0 release blockers.
 
 Baseline behavior from the v1.8 audit, with v1.9 release updates:
 
@@ -1240,17 +1242,30 @@ Baseline behavior from the v1.8 audit, with v1.9 release updates:
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Upgrade compatibility matrix** | release baseline shipped | Added matrix tests for clean old projects, old Agentfiles without new optional settings, user-modified managed regions, executable-adapter permission gates, registry timeout behavior, package/project guidance, partial adoption, and release smoke gating. Broader historical fixture coverage remains useful post-1.9, especially representative v1.4/v1.5/v1.7 published states, pinned fragments, partial adapter installs, stale hook registrations, hook config preservation, and suggested-but-declined fragments. |
-| 2 | **Project upgrade plan command** | shipped | Added `anamnesis upgrade plan`, a read-only package/project plan that reports current/latest CLI versions, Agentfile schema support, fragment updates, update dry-run gates, partial adoption, doctor health, and exact next commands. Remaining post-1.9 work: surface new optional settings/materialization choices explicitly instead of only relying on parser defaults and docs. |
-| 3 | **Upgrade-to-update handoff UX** | shipped | Text output now prints the package/project boundary and `update` / `doctor` next commands for managed projects, while `upgrade plan` surfaces pinned fragments, blocked executable adapters, user-modified surfaces, partial adoption, and doctor issues. Remaining post-1.9 work: expose an optional interactive/TUI chooser using the same deterministic plan. |
-| 4 | **Guided conflict choices** | deferred | Convert common upgrade conflicts into explicit choices instead of only counts and prose: apply safe managed updates, include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or add suggestions to `declined`. Keep the default non-interactive path deterministic and safe. |
+| 1 | **Upgrade compatibility matrix** | v1.9.0 baseline shipped | Added matrix tests for clean old projects, old Agentfiles without new optional settings, user-modified managed regions, executable-adapter permission gates, registry timeout behavior, package/project guidance, partial adoption, and release smoke gating. Broader historical fixture coverage remains useful post-1.9, especially representative v1.4/v1.5/v1.7 published states, pinned fragments, partial adapter installs, stale hook registrations, hook config preservation, and suggested-but-declined fragments. |
+| 2 | **Project upgrade plan command** | v1.9.0 shipped | Added `anamnesis upgrade plan`, a read-only package/project plan that reports current/latest CLI versions, Agentfile schema support, fragment updates, update dry-run gates, partial adoption, doctor health, and exact next commands. Remaining post-1.9 work: surface new optional settings/materialization choices explicitly instead of only relying on parser defaults and docs. |
+| 3 | **Upgrade-to-update handoff UX** | v1.9.0 shipped | Text output now prints the package/project boundary and `update` / `doctor` next commands for managed projects, while `upgrade plan` surfaces pinned fragments, blocked executable adapters, user-modified surfaces, partial adoption, and doctor issues. Remaining post-1.9 work: expose an optional interactive/TUI chooser using the same deterministic plan. |
+| 4 | **Guided conflict choices** | deferred to v1.10 | Convert common upgrade conflicts into explicit choices instead of only counts and prose: apply safe managed updates, include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or add suggestions to `declined`. Keep the default non-interactive path deterministic and safe. |
 | 5 | **Partial-upgrade state hardening** | done | `update --apply` now delays the Agentfile version bump for any fragment with `user-modified` or `blocked` managed surfaces. `status`, `doctor`, and `upgrade plan` all report partial adoption targets explicitly. |
-| 6 | **Optional setting materialization policy** | deferred | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
-| 7 | **Agentfile migration integration** | deferred | Keep `anamnesis migrate agentfile` dry-run/apply/backup-first, but make `update` and the upgrade plan detect when a schema migration is required before rendering. No fragment render or managed file write should happen from a CLI that cannot parse the project schema safely. |
+| 6 | **Optional setting materialization policy** | deferred to v1.10 | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
+| 7 | **Agentfile migration integration** | deferred to v1.10 | Keep `anamnesis migrate agentfile` dry-run/apply/backup-first, but make `update` and the upgrade plan detect when a schema migration is required before rendering. No fragment render or managed file write should happen from a CLI that cannot parse the project schema safely. |
 | 8 | **Post-upgrade verification gate** | done | Added `anamnesis release check`, a read-only release gate that composes `status`, `update --dry-run --allow-exec-adapters`, `doctor`, manifest drift, hook registration health, runtime evidence freshness, update-apply evidence, and a sanitized old-project upgrade smoke. It now runs first in `npm run release:check`. |
 | 9 | **Repair docs refresh** | shipped | `docs/REPAIR.md` covers partial upgrades caused by preserved managed surfaces, and README documents `upgrade plan` plus `release check` in the lifecycle flow. Docs distinguish package upgrade, project update, schema migration, and semantic agent tasks such as `/ontology-enrich` or `/handoff-prepare`. |
 
-Exit criteria:
+Post-release audit, 2026-07-03:
+
+- `v1.9.0` is complete for the package/project boundary, bounded registry
+  lookup, read-only `upgrade plan`, partial-adoption diagnostics, release
+  readiness gate, and dual-registry publish flow.
+- `v1.9.1` should stay limited to documentation and small upgrade-copy fixes
+  unless a post-release smoke exposes a concrete bug.
+- `v1.10` should own new behavior: guided conflict choices, optional setting
+  materialization, schema migration gating, and broader compatibility fixtures.
+- The old v1.9 exit criteria mixed released behavior with future UX. They are
+  split below so future work does not make the published `1.9.0` look
+  incomplete.
+
+v1.9.0 accepted evidence:
 
 - A user who has an older managed project can run one read-only command and
   understand whether the CLI package, Agentfile schema, fragment versions,
@@ -1262,19 +1277,24 @@ Exit criteria:
 - Clean old projects can upgrade through a documented command sequence without
   losing user-authored content, with backups and runtime evidence written on
   apply.
-- Projects with `user-modified`, `blocked`, `pinned`, malformed hook config,
-  or suggested fragment states receive explicit choices and next commands.
-- New optional settings are either safely defaulted or surfaced as an explicit
-  materialization choice; required schema changes go through
-  `migrate agentfile`.
 - `status` and `doctor` can distinguish fully upgraded projects from partial
   adoption states where some managed surfaces were intentionally preserved.
-- Automated compatibility tests cover old Agentfile shapes, pinned fragments,
-  user-modified managed regions, executable adapter gates, and hook merge
-  preservation.
 - Release readiness includes an upgrade smoke that starts from at least one
   older published package state or sanitized old-project fixture and ends with
   `doctor` reporting zero errors after the chosen repair path.
+
+Deferred acceptance criteria:
+
+- Projects with `user-modified`, `blocked`, `pinned`, malformed hook config,
+  or suggested fragment states receive explicit choices rather than only prose
+  and next commands.
+- New optional settings are either safely defaulted or surfaced as an explicit
+  materialization choice; required schema changes go through
+  `migrate agentfile`.
+- Automated compatibility tests cover old Agentfile shapes, pinned fragments,
+  user-modified managed regions, executable adapter gates, hook merge
+  preservation, stale hook registrations, and suggested-but-declined fragments
+  across representative published versions.
 
 Progress notes:
 - 2026-07-02: Audited current v1.8 upgrade behavior. The package updater is
@@ -1310,6 +1330,54 @@ Progress notes:
   evidence freshness, update-apply evidence, and a sanitized old-project
   upgrade smoke, so the gate now reports pass/fail instead of a skipped smoke
   lane.
+- 2026-07-03: Completed the post-release roadmap audit after `v1.9.0` was
+  published to npmjs.org and GitHub Packages. The audit separates the shipped
+  package/project upgrade plan from v1.9.1 patch candidates and v1.10 feature
+  candidates.
+
+---
+
+## v1.9.1 — *patch candidate*
+
+> **Theme: post-release audit and upgrade UX copy polish**
+
+This patch line should stay small. Use it only for documentation consistency,
+upgrade command copy, or a concrete post-release bug found by registry/package
+smoke tests. Do not add new upgrade behavior here unless the lack of it blocks
+users who already installed `1.9.0`.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Roadmap post-release audit** | done | Split the v1.9 section into published `1.9.0` evidence, patch candidates, and v1.10 feature candidates. This keeps the public release from looking incomplete while preserving the next work. |
+| 2 | **Upgrade copy audit** | candidate | Re-read `upgrade`, `upgrade plan`, `status`, and `doctor` output as a user upgrading from `1.8.0`. If wording still hides the package/project boundary or conflict next steps, patch copy and tests without changing behavior. |
+| 3 | **Release evidence summary** | candidate | If users ask "was this released?", keep README/changelog/release docs aligned with the dual-registry publish evidence and post-publish smoke results. |
+
+Exit criteria:
+
+- No package behavior changes unless tied to a concrete post-release bug.
+- Local verification remains `npm run release:check`, plus targeted tests if
+  CLI copy changes.
+- Publish `1.9.1` only if the patch changes package contents users should
+  receive through npm/GitHub Packages. Pure GitHub docs cleanup can stay
+  unreleased.
+
+---
+
+## v1.10 — *planned*
+
+> **Theme: guided upgrade decisions and compatibility depth**
+
+v1.10 should take the deterministic `upgrade plan` from v1.9 and turn its
+reported gates into clearer choices. It should still keep the default path
+scriptable, dry-run-first, and safe for unattended use.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Guided conflict choices** | planned | Convert common upgrade gates into explicit selectable decisions: include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or mark suggestions declined. |
+| 2 | **Optional setting materialization policy** | planned | Decide which new Agentfile settings should remain parser defaults and which should be written into existing Agentfiles. The plan should explain newly available knobs without forcing formatting churn. |
+| 3 | **Schema migration gate integration** | planned | Make `update` and `upgrade plan` detect when `migrate agentfile` is required before rendering or writing managed surfaces. Required schema changes must stay backup-first and dry-run visible. |
+| 4 | **Historical compatibility fixture matrix** | planned | Add representative published-state fixtures for v1.4, v1.5, v1.7, pinned fragments, partial adapter installs, stale hook registrations, hook config preservation, and suggested-but-declined fragments. |
+| 5 | **Upgrade benchmark evidence** | planned | Add repeated public-safe upgrade behavior evidence before making stronger compatibility claims. Keep numeric pass/fail dimensions separate from convenience summaries. |
 
 ---
 
