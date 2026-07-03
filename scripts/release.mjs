@@ -14,6 +14,7 @@ const RELEASE_DIRTY_ALLOWLIST = [
   "package-lock.json",
   "CHANGELOG.md",
   "README.md",
+  ".anamnesis/evidence/events.jsonl",
   "docs/DOGFOOD.md",
   "docs/BENCHMARK-GALLERY.md",
   "docs/benchmark-evidence/",
