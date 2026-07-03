@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-07-03
+
 ### Changed
 
 - Added an upgrade compatibility matrix test fixture covering clean old
