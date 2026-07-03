@@ -1246,7 +1246,7 @@ Baseline behavior from the v1.8 audit, with v1.9 work-in-progress updates:
 | 5 | **Partial-upgrade state hardening** | done | `update --apply` now delays the Agentfile version bump for any fragment with `user-modified` or `blocked` managed surfaces. `status`, `doctor`, and `upgrade plan` all report partial adoption targets explicitly. |
 | 6 | **Optional setting materialization policy** | planned | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
 | 7 | **Agentfile migration integration** | planned | Keep `anamnesis migrate agentfile` dry-run/apply/backup-first, but make `update` and the upgrade plan detect when a schema migration is required before rendering. No fragment render or managed file write should happen from a CLI that cannot parse the project schema safely. |
-| 8 | **Post-upgrade verification gate** | planned | Add a repeatable verification bundle for upgraded projects: `status`, `doctor`, update evidence, manifest drift summary, hook registration check, and one published-package fixture smoke. This should become the standard evidence for release notes when a release changes upgrade behavior. |
+| 8 | **Post-upgrade verification gate** | partial | Added `anamnesis release check`, a read-only release gate that composes `status`, `update --dry-run --allow-exec-adapters`, `doctor`, manifest drift, hook registration health, runtime evidence freshness, and update-apply evidence. It now runs first in `npm run release:check`. Remaining work: automate one published-package or sanitized old-project upgrade smoke instead of reporting that lane as skipped. |
 | 9 | **Repair docs refresh** | partial | `docs/REPAIR.md` now covers partial upgrades caused by preserved managed surfaces. Remaining work: refresh README lifecycle notes and any stale v1.8 handoff lifecycle language so users see the same upgrade flow as the CLI reports. Docs should distinguish package upgrade, project update, schema migration, and semantic agent tasks such as `/ontology-enrich` or `/handoff-prepare`. |
 
 Exit criteria:
@@ -1303,6 +1303,11 @@ Progress notes:
   surface. It combines package version drift, Agentfile schema readiness,
   `status`, `update --dry-run`, `doctor`, partial adoption, and next commands
   without mutating the package or project.
+- 2026-07-03: Added `anamnesis release check` as the first post-upgrade
+  verification gate. It reports release readiness from `status`, update
+  dry-run, `doctor`, manifest drift, hook registration health, runtime
+  evidence freshness, and update-apply evidence; the published-package smoke
+  lane is visible but still skipped until that fixture is automated.
 
 ---
 

@@ -47,6 +47,10 @@ import {
   type DoctorResult,
 } from "./commands/doctor.js";
 import {
+  releaseCheck,
+  type ReleaseCheckResult,
+} from "./commands/release_check.js";
+import {
   bootstrap,
   OntologyBootstrapError,
   type BootstrapResult,
@@ -340,6 +344,7 @@ Commands:
   upgrade plan                  Read-only package + project upgrade plan
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
+  release check                 Run the read-only release readiness gate
   hooks summary                 Summarize hook execution logs and optionally
                                   record runtime evidence
   dogfood check                 Run continuity self-check and optionally append
@@ -435,6 +440,12 @@ Flags (doctor):
   --append                      Append markdown to docs/DOCTOR.md and record
                                   runtime evidence
   --output <path>               Override doctor check log path
+
+Flags (release check):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --json                        Print structured JSON
+  --append                      Record runtime evidence
 
 Flags (status):
   --json                        Print structured JSON for CI/tools
@@ -963,6 +974,34 @@ function reportDoctor(result: DoctorResult): void {
     console.log(line);
   }
   reportAppendEvidence(result.appendedPath, result.evidencePath);
+}
+
+function reportReleaseCheck(result: ReleaseCheckResult): void {
+  console.log(
+    `anamnesis release check — ${result.projectName} (${result.ok ? "ok" : "blocked"})`,
+  );
+  console.log(`  generated: ${result.generatedAt}`);
+  console.log(
+    `  checks: pass=${result.summary.pass} warn=${result.summary.warn} fail=${result.summary.fail} skip=${result.summary.skip}`,
+  );
+  console.log(
+    `  status: fragments updates=${result.statusSummary.fragmentUpdatesAvailable}, partial=${result.statusSummary.partialAdoptions}; drift modified=${result.statusSummary.entriesUserModified}, missing=${result.statusSummary.entriesMissing}`,
+  );
+  console.log(
+    `  update dry-run: create=${result.updateSummary.create} update=${result.updateSummary.update} blocked=${result.updateSummary.blocked} user-modified=${result.updateSummary.userModified}`,
+  );
+  console.log(
+    `  doctor: errors=${result.doctorSummary.errors} warnings=${result.doctorSummary.warnings} info=${result.doctorSummary.info}`,
+  );
+  for (const check of result.checks) {
+    console.log(`  ${check.status.padEnd(4)} ${check.label}: ${check.detail}`);
+    if (check.next) {
+      console.log(`       next: ${check.next}`);
+    }
+  }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
 }
 
 function formatAge(ms: number): string {
@@ -1927,6 +1966,44 @@ async function main(argv: string[]): Promise<number> {
         }
         throw e;
       }
+
+    case "release": {
+      const sub = positional[0];
+      if (sub !== "check") {
+        console.error(
+          `error: unknown 'release' subcommand: ${sub ?? "(none)"}`,
+        );
+        console.error(
+          `usage: anamnesis release check [--json] [--append] [--project-root=<path>] [--library=<path>]`,
+        );
+        return 1;
+      }
+      try {
+        const result = releaseCheck({
+          projectRoot:
+            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          append: flags["append"] === true,
+        });
+        if (flags["json"] === true) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          reportReleaseCheck(result);
+        }
+        return result.ok ? 0 : 1;
+      } catch (e) {
+        if (
+          e instanceof StatusError ||
+          e instanceof UpdateError ||
+          e instanceof DoctorError
+        ) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+    }
 
     case "hooks": {
       const sub = positional[0];

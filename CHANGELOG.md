@@ -26,6 +26,11 @@ could include breaking changes.
 - Added `anamnesis upgrade plan`, a read-only package/project upgrade plan that
   summarizes CLI version drift, Agentfile schema support, update dry-run gates,
   partial adoption, doctor health, and exact next commands.
+- Added `anamnesis release check`, a read-only release gate that combines
+  `status`, `update --dry-run --allow-exec-adapters`, `doctor`, manifest drift,
+  hook registration health, runtime evidence freshness, and update evidence.
+- Added the release gate to `npm run release:check` before dogfood, doctor,
+  benchmark gallery, prompt-gate, and build verification.
 
 ### Documentation
 
@@ -40,6 +45,7 @@ could include breaking changes.
 - Documented how to repair partial upgrades after user-modified or blocked
   managed surfaces hold back an Agentfile fragment version bump.
 - Documented `anamnesis upgrade plan` in the README upgrade flow.
+- Documented `anamnesis release check` in the README lifecycle flow.
 
 ## [1.8.0] — 2026-07-02
 

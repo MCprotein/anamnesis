@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-605%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![tests](https://img.shields.io/badge/tests-607%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Main-branch docs may describe unreleased work. The npm badge is the source of
 truth for the latest version currently published to npmjs.org.
@@ -156,6 +156,7 @@ anamnesis update --bump-pinned  # explicitly move pinned fragments to current
 anamnesis status    # fragments, drift, ontology gaps, continuity, evidence, context diagnostic summary
 anamnesis doctor    # read-only installation integrity + continuity/ontology/context diagnostics
 anamnesis doctor --append  # record doctor diagnostics as runtime evidence
+anamnesis release check  # read-only release gate: status + update dry-run + doctor + evidence
 anamnesis hooks summary --append  # summarize hook logs and record runtime evidence
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup
 anamnesis dogfood check --append  # score and record self-check continuity evidence
