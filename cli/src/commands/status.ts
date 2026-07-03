@@ -73,6 +73,10 @@ import {
   type AgentConfigDamageStatus,
 } from "../core/agent_config_damage.js";
 import { collectInstalledRenderActions } from "./render_plan.js";
+import {
+  planChanges,
+  type PlannedChange,
+} from "../core/applier.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,6 +96,16 @@ export interface FragmentStatus {
   libraryVersion: number | null;
   pinned: boolean;
   status: FragmentSyncStatus;
+}
+
+export type PartialAdoptionReason = "user-modified" | "blocked";
+
+export interface PartialAdoptionStatus {
+  fragmentId: string;
+  installedVersion: number;
+  libraryVersion: number;
+  reasons: PartialAdoptionReason[];
+  targets: string[];
 }
 
 export interface RegionStatus {
@@ -198,6 +212,8 @@ export interface StatusResult {
   executableSecurity: ExecutableSecurityStatus;
   /** Advisory checks for copied or over-expanded agent configuration context. */
   agentConfigDamage: AgentConfigDamageStatus;
+  /** Fragment updates held back by preserved or blocked managed surfaces. */
+  partialAdoptions: PartialAdoptionStatus[];
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -220,6 +236,7 @@ export interface StatusResult {
     executableSecurityInfo: number;
     agentConfigDamageWarnings: number;
     agentConfigDamageInfo: number;
+    partialAdoptions: number;
     suggestedCount: number;
     declinedCount: number;
     declinedStaleCount: number;
@@ -463,6 +480,21 @@ export function status(opts: StatusOptions): StatusResult {
     library,
     entries,
   );
+  const installedRenderPlan = collectInstalledRenderActions({
+    projectRoot,
+    libraryRoot,
+    library,
+    scopes: effectiveScopeList,
+  });
+  const plannedChanges = safePlannedChanges({
+    actions: installedRenderPlan.actions,
+    projectRoot,
+    manifest,
+  });
+  const partialAdoptions = collectPartialAdoptions({
+    fragments: scopes.flatMap((scope) => scope.fragments),
+    changes: plannedChanges,
+  });
   const dependencies = collectDependencyStatus({
     libraryRoot,
     scopes: effectiveScopeList,
@@ -486,14 +518,7 @@ export function status(opts: StatusOptions): StatusResult {
     ok: contextDiagnosticResult.ok,
     summary: contextDiagnosticResult.summary,
   };
-  const executableSecurity = analyzeExecutableSecurity(
-    collectInstalledRenderActions({
-      projectRoot,
-      libraryRoot,
-      library,
-      scopes: effectiveScopeList,
-    }).actions,
-  );
+  const executableSecurity = analyzeExecutableSecurity(installedRenderPlan.actions);
   const agentConfigDamage = analyzeAgentConfigDamage({
     projectRoot,
     manifest,
@@ -524,6 +549,7 @@ export function status(opts: StatusOptions): StatusResult {
     executableSecurityInfo: executableSecurity.summary.info,
     agentConfigDamageWarnings: agentConfigDamage.summary.warnings,
     agentConfigDamageInfo: agentConfigDamage.summary.info,
+    partialAdoptions: partialAdoptions.length,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
     declinedStaleCount: declined.filter((d) => !d.matched).length,
@@ -548,10 +574,84 @@ export function status(opts: StatusOptions): StatusResult {
     contextDiagnostics: contextDiagnosticStatus,
     executableSecurity,
     agentConfigDamage,
+    partialAdoptions,
     suggested,
     declined,
     summary,
   };
+}
+
+function collectPartialAdoptions(input: {
+  fragments: readonly FragmentStatus[];
+  changes: readonly PlannedChange[];
+}): PartialAdoptionStatus[] {
+  const updateable = new Map(
+    input.fragments
+      .filter(
+        (fragment) =>
+          fragment.status === "update-available" &&
+          fragment.libraryVersion !== null,
+      )
+      .map((fragment) => [fragment.id, fragment] as const),
+  );
+  const byFragment = new Map<
+    string,
+    { reasons: Set<PartialAdoptionReason>; targets: Set<string> }
+  >();
+
+  for (const change of input.changes) {
+    const fragment = updateable.get(change.fragmentId);
+    if (!fragment) continue;
+    if (change.status !== "user-modified" && change.status !== "blocked") {
+      continue;
+    }
+    const current = byFragment.get(change.fragmentId) ?? {
+      reasons: new Set<PartialAdoptionReason>(),
+      targets: new Set<string>(),
+    };
+    current.reasons.add(change.status);
+    current.targets.add(changeTarget(change));
+    byFragment.set(change.fragmentId, current);
+  }
+
+  return [...byFragment.entries()]
+    .map(([fragmentId, state]) => {
+      const fragment = updateable.get(fragmentId)!;
+      return {
+        fragmentId,
+        installedVersion: fragment.installedVersion,
+        libraryVersion: fragment.libraryVersion!,
+        reasons: [...state.reasons].sort(),
+        targets: [...state.targets].sort(),
+      };
+    })
+    .sort((a, b) => a.fragmentId.localeCompare(b.fragmentId));
+}
+
+function safePlannedChanges(input: {
+  actions: Parameters<typeof planChanges>[0];
+  projectRoot: string;
+  manifest: Manifest;
+}): PlannedChange[] {
+  try {
+    return planChanges(input.actions, {
+      projectRoot: input.projectRoot,
+      manifest: input.manifest,
+      allowExecAdapters: false,
+    }).changes;
+  } catch {
+    // Partial-adoption detection is advisory. Other status checks, especially
+    // agentConfigDamage, still need to run when malformed managed regions make
+    // a full render/update plan impossible.
+    return [];
+  }
+}
+
+function changeTarget(change: PlannedChange): string {
+  if (change.target === "region") {
+    return `${change.file} [region:${change.regionId}]`;
+  }
+  return change.path;
 }
 
 function computeContinuityStatus(opts: {

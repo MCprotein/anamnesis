@@ -38,6 +38,11 @@ Use this sequence:
 
 Do not expect `update` to overwrite user-modified files automatically.
 
+If `status` reports a partial upgrade, the Agentfile fragment version was
+intentionally left behind because one or more managed surfaces were preserved.
+Resolve the listed `user-modified` or `blocked` targets, then re-run
+`anamnesis update --apply --allow-exec-adapters`.
+
 ## Missing Hook Registration
 
 If `doctor` reports a `.claude/settings.json` hook registration is missing:

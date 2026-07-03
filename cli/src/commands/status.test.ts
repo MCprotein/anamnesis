@@ -312,6 +312,42 @@ describe("status — library version drift", () => {
     expect(r.summary.fragmentUpdatesAvailable).toBe(1);
   });
 
+  it("reports partial adoption when a user-modified surface holds back a fragment bump", () => {
+    const { project } = setupFreshlyInstalled();
+    const agentsPath = path.join(project, "AGENTS.md");
+    const edited = upsertRegion(fs.readFileSync(agentsPath, "utf8"), {
+      id: "prisma",
+      fragmentId: "prisma",
+      fragmentVersion: 1,
+      content: "USER PRISMA RULES",
+    });
+    fs.writeFileSync(agentsPath, edited);
+
+    const v2Lib = makeLibrary({
+      prismaVersion: 2,
+      prismaContent: "## Prisma\n\nv2 rules.\n",
+    });
+    update({
+      projectRoot: project,
+      libraryRoot: v2Lib,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    const r = status({ projectRoot: project, libraryRoot: v2Lib });
+
+    expect(r.summary.partialAdoptions).toBe(1);
+    expect(r.partialAdoptions).toEqual([
+      {
+        fragmentId: "prisma",
+        installedVersion: 1,
+        libraryVersion: 2,
+        reasons: ["user-modified"],
+        targets: ["AGENTS.md [region:prisma]"],
+      },
+    ]);
+  });
+
   it("flags pinned and does NOT show update", () => {
     const { project } = setupFreshlyInstalled();
     // Pin the prisma fragment in Agentfile.

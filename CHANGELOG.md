@@ -21,6 +21,8 @@ could include breaking changes.
 - Kept `anamnesis update --apply` from marking a fragment version current in
   Agentfile when that fragment still has `user-modified` or `blocked` managed
   surfaces.
+- Added `status` / `doctor` partial-upgrade reporting so users can see which
+  fragment version bumps are held back by preserved managed surfaces.
 
 ### Documentation
 
@@ -32,6 +34,8 @@ could include breaking changes.
   choices while keeping safe non-interactive defaults.
 - Refreshed repair guidance for active handoff diagnostics now that v1.8
   semantic freshness and lifecycle checks have shipped.
+- Documented how to repair partial upgrades after user-modified or blocked
+  managed surfaces hold back an Agentfile fragment version bump.
 
 ## [1.8.0] — 2026-07-02
 

@@ -771,6 +771,22 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
     }
   }
 
+  if (result.partialAdoptions.length > 0) {
+    console.log(`  partial upgrades: ${result.partialAdoptions.length}`);
+    for (const partial of result.partialAdoptions) {
+      const reasons = partial.reasons.join(", ");
+      console.log(
+        `    ${partial.fragmentId}@${partial.installedVersion} -> ${partial.libraryVersion} held by ${reasons}`,
+      );
+      for (const target of partial.targets.slice(0, 3)) {
+        console.log(`      ${target}`);
+      }
+      if (partial.targets.length > 3) {
+        console.log(`      ... ${partial.targets.length - 3} more target(s)`);
+      }
+    }
+  }
+
   if (!result.dependencies.ready) {
     console.log(`  dependencies: issues (${result.dependencies.summary.total})`);
     for (const problem of result.dependencies.problems.slice(0, 5)) {

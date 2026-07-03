@@ -75,6 +75,7 @@ export type DoctorIssueCode =
   | "fragment-dependency-version-unsatisfied"
   | "fragment-dependency-cycle"
   | "fragment-update-available"
+  | "fragment-partial-adoption"
   | "tracked-entry-missing"
   | "tracked-entry-user-modified"
   | "adapter-renderer-missing"
@@ -192,7 +193,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   if (manifestReadable) {
     const stableNow = () => new Date(generatedAt);
     const st = status({ projectRoot, libraryRoot, now: stableNow });
-    addStatusIssues(st.entries, st.fragments, issues);
+    addStatusIssues(st.entries, st.fragments, st.partialAdoptions, issues);
     addDependencyIssues(st.dependencies.problems, issues);
     addContinuityIssues(st.continuity.checks, issues);
     addOntologyGapIssues(st.ontology.gaps, issues);
@@ -282,10 +283,13 @@ export function doctor(opts: DoctorOptions): DoctorResult {
 
 type StatusEntry = ReturnType<typeof status>["entries"][number];
 type StatusFragment = ReturnType<typeof status>["fragments"][number];
+type StatusPartialAdoption =
+  ReturnType<typeof status>["partialAdoptions"][number];
 
 function addStatusIssues(
   entries: StatusEntry[],
   fragments: StatusFragment[],
+  partialAdoptions: StatusPartialAdoption[],
   issues: DoctorIssue[],
 ): void {
   for (const f of fragments) {
@@ -304,6 +308,28 @@ function addStatusIssues(
         message: `fragment '${f.id}' is installed at ${f.installedVersion}; library has ${f.libraryVersion}`,
       });
     }
+  }
+
+  for (const partial of partialAdoptions) {
+    const targets = partial.targets.slice(0, 3).join(", ");
+    const more =
+      partial.targets.length > 3
+        ? `, and ${partial.targets.length - 3} more`
+        : "";
+    issues.push({
+      severity: "warning",
+      code: "fragment-partial-adoption",
+      fragmentId: partial.fragmentId,
+      target: targets ? `${targets}${more}` : undefined,
+      message:
+        `fragment '${partial.fragmentId}' remains at ${partial.installedVersion}; ` +
+        `library has ${partial.libraryVersion}, but ${partial.reasons.join(" and ")} ` +
+        `managed surface(s) still require review`,
+      repair:
+        partial.reasons.includes("blocked")
+          ? "Run `anamnesis update --dry-run --allow-exec-adapters` to inspect executable adapter writes, then `anamnesis update --apply --allow-exec-adapters` after review. Merge any user-modified managed files first."
+          : "Run `anamnesis update --dry-run --allow-exec-adapters`, manually merge the listed user-modified managed files if the library content should apply, then re-run `anamnesis update --apply --allow-exec-adapters`.",
+    });
   }
 
   for (const e of entries) {

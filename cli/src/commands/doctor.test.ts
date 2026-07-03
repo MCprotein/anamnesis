@@ -466,6 +466,42 @@ capabilities:
     );
   });
 
+  it("reports partial adoption when preserved managed surfaces hold back a fragment bump", () => {
+    const { project } = installProject();
+    const agentsPath = path.join(project, "AGENTS.md");
+    const edited = upsertRegion(fs.readFileSync(agentsPath, "utf8"), {
+      id: "anamnesis-base",
+      fragmentId: "base",
+      fragmentVersion: 1,
+      content: "USER BASE RULES",
+    });
+    fs.writeFileSync(agentsPath, edited);
+
+    const v2Library = makeLibrary({ version: 2 });
+    update({
+      projectRoot: project,
+      libraryRoot: v2Library,
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    const result = doctor({ projectRoot: project, libraryRoot: v2Library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "fragment-partial-adoption",
+          fragmentId: "base",
+          target: "AGENTS.md [region:anamnesis-base]",
+          message: expect.stringContaining("remains at 1"),
+          repair: expect.stringContaining("manual"),
+        }),
+      ]),
+    );
+  });
+
   it("reports installed hooks missing from settings.json", () => {
     const { project, library } = installProject();
     fs.writeFileSync(
