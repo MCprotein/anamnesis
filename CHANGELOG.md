@@ -9,12 +9,18 @@ could include breaking changes.
 
 ### Changed
 
+- Added an upgrade compatibility matrix test fixture covering clean old
+  projects, old Agentfiles without optional settings, user-modified managed
+  regions, and executable-adapter permission gates.
 - Improved `anamnesis upgrade` text output so it explicitly separates CLI
   package upgrade from project-managed file updates and shows the next
   `update` / `doctor` commands for managed projects.
 - Hardened `anamnesis upgrade` registry calls so scoped package lookups
   explicitly use the requested registry, disable fetch retries, and time out
   instead of waiting indefinitely on a slow registry/auth path.
+- Kept `anamnesis update --apply` from marking a fragment version current in
+  Agentfile when that fragment still has `user-modified` or `blocked` managed
+  surfaces.
 
 ### Documentation
 

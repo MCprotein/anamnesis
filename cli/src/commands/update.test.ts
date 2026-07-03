@@ -602,6 +602,10 @@ describe("update — user-modified preservation", () => {
     const afterApply = fs.readFileSync(agentsPath, "utf8");
     const region = findRegion(afterApply, "prisma");
     expect(region?.content).toContain("USER HAND-EDITED");
+
+    const afterAgentfile = readAgentfile(project);
+    const prisma = afterAgentfile.fragments.find((f) => f.id === "prisma")!;
+    expect(prisma.version).toBe(1);
   });
 });
 
@@ -1181,5 +1185,8 @@ capabilities:
     expect(
       fs.existsSync(path.join(project, ".claude/hooks/prisma.sh")),
     ).toBe(false);
+    const afterAgentfile = readAgentfile(project);
+    const prisma = afterAgentfile.fragments.find((f) => f.id === "prisma")!;
+    expect(prisma.version).toBe(1);
   });
 });

@@ -6,7 +6,8 @@
 //   * Reads the existing manifest so drift (user-modified) is preserved.
 //   * Default dry-run; `--apply` to actually write.
 //   * Backs up any files about to be updated under `.anamnesis/backups/<ts>/`.
-//   * Auto-bumps Agentfile fragment versions to match the library on apply.
+//   * Auto-bumps Agentfile fragment versions to match the library on apply,
+//     except when that fragment still has preserved or blocked managed surfaces.
 //   * Reports new rulebook matches as `suggested` — does NOT auto-install.
 
 import * as fs from "node:fs";
@@ -322,10 +323,12 @@ function bumpFragmentEntries<T extends { id: string; version: number; pinned?: b
   entries: T[],
   versions: Map<string, number>,
   bumpPinned: boolean,
+  preserveIds: Set<string> = new Set(),
 ): T[] {
   return entries.map((entry) => {
     const current = versions.get(entry.id);
     if (current === undefined) return entry;
+    if (preserveIds.has(entry.id)) return entry;
     if (entry.pinned === true && !bumpPinned) return entry;
     return { ...entry, version: current };
   });
@@ -377,6 +380,7 @@ function bumpScopeFragmentEntries(
   project: Agentfile["project"],
   versions: Map<string, number>,
   bumpPinned: boolean,
+  preserveIds: Set<string> = new Set(),
 ): Agentfile["project"] {
   if (!project.scopes) return project;
   return {
@@ -388,11 +392,28 @@ function bumpScopeFragmentEntries(
         ...scope,
         overrides: {
           ...scope.overrides,
-          fragments_add: bumpFragmentEntries(add, versions, bumpPinned),
+          fragments_add: bumpFragmentEntries(
+            add,
+            versions,
+            bumpPinned,
+            preserveIds,
+          ),
         },
       };
     }),
   };
+}
+
+function fragmentIdsWithPreservedSurfaces(
+  changes: readonly PlannedChange[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const change of changes) {
+    if (change.status === "user-modified" || change.status === "blocked") {
+      ids.add(change.fragmentId);
+    }
+  }
+  return ids;
 }
 
 // ---------------------------------------------------------------------------
@@ -581,21 +602,27 @@ export function update(opts: UpdateOptions): UpdateResult {
   // 8. Build a post-update Agentfile that reflects library-current versions.
   //    Pinned entries stay at their pinned version unless --bump-pinned was
   //    provided, in which case they move to current while remaining pinned.
+  //    If any managed surface for a fragment was preserved or blocked, keep
+  //    that fragment entry at its previous version so status/doctor can still
+  //    report partial adoption instead of marking the fragment fully current.
   const expandedAgentfileForResolution = withAutoDependencyEntries(
     agentfileForResolution,
     autoDependencyEntriesByScope,
   );
+  const preserveVersionIds = fragmentIdsWithPreservedSurfaces(changes);
   const updatedAgentfile: Agentfile = {
     ...expandedAgentfileForResolution,
     fragments: bumpFragmentEntries(
       expandedAgentfileForResolution.fragments,
       currentFragmentVersions(base, fragments),
       opts.bumpPinned === true,
+      preserveVersionIds,
     ),
     project: bumpScopeFragmentEntries(
       expandedAgentfileForResolution.project,
       currentFragmentVersions(base, fragments),
       opts.bumpPinned === true,
+      preserveVersionIds,
     ),
   };
 

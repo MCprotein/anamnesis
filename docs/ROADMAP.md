@@ -1205,18 +1205,20 @@ fragment rendering, hook config merge, and repair diagnostics all exist. The
 gap is that these pieces are spread across separate commands and do not yet
 produce one explicit upgrade plan with user-facing choices.
 
-Current behavior from the v1.8 audit:
+Baseline behavior from the v1.8 audit, with v1.9 work-in-progress updates:
 
 - `anamnesis upgrade --apply` upgrades the global CLI package only. It does not
   automatically run project `update`, `migrate agentfile`, `doctor`, ontology
   bootstrap, or adapter smoke checks.
-- The current `upgrade` report does not yet hand off clearly into the project
-  update flow. Users must already know that package upgrade and project-managed
-  surface update are separate steps.
+- The first v1.9 text pass now hands off from package upgrade to project
+  `update` / `doctor` guidance for managed projects, and registry lookups are
+  bounded so a slow registry/auth path does not hang indefinitely. Deeper
+  project gate detection still belongs in the planned upgrade plan surface.
 - `anamnesis update` is dry-run first, reads the existing Agentfile and
   manifest, preserves user-modified managed files, backs up files before
   writing updates, auto-adds required dependency fragments, and bumps
-  non-pinned fragment versions on apply.
+  non-pinned fragment versions on apply only when that fragment has no
+  preserved or blocked managed surfaces.
 - Pinned fragments intentionally stay on their archived versions unless
   `--bump-pinned` is supplied. Missing pinned archives are hard blockers.
 - Executable adapter writes are blocked unless `--allow-exec-adapters` is
@@ -1237,11 +1239,11 @@ Current behavior from the v1.8 audit:
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Upgrade compatibility matrix** | planned | Add fixtures for representative old project states: clean v1.4/v1.5/v1.7 projects, old Agentfiles without new optional settings, pinned fragments, user-modified managed regions, missing executable adapter permission, partial adapter installs, stale hook registrations, and suggested-but-declined fragments. Each fixture should prove `upgrade -> update dry-run -> apply/repair -> doctor` behavior without losing local edits. |
+| 1 | **Upgrade compatibility matrix** | partial | Added a starter matrix for clean old projects, old Agentfiles without new optional settings, user-modified managed regions, and missing executable-adapter permission. Remaining fixture targets: representative v1.4/v1.5/v1.7 published states, pinned fragments, partial adapter installs, stale hook registrations, hook config preservation, and suggested-but-declined fragments. Each fixture should prove `upgrade -> update dry-run -> apply/repair -> doctor` behavior without losing local edits. |
 | 2 | **Project upgrade plan command** | planned | Add a command or mode that connects package upgrade to project state, e.g. `anamnesis upgrade plan` or `anamnesis doctor --upgrade-plan`. It should report current CLI version, latest registry version, Agentfile schema support, fragment updates, blocked executable surfaces, pinned blocks, user-modified surfaces, new optional settings, and the exact next command(s). |
 | 3 | **Upgrade-to-update handoff UX** | partial | Text output now prints the package/project boundary and `update` / `doctor` next commands for managed projects. Remaining work: surface deeper detected gates such as pinned fragments, malformed hook config, and manual-merge needs, then expose an optional interactive/TUI chooser using the same deterministic plan. |
 | 4 | **Guided conflict choices** | planned | Convert common upgrade conflicts into explicit choices instead of only counts and prose: apply safe managed updates, include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or add suggestions to `declined`. Keep the default non-interactive path deterministic and safe. |
-| 5 | **Partial-upgrade state hardening** | planned | Audit whether `update --apply` can mark Agentfile fragment versions current while related managed surfaces stayed `user-modified` or `blocked`. If yes, record partial adoption explicitly or delay version bump for affected surfaces so `status`/`doctor` can distinguish fully upgraded fragments from preserved local drift. |
+| 5 | **Partial-upgrade state hardening** | partial | `update --apply` now delays the Agentfile version bump for any fragment with `user-modified` or `blocked` managed surfaces, so partial adoption is not silently marked current. Remaining work: expose this state explicitly in `status`/`doctor` and the upgrade plan instead of relying on preserved fragment versions alone. |
 | 6 | **Optional setting materialization policy** | planned | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
 | 7 | **Agentfile migration integration** | planned | Keep `anamnesis migrate agentfile` dry-run/apply/backup-first, but make `update` and the upgrade plan detect when a schema migration is required before rendering. No fragment render or managed file write should happen from a CLI that cannot parse the project schema safely. |
 | 8 | **Post-upgrade verification gate** | planned | Add a repeatable verification bundle for upgraded projects: `status`, `doctor`, update evidence, manifest drift summary, hook registration check, and one published-package fixture smoke. This should become the standard evidence for release notes when a release changes upgrade behavior. |
@@ -1288,6 +1290,11 @@ Progress notes:
   projects see the CLI/package boundary plus `update --dry-run`,
   `update --apply`, and `doctor` next commands. Deeper gate detection and the
   optional interactive/TUI chooser remain planned.
+- 2026-07-03: Added the first upgrade compatibility matrix tests for clean old
+  projects, old Agentfiles without optional settings, user-modified managed
+  regions, and executable-adapter gates. Hardened `update --apply` so fragments
+  with preserved or blocked managed surfaces keep their previous Agentfile
+  version instead of being marked fully current.
 
 ---
 
