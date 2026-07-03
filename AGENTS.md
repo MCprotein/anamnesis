@@ -21,6 +21,19 @@ This repository **is** anamnesis — the AI coding agent config lifecycle manage
 - Local CLI: `npx tsx cli/src/index.ts <cmd>` (skips build)
 - Build for distribution: `npm run build` → `cli/dist/`
 
+## Release operations
+
+Agents must not rely on memory or manual release checklists for this repo.
+Normal releases must use the repo release runner:
+
+1. `npm run release:prepare -- --version X.Y.Z`
+2. `npm run release:publish -- --version X.Y.Z --push --cleanup-branch`
+3. `npm run release:verify -- --version X.Y.Z`
+
+Do not hand-run `npm publish`, hand-create GitHub Releases, or hand-create /
+push release tags during the normal path. The only exception is the documented
+incident recovery path in `docs/RELEASING.md`.
+
 ## Conventions
 
 - Tests are co-located (`*.test.ts` next to the implementation).

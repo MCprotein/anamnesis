@@ -1393,6 +1393,7 @@ instead of a manual checklist.
 | 2 | **Historical release backfill** | done | Existing tags from `v0.2.0` through `v1.9.2` now have GitHub Releases; `v1.9.2` is the latest public release and both package registries report `1.9.2`. |
 | 3 | **Repo release runner** | done | Added `npm run release:prepare`, `release:publish`, `release:verify`, and `release:status` so version files, changelog promotion, evidence refresh, release gate, commit, tag, push, branch cleanup, and post-publish smoke use a single scripted path. |
 | 4 | **Release docs simplification** | done | `docs/RELEASING.md` now treats the scripts as the normal path and keeps manual npm publish only as an incident recovery fallback. |
+| 5 | **Agent-facing release invariant** | done | Added release rules to `AGENTS.md` and the top of `docs/RELEASING.md` so future agents see the scripted path before they can fall back to memory or older manual release habits. |
 
 Exit criteria:
 
@@ -1401,6 +1402,8 @@ Exit criteria:
 - Public artifacts can be verified with `npm run release:verify -- --version X.Y.Z`.
 - No step asks the maintainer to remember separate manual npm, GitHub Package,
   GitHub Release, tag, or branch cleanup commands during the normal path.
+- Fresh agent sessions see the release invariant in `AGENTS.md` before doing
+  release work.
 
 ---
 

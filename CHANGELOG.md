@@ -23,6 +23,8 @@ could include breaking changes.
 - Updated release procedure docs so a matching GitHub Release is part of the
   release completion criteria and post-publish smoke gate.
 - Replaced the manual release checklist with the script-driven release flow.
+- Added agent-facing release rules to `AGENTS.md` and `docs/RELEASING.md` so
+  future sessions use the scripted release runner instead of relying on memory.
 
 ## [1.9.2] — 2026-07-03
 

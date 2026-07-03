@@ -5,6 +5,23 @@ Packages from GitHub Actions. The tag workflow also creates the matching
 GitHub Release. Both registries and the GitHub Release must carry the same
 version before a release is considered complete.
 
+## Agent Quick Rule
+
+Agents must use the scripted release path. Do not rely on memory, older chat
+context, or a hand-written checklist.
+
+Normal path:
+
+```bash
+npm run release:prepare -- --version X.Y.Z
+npm run release:publish -- --version X.Y.Z --push --cleanup-branch
+npm run release:verify -- --version X.Y.Z
+```
+
+Do not hand-run `npm publish`, hand-create GitHub Releases, or hand-create /
+push release tags unless the incident recovery path in this document explicitly
+applies.
+
 ## Trusted Publishing
 
 The release workflow is `.github/workflows/publish.yml`. It uses npm
