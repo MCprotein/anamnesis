@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
   packages: write
 
@@ -40,6 +40,17 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Validate tag version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [[ "${GITHUB_REF_NAME}" != "v${PACKAGE_VERSION}" ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${PACKAGE_VERSION}."
+            exit 1
+          fi
 
       - name: Check npmjs.org published version
         id: npmjs_published
@@ -137,3 +148,47 @@ jobs:
           test "$npmjs_version" = "$PACKAGE_VERSION"
           test "$github_version" = "$PACKAGE_VERSION"
           echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is published to npmjs.org and GitHub Packages."
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TAG="${GITHUB_REF_NAME}"
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
+          export TAG PACKAGE_NAME PACKAGE_VERSION
+
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const tag = process.env.TAG;
+          const packageName = process.env.PACKAGE_NAME;
+          const packageVersion = process.env.PACKAGE_VERSION;
+          const changelog = fs.readFileSync("CHANGELOG.md", "utf8");
+          const escapedVersion = packageVersion.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const sectionPattern = new RegExp(
+            `(?:^|\\n)## \\[${escapedVersion}\\][^\\n]*\\n([\\s\\S]*?)(?=\\n## \\[|$)`,
+          );
+          const section = changelog.match(sectionPattern)?.[1]?.trim();
+
+          const body = [
+            section || `Release ${tag}.`,
+            "",
+            "### Published package",
+            `- \`${packageName}@${packageVersion}\` on npmjs.org`,
+            `- \`${packageName}@${packageVersion}\` on GitHub Packages`,
+            "",
+          ].join("\n");
+
+          fs.writeFileSync("release-notes.md", body);
+          NODE
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file release-notes.md --verify-tag
+          fi

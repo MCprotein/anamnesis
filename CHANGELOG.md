@@ -7,6 +7,18 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Added automatic GitHub Release creation to the tag publish workflow after
+  npmjs.org and GitHub Packages registry parity is verified.
+- Added a tag/package version guard so `vX.Y.Z` tag runs fail before publish
+  when `package.json` does not contain `X.Y.Z`.
+
+### Documentation
+
+- Updated release procedure docs so a matching GitHub Release is part of the
+  release completion criteria and post-publish smoke gate.
+
 ## [1.9.2] — 2026-07-03
 
 ### Changed

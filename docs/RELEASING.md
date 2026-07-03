@@ -1,7 +1,8 @@
 # Releasing
 
 anamnesis publishes `@mcprotein/anamnesis` to both npmjs.org and GitHub
-Packages from GitHub Actions. Both registries must carry the same package
+Packages from GitHub Actions. The tag workflow also creates the matching
+GitHub Release. Both registries and the GitHub Release must carry the same
 version before a release is considered complete.
 
 ## Trusted Publishing
@@ -31,6 +32,11 @@ The workflow also grants `packages: write` so it can publish to
 `https://npm.pkg.github.com` after npmjs.org succeeds or is already
 published. Each registry is checked independently and skipped only when the
 exact `package.json` version already exists there.
+
+The workflow grants `contents: write` so tag builds can create or update the
+matching GitHub Release after registry parity is verified. Release notes are
+derived from the matching `CHANGELOG.md` section and include the npmjs.org and
+GitHub Packages package targets.
 
 ## Branch Policy
 
@@ -76,7 +82,8 @@ Release flow from the next version line onward:
 
 Every version bump must end in one of two explicit states:
 
-- published to both npmjs.org and GitHub Packages with the same version, or
+- published to both npmjs.org and GitHub Packages with the same version and a
+  matching GitHub Release, or
 - documented as intentionally unpublished / blocked with the reason in
   `CHANGELOG.md` and this release doc if the failure changes procedure.
 
@@ -111,8 +118,11 @@ Every version bump must end in one of two explicit states:
    git push origin main vX.Y.Z
    ```
 
-The tag push starts the publish workflow. Manual runs are also available
-from the GitHub Actions UI via `workflow_dispatch`.
+The tag push starts the publish workflow. After tests/build pass, the workflow
+publishes or verifies both registries, checks registry parity, then creates or
+updates the GitHub Release for the tag. Manual runs are also available from the
+GitHub Actions UI via `workflow_dispatch`, but only tag runs create a GitHub
+Release.
 
 ## Post-Publish Smoke Gate
 
@@ -123,6 +133,7 @@ scoped registry overrides cannot accidentally hide a mismatch:
 ```bash
 npm view '@mcprotein/anamnesis@X.Y.Z' version --@mcprotein:registry=https://registry.npmjs.org/
 npm view '@mcprotein/anamnesis@X.Y.Z' version --@mcprotein:registry=https://npm.pkg.github.com/
+gh release view vX.Y.Z --repo MCprotein/anamnesis
 cd "$(mktemp -d)"
 npm exec --@mcprotein:registry=https://registry.npmjs.org/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis --version
@@ -130,9 +141,10 @@ npm exec --@mcprotein:registry=https://npm.pkg.github.com/ \
   --yes --package=@mcprotein/anamnesis@X.Y.Z -- anamnesis --version
 ```
 
-Both printed CLI versions must exactly match `X.Y.Z`. Treat any mismatch
-between package registries, `package.json`, and CLI output as a release
-blocker and cut a patch release before calling the release stable.
+Both printed CLI versions must exactly match `X.Y.Z`. The GitHub Release must
+exist for `vX.Y.Z`. Treat any mismatch between package registries,
+`package.json`, the GitHub Release tag, and CLI output as a release blocker and
+cut a patch release before calling the release stable.
 
 Then run one fresh-fixture smoke with the published CLI:
 
@@ -205,9 +217,9 @@ publish or verify the same version on GitHub Packages.
 
 - Do not add long-lived npm publish tokens for this workflow.
 - `v1.4.4` verified successful npmjs.org OIDC publish from the tag workflow.
-- The tag workflow now treats npmjs.org and GitHub Packages as paired release
-  targets. Do not call a release complete until both registries report the
-  same version.
+- The tag workflow treats npmjs.org, GitHub Packages, and GitHub Releases as
+  paired release targets. Do not call a release complete until both registries
+  report the same version and `gh release view vX.Y.Z` succeeds.
 - npm package settings can be tightened to require two-factor authentication
   and disallow tokens once the maintainer is comfortable with the incident
   recovery path.
