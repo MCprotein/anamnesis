@@ -23,6 +23,10 @@ import {
   type UpgradeResult,
 } from "./commands/upgrade.js";
 import {
+  upgradePlan,
+  type UpgradePlanResult,
+} from "./commands/upgrade_plan.js";
+import {
   detectUpgradeProjectGuidance,
   formatUpgradeProjectGuidance,
 } from "./commands/upgrade_project_guidance.js";
@@ -333,6 +337,7 @@ Commands:
   init                          First-time setup for the current project
   update                        Re-apply library state (dry-run by default)
   upgrade                       Check or update the installed anamnesis CLI
+  upgrade plan                  Read-only package + project upgrade plan
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
   hooks summary                 Summarize hook execution logs and optionally
@@ -414,6 +419,12 @@ Flags (update):
 Flags (upgrade):
   --registry <url>              Package registry (default: https://registry.npmjs.org)
   --apply                       Run npm install -g when a newer version exists
+  --json                        Print structured JSON
+
+Flags (upgrade plan):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --registry <url>              Package registry (default: https://registry.npmjs.org)
   --json                        Print structured JSON
 
 Flags (status / doctor):
@@ -1708,6 +1719,69 @@ function reportUpgrade(result: UpgradeResult, projectRoot: string = process.cwd(
   }
 }
 
+function reportUpgradePlan(result: UpgradePlanResult): void {
+  console.log(`anamnesis upgrade plan — ${result.package.packageName}`);
+  console.log(`  generated: ${result.generatedAt}`);
+  console.log(`  registry: ${result.package.registry}`);
+  console.log(
+    `  package: ${result.package.currentVersion} -> ${result.package.latestVersion} [${result.package.status}]`,
+  );
+  if (result.package.updateAvailable) {
+    console.log(`    command: ${result.package.installCommand.join(" ")}`);
+  }
+
+  const project = result.project;
+  console.log(`  project: ${project.kind}`);
+  if (project.agentfilePath) {
+    console.log(`    Agentfile: ${project.agentfilePath}`);
+  }
+  if (project.schema) {
+    console.log(
+      `    schema: ${project.schema.currentVersion} -> ${project.schema.supportedVersion}` +
+        (project.schema.migrationRequired ? " (migration required)" : " (supported)"),
+    );
+  }
+  if (project.statusSummary) {
+    console.log(
+      `    fragments: updates=${project.statusSummary.fragmentUpdatesAvailable}, pinned=${project.statusSummary.fragmentPinned}, missing=${project.statusSummary.fragmentLibraryMissing}`,
+    );
+    console.log(
+      `    drift: clean=${project.statusSummary.entriesClean}, user-modified=${project.statusSummary.entriesUserModified}, missing=${project.statusSummary.entriesMissing}`,
+    );
+    console.log(
+      `    partial upgrades: ${project.statusSummary.partialAdoptions}`,
+    );
+  }
+  if (project.updateSummary) {
+    console.log(
+      `    update dry-run: create=${project.updateSummary.create} update=${project.updateSummary.update} blocked=${project.updateSummary.blocked} user-modified=${project.updateSummary.userModified}`,
+    );
+  }
+  if (project.doctorSummary) {
+    console.log(
+      `    doctor: errors=${project.doctorSummary.errors} warnings=${project.doctorSummary.warnings} info=${project.doctorSummary.info}`,
+    );
+  }
+  if (project.error) {
+    console.log(`    error: ${project.error}`);
+  }
+
+  if (project.gates.length > 0) {
+    console.log("  gates:");
+    for (const gate of project.gates) {
+      console.log(`    ${gate.severity.padEnd(7)} ${gate.kind}: ${gate.message}`);
+      console.log(`      next: ${gate.next}`);
+    }
+  } else {
+    console.log("  gates: none");
+  }
+
+  console.log("  next commands:");
+  for (const command of project.commands) {
+    console.log(`    ${command}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -1778,6 +1852,21 @@ async function main(argv: string[]): Promise<number> {
 
     case "upgrade":
       try {
+        if (positional[0] === "plan") {
+          const result = upgradePlan({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            libraryRoot:
+              (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+            registry: flags["registry"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportUpgradePlan(result);
+          }
+          return 0;
+        }
         const result = upgrade({
           registry: flags["registry"] as string | undefined,
           apply: flags["apply"] === true,

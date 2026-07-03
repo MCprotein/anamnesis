@@ -23,6 +23,9 @@ could include breaking changes.
   surfaces.
 - Added `status` / `doctor` partial-upgrade reporting so users can see which
   fragment version bumps are held back by preserved managed surfaces.
+- Added `anamnesis upgrade plan`, a read-only package/project upgrade plan that
+  summarizes CLI version drift, Agentfile schema support, update dry-run gates,
+  partial adoption, doctor health, and exact next commands.
 
 ### Documentation
 
@@ -36,6 +39,7 @@ could include breaking changes.
   semantic freshness and lifecycle checks have shipped.
 - Documented how to repair partial upgrades after user-modified or blocked
   managed surfaces hold back an Agentfile fragment version bump.
+- Documented `anamnesis upgrade plan` in the README upgrade flow.
 
 ## [1.8.0] — 2026-07-02
 

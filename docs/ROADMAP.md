@@ -1240,10 +1240,10 @@ Baseline behavior from the v1.8 audit, with v1.9 work-in-progress updates:
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Upgrade compatibility matrix** | partial | Added a starter matrix for clean old projects, old Agentfiles without new optional settings, user-modified managed regions, and missing executable-adapter permission. Remaining fixture targets: representative v1.4/v1.5/v1.7 published states, pinned fragments, partial adapter installs, stale hook registrations, hook config preservation, and suggested-but-declined fragments. Each fixture should prove `upgrade -> update dry-run -> apply/repair -> doctor` behavior without losing local edits. |
-| 2 | **Project upgrade plan command** | planned | Add a command or mode that connects package upgrade to project state, e.g. `anamnesis upgrade plan` or `anamnesis doctor --upgrade-plan`. It should report current CLI version, latest registry version, Agentfile schema support, fragment updates, blocked executable surfaces, pinned blocks, user-modified surfaces, new optional settings, and the exact next command(s). |
-| 3 | **Upgrade-to-update handoff UX** | partial | Text output now prints the package/project boundary and `update` / `doctor` next commands for managed projects. Remaining work: surface deeper detected gates such as pinned fragments, malformed hook config, and manual-merge needs, then expose an optional interactive/TUI chooser using the same deterministic plan. |
+| 2 | **Project upgrade plan command** | partial | Added `anamnesis upgrade plan`, a read-only package/project plan that reports current/latest CLI versions, Agentfile schema support, fragment updates, update dry-run gates, partial adoption, doctor health, and exact next commands. Remaining work: surface new optional settings/materialization choices explicitly instead of only relying on parser defaults and docs. |
+| 3 | **Upgrade-to-update handoff UX** | partial | Text output now prints the package/project boundary and `update` / `doctor` next commands for managed projects, while `upgrade plan` surfaces pinned fragments, blocked executable adapters, user-modified surfaces, partial adoption, and doctor issues. Remaining work: expose an optional interactive/TUI chooser using the same deterministic plan. |
 | 4 | **Guided conflict choices** | planned | Convert common upgrade conflicts into explicit choices instead of only counts and prose: apply safe managed updates, include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or add suggestions to `declined`. Keep the default non-interactive path deterministic and safe. |
-| 5 | **Partial-upgrade state hardening** | partial | `update --apply` now delays the Agentfile version bump for any fragment with `user-modified` or `blocked` managed surfaces, and `status` / `doctor` report partial adoption targets explicitly. Remaining work: include the same partial-adoption data in the project upgrade plan. |
+| 5 | **Partial-upgrade state hardening** | done | `update --apply` now delays the Agentfile version bump for any fragment with `user-modified` or `blocked` managed surfaces. `status`, `doctor`, and `upgrade plan` all report partial adoption targets explicitly. |
 | 6 | **Optional setting materialization policy** | planned | Decide when new optional Agentfile settings should remain implicit defaults versus being written into existing Agentfiles. The command should explain new knobs, preserve existing settings, avoid formatting churn unless `--apply` is chosen, and never introduce required fields without a schema migration. |
 | 7 | **Agentfile migration integration** | planned | Keep `anamnesis migrate agentfile` dry-run/apply/backup-first, but make `update` and the upgrade plan detect when a schema migration is required before rendering. No fragment render or managed file write should happen from a CLI that cannot parse the project schema safely. |
 | 8 | **Post-upgrade verification gate** | planned | Add a repeatable verification bundle for upgraded projects: `status`, `doctor`, update evidence, manifest drift summary, hook registration check, and one published-package fixture smoke. This should become the standard evidence for release notes when a release changes upgrade behavior. |
@@ -1299,6 +1299,10 @@ Progress notes:
   `doctor` warning `fragment-partial-adoption` so held-back fragment bumps cite
   the exact managed targets that need manual merge or executable-adapter review.
   `docs/REPAIR.md` now documents the repair loop for those partial upgrades.
+- 2026-07-03: Added `anamnesis upgrade plan` as the first project upgrade plan
+  surface. It combines package version drift, Agentfile schema readiness,
+  `status`, `update --dry-run`, `doctor`, partial adoption, and next commands
+  without mutating the package or project.
 
 ---
 

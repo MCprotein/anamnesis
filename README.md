@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-584%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![tests](https://img.shields.io/badge/tests-605%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Main-branch docs may describe unreleased work. The npm badge is the source of
 truth for the latest version currently published to npmjs.org.
@@ -72,11 +72,13 @@ Check whether the installed CLI is behind npmjs.org:
 
 ```bash
 anamnesis upgrade
+anamnesis upgrade plan      # read-only package + project upgrade plan
 anamnesis upgrade --apply   # runs npm install -g only when a newer version exists
 ```
 
 Package upgrade only updates the installed CLI. In an existing managed project,
-preview project-managed file changes separately before applying them:
+use `upgrade plan` or preview project-managed file changes separately before
+applying them:
 
 ```bash
 anamnesis update --dry-run --allow-exec-adapters
@@ -149,6 +151,7 @@ managed context-review regions to existing docs without replacing your prose.
 ```bash
 anamnesis init      # first-time setup; writes install evidence
 anamnesis update    # library updates + drift detection (dry-run by default; --apply writes evidence)
+anamnesis upgrade plan  # read-only package + project upgrade plan
 anamnesis update --bump-pinned  # explicitly move pinned fragments to current
 anamnesis status    # fragments, drift, ontology gaps, continuity, evidence, context diagnostic summary
 anamnesis doctor    # read-only installation integrity + continuity/ontology/context diagnostics
