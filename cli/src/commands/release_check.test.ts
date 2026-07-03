@@ -46,6 +46,7 @@ describe("release check", () => {
 
     expect(result.ok).toBe(true);
     expect(result.summary.fail).toBe(0);
+    expect(result.summary.skip).toBe(0);
     expect(result.evidencePath).toBe(".anamnesis/evidence/events.jsonl");
     expect(result.checks).toEqual(
       expect.arrayContaining([
@@ -58,8 +59,8 @@ describe("release check", () => {
           status: "pass",
         }),
         expect.objectContaining({
-          id: "published-upgrade-smoke",
-          status: "skip",
+          id: "sanitized-upgrade-smoke",
+          status: "pass",
         }),
       ]),
     );

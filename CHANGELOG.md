@@ -28,7 +28,8 @@ could include breaking changes.
   partial adoption, doctor health, and exact next commands.
 - Added `anamnesis release check`, a read-only release gate that combines
   `status`, `update --dry-run --allow-exec-adapters`, `doctor`, manifest drift,
-  hook registration health, runtime evidence freshness, and update evidence.
+  hook registration health, runtime evidence freshness, update evidence, and a
+  sanitized old-project upgrade smoke.
 - Added the release gate to `npm run release:check` before dogfood, doctor,
   benchmark gallery, prompt-gate, and build verification.
 

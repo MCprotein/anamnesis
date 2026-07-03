@@ -4,7 +4,13 @@
 // health model: status owns drift/continuity, update owns render dry-runs, and
 // doctor owns strict wiring/integrity issues.
 
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
+import {
+  readAgentfile,
+  writeAgentfile,
+} from "../core/agentfile.js";
 import {
   appendEvidenceRecord,
   EVIDENCE_SCHEMA_VERSION,
@@ -12,6 +18,7 @@ import {
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
 import { doctor, type DoctorIssue, type DoctorResult } from "./doctor.js";
+import { init } from "./init.js";
 import { status, type StatusResult } from "./status.js";
 import { update } from "./update.js";
 import {
@@ -87,6 +94,8 @@ export function releaseCheck(opts: ReleaseCheckOptions): ReleaseCheckResult {
   });
   const updateSummary = summarizePlannedChanges(dryRun.changes);
   const checks = releaseChecks({
+    generatedAt,
+    libraryRoot,
     status: st,
     updateSummary,
     doctor: health,
@@ -127,6 +136,8 @@ export function releaseCheck(opts: ReleaseCheckOptions): ReleaseCheckResult {
 }
 
 function releaseChecks(input: {
+  generatedAt: string;
+  libraryRoot: string;
   status: StatusResult;
   updateSummary: ChangeSummary;
   doctor: DoctorResult;
@@ -140,7 +151,10 @@ function releaseChecks(input: {
     hookRegistrationCheck(input.status, input.doctor.issues),
     runtimeEvidenceCheck(input.status),
     updateApplyEvidenceCheck(input.status),
-    publishedUpgradeSmokeCheck(),
+    sanitizedUpgradeSmokeCheck({
+      generatedAt: input.generatedAt,
+      libraryRoot: input.libraryRoot,
+    }),
   ];
 }
 
@@ -378,15 +392,147 @@ function updateApplyEvidenceCheck(st: StatusResult): ReleaseCheckItem {
   };
 }
 
-function publishedUpgradeSmokeCheck(): ReleaseCheckItem {
-  return {
-    id: "published-upgrade-smoke",
-    label: "Published upgrade smoke",
-    status: "skip",
-    detail:
-      "not automated yet; local compatibility fixtures cover the current upgrade path",
-    next: "Before publish, run a published-package or sanitized old-project upgrade smoke when available.",
-  };
+function sanitizedUpgradeSmokeCheck(input: {
+  generatedAt: string;
+  libraryRoot: string;
+}): ReleaseCheckItem {
+  const tempRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "anamnesis-release-upgrade-smoke-"),
+  );
+  const stableNow = () => new Date(input.generatedAt);
+
+  try {
+    const oldLibraryRoot = path.join(tempRoot, "old-library");
+    const projectRoot = path.join(tempRoot, "old-project");
+    fs.mkdirSync(projectRoot, { recursive: true });
+    writeSanitizedOldLibrary(oldLibraryRoot);
+
+    init({
+      projectRoot,
+      libraryRoot: oldLibraryRoot,
+      dryRun: false,
+      allowExecAdapters: false,
+      noBootstrap: true,
+      noContextBootstrap: true,
+      tools: ["claude-code"],
+      projectName: "release-upgrade-smoke",
+      now: stableNow,
+    });
+    const oldAgentfile = readAgentfile(projectRoot);
+    writeAgentfile(projectRoot, {
+      ...oldAgentfile,
+      settings: undefined,
+    });
+
+    const applied = update({
+      projectRoot,
+      libraryRoot: input.libraryRoot,
+      apply: true,
+      allowExecAdapters: true,
+      now: stableNow,
+    });
+    const postStatus = status({
+      projectRoot,
+      libraryRoot: input.libraryRoot,
+      now: stableNow,
+    });
+    const postDryRun = update({
+      projectRoot,
+      libraryRoot: input.libraryRoot,
+      apply: false,
+      allowExecAdapters: true,
+      now: stableNow,
+    });
+    const postDryRunSummary = summarizePlannedChanges(postDryRun.changes);
+    const postDoctor = doctor({
+      projectRoot,
+      libraryRoot: input.libraryRoot,
+      now: stableNow,
+    });
+    const pending =
+      postDryRunSummary.create +
+      postDryRunSummary.update +
+      postDryRunSummary.blocked +
+      postDryRunSummary.userModified;
+    const changed = summarizePlannedChanges(applied.changes);
+    const blocking =
+      postDoctor.summary.errors +
+      postDoctor.summary.warnings +
+      postStatus.summary.fragmentUpdatesAvailable +
+      postStatus.summary.fragmentLibraryMissing +
+      postStatus.summary.entriesUserModified +
+      postStatus.summary.entriesMissing +
+      postStatus.summary.partialAdoptions +
+      pending;
+
+    if (blocking > 0) {
+      return {
+        id: "sanitized-upgrade-smoke",
+        label: "Sanitized upgrade smoke",
+        status: "fail",
+        detail:
+          `doctor=${postDoctor.summary.errors}/${postDoctor.summary.warnings}, ` +
+          `updates=${postStatus.summary.fragmentUpdatesAvailable}, ` +
+          `drift=${postStatus.summary.entriesUserModified}/${postStatus.summary.entriesMissing}, ` +
+          `partial=${postStatus.summary.partialAdoptions}, pending=${pending}`,
+        next: "Reproduce with a sanitized old-project fixture and repair the upgrade path before release.",
+      };
+    }
+
+    return {
+      id: "sanitized-upgrade-smoke",
+      label: "Sanitized upgrade smoke",
+      status: "pass",
+      detail:
+        `old base@1 fixture upgraded; applied create=${changed.create}, ` +
+        `update=${changed.update}, noop=${changed.noop}; doctor clean; dry-run pending=0`,
+    };
+  } catch (e) {
+    return {
+      id: "sanitized-upgrade-smoke",
+      label: "Sanitized upgrade smoke",
+      status: "fail",
+      detail: (e as Error).message,
+      next: "Fix the sanitized old-project upgrade path before release.",
+    };
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
+function writeSanitizedOldLibrary(libraryRoot: string): void {
+  const baseDir = path.join(libraryRoot, "base");
+  fs.mkdirSync(path.join(baseDir, "content"), { recursive: true });
+  fs.writeFileSync(
+    path.join(baseDir, "fragment.yaml"),
+    `id: base
+version: 1
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: anamnesis-base
+  - type: ontology
+    source: content/ontology.snippet.yaml
+`,
+  );
+  fs.writeFileSync(
+    path.join(baseDir, "content", "agents.snippet.md"),
+    `## anamnesis baseline
+
+Old sanitized release fixture.
+`,
+  );
+  fs.writeFileSync(
+    path.join(baseDir, "content", "ontology.snippet.yaml"),
+    `schema_version: "anamnesis.static.v1"
+fragment: "base"
+entities:
+  - id: "old-release-fixture"
+    kind: "project"
+    name: "old release fixture"
+`,
+  );
+  fs.writeFileSync(path.join(libraryRoot, "rulebook.md"), "");
 }
 
 function summarizeChecks(checks: readonly ReleaseCheckItem[]): ReleaseCheckResult["summary"] {

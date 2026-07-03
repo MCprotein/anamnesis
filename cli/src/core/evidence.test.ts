@@ -26,6 +26,7 @@ function record(
     "update-apply": ["anamnesis", "update", "--apply"],
     "fragment-lifecycle": ["anamnesis", "update", "--apply"],
     "gc-apply": ["anamnesis", "gc", "--apply"],
+    "release-check": ["anamnesis", "release", "check"],
     "benchmark-report": ["anamnesis", "benchmark", "report"],
     "benchmark-compare": ["anamnesis", "benchmark", "compare"],
     "benchmark-trace-rollup": ["anamnesis", "benchmark", "trace"],
