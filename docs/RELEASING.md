@@ -87,48 +87,60 @@ Every version bump must end in one of two explicit states:
 - documented as intentionally unpublished / blocked with the reason in
   `CHANGELOG.md` and this release doc if the failure changes procedure.
 
-1. Update `package.json` and `CHANGELOG.md`.
-2. Record the dogfood self-check:
+The normal path is script-driven. Do not hand-run individual version, commit,
+tag, npm publish, or GitHub Release steps unless the recovery section applies.
+
+1. Write the release notes under `CHANGELOG.md` `## [Unreleased]`.
+2. Prepare the version:
 
    ```bash
-   npm run dogfood
-   npm run benchmark:gallery
+   npm run release:prepare -- --version X.Y.Z
    ```
 
-   Commit the appended `docs/DOGFOOD.md` entry and refreshed generated
-   `docs/BENCHMARK-GALLERY.md` evidence region with the release prep
-   changes. The score should not regress unless the release notes explain
-   the tradeoff.
+   This updates `package.json`, `package-lock.json`, `CHANGELOG.md`, and the
+   README patch marker when applicable. It also records the dogfood self-check,
+   refreshes the benchmark gallery, and runs `npm run release:check`.
 
-3. Run local publish readiness verification:
+   Use dry-run when checking the next cut without touching files:
 
    ```bash
-   npm run release:check
+   npm run release:prepare -- --version X.Y.Z --dry-run
    ```
 
-   This verifies dogfood continuity, benchmark gallery freshness, the
-   standalone doctor diagnostics, the prompt-time context delta gate, and the
-   distribution build.
-
-4. Commit the release changes.
-5. Tag the commit:
+3. Publish from the release or hotfix branch:
 
    ```bash
-   git tag vX.Y.Z
-   git push origin main vX.Y.Z
+   npm run release:publish -- --version X.Y.Z --push --cleanup-branch
    ```
 
-The tag push starts the publish workflow. After tests/build pass, the workflow
-publishes or verifies both registries, checks registry parity, then creates or
-updates the GitHub Release for the tag. Manual runs are also available from the
-GitHub Actions UI via `workflow_dispatch`, but only tag runs create a GitHub
-Release.
+   This commits release files when needed, fast-forwards `release/*` or
+   `hotfix/*` into `main`, tags `vX.Y.Z`, pushes `main` plus the tag, and
+   optionally deletes the merged branch. Without `--push`, it stops before
+   remote changes and prints the next push command.
+
+4. Wait for the tag-triggered `Publish` workflow to complete. The workflow
+   publishes or verifies npmjs.org and GitHub Packages, checks registry parity,
+   then creates or updates the GitHub Release for the tag. Manual runs are also
+   available from the GitHub Actions UI via `workflow_dispatch`, but only tag
+   runs create a GitHub Release.
+
+5. Verify the public release:
+
+   ```bash
+   npm run release:verify -- --version X.Y.Z
+   ```
 
 ## Post-Publish Smoke Gate
 
 After both registries show the new version, verify the published package
 rather than the local source tree. Force each registry explicitly so local
 scoped registry overrides cannot accidentally hide a mismatch:
+
+```bash
+npm run release:verify -- --version X.Y.Z
+```
+
+The command performs the same checks as the manual sequence below:
 
 ```bash
 npm view '@mcprotein/anamnesis@X.Y.Z' version --@mcprotein:registry=https://registry.npmjs.org/

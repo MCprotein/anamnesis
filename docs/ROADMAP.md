@@ -1377,6 +1377,33 @@ project updates while warnings may be expected agent-required follow-up.
 
 ---
 
+## v1.9.3 — *planned patch*
+
+> **Theme: release automation hardening**
+
+The release process exposed a recurring operational failure mode: package tags,
+npmjs.org, GitHub Packages, GitHub Releases, changelog state, and branch cleanup
+were not enforced by one repeatable path. v1.9.3 keeps package behavior stable
+and hardens the project release lane so future versions are cut through scripts
+instead of a manual checklist.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Tag workflow GitHub Release creation** | done | The tag-triggered `Publish` workflow now validates `vX.Y.Z` against `package.json`, publishes or verifies npmjs.org and GitHub Packages, checks registry parity, then creates or updates the matching GitHub Release from the changelog section. |
+| 2 | **Historical release backfill** | done | Existing tags from `v0.2.0` through `v1.9.2` now have GitHub Releases; `v1.9.2` is the latest public release and both package registries report `1.9.2`. |
+| 3 | **Repo release runner** | done | Added `npm run release:prepare`, `release:publish`, `release:verify`, and `release:status` so version files, changelog promotion, evidence refresh, release gate, commit, tag, push, branch cleanup, and post-publish smoke use a single scripted path. |
+| 4 | **Release docs simplification** | done | `docs/RELEASING.md` now treats the scripts as the normal path and keeps manual npm publish only as an incident recovery fallback. |
+
+Exit criteria:
+
+- A normal release can be prepared with `npm run release:prepare -- --version X.Y.Z`.
+- A normal release can be cut with `npm run release:publish -- --version X.Y.Z --push --cleanup-branch`.
+- Public artifacts can be verified with `npm run release:verify -- --version X.Y.Z`.
+- No step asks the maintainer to remember separate manual npm, GitHub Package,
+  GitHub Release, tag, or branch cleanup commands during the normal path.
+
+---
+
 ## v1.10 — *planned*
 
 > **Theme: guided upgrade decisions and compatibility depth**

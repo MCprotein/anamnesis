@@ -13,11 +13,16 @@ could include breaking changes.
   npmjs.org and GitHub Packages registry parity is verified.
 - Added a tag/package version guard so `vX.Y.Z` tag runs fail before publish
   when `package.json` does not contain `X.Y.Z`.
+- Added repo release runner scripts for `release:prepare`, `release:publish`,
+  `release:verify`, and `release:status` so version files, release notes,
+  evidence refresh, release commit, tag push, and post-publish checks follow
+  one repeatable path.
 
 ### Documentation
 
 - Updated release procedure docs so a matching GitHub Release is part of the
   release completion criteria and post-publish smoke gate.
+- Replaced the manual release checklist with the script-driven release flow.
 
 ## [1.9.2] — 2026-07-03
 

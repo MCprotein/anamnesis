@@ -157,6 +157,9 @@ anamnesis status    # fragments, drift, ontology gaps, continuity, evidence, con
 anamnesis doctor    # read-only installation integrity + continuity/ontology/context diagnostics
 anamnesis doctor --append  # record doctor diagnostics as runtime evidence
 anamnesis release check  # read-only release gate: status + update dry-run + doctor + evidence
+npm run release:prepare -- --version X.Y.Z  # repo release prep: version files, changelog, evidence, gate
+npm run release:publish -- --version X.Y.Z --push --cleanup-branch  # commit, tag, push; Actions publishes
+npm run release:verify -- --version X.Y.Z  # verify npmjs.org, GitHub Packages, GitHub Release, CLI smoke
 anamnesis hooks summary --append  # summarize hook logs and record runtime evidence
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup
 anamnesis dogfood check --append  # score and record self-check continuity evidence
