@@ -87,8 +87,14 @@ describe("upgrade plan", () => {
     expect(result.project.gates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: "package-update-available" }),
-        expect.objectContaining({ kind: "fragment-updates-available" }),
-        expect.objectContaining({ kind: "executable-adapter-gate" }),
+        expect.objectContaining({
+          kind: "fragment-updates-available",
+          next: expect.stringContaining("Preview all project changes"),
+        }),
+        expect.objectContaining({
+          kind: "executable-adapter-gate",
+          next: expect.stringContaining("Codex wrappers"),
+        }),
       ]),
     );
     expect(result.project.commands).toEqual(
@@ -134,8 +140,14 @@ describe("upgrade plan", () => {
     expect(result.project.gates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: "partial-adoption" }),
-        expect.objectContaining({ kind: "user-modified-managed-surfaces" }),
-        expect.objectContaining({ kind: "doctor-issues" }),
+        expect.objectContaining({
+          kind: "user-modified-managed-surfaces",
+          next: expect.stringContaining("Compare the dry-run output"),
+        }),
+        expect.objectContaining({
+          kind: "doctor-issues",
+          next: expect.stringContaining("resolve errors before applying"),
+        }),
       ]),
     );
   });

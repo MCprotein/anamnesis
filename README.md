@@ -342,7 +342,7 @@ used for deterministic README score claims.
 | **v1.6** | Repo-local context index/query/resume and contradiction diagnostics | shipped 2026-06-25 |
 | **v1.7** | Retrieval-only task harnesses, lifecycle cleanup, handoff retention, and release parity | shipped 2026-07-02; latest patch 1.7.1 |
 | **v1.8** | Configurable bounded handoff retention policy | shipped 2026-07-02 |
-| **v1.9** | Upgrade compatibility and project-update planning | shipped 2026-07-03 |
+| **v1.9** | Upgrade compatibility and project-update planning | shipped 2026-07-03; latest patch 1.9.1 |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

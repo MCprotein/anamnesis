@@ -7,10 +7,22 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.9.1] — 2026-07-03
+
+### Changed
+
+- Clarified `anamnesis upgrade plan` output so the update dry-run summary is
+  labeled as safe mode and executable-adapter gates explain when to use
+  `--allow-exec-adapters`.
+- Tightened upgrade-plan next-step copy for partial adoption, user-modified
+  managed surfaces, pinned fragments, suggested fragments, and doctor issues.
+
 ### Documentation
 
 - Added a v1.9 post-release roadmap audit that separates the published
   v1.9.0 scope from v1.9.1 patch candidates and v1.10 feature work.
+- Marked the v1.9.1 patch scope as upgrade copy polish and kept new guided
+  upgrade behavior in the v1.10 plan.
 
 ## [1.9.0] — 2026-07-03
 

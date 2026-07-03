@@ -1337,7 +1337,7 @@ Progress notes:
 
 ---
 
-## v1.9.1 — *patch candidate*
+## v1.9.1 — *release cut 2026-07-03*
 
 > **Theme: post-release audit and upgrade UX copy polish**
 
@@ -1349,17 +1349,16 @@ users who already installed `1.9.0`.
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Roadmap post-release audit** | done | Split the v1.9 section into published `1.9.0` evidence, patch candidates, and v1.10 feature candidates. This keeps the public release from looking incomplete while preserving the next work. |
-| 2 | **Upgrade copy audit** | candidate | Re-read `upgrade`, `upgrade plan`, `status`, and `doctor` output as a user upgrading from `1.8.0`. If wording still hides the package/project boundary or conflict next steps, patch copy and tests without changing behavior. |
-| 3 | **Release evidence summary** | candidate | If users ask "was this released?", keep README/changelog/release docs aligned with the dual-registry publish evidence and post-publish smoke results. |
+| 2 | **Upgrade copy audit** | done | Re-read `upgrade`, `upgrade plan`, `status`, and `doctor` output as a user upgrading from `1.8.0`. Patched upgrade-plan copy so safe-mode dry-run counts, executable-adapter gates, user-modified surfaces, pinned fragments, suggested fragments, and doctor issues point to concrete next steps without changing behavior. |
+| 3 | **Release evidence summary** | done | README, changelog, and roadmap now identify `1.9.1` as a small patch over the dual-registry `1.9.0` release line. New guided upgrade behavior stays assigned to v1.10. |
 
 Exit criteria:
 
 - No package behavior changes unless tied to a concrete post-release bug.
 - Local verification remains `npm run release:check`, plus targeted tests if
   CLI copy changes.
-- Publish `1.9.1` only if the patch changes package contents users should
-  receive through npm/GitHub Packages. Pure GitHub docs cleanup can stay
-  unreleased.
+- Publish `1.9.1` because the patch changes CLI output users receive through
+  npm/GitHub Packages.
 
 ---
 

@@ -1793,7 +1793,7 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
   }
   if (project.updateSummary) {
     console.log(
-      `    update dry-run: create=${project.updateSummary.create} update=${project.updateSummary.update} blocked=${project.updateSummary.blocked} user-modified=${project.updateSummary.userModified}`,
+      `    update dry-run (safe mode, executable adapters blocked unless allowed): create=${project.updateSummary.create} update=${project.updateSummary.update} blocked=${project.updateSummary.blocked} user-modified=${project.updateSummary.userModified}`,
     );
   }
   if (project.doctorSummary) {

@@ -116,7 +116,7 @@ function inspectProject(input: {
           severity: "error",
           kind: "agentfile-discovery-failed",
           message: (e as Error).message,
-          next: "Fix Agentfile discovery, then rerun `anamnesis upgrade plan`.",
+          next: "Fix Agentfile discovery, then rerun `anamnesis upgrade plan` from the project root.",
         },
       ],
       commands: ["anamnesis doctor"],
@@ -132,7 +132,7 @@ function inspectProject(input: {
           severity: "info",
           kind: "project-unmanaged",
           message: "No Agentfile found in the current project.",
-          next: "Run this command inside an anamnesis-managed project, or preview adoption with `anamnesis init --dry-run`.",
+          next: "Run this command inside an anamnesis-managed project, or preview adoption here with `anamnesis init --dry-run`.",
         },
       ],
       commands: [
@@ -205,7 +205,7 @@ function inspectProject(input: {
           severity: "error",
           kind: "project-inspection-failed",
           message: (e as Error).message,
-          next: "Fix the reported project issue, then rerun `anamnesis upgrade plan`.",
+          next: "Fix the reported project issue, then rerun `anamnesis upgrade plan` before applying project updates.",
         },
       ],
       commands: [
@@ -253,7 +253,7 @@ function projectGates(input: {
       kind: "fragment-updates-available",
       message:
         `${input.status.summary.fragmentUpdatesAvailable} fragment update(s) available.`,
-      next: "Run `anamnesis update --dry-run --allow-exec-adapters`.",
+      next: "Preview all project changes with `anamnesis update --dry-run --allow-exec-adapters`; omit the flag only if executable adapters should remain untouched.",
     });
   }
 
@@ -263,7 +263,7 @@ function projectGates(input: {
       kind: "partial-adoption",
       message:
         `${input.status.partialAdoptions.length} fragment(s) are held back by preserved managed surfaces.`,
-      next: "Review `anamnesis status` partial upgrades, merge or allow the listed surfaces, then rerun update.",
+      next: "Review `anamnesis status` partial upgrades; manually merge user-modified surfaces or rerun update with the needed permission flags.",
     });
   }
 
@@ -273,7 +273,7 @@ function projectGates(input: {
       kind: "executable-adapter-gate",
       message:
         `${input.updateSummary.blocked} executable adapter write(s) require explicit permission.`,
-      next: "Re-run update with `--allow-exec-adapters` after reviewing hooks, commands, skills, and rules.",
+      next: "Re-run preview/apply with `--allow-exec-adapters` only after reviewing hooks, commands, skills, Cursor rules, and Codex wrappers.",
     });
   }
 
@@ -283,7 +283,7 @@ function projectGates(input: {
       kind: "user-modified-managed-surfaces",
       message:
         `${input.updateSummary.userModified} managed surface(s) contain local edits and will be preserved.`,
-      next: "Manually merge wanted library content, or keep the local edits and accept the warning.",
+      next: "Compare the dry-run output with the local file; manually merge wanted library content or keep the local edit and accept the warning.",
     });
   }
 
@@ -293,7 +293,7 @@ function projectGates(input: {
       kind: "pinned-fragments",
       message:
         `${input.status.summary.fragmentPinned} pinned fragment(s) will not move unless requested.`,
-      next: "Use `--bump-pinned` only after reviewing the pinned version change.",
+      next: "Preview with `anamnesis update --dry-run --bump-pinned --allow-exec-adapters` only after reviewing the pinned version change.",
     });
   }
 
@@ -303,7 +303,7 @@ function projectGates(input: {
       kind: "suggested-fragments",
       message:
         `${input.status.summary.suggestedCount} rulebook suggestion(s) are not installed.`,
-      next: "Add wanted fragments to Agentfile, or list intentional opt-outs under `declined`.",
+      next: "Add wanted fragments to Agentfile, or record intentional opt-outs under `declined` to silence future suggestions.",
     });
   }
 
@@ -314,7 +314,7 @@ function projectGates(input: {
       message:
         `doctor reports ${input.doctor.summary.errors} error(s) and ` +
         `${input.doctor.summary.warnings} warning(s).`,
-      next: "Run `anamnesis doctor` for detailed repair guidance.",
+      next: "Run `anamnesis doctor` and resolve errors before applying project updates.",
     });
   }
 
