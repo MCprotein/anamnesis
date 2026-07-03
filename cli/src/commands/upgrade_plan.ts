@@ -314,7 +314,7 @@ function projectGates(input: {
       message:
         `doctor reports ${input.doctor.summary.errors} error(s) and ` +
         `${input.doctor.summary.warnings} warning(s).`,
-      next: "Run `anamnesis doctor` and resolve errors before applying project updates.",
+      next: "Run `anamnesis doctor`; resolve errors before applying project updates, and review warnings for expected agent-required follow-up.",
     });
   }
 

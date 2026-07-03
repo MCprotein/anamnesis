@@ -1362,6 +1362,21 @@ Exit criteria:
 
 ---
 
+## v1.9.2 — *release cut 2026-07-03*
+
+> **Theme: warning-only doctor guidance copy**
+
+The `1.9.1` published smoke caught one remaining copy issue: `upgrade plan`
+used an error-oriented next step even when `doctor` reported warnings only.
+This patch keeps behavior unchanged and clarifies that errors block applying
+project updates while warnings may be expected agent-required follow-up.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Doctor warning guidance** | done | `upgrade plan` now tells users to run `doctor`, resolve errors before applying project updates, and review warnings for expected agent-required follow-up. |
+
+---
+
 ## v1.10 — *planned*
 
 > **Theme: guided upgrade decisions and compatibility depth**

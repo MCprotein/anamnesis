@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.9.2] — 2026-07-03
+
+### Changed
+
+- Clarified `upgrade plan` doctor-issue guidance so warning-only states no
+  longer read as if errors must be fixed.
+
 ## [1.9.1] — 2026-07-03
 
 ### Changed

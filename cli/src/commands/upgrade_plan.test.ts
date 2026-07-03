@@ -146,7 +146,7 @@ describe("upgrade plan", () => {
         }),
         expect.objectContaining({
           kind: "doctor-issues",
-          next: expect.stringContaining("resolve errors before applying"),
+          next: expect.stringContaining("review warnings"),
         }),
       ]),
     );
