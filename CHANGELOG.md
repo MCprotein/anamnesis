@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.9.3] — 2026-07-03
+
 ### Changed
 
 - Added automatic GitHub Release creation to the tag publish workflow after
@@ -17,6 +19,8 @@ could include breaking changes.
   `release:verify`, and `release:status` so version files, release notes,
   evidence refresh, release commit, tag push, and post-publish checks follow
   one repeatable path.
+- Allowed the release runner to include the runtime evidence record produced
+  by `release:prepare` in the release commit.
 
 ### Documentation
 
