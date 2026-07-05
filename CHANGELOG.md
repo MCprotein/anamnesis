@@ -7,6 +7,11 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Added a `postbuild` executable-bit guard so local builds keep
+  `cli/dist/index.js` runnable.
+
 ## [1.9.3] — 2026-07-03
 
 ### Changed

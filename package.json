@@ -51,6 +51,7 @@
   },
   "scripts": {
     "build": "tsc -p cli/tsconfig.json",
+    "postbuild": "chmod +x cli/dist/index.js",
     "dev": "tsc -p cli/tsconfig.json --watch",
     "benchmark:gallery": "tsx cli/src/index.ts benchmark gallery --write",
     "benchmark:gallery:check": "tsx cli/src/index.ts benchmark gallery --validate",
