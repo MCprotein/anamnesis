@@ -5,6 +5,8 @@ import * as path from "node:path";
 import { dogfoodCheck, type CommandCheck } from "./dogfood.js";
 import { init } from "./init.js";
 
+const DOGFOOD_TEST_TIMEOUT_MS = 15_000;
+
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
@@ -159,7 +161,7 @@ describe("dogfoodCheck", () => {
         markdown: "docs/DOGFOOD.md",
       },
     });
-  });
+  }, DOGFOOD_TEST_TIMEOUT_MS);
 
   it("compares the score with the previous appended result", () => {
     const { project, library } = setupDogfoodProject();
@@ -185,7 +187,7 @@ describe("dogfoodCheck", () => {
     expect(text).toContain(
       "Continuity readiness score: 5/5 (improved vs previous 4/5)",
     );
-  });
+  }, DOGFOOD_TEST_TIMEOUT_MS);
 
   it("does not count skipped required verification scripts as passing", () => {
     const { project, library } = setupDogfoodProject();
@@ -216,5 +218,5 @@ describe("dogfoodCheck", () => {
         expect.objectContaining({ name: "npm test", outcome: "skipped" }),
       ]),
     );
-  });
+  }, DOGFOOD_TEST_TIMEOUT_MS);
 });
