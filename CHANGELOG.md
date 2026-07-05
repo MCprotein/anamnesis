@@ -7,10 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.9.4] — 2026-07-05
+
 ### Fixed
 
 - Added a `postbuild` executable-bit guard so local builds keep
   `cli/dist/index.js` runnable.
+- Stabilized dogfood release verification by giving the slower cross-agent
+  dogfood tests an explicit timeout budget.
 
 ## [1.9.3] — 2026-07-03
 
