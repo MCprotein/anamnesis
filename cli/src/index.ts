@@ -895,6 +895,21 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   for (const check of continuity.checks.filter((c) => c.status === "fail")) {
     console.log(`    fail ${check.label}: ${check.detail}`);
   }
+  const sessionBudget = result.sessionContextBudget;
+  console.log(
+    `  session context budget: ${sessionBudget.capExceeded ? "over budget" : "ok"} ` +
+      `(${sessionBudget.estimatedTokens}/${sessionBudget.maxTokens} tokens, ` +
+      `${sessionBudget.sourcePointers} pointer(s), ${sessionBudget.sourceBytes} source bytes)`,
+  );
+  if (sessionBudget.requiredRulesTotal > 0) {
+    console.log(
+      `    required rules: ${sessionBudget.requiredRulesPresent}/${sessionBudget.requiredRulesTotal}, ` +
+        `digest lines: ${sessionBudget.invariantDigestLines}, active task lines: ${sessionBudget.activeTaskLines}`,
+    );
+  }
+  for (const warning of sessionBudget.warnings) {
+    console.log(`    warning ${warning}`);
+  }
   const codexHooks = result.codexHooks;
   if (
     agentfile.tools.includes("codex") ||

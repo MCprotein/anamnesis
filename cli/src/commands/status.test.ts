@@ -249,6 +249,9 @@ describe("status — fresh-install state", () => {
     expect(r.summary.entriesUserModified).toBe(0);
     expect(r.summary.entriesMissing).toBe(0);
     expect(r.summary.suggestedCount).toBe(0);
+    expect(r.summary.sessionContextBudgetWarnings).toBe(0);
+    expect(r.sessionContextBudget.capExceeded).toBe(false);
+    expect(r.sessionContextBudget.sourcePointers).toBeGreaterThan(0);
   });
 
   it("reports fragment dependency graph problems", () => {

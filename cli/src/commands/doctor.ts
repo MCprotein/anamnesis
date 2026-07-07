@@ -48,6 +48,7 @@ import {
   type ContextDiagnosticSeverity,
 } from "./context_diagnostics.js";
 import { status, type ContinuityCheck, type StatusResult } from "./status.js";
+import type { SessionContextBudgetResult } from "./session_context_budget.js";
 import {
   analyzeExecutableSecurity,
   type ExecutableSecurityIssue,
@@ -93,6 +94,7 @@ export type DoctorIssueCode =
   | "continuity-active-handoff-stale"
   | "continuity-adapter-surface-missing"
   | "continuity-drift-detected"
+  | "session-context-budget-exceeded"
   | "declined-rule-stale"
   | "ontology-static-missing"
   | "ontology-bootstrap-missing"
@@ -202,6 +204,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
       contextDiagnostics({ projectRoot, now: stableNow }).issues,
       issues,
     );
+    addSessionContextBudgetIssues(st.sessionContextBudget, issues);
   }
 
   const library = libraryFragmentMap(libraryRoot);
@@ -480,6 +483,23 @@ function addContextDiagnosticIssues(
       repair: diagnostic.repair,
     });
   }
+}
+
+function addSessionContextBudgetIssues(
+  budget: SessionContextBudgetResult,
+  issues: DoctorIssue[],
+): void {
+  if (!budget.capExceeded) return;
+  issues.push({
+    severity: "warning",
+    code: "session-context-budget-exceeded",
+    target: "SessionStart compact context",
+    message:
+      `compact SessionStart context is ${budget.estimatedTokens}/${budget.maxTokens} ` +
+      `estimated tokens across ${budget.sourcePointers} source pointer(s)`,
+    repair:
+      "Run `anamnesis status` to inspect SessionStart budget details, then close/deprecate stale handoffs or split oversized ontology notes into source files that agents retrieve on demand.",
+  });
 }
 
 function ontologyGapIssueCode(

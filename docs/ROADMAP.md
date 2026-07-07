@@ -1526,6 +1526,34 @@ Release criteria met:
 
 ---
 
+## v1.12 — *in progress*
+
+> **Theme: SessionStart budget diagnostics in daily maintenance**
+
+v1.5 shipped compact SessionStart defaults and deterministic benchmark graphs,
+but the open follow-up was surfacing that budget in normal maintenance
+commands. v1.12 keeps the default injection compact and read-only while making
+current-project startup payload size visible in `status` and actionable in
+`doctor`.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Current-project SessionStart budget** | done | Added a compact SessionStart budget analyzer that estimates chars, lines, tokens, source pointers, source bytes, invariant digest lines, active task lines, required retrieval rules, and cap-exceeded status for the current project. It follows startup semantics by including ontology/system-graph pointers plus active handoff and startup-active warm archives, not every historical handoff record. |
+| 2 | **Status/doctor surfacing** | done | `anamnesis status` now prints the compact SessionStart budget line, and `anamnesis doctor` raises a `session-context-budget-exceeded` warning when the compact startup payload exceeds the default budget. This closes the v1.5 status/doctor surfacing gap without adding a new Agentfile schema setting. |
+| 3 | **Regression coverage** | done | Added tests for startup-active source selection, over-budget detection, `status` summary output, and `doctor` warning generation. Self-check on this repo reports `115/800` estimated compact startup tokens and no doctor warnings. |
+
+Release criteria:
+
+- The diagnostic remains read-only and does not change SessionStart hook
+  output by itself.
+- The measured source set matches the compact startup contract: source
+  pointers first, active handoff index when present, active referenced warm
+  archives, and no cold/deprecated historical archive injection.
+- Existing benchmark artifacts remain the public evidence source for full vs
+  compact comparisons; `status`/`doctor` are daily project-health diagnostics.
+
+---
+
 ## Parked ideas (outside the accepted roadmap)
 
 These have been discussed, but they are not active roadmap work. Bring them

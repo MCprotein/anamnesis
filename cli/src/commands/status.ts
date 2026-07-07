@@ -83,6 +83,10 @@ import {
   planChanges,
   type PlannedChange,
 } from "../core/applier.js";
+import {
+  sessionContextBudget,
+  type SessionContextBudgetResult,
+} from "./session_context_budget.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -218,6 +222,8 @@ export interface StatusResult {
   executableSecurity: ExecutableSecurityStatus;
   /** Advisory checks for copied or over-expanded agent configuration context. */
   agentConfigDamage: AgentConfigDamageStatus;
+  /** Compact SessionStart payload budget diagnostics for the current project. */
+  sessionContextBudget: SessionContextBudgetResult;
   /** Fragment updates held back by preserved or blocked managed surfaces. */
   partialAdoptions: PartialAdoptionStatus[];
   suggested: Rule[];
@@ -242,6 +248,7 @@ export interface StatusResult {
     executableSecurityInfo: number;
     agentConfigDamageWarnings: number;
     agentConfigDamageInfo: number;
+    sessionContextBudgetWarnings: number;
     partialAdoptions: number;
     suggestedCount: number;
     declinedCount: number;
@@ -529,6 +536,10 @@ export function status(opts: StatusOptions): StatusResult {
     projectRoot,
     manifest,
   });
+  const sessionContextBudgetResult = sessionContextBudget({
+    projectRoot,
+    now: opts.now,
+  });
 
   // Summary counts.
   const summary = {
@@ -555,6 +566,7 @@ export function status(opts: StatusOptions): StatusResult {
     executableSecurityInfo: executableSecurity.summary.info,
     agentConfigDamageWarnings: agentConfigDamage.summary.warnings,
     agentConfigDamageInfo: agentConfigDamage.summary.info,
+    sessionContextBudgetWarnings: sessionContextBudgetResult.warnings.length,
     partialAdoptions: partialAdoptions.length,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
@@ -580,6 +592,7 @@ export function status(opts: StatusOptions): StatusResult {
     contextDiagnostics: contextDiagnosticStatus,
     executableSecurity,
     agentConfigDamage,
+    sessionContextBudget: sessionContextBudgetResult,
     partialAdoptions,
     suggested,
     declined,

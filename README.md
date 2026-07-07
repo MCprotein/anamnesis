@@ -315,6 +315,9 @@ Current run:
   exceeded it `2` times.
 - Required retrieval rules and source pointers were present in `7/7`
   compact fixture runs.
+- `anamnesis status` and `anamnesis doctor` also report the current project's
+  compact SessionStart budget so oversized startup context is visible during
+  normal maintenance, not only in benchmark artifacts.
 
 Full generated evidence is in
 [`docs/benchmark-evidence/session-context/`](docs/benchmark-evidence/session-context/).

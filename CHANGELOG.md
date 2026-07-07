@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added compact SessionStart budget diagnostics to `anamnesis status` and
+  `anamnesis doctor`. The report estimates startup chars, lines, tokens, source
+  pointers, source bytes, invariant digest lines, active task lines, required
+  retrieval rules, and over-budget warnings for the current project.
+
 ## [1.11.0] — 2026-07-07
 
 ### Added

@@ -187,6 +187,30 @@ describe("doctor — installation integrity", () => {
     expect(result.summary.errors).toBe(0);
   });
 
+  it("warns when compact SessionStart context exceeds the budget", () => {
+    const { project, library } = installProject();
+    const ontologyDir = path.join(project, ".anamnesis", "ontology");
+    fs.mkdirSync(ontologyDir, { recursive: true });
+    for (let i = 0; i < 120; i++) {
+      fs.writeFileSync(
+        path.join(ontologyDir, `scope-${i}.yaml`),
+        `rules:\n  - must keep compact context bounded ${i}\n`,
+        "utf8",
+      );
+    }
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        severity: "warning",
+        code: "session-context-budget-exceeded",
+        target: "SessionStart compact context",
+      }),
+    );
+  });
+
   it("appends doctor markdown and runtime evidence", () => {
     const { project, library } = installProject();
 
