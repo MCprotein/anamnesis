@@ -1,0 +1,1212 @@
+{
+  "schemaVersion": "anamnesis.upgrade_benchmark.v1",
+  "projectRoot": ".",
+  "generatedAt": "2026-07-07T14:11:13.827Z",
+  "requestedRuns": 3,
+  "ok": true,
+  "summary": {
+    "fixtures": 5,
+    "runs": 15,
+    "passed": 15,
+    "failed": 0,
+    "passRatePct": 100,
+    "averageDurationMs": 9.06,
+    "maxDurationMs": 23.39,
+    "postPendingTotal": 0,
+    "doctorErrorsTotal": 0,
+    "driftTotal": 0
+  },
+  "fixtures": [
+    {
+      "fixtureId": "clean-old-no-settings",
+      "fixtureLabel": "Clean old project without settings",
+      "runs": 3,
+      "passed": 3,
+      "failed": 0,
+      "passRatePct": 100,
+      "durationMs": {
+        "average": 13.06,
+        "min": 7.59,
+        "max": 23.39
+      },
+      "postPendingTotal": 0,
+      "doctorErrorsTotal": 0,
+      "driftTotal": 0
+    },
+    {
+      "fixtureId": "pinned-archive",
+      "fixtureLabel": "Pinned historical fragment archive",
+      "runs": 3,
+      "passed": 3,
+      "failed": 0,
+      "passRatePct": 100,
+      "durationMs": {
+        "average": 7.71,
+        "min": 7.28,
+        "max": 7.94
+      },
+      "postPendingTotal": 0,
+      "doctorErrorsTotal": 0,
+      "driftTotal": 0
+    },
+    {
+      "fixtureId": "partial-adapter",
+      "fixtureLabel": "Partial adapter choice",
+      "runs": 3,
+      "passed": 3,
+      "failed": 0,
+      "passRatePct": 100,
+      "durationMs": {
+        "average": 8.52,
+        "min": 7.59,
+        "max": 10.2
+      },
+      "postPendingTotal": 0,
+      "doctorErrorsTotal": 0,
+      "driftTotal": 0
+    },
+    {
+      "fixtureId": "stale-codex-hook",
+      "fixtureLabel": "Stale Codex hook refresh",
+      "runs": 3,
+      "passed": 3,
+      "failed": 0,
+      "passRatePct": 100,
+      "durationMs": {
+        "average": 11.07,
+        "min": 9.04,
+        "max": 13.05
+      },
+      "postPendingTotal": 0,
+      "doctorErrorsTotal": 0,
+      "driftTotal": 0
+    },
+    {
+      "fixtureId": "declined-suggestion",
+      "fixtureLabel": "Suggested-but-declined fragment",
+      "runs": 3,
+      "passed": 3,
+      "failed": 0,
+      "passRatePct": 100,
+      "durationMs": {
+        "average": 4.95,
+        "min": 4.66,
+        "max": 5.25
+      },
+      "postPendingTotal": 0,
+      "doctorErrorsTotal": 0,
+      "driftTotal": 0
+    }
+  ],
+  "runs": [
+    {
+      "fixtureId": "clean-old-no-settings",
+      "fixtureLabel": "Clean old project without settings",
+      "iteration": 1,
+      "status": "pass",
+      "durationMs": 23.39,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "feature-bumped",
+          "label": "Feature fragment bumped",
+          "status": "pass",
+          "detail": "feature fragment reached version 2"
+        },
+        {
+          "id": "new-content-rendered",
+          "label": "New content rendered",
+          "status": "pass",
+          "detail": "AGENTS.md contains v2 rules"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "clean-old-no-settings",
+      "fixtureLabel": "Clean old project without settings",
+      "iteration": 2,
+      "status": "pass",
+      "durationMs": 8.21,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "feature-bumped",
+          "label": "Feature fragment bumped",
+          "status": "pass",
+          "detail": "feature fragment reached version 2"
+        },
+        {
+          "id": "new-content-rendered",
+          "label": "New content rendered",
+          "status": "pass",
+          "detail": "AGENTS.md contains v2 rules"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "clean-old-no-settings",
+      "fixtureLabel": "Clean old project without settings",
+      "iteration": 3,
+      "status": "pass",
+      "durationMs": 7.59,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "feature-bumped",
+          "label": "Feature fragment bumped",
+          "status": "pass",
+          "detail": "feature fragment reached version 2"
+        },
+        {
+          "id": "new-content-rendered",
+          "label": "New content rendered",
+          "status": "pass",
+          "detail": "AGENTS.md contains v2 rules"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "pinned-archive",
+      "fixtureLabel": "Pinned historical fragment archive",
+      "iteration": 1,
+      "status": "pass",
+      "durationMs": 7.91,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "pinned-version-preserved",
+          "label": "Pinned version preserved",
+          "status": "pass",
+          "detail": "feature stayed pinned at version 1"
+        },
+        {
+          "id": "archive-rendered",
+          "label": "Archive content rendered",
+          "status": "pass",
+          "detail": "AGENTS.md uses archived content instead of current content"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "pinned-archive",
+      "fixtureLabel": "Pinned historical fragment archive",
+      "iteration": 2,
+      "status": "pass",
+      "durationMs": 7.28,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "pinned-version-preserved",
+          "label": "Pinned version preserved",
+          "status": "pass",
+          "detail": "feature stayed pinned at version 1"
+        },
+        {
+          "id": "archive-rendered",
+          "label": "Archive content rendered",
+          "status": "pass",
+          "detail": "AGENTS.md uses archived content instead of current content"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "pinned-archive",
+      "fixtureLabel": "Pinned historical fragment archive",
+      "iteration": 3,
+      "status": "pass",
+      "durationMs": 7.94,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "pinned-version-preserved",
+          "label": "Pinned version preserved",
+          "status": "pass",
+          "detail": "feature stayed pinned at version 1"
+        },
+        {
+          "id": "archive-rendered",
+          "label": "Archive content rendered",
+          "status": "pass",
+          "detail": "AGENTS.md uses archived content instead of current content"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "partial-adapter",
+      "fixtureLabel": "Partial adapter choice",
+      "iteration": 1,
+      "status": "pass",
+      "durationMs": 10.2,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "claude-hook-installed",
+          "label": "Claude hook installed",
+          "status": "pass",
+          "detail": ".claude hook exists"
+        },
+        {
+          "id": "codex-hook-skipped",
+          "label": "Codex hook skipped",
+          "status": "pass",
+          "detail": "codex hook surfaces remain absent"
+        },
+        {
+          "id": "adapter-choice-preserved",
+          "label": "Adapter choice preserved",
+          "status": "pass",
+          "detail": "feature updated while keeping codex disabled for that fragment"
+        }
+      ],
+      "metrics": {
+        "apply_create": 1,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "partial-adapter",
+      "fixtureLabel": "Partial adapter choice",
+      "iteration": 2,
+      "status": "pass",
+      "durationMs": 7.78,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "claude-hook-installed",
+          "label": "Claude hook installed",
+          "status": "pass",
+          "detail": ".claude hook exists"
+        },
+        {
+          "id": "codex-hook-skipped",
+          "label": "Codex hook skipped",
+          "status": "pass",
+          "detail": "codex hook surfaces remain absent"
+        },
+        {
+          "id": "adapter-choice-preserved",
+          "label": "Adapter choice preserved",
+          "status": "pass",
+          "detail": "feature updated while keeping codex disabled for that fragment"
+        }
+      ],
+      "metrics": {
+        "apply_create": 1,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "partial-adapter",
+      "fixtureLabel": "Partial adapter choice",
+      "iteration": 3,
+      "status": "pass",
+      "durationMs": 7.59,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "claude-hook-installed",
+          "label": "Claude hook installed",
+          "status": "pass",
+          "detail": ".claude hook exists"
+        },
+        {
+          "id": "codex-hook-skipped",
+          "label": "Codex hook skipped",
+          "status": "pass",
+          "detail": "codex hook surfaces remain absent"
+        },
+        {
+          "id": "adapter-choice-preserved",
+          "label": "Adapter choice preserved",
+          "status": "pass",
+          "detail": "feature updated while keeping codex disabled for that fragment"
+        }
+      ],
+      "metrics": {
+        "apply_create": 1,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "stale-codex-hook",
+      "fixtureLabel": "Stale Codex hook refresh",
+      "iteration": 1,
+      "status": "pass",
+      "durationMs": 11.13,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "codex-stale-registration-replaced",
+          "label": "Stale Codex registration replaced",
+          "status": "pass",
+          "detail": "relative managed Codex hook was replaced by git-root wrapper command"
+        },
+        {
+          "id": "user-hook-config-preserved",
+          "label": "User hook config preserved",
+          "status": "pass",
+          "detail": "user Claude and Codex hook entries remain present"
+        },
+        {
+          "id": "codex-feature-flag-normalized",
+          "label": "Codex hook flag normalized",
+          "status": "pass",
+          "detail": "legacy codex_hooks flag was normalized to hooks = true"
+        }
+      ],
+      "metrics": {
+        "apply_create": 4,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "stale-codex-hook",
+      "fixtureLabel": "Stale Codex hook refresh",
+      "iteration": 2,
+      "status": "pass",
+      "durationMs": 13.05,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "codex-stale-registration-replaced",
+          "label": "Stale Codex registration replaced",
+          "status": "pass",
+          "detail": "relative managed Codex hook was replaced by git-root wrapper command"
+        },
+        {
+          "id": "user-hook-config-preserved",
+          "label": "User hook config preserved",
+          "status": "pass",
+          "detail": "user Claude and Codex hook entries remain present"
+        },
+        {
+          "id": "codex-feature-flag-normalized",
+          "label": "Codex hook flag normalized",
+          "status": "pass",
+          "detail": "legacy codex_hooks flag was normalized to hooks = true"
+        }
+      ],
+      "metrics": {
+        "apply_create": 4,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "stale-codex-hook",
+      "fixtureLabel": "Stale Codex hook refresh",
+      "iteration": 3,
+      "status": "pass",
+      "durationMs": 9.04,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "codex-stale-registration-replaced",
+          "label": "Stale Codex registration replaced",
+          "status": "pass",
+          "detail": "relative managed Codex hook was replaced by git-root wrapper command"
+        },
+        {
+          "id": "user-hook-config-preserved",
+          "label": "User hook config preserved",
+          "status": "pass",
+          "detail": "user Claude and Codex hook entries remain present"
+        },
+        {
+          "id": "codex-feature-flag-normalized",
+          "label": "Codex hook flag normalized",
+          "status": "pass",
+          "detail": "legacy codex_hooks flag was normalized to hooks = true"
+        }
+      ],
+      "metrics": {
+        "apply_create": 4,
+        "apply_update": 1,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "declined-suggestion",
+      "fixtureLabel": "Suggested-but-declined fragment",
+      "iteration": 1,
+      "status": "pass",
+      "durationMs": 4.66,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "declined-fragment-not-installed",
+          "label": "Declined fragment not installed",
+          "status": "pass",
+          "detail": "feature remains absent from Agentfile"
+        },
+        {
+          "id": "declined-suggestion-suppressed",
+          "label": "Declined suggestion suppressed",
+          "status": "pass",
+          "detail": "status reports no suggested feature fragment"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 0,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "declined-suggestion",
+      "fixtureLabel": "Suggested-but-declined fragment",
+      "iteration": 2,
+      "status": "pass",
+      "durationMs": 4.95,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "declined-fragment-not-installed",
+          "label": "Declined fragment not installed",
+          "status": "pass",
+          "detail": "feature remains absent from Agentfile"
+        },
+        {
+          "id": "declined-suggestion-suppressed",
+          "label": "Declined suggestion suppressed",
+          "status": "pass",
+          "detail": "status reports no suggested feature fragment"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 0,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    },
+    {
+      "fixtureId": "declined-suggestion",
+      "fixtureLabel": "Suggested-but-declined fragment",
+      "iteration": 3,
+      "status": "pass",
+      "durationMs": 5.25,
+      "checks": [
+        {
+          "id": "post-dry-run-clean",
+          "label": "Post-upgrade dry-run clean",
+          "status": "pass",
+          "detail": "pending=0"
+        },
+        {
+          "id": "doctor-errors-clean",
+          "label": "Doctor errors clean",
+          "status": "pass",
+          "detail": "doctor_errors=0, doctor_warnings=3"
+        },
+        {
+          "id": "manifest-drift-clean",
+          "label": "Manifest drift clean",
+          "status": "pass",
+          "detail": "modified=0, missing=0"
+        },
+        {
+          "id": "partial-adoptions-clean",
+          "label": "Partial adoptions clean",
+          "status": "pass",
+          "detail": "partial_adoptions=0"
+        },
+        {
+          "id": "fragment-library-clean",
+          "label": "Fragment library clean",
+          "status": "pass",
+          "detail": "updates=0, missing=0"
+        },
+        {
+          "id": "declined-fragment-not-installed",
+          "label": "Declined fragment not installed",
+          "status": "pass",
+          "detail": "feature remains absent from Agentfile"
+        },
+        {
+          "id": "declined-suggestion-suppressed",
+          "label": "Declined suggestion suppressed",
+          "status": "pass",
+          "detail": "status reports no suggested feature fragment"
+        }
+      ],
+      "metrics": {
+        "apply_create": 0,
+        "apply_update": 0,
+        "apply_noop": 2,
+        "apply_blocked": 0,
+        "apply_user_modified": 0,
+        "post_create": 0,
+        "post_update": 0,
+        "post_blocked": 0,
+        "post_user_modified": 0,
+        "post_pending": 0,
+        "doctor_errors": 0,
+        "doctor_warnings": 3,
+        "drift_modified": 0,
+        "drift_missing": 0,
+        "partial_adoptions": 0,
+        "fragment_updates_available": 0,
+        "fragment_library_missing": 0,
+        "suggested_count": 0
+      }
+    }
+  ],
+  "artifacts": {
+    "outputDir": "docs/benchmark-evidence/upgrade",
+    "json": "docs/benchmark-evidence/upgrade/upgrade-benchmark.json",
+    "markdown": "docs/benchmark-evidence/upgrade/upgrade-benchmark.md",
+    "passRateSvg": "docs/benchmark-evidence/upgrade/upgrade-pass-rate.svg",
+    "durationSvg": "docs/benchmark-evidence/upgrade/upgrade-duration.svg"
+  },
+  "markdown": "# Upgrade Benchmark Evidence\n\nGenerated: 2026-07-07T14:11:13.827Z\n\nDeterministic, public-safe benchmark for existing-project upgrade behavior. It runs sanitized fixtures through init/update/status/doctor paths and records numeric pass/fail dimensions separately from convenience summaries.\n\nSummary:\n- fixtures: 5\n- runs: 15\n- pass rate: 100%\n- failures: 0\n- post-upgrade pending writes: 0\n- doctor errors: 0\n- manifest drift count: 0\n\n| Fixture | Runs | Pass rate | Avg ms | Max ms | Pending | Doctor errors | Drift |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| Clean old project without settings | 3 | 100% | 13.06 | 23.39 | 0 | 0 | 0 |\n| Pinned historical fragment archive | 3 | 100% | 7.71 | 7.94 | 0 | 0 | 0 |\n| Partial adapter choice | 3 | 100% | 8.52 | 10.2 | 0 | 0 | 0 |\n| Stale Codex hook refresh | 3 | 100% | 11.07 | 13.05 | 0 | 0 | 0 |\n| Suggested-but-declined fragment | 3 | 100% | 4.95 | 5.25 | 0 | 0 | 0 |\n\nClaim boundary:\n- This benchmark proves deterministic CLI upgrade behavior for sanitized fixtures only.\n- It does not prove real private-project compatibility or package registry publishing health.\n- Stronger compatibility claims require keeping this matrix green and adding fixtures when published project shapes change.\n"
+}

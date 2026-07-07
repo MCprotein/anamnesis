@@ -179,6 +179,7 @@ anamnesis benchmark compare --baseline before.json --after after.json --append  
 anamnesis benchmark gallery --write  # refresh evidence-backed README claim candidates
 anamnesis benchmark gallery --validate  # fail when gallery evidence is stale
 anamnesis benchmark trace --append  # roll up benchmark trace logs as runtime evidence
+anamnesis benchmark upgrade --write  # run sanitized upgrade fixtures and write JSON/SVG evidence
 anamnesis benchmark task --template  # create a model-dependent task/retrieval/behavior benchmark input
 anamnesis benchmark task --input task-run.json --append  # record an agent task run separately
 anamnesis benchmark task-compare --template  # create a paired full/compact task template
@@ -308,6 +309,29 @@ Current run:
 
 Full generated evidence is in
 [`docs/benchmark-evidence/session-context/`](docs/benchmark-evidence/session-context/).
+
+### Upgrade benchmark
+
+v1.10 adds a deterministic upgrade benchmark for public-safe existing-project
+fixtures. It repeatedly runs sanitized old-project states through
+`init`/`update`/`status`/`doctor` and keeps pass/fail dimensions separate from
+summary convenience numbers.
+
+![Upgrade benchmark pass rate](docs/benchmark-evidence/upgrade/upgrade-pass-rate.svg)
+
+![Upgrade benchmark average duration](docs/benchmark-evidence/upgrade/upgrade-duration.svg)
+
+Current run:
+
+- Fixture coverage: clean old project without settings, pinned historical
+  fragment archive, partial adapter choice, stale Codex hook refresh, and
+  suggested-but-declined fragment.
+- Repeated fixture runs: `15/15` passed (`100%`).
+- Post-upgrade pending writes: `0`; doctor errors: `0`; manifest drift count:
+  `0`.
+
+Full generated evidence is in
+[`docs/benchmark-evidence/upgrade/`](docs/benchmark-evidence/upgrade/).
 
 Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
 Public-safe benchmark boundaries live in

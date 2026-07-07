@@ -78,6 +78,11 @@ import {
   type BenchmarkTraceRollupResult,
 } from "./commands/benchmark_trace.js";
 import {
+  upgradeBenchmark,
+  UpgradeBenchmarkError,
+  type UpgradeBenchmarkResult,
+} from "./commands/benchmark_upgrade.js";
+import {
   benchmarkGallery,
   BenchmarkGalleryError,
   type BenchmarkGalleryResult,
@@ -264,6 +269,20 @@ function parseOptionalPositiveIntegerFlag(
   return parsed;
 }
 
+function parseBenchmarkRunsFlag(
+  value: string | boolean | undefined,
+): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new UpgradeBenchmarkError("--runs requires a positive integer");
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new UpgradeBenchmarkError("--runs requires a positive integer");
+  }
+  return parsed;
+}
+
 function parseContextLimitFlag(
   value: string | boolean | undefined,
 ): number | undefined {
@@ -373,6 +392,8 @@ Commands:
                                   from runtime evidence
   benchmark trace              Roll up benchmark trace JSONL and optionally
                                   record runtime evidence
+  benchmark upgrade            Run deterministic sanitized upgrade fixtures
+                                  and optionally write JSON/SVG evidence
   benchmark task               Record a model-dependent agent task benchmark
                                   separately from deterministic scorecards
   benchmark task-compare       Compare paired full/compact agent task
@@ -552,6 +573,15 @@ Flags (benchmark trace):
   --append                      Append markdown to docs/BENCHMARK-TRACES.md
                                   and record runtime evidence
   --output <path>               Override trace rollup markdown path
+
+Flags (benchmark upgrade):
+  --project-root <path>         Target directory (default: cwd)
+  --runs <n>                    Runs per sanitized fixture (default: 3)
+  --json                        Print structured JSON
+  --write                       Write JSON, markdown, and SVG charts under
+                                  docs/benchmark-evidence/upgrade
+  --append                      Record runtime evidence
+  --output <path>               Override artifact output directory
 
 Flags (benchmark task):
   --project-root <path>         Target directory (default: cwd)
@@ -1442,6 +1472,38 @@ function reportBenchmarkTrace(result: BenchmarkTraceRollupResult): void {
   reportAppendEvidence(result.appendedPath, result.evidencePath);
 }
 
+function reportUpgradeBenchmark(result: UpgradeBenchmarkResult): void {
+  console.log("anamnesis benchmark upgrade");
+  console.log(
+    `  summary: ${result.summary.passed}/${result.summary.runs} pass (${result.summary.passRatePct}%), failures=${result.summary.failed}`,
+  );
+  console.log(
+    `  health: pending=${result.summary.postPendingTotal}, doctor_errors=${result.summary.doctorErrorsTotal}, drift=${result.summary.driftTotal}`,
+  );
+  console.log(
+    `  duration: avg=${result.summary.averageDurationMs}ms, max=${result.summary.maxDurationMs}ms`,
+  );
+  for (const fixture of result.fixtures) {
+    console.log(
+      `  ${fixture.fixtureId}: ${fixture.passed}/${fixture.runs} pass (${fixture.passRatePct}%), avg=${fixture.durationMs.average}ms, pending=${fixture.postPendingTotal}, doctor_errors=${fixture.doctorErrorsTotal}, drift=${fixture.driftTotal}`,
+    );
+  }
+  if (result.artifacts.outputDir) {
+    console.log(`  output: ${result.artifacts.outputDir}`);
+  }
+  for (const artifact of [
+    result.artifacts.json,
+    result.artifacts.markdown,
+    result.artifacts.passRateSvg,
+    result.artifacts.durationSvg,
+  ]) {
+    if (artifact) console.log(`  artifact: ${artifact}`);
+  }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
+}
+
 function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
   console.log(`anamnesis benchmark task — ${result.input.project.name}`);
   console.log(`  task: ${result.input.task.id}`);
@@ -2326,6 +2388,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "compare" &&
         sub !== "gallery" &&
         sub !== "trace" &&
+        sub !== "upgrade" &&
         sub !== "task" &&
         sub !== "task-compare" &&
         sub !== "task-series" &&
@@ -2346,6 +2409,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis benchmark trace [--json] [--append] [--output=<path>] [--source=<path>]`,
+        );
+        console.error(
+          `       anamnesis benchmark upgrade [--json] [--write] [--append] [--runs=<n>] [--output=<dir>]`,
         );
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
@@ -2503,6 +2569,23 @@ async function main(argv: string[]): Promise<number> {
           return result.ok ? 0 : 1;
         }
 
+        if (sub === "upgrade") {
+          const result = upgradeBenchmark({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            runs: parseBenchmarkRunsFlag(flags["runs"]),
+            write: flags["write"] === true,
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportUpgradeBenchmark(result);
+          }
+          return result.ok ? 0 : 1;
+        }
+
         if (sub === "gallery") {
           const result = benchmarkGallery({
             projectRoot:
@@ -2564,6 +2647,7 @@ async function main(argv: string[]): Promise<number> {
           e instanceof BenchmarkError ||
           e instanceof BenchmarkGalleryError ||
           e instanceof BenchmarkTraceError ||
+          e instanceof UpgradeBenchmarkError ||
           e instanceof AgentTaskBenchmarkError ||
           e instanceof AgentTaskBenchmarkSeriesError ||
           e instanceof PromptDeltaGateError ||

@@ -56,6 +56,7 @@
     "benchmark:gallery": "tsx cli/src/index.ts benchmark gallery --write",
     "benchmark:gallery:check": "tsx cli/src/index.ts benchmark gallery --validate",
     "benchmark:prompt-gate": "tsx cli/src/index.ts benchmark prompt-gate",
+    "benchmark:upgrade": "tsx cli/src/index.ts benchmark upgrade --write",
     "dogfood": "tsx cli/src/index.ts dogfood check --append",
     "dogfood:check": "tsx cli/src/index.ts dogfood check",
     "doctor:check": "tsx cli/src/index.ts doctor",

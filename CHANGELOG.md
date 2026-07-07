@@ -34,6 +34,10 @@ could include breaking changes.
   Agentfile shapes, pinned fragment archives, partial adapter choices, stale
   Codex hook registration refresh, hook config preservation, and
   suggested-but-declined fragment suppression.
+- Added `anamnesis benchmark upgrade`, a deterministic sanitized upgrade
+  benchmark that writes JSON/Markdown/SVG evidence for repeated existing-project
+  upgrade fixtures; the current public-safe run is 15/15 pass with zero pending
+  writes, doctor errors, or manifest drift.
 
 ## [1.9.6] — 2026-07-07
 

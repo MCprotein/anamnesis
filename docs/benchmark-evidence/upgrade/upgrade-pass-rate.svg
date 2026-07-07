@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="318" viewBox="0 0 920 318" role="img" aria-labelledby="title desc">
+<title id="title">Upgrade benchmark pass rate</title>
+<desc id="desc">Bar chart for Upgrade benchmark pass rate.</desc>
+<rect width="920" height="318" fill="#ffffff"/>
+<text x="24" y="34" font-size="20" font-weight="700" fill="#111827">Upgrade benchmark pass rate</text>
+<line x1="270" y1="50" x2="270" y2="282" stroke="#d1d5db"/>
+<text x="256" y="83" text-anchor="end" font-size="12" fill="#374151">Clean old project without settings</text>
+<rect x="270" y="66" width="602.0" height="22" fill="#2563eb"><title>clean-old-no-settings: 100%</title></rect>
+<text x="880.0" y="82" font-size="12" fill="#111827">100%</text>
+<text x="256" y="127" text-anchor="end" font-size="12" fill="#374151">Pinned historical fragment archive</text>
+<rect x="270" y="110" width="602.0" height="22" fill="#2563eb"><title>pinned-archive: 100%</title></rect>
+<text x="880.0" y="126" font-size="12" fill="#111827">100%</text>
+<text x="256" y="171" text-anchor="end" font-size="12" fill="#374151">Partial adapter choice</text>
+<rect x="270" y="154" width="602.0" height="22" fill="#2563eb"><title>partial-adapter: 100%</title></rect>
+<text x="880.0" y="170" font-size="12" fill="#111827">100%</text>
+<text x="256" y="215" text-anchor="end" font-size="12" fill="#374151">Stale Codex hook refresh</text>
+<rect x="270" y="198" width="602.0" height="22" fill="#2563eb"><title>stale-codex-hook: 100%</title></rect>
+<text x="880.0" y="214" font-size="12" fill="#111827">100%</text>
+<text x="256" y="259" text-anchor="end" font-size="12" fill="#374151">Suggested-but-declined fragment</text>
+<rect x="270" y="242" width="602.0" height="22" fill="#2563eb"><title>declined-suggestion: 100%</title></rect>
+<text x="880.0" y="258" font-size="12" fill="#111827">100%</text>
+</svg>
