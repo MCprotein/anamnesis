@@ -1475,7 +1475,7 @@ extra checks.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Guided conflict choices** | partial | `upgrade plan` now emits structured choices for package upgrades, schema migration, executable-adapter preview/apply, local managed edits, pinned fragments, suggested fragments, and doctor follow-up. Remaining work: interactive/TUI selection or command-specific choice execution, while preserving non-interactive defaults. |
+| 1 | **Guided conflict choices** | done | `upgrade plan` now emits structured choices for package upgrades, schema migration, executable-adapter preview/apply, local managed edits, pinned fragments, suggested fragments, doctor follow-up, and optional setting defaults. Each choice carries a stable id, effect class, command when directly executable, outcome, and recommendation flag. Interactive/TUI selection and command-specific choice execution are intentionally deferred to a later minor so v1.10 stays deterministic and dry-run-first. |
 | 2 | **Optional setting materialization policy** | done | `upgrade plan` now reports whether optional Agentfile settings are implicit defaults, partially materialized, or fully materialized. Existing projects keep defaults implicit by default; the plan offers a recommended choice to avoid Agentfile churn and a manual choice to materialize only settings the user wants to tune. |
 | 3 | **Schema migration gate integration** | done | `update` now checks `migrate agentfile` dry-run state before planning managed surface renders and stops with the migration command when required. `upgrade plan` stops at the schema gate before status/update/doctor diagnostics and emits the migration choice first. Required schema changes stay backup-first and dry-run visible. |
 | 4 | **Historical compatibility fixture matrix** | done | Expanded `upgrade_compatibility.test.ts` with representative published-state fixtures for v1.4, v1.5, and v1.7 Agentfile shapes, pinned fragment archives, partial adapter installs, stale Codex hook registration refresh, hook config preservation, and suggested-but-declined fragments. |
@@ -1495,6 +1495,22 @@ Exit criteria for this release line:
   on which local gates define release readiness.
 - Public verification still ends with npmjs.org, GitHub Packages, GitHub
   Release, and published CLI smoke checks for the same version.
+
+---
+
+## v1.11 — *candidate*
+
+> **Theme: guided upgrade execution UX**
+
+v1.10 made upgrade choices deterministic and inspectable. v1.11 can decide
+whether those choices should become executable workflow steps, while keeping
+the default non-interactive path safe for CI and scripted users.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Choice execution command** | candidate | Consider `upgrade plan --choice <id>` or a separate `upgrade apply-choice <id>` surface that executes only choices with explicit commands and effect classes. Local-write/package-install choices must remain opt-in and should preview before writing. |
+| 2 | **Interactive/TUI chooser** | candidate | Consider a small guided chooser for humans after command-specific execution is stable. It should be a presentation layer over the deterministic `upgrade plan` JSON, not a separate decision engine. |
+| 3 | **Choice execution evidence** | candidate | If execution lands, extend `benchmark upgrade` with choice-execution fixtures so guided UX is measured by pass/fail, pending writes, doctor errors, and drift instead of screenshots or copy claims. |
 
 ---
 

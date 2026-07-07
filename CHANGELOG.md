@@ -38,6 +38,9 @@ could include breaking changes.
   benchmark that writes JSON/Markdown/SVG evidence for repeated existing-project
   upgrade fixtures; the current public-safe run is 15/15 pass with zero pending
   writes, doctor errors, or manifest drift.
+- Reconciled v1.10 scope by treating structured `upgrade plan` choices as the
+  completed minor-release surface and moving interactive/TUI or choice-execution
+  UX to v1.11 candidates.
 
 ## [1.9.6] — 2026-07-07
 
