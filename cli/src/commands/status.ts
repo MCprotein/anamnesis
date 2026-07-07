@@ -13,6 +13,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
+  activeHandoffOpenTaskLines,
+  extractArchiveRefs,
+  isCompletedHandoffTaskLine,
+  newestHandoffArchive,
+} from "../core/handoff_active_text.js";
+import {
   findAgentfile,
   readAgentfile,
   type Agentfile,
@@ -858,65 +864,6 @@ function validateActiveHandoff(projectRoot: string): ContinuityCheck {
     detail: `active handoff references ${archiveRefs.length} current archive(s)`,
     targets: [activeRel, ...archiveRefs],
   };
-}
-
-function activeHandoffOpenTaskLines(text: string): string[] {
-  const lines: string[] = [];
-  let inOpenSection = false;
-  for (const line of text.split(/\r?\n/)) {
-    if (/^##\s+(Current focus|Active tasks)\s*$/i.test(line.trim())) {
-      inOpenSection = true;
-      continue;
-    }
-    if (/^##\s+/.test(line.trim())) {
-      inOpenSection = false;
-      continue;
-    }
-    if (inOpenSection && line.trim().startsWith("-")) {
-      lines.push(line.trim());
-    }
-  }
-  return lines;
-}
-
-function isCompletedHandoffTaskLine(line: string): boolean {
-  return (
-    /\[(done|completed|closed|deprecated|superseded)\]/i.test(line) ||
-    /\bcompleted in\b/i.test(line) ||
-    /\bclosed (at|in)\b/i.test(line) ||
-    /\bdeprecated (at|by|in)\b/i.test(line) ||
-    /\bsuperseded by\b/i.test(line)
-  );
-}
-
-function extractArchiveRefs(text: string): string[] {
-  const refs = new Set<string>();
-  for (const match of text.matchAll(/archive:\s*`([^`]+)`/g)) {
-    refs.add(match[1]!.trim());
-  }
-  for (const match of text.matchAll(/archive:\s*([^\s]+)/g)) {
-    refs.add(match[1]!.replace(/^`+|[`.,;)]+$/g, "").trim());
-  }
-  return Array.from(refs).filter((ref) => ref.length > 0);
-}
-
-function newestHandoffArchive(
-  projectRoot: string,
-): { rel: string; mtimeMs: number } | undefined {
-  const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
-  if (!fs.existsSync(handoffDir)) return undefined;
-  return fs
-    .readdirSync(handoffDir)
-    .filter((name) => name.endsWith(".md") && name !== "active.md")
-    .map((name) => {
-      const rel = path.join(".anamnesis", "handoff", name);
-      const abs = path.join(projectRoot, rel);
-      return {
-        rel: rel.split(path.sep).join("/"),
-        mtimeMs: fs.statSync(abs).mtimeMs,
-      };
-    })
-    .sort((a, b) => b.mtimeMs - a.mtimeMs || a.rel.localeCompare(b.rel))[0];
 }
 
 function resolveProjectPath(projectRoot: string, rel: string): string | undefined {

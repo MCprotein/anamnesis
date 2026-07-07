@@ -8,6 +8,7 @@ import {
   type RuntimeEvidenceLog,
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
+import { newestHandoffArchive } from "../core/handoff_active_text.js";
 import {
   SESSION_CONTEXT_BENCHMARK_SCHEMA_VERSION,
   type SessionContextBenchmarkResult,
@@ -580,8 +581,14 @@ function contextFiles(projectRoot: string): PromptDeltaGateContextFile[] {
     out.push(contextFile(projectRoot, active, "handoff"));
   }
   const latest = newestHandoffArchive(projectRoot);
-  if (latest && latest.abs !== active) {
-    out.push(contextFile(projectRoot, latest.abs, "handoff"));
+  if (latest) {
+    const latestAbs = path.join(
+      projectRoot,
+      latest.rel.split("/").join(path.sep),
+    );
+    if (latestAbs !== active) {
+      out.push(contextFile(projectRoot, latestAbs, "handoff"));
+    }
   }
 
   return out.sort((a, b) => a.path.localeCompare(b.path));
@@ -599,29 +606,6 @@ function contextFile(
     bytes,
     estimatedTokens: estimateTokens(bytes),
   };
-}
-
-function newestHandoffArchive(
-  projectRoot: string,
-): { abs: string; rel: string } | undefined {
-  const dir = path.join(projectRoot, ".anamnesis", "handoff");
-  if (!fs.existsSync(dir)) return undefined;
-  let newest: { abs: string; rel: string; mtime: number } | undefined;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isFile() || entry.name === "active.md" || !entry.name.endsWith(".md")) {
-      continue;
-    }
-    const abs = path.join(dir, entry.name);
-    const mtime = fs.statSync(abs).mtimeMs;
-    if (!newest || mtime > newest.mtime) {
-      newest = {
-        abs,
-        rel: displayPathFromProject(projectRoot, abs),
-        mtime,
-      };
-    }
-  }
-  return newest ? { abs: newest.abs, rel: newest.rel } : undefined;
 }
 
 function estimateTokens(bytes: number): number {

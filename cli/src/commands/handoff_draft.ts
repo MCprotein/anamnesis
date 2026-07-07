@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { readEvidenceSummary } from "../core/evidence.js";
+import { newestHandoffArchive } from "../core/handoff_active_text.js";
 
 export const HANDOFF_DRAFT_SCHEMA_VERSION = "anamnesis.handoff_draft.v1";
 export const HANDOFF_DRAFT_PATH = ".anamnesis/handoff/drafts/latest.md";
@@ -74,7 +75,9 @@ export function handoffDraft(opts: HandoffDraftOptions): HandoffDraftResult {
     maxTouchedFiles,
   );
   const activeHandoff = activeHandoffPath(projectRoot);
-  const latestArchive = newestHandoffArchive(projectRoot)?.rel;
+  const latestArchive = newestHandoffArchive(projectRoot, {
+    exclude: ["active.md", "draft.md"],
+  })?.rel;
   const evidence = readEvidenceSummary(projectRoot, {
     now: new Date(generatedAt),
   });
@@ -215,25 +218,6 @@ function summarizeDraft(input: {
 function activeHandoffPath(projectRoot: string): string | undefined {
   const rel = ".anamnesis/handoff/active.md";
   return fs.existsSync(path.join(projectRoot, rel)) ? rel : undefined;
-}
-
-function newestHandoffArchive(
-  projectRoot: string,
-): { rel: string; mtimeMs: number } | undefined {
-  const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
-  if (!fs.existsSync(handoffDir)) return undefined;
-  return fs
-    .readdirSync(handoffDir)
-    .filter((name) => name.endsWith(".md") && name !== "active.md" && name !== "draft.md")
-    .map((name) => {
-      const rel = path.join(".anamnesis", "handoff", name);
-      const abs = path.join(projectRoot, rel);
-      return {
-        rel: rel.split(path.sep).join("/"),
-        mtimeMs: fs.statSync(abs).mtimeMs,
-      };
-    })
-    .sort((a, b) => b.mtimeMs - a.mtimeMs || a.rel.localeCompare(b.rel))[0];
 }
 
 function gitTouchedFiles(

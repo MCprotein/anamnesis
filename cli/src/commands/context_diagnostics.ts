@@ -11,6 +11,12 @@ import {
   resolveHandoffRetentionPolicy,
   type HandoffRetentionPolicy,
 } from "../core/handoff_policy.js";
+import {
+  activeHandoffOpenTaskLines,
+  extractArchiveRefs,
+  isCompletedHandoffTaskLine,
+  newestHandoffArchive,
+} from "../core/handoff_active_text.js";
 
 export const CONTEXT_DIAGNOSTICS_SCHEMA_VERSION =
   "anamnesis.context_diagnostics.v1";
@@ -674,34 +680,6 @@ function quoteValue(value: string): string {
   return `'${value}'`;
 }
 
-function activeHandoffOpenTaskLines(text: string): string[] {
-  const lines: string[] = [];
-  let inOpenSection = false;
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (/^##\s+(Current focus|Active tasks)\s*$/i.test(trimmed)) {
-      inOpenSection = true;
-      continue;
-    }
-    if (/^##\s+/.test(trimmed)) {
-      inOpenSection = false;
-      continue;
-    }
-    if (inOpenSection && trimmed.startsWith("-")) lines.push(trimmed);
-  }
-  return lines;
-}
-
-function isCompletedHandoffTaskLine(line: string): boolean {
-  return (
-    /\[(done|completed|closed|deprecated|superseded)\]/i.test(line) ||
-    /\bcompleted in\b/i.test(line) ||
-    /\bclosed (at|in)\b/i.test(line) ||
-    /\bdeprecated (at|by|in)\b/i.test(line) ||
-    /\bsuperseded by\b/i.test(line)
-  );
-}
-
 function missingActiveFilePointers(
   projectRoot: string,
   openTaskLines: readonly string[],
@@ -836,36 +814,6 @@ function stableLineRef(line: string): string {
     .replace(/[^A-Za-z0-9._/-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 96);
-}
-
-function extractArchiveRefs(text: string): string[] {
-  const refs = new Set<string>();
-  for (const match of text.matchAll(/archive:\s*`([^`]+)`/g)) {
-    refs.add(match[1]!.trim());
-  }
-  for (const match of text.matchAll(/archive:\s*([^\s]+)/g)) {
-    refs.add(match[1]!.replace(/^`+|[`.,;)]+$/g, "").trim());
-  }
-  return [...refs].filter((ref) => ref.length > 0).sort();
-}
-
-function newestHandoffArchive(
-  projectRoot: string,
-): { rel: string; mtimeMs: number } | undefined {
-  const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
-  if (!fs.existsSync(handoffDir)) return undefined;
-  return fs
-    .readdirSync(handoffDir)
-    .filter((name) => name.endsWith(".md") && name !== "active.md")
-    .map((name) => {
-      const rel = path.join(".anamnesis", "handoff", name);
-      const abs = path.join(projectRoot, rel);
-      return {
-        rel: rel.split(path.sep).join("/"),
-        mtimeMs: fs.statSync(abs).mtimeMs,
-      };
-    })
-    .sort((a, b) => b.mtimeMs - a.mtimeMs || a.rel.localeCompare(b.rel))[0];
 }
 
 function safeProjectFileExists(projectRoot: string, relPath: string): boolean {
