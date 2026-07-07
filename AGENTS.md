@@ -16,8 +16,9 @@ This repository **is** anamnesis — the AI coding agent config lifecycle manage
 
 ## Working on this repo
 
-- Run tests: `npm test` (vitest, ~1s, 229 tests)
+- Run tests: `npm test` (vitest)
 - Type-check: `npm run typecheck`
+- Lint: `npm run lint` (Biome); auto-fix with `npm run lint:fix`
 - Local CLI: `npx tsx cli/src/index.ts <cmd>` (skips build)
 - Build for distribution: `npm run build` → `cli/dist/`
 

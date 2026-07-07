@@ -2,7 +2,7 @@
 
 Thanks for considering it. v0.1 is daily-use alpha — feedback, fragment contributions, and adapter ideas are all welcome.
 
-This document covers the most common path: **adding or extending a fragment**. Tooling-internals contributions follow standard Node/TypeScript practices (tests required, `npm run typecheck` clean, prefer focused PRs).
+This document covers the most common path: **adding or extending a fragment**. Tooling-internals contributions follow standard Node/TypeScript practices (tests required, `npm run typecheck` and `npm run lint` clean, prefer focused PRs).
 
 ---
 
@@ -109,10 +109,11 @@ This creates or extends `fragments/my-stack/` with the appropriate capability an
 ```bash
 npm install
 npm run typecheck
-npm test          # vitest, ~1s
+npm run lint      # Biome; auto-fix with npm run lint:fix
+npm test          # vitest
 ```
 
-229 tests as of v0.1. Each new core change should add a test; new fragments don't need TypeScript tests but should be exercised via dry-run on a sanitized fixture.
+Each new core change should add a test; new fragments don't need TypeScript tests but should be exercised via dry-run on a sanitized fixture.
 
 ---
 
