@@ -18,6 +18,7 @@ function makeUpgradeLibrary(
     featureVersion: number;
     featureContent: string;
     includeFeatureHook?: boolean;
+    featureHookAdapters?: Array<"claude-code" | "codex">;
   },
 ): string {
   const lib = tmpDir("anamnesis-upgrade-compat-lib-");
@@ -59,7 +60,7 @@ capabilities:
 ${opts.includeFeatureHook === true ? `  - type: executable_hook
     event: Stop
     source: hooks/feature.sh
-    adapters_supported: [claude-code]
+    adapters_supported: [${(opts.featureHookAdapters ?? ["claude-code"]).join(", ")}]
 ` : ""}`,
   );
   fs.writeFileSync(
@@ -77,6 +78,34 @@ ${opts.includeFeatureHook === true ? `  - type: executable_hook
   );
 
   return lib;
+}
+
+function addFeatureArchive(
+  library: string,
+  opts: { version: number; content: string },
+): void {
+  const archiveDir = path.join(
+    library,
+    "fragments",
+    "feature",
+    ".versions",
+    String(opts.version),
+  );
+  fs.mkdirSync(path.join(archiveDir, "content"), { recursive: true });
+  fs.writeFileSync(
+    path.join(archiveDir, "fragment.yaml"),
+    `id: feature
+version: ${opts.version}
+capabilities:
+  - type: project_memory
+    source: content/feature.md
+    region: feature
+`,
+  );
+  fs.writeFileSync(
+    path.join(archiveDir, "content", "feature.md"),
+    opts.content,
+  );
 }
 
 function installOldProject(library: string): string {
@@ -97,6 +126,86 @@ function installOldProject(library: string): string {
 }
 
 describe("upgrade compatibility matrix", () => {
+  it("keeps representative v1.4, v1.5, and v1.7 Agentfile shapes on the dry-run upgrade path", () => {
+    const v1Library = makeUpgradeLibrary({
+      featureVersion: 1,
+      featureContent: "## Feature\n\nv1 rules.\n",
+    });
+    const v2Library = makeUpgradeLibrary({
+      featureVersion: 2,
+      featureContent: "## Feature\n\nv2 rules.\n",
+    });
+    const cases = [
+      {
+        label: "v1.4 claude-only with no settings block",
+        agentfile: {
+          version: 1,
+          project: { name: "v14-legacy" },
+          tools: ["claude-code"],
+          fragments: [
+            { id: "base", version: 1 },
+            { id: "feature", version: 1 },
+          ],
+        },
+      },
+      {
+        label: "v1.5 compact-session partial settings block",
+        agentfile: {
+          version: 1,
+          project: { name: "v15-compact" },
+          tools: ["claude-code"],
+          fragments: [
+            { id: "base", version: 1 },
+            { id: "feature", version: 1 },
+          ],
+          settings: {
+            ontology_file: "system_graph.yaml",
+            agents_md_path: "AGENTS.md",
+            claude_md_path: "CLAUDE.md",
+            max_warm_handoff_archives: 3,
+          },
+        },
+      },
+      {
+        label: "v1.7 all-adapter project with partial fragment adapter choice",
+        agentfile: {
+          version: 1,
+          project: { name: "v17-all-adapter" },
+          tools: ["claude-code", "codex", "cursor"],
+          fragments: [
+            { id: "base", version: 1 },
+            {
+              id: "feature",
+              version: 1,
+              adapters: { "claude-code": true, codex: false, cursor: true },
+            },
+          ],
+        },
+      },
+    ];
+
+    for (const fixture of cases) {
+      const project = installOldProject(v1Library);
+      fs.writeFileSync(
+        path.join(project, "Agentfile"),
+        JSON.stringify(fixture.agentfile, null, 2),
+        "utf8",
+      );
+
+      const preview = update({
+        projectRoot: project,
+        libraryRoot: v2Library,
+        apply: false,
+        allowExecAdapters: true,
+      });
+
+      expect(preview.writtenToDisk, fixture.label).toBe(false);
+      expect(preview.changes.length, fixture.label).toBeGreaterThan(0);
+      expect(readAgentfile(project).fragments.find((f) => f.id === "feature"))
+        .toMatchObject({ version: 1 });
+    }
+  });
+
   it("upgrades a clean old project through preview, apply, and doctor", () => {
     const v1Library = makeUpgradeLibrary({
       featureVersion: 1,
@@ -240,5 +349,249 @@ describe("upgrade compatibility matrix", () => {
     ).toBe(true);
     expect(readAgentfile(project).fragments.find((f) => f.id === "feature"))
       .toMatchObject({ version: 2 });
+  });
+
+  it("keeps pinned historical fragments on archived content until explicitly bumped", () => {
+    const v1Library = makeUpgradeLibrary({
+      featureVersion: 1,
+      featureContent: "## Feature\n\nv1 rules.\n",
+    });
+    const project = installOldProject(v1Library);
+    const agentfile = readAgentfile(project);
+    agentfile.fragments = agentfile.fragments.map((fragment) =>
+      fragment.id === "feature"
+        ? { ...fragment, pinned: true }
+        : fragment,
+    );
+    writeAgentfile(project, agentfile);
+
+    const v2Library = makeUpgradeLibrary({
+      featureVersion: 2,
+      featureContent: "## Feature\n\nv2 current rules.\n",
+    });
+    addFeatureArchive(v2Library, {
+      version: 1,
+      content: "## Feature\n\nv1 archived rules.\n",
+    });
+
+    update({
+      projectRoot: project,
+      libraryRoot: v2Library,
+      apply: true,
+      allowExecAdapters: false,
+    });
+
+    expect(readAgentfile(project).fragments.find((f) => f.id === "feature"))
+      .toMatchObject({ version: 1, pinned: true });
+    const agents = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
+    expect(agents).toContain("v1 archived rules");
+    expect(agents).not.toContain("v2 current rules");
+  });
+
+  it("preserves partial adapter choices when a newer fragment adds hook surfaces", () => {
+    const v1Library = makeUpgradeLibrary({
+      featureVersion: 1,
+      featureContent: "## Feature\n\nv1 rules.\n",
+    });
+    const project = installOldProject(v1Library);
+    const agentfile = readAgentfile(project);
+    agentfile.tools = ["claude-code", "codex"];
+    agentfile.fragments = agentfile.fragments.map((fragment) =>
+      fragment.id === "feature"
+        ? {
+            ...fragment,
+            adapters: { "claude-code": true, codex: false },
+          }
+        : fragment,
+    );
+    writeAgentfile(project, agentfile);
+    const v2Library = makeUpgradeLibrary({
+      featureVersion: 2,
+      featureContent: "## Feature\n\nv2 rules.\n",
+      includeFeatureHook: true,
+      featureHookAdapters: ["claude-code", "codex"],
+    });
+
+    update({
+      projectRoot: project,
+      libraryRoot: v2Library,
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    expect(fs.existsSync(path.join(project, ".claude/hooks/feature.sh")))
+      .toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          project,
+          ".anamnesis/codex-native-hooks/feature-Stop-feature.mjs",
+        ),
+      ),
+    ).toBe(false);
+    expect(fs.existsSync(path.join(project, ".codex/hooks.json"))).toBe(false);
+    expect(readAgentfile(project).fragments.find((f) => f.id === "feature"))
+      .toMatchObject({
+        version: 2,
+        adapters: { "claude-code": true, codex: false },
+      });
+  });
+
+  it("refreshes stale Codex hook registrations while preserving user hook config", () => {
+    const v1Library = makeUpgradeLibrary({
+      featureVersion: 1,
+      featureContent: "## Feature\n\nv1 rules.\n",
+    });
+    const project = installOldProject(v1Library);
+    const agentfile = readAgentfile(project);
+    agentfile.tools = ["claude-code", "codex"];
+    writeAgentfile(project, agentfile);
+    fs.mkdirSync(path.join(project, ".claude"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, ".claude/settings.json"),
+      JSON.stringify(
+        {
+          theme: "user-owned",
+          hooks: {
+            Stop: [
+              {
+                hooks: [
+                  { type: "command", command: "./user-stop-hook.sh" },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    fs.mkdirSync(path.join(project, ".codex"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, ".codex/config.toml"),
+      "[features]\ncodex_hooks = true\nmodel_reasoning_effort = \"high\"\n",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(project, ".codex/hooks.json"),
+      JSON.stringify(
+        {
+          hooks: {
+            Stop: [
+              {
+                hooks: [
+                  { type: "command", command: "node ./user-codex-hook.mjs" },
+                  {
+                    type: "command",
+                    command:
+                      'node ".anamnesis/codex-native-hooks/feature-Stop-feature.mjs"',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    const v2Library = makeUpgradeLibrary({
+      featureVersion: 2,
+      featureContent: "## Feature\n\nv2 rules.\n",
+      includeFeatureHook: true,
+      featureHookAdapters: ["claude-code", "codex"],
+    });
+
+    const result = update({
+      projectRoot: project,
+      libraryRoot: v2Library,
+      apply: true,
+      allowExecAdapters: true,
+    });
+
+    const claudeSettings = JSON.parse(
+      fs.readFileSync(path.join(project, ".claude/settings.json"), "utf8"),
+    ) as {
+      theme?: string;
+      hooks?: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
+    };
+    expect(claudeSettings.theme).toBe("user-owned");
+    expect(claudeSettings.hooks?.Stop?.[0]?.hooks.map((h) => h.command))
+      .toContain("./user-stop-hook.sh");
+    expect(
+      claudeSettings.hooks?.Stop?.flatMap((entry) =>
+        entry.hooks.map((hook) => hook.command),
+      ),
+    ).toContain(".claude/hooks/feature.sh");
+
+    const codexConfig = fs.readFileSync(
+      path.join(project, ".codex/config.toml"),
+      "utf8",
+    );
+    expect(codexConfig).toContain("hooks = true");
+    expect(codexConfig).toContain('model_reasoning_effort = "high"');
+    expect(codexConfig).not.toContain("codex_hooks");
+
+    const codexHooks = fs.readFileSync(
+      path.join(project, ".codex/hooks.json"),
+      "utf8",
+    );
+    expect(codexHooks).toContain("node ./user-codex-hook.mjs");
+    expect(codexHooks).toContain("git rev-parse --show-toplevel");
+    expect(codexHooks).toContain(
+      ".anamnesis/codex-native-hooks/feature-Stop-feature.mjs",
+    );
+    expect(codexHooks).not.toContain(
+      'node ".anamnesis/codex-native-hooks/feature-Stop-feature.mjs"',
+    );
+    expect(result.codexHookRegistrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "create",
+          registration: expect.objectContaining({ event: "Stop" }),
+        }),
+      ]),
+    );
+  });
+
+  it("keeps suggested-but-declined fragments suppressed for old projects", () => {
+    const library = makeUpgradeLibrary({
+      featureVersion: 1,
+      featureContent: "## Feature\n\nv1 rules.\n",
+    });
+    const project = tmpDir("anamnesis-upgrade-compat-declined-");
+    init({
+      projectRoot: project,
+      libraryRoot: library,
+      dryRun: false,
+      allowExecAdapters: false,
+      noBootstrap: true,
+    });
+    const agentfile = readAgentfile(project);
+    agentfile.declined = [
+      {
+        id: "feature",
+        reason: "not part of this service",
+        declined_at: "2026-06-01",
+      },
+    ];
+    writeAgentfile(project, agentfile);
+    fs.writeFileSync(path.join(project, "feature.flag"), "");
+
+    const preview = update({
+      projectRoot: project,
+      libraryRoot: library,
+      apply: false,
+      allowExecAdapters: false,
+    });
+
+    expect(preview.suggested.map((rule) => rule.suggest)).not.toContain(
+      "feature",
+    );
+    expect(readAgentfile(project).fragments.map((f) => f.id)).toEqual([
+      "base",
+    ]);
   });
 });

@@ -30,6 +30,10 @@ could include breaking changes.
 - Added an optional-settings materialization policy to `upgrade plan`: existing
   Agentfiles keep defaults implicit by default, and the plan reports which
   settings are implicit vs explicitly materialized.
+- Expanded the upgrade compatibility matrix with historical v1.4/v1.5/v1.7
+  Agentfile shapes, pinned fragment archives, partial adapter choices, stale
+  Codex hook registration refresh, hook config preservation, and
+  suggested-but-declined fragment suppression.
 
 ## [1.9.6] — 2026-07-07
 
