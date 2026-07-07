@@ -86,6 +86,10 @@ anamnesis update --apply --allow-exec-adapters
 anamnesis doctor
 ```
 
+If the Agentfile schema needs migration, `upgrade plan` shows that gate first
+and `update` stops before rendering or writing managed surfaces. Run
+`anamnesis migrate agentfile --apply`, then rerun `upgrade plan` / `update`.
+
 Building from source instead (during development or for forks):
 
 ```bash

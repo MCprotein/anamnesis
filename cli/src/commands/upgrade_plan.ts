@@ -7,6 +7,7 @@ import type { PlannedChange } from "../core/applier.js";
 import {
   migrateAgentfile,
   CURRENT_AGENTFILE_VERSION,
+  type AgentfileMigration,
 } from "./migrate.js";
 import {
   status,
@@ -87,6 +88,8 @@ export interface UpgradePlanResult {
 export interface UpgradePlanOptions extends UpgradeOptions {
   projectRoot: string;
   libraryRoot: string;
+  /** Override the Agentfile migration set; defaults to built-in migrations. */
+  agentfileMigrations?: readonly AgentfileMigration[];
   now?: () => Date;
 }
 
@@ -111,6 +114,7 @@ export function upgradePlan(opts: UpgradePlanOptions): UpgradePlanResult {
       projectRoot,
       libraryRoot,
       packageResult,
+      agentfileMigrations: opts.agentfileMigrations,
     }),
   };
 }
@@ -119,6 +123,7 @@ function inspectProject(input: {
   projectRoot: string;
   libraryRoot: string;
   packageResult: UpgradeResult;
+  agentfileMigrations?: readonly AgentfileMigration[];
 }): UpgradePlanProject {
   let agentfilePath: string | null;
   try {
@@ -173,11 +178,35 @@ function inspectProject(input: {
 
   const relAgentfile = relativeProjectPath(input.projectRoot, agentfilePath);
   try {
-    const agentfile = readAgentfile(input.projectRoot);
     const schemaPlan = migrateAgentfile({
       projectRoot: input.projectRoot,
       apply: false,
+      migrations: input.agentfileMigrations,
     });
+    const schema = {
+      currentVersion: schemaPlan.currentVersion,
+      supportedVersion: CURRENT_AGENTFILE_VERSION,
+      migrationRequired: schemaPlan.changed,
+      nextCommand: schemaPlan.nextCommand,
+    };
+
+    if (schemaPlan.changed) {
+      const schemaOnly = schemaMigrationPlan({
+        packageResult: input.packageResult,
+        schema: schemaPlan,
+      });
+      return {
+        kind: "managed",
+        projectRoot: input.projectRoot,
+        agentfilePath: relAgentfile,
+        schema,
+        gates: schemaOnly.gates,
+        choices: schemaOnly.choices,
+        commands: schemaOnly.commands,
+      };
+    }
+
+    const agentfile = readAgentfile(input.projectRoot);
     const st = status({
       projectRoot: input.projectRoot,
       libraryRoot: input.libraryRoot,
@@ -205,12 +234,7 @@ function inspectProject(input: {
       kind: "managed",
       projectRoot: input.projectRoot,
       agentfilePath: relAgentfile,
-      schema: {
-        currentVersion: schemaPlan.currentVersion,
-        supportedVersion: CURRENT_AGENTFILE_VERSION,
-        migrationRequired: schemaPlan.changed,
-        nextCommand: schemaPlan.nextCommand,
-      },
+      schema,
       statusSummary: st.summary,
       updateSummary,
       doctorSummary: health.summary,
@@ -356,6 +380,67 @@ function projectGates(input: {
   }
 
   return gates;
+}
+
+function schemaMigrationPlan(input: {
+  packageResult: UpgradeResult;
+  schema: ReturnType<typeof migrateAgentfile>;
+}): {
+  gates: UpgradePlanGate[];
+  choices: UpgradePlanChoice[];
+  commands: string[];
+} {
+  const gates: UpgradePlanGate[] = [];
+  const choices: UpgradePlanChoice[] = [];
+  const commands: string[] = [];
+
+  if (input.packageResult.updateAvailable) {
+    gates.push({
+      severity: "info",
+      kind: "package-update-available",
+      message:
+        `CLI package can update from ${input.packageResult.currentVersion} ` +
+        `to ${input.packageResult.latestVersion}.`,
+      next: input.packageResult.installCommand.join(" "),
+    });
+    choices.push({
+      id: "upgrade-cli-package",
+      gateKind: "package-update-available",
+      label: "Upgrade the global CLI package",
+      effect: "package-install",
+      command: input.packageResult.installCommand.join(" "),
+      outcome:
+        "Updates the installed anamnesis CLI only; project-managed files still need update/doctor after package install.",
+      recommended: true,
+    });
+    commands.push(input.packageResult.installCommand.join(" "));
+  }
+
+  gates.push({
+    severity: "warning",
+    kind: "agentfile-migration-required",
+    message:
+      `Agentfile schema ${input.schema.currentVersion} needs migration ` +
+      `to ${input.schema.targetVersion}.`,
+    next: input.schema.nextCommand,
+  });
+  choices.push({
+    id: "migrate-agentfile-schema",
+    gateKind: "agentfile-migration-required",
+    label: "Migrate Agentfile schema",
+    effect: "local-write",
+    command: input.schema.nextCommand,
+    outcome:
+      "Backs up and rewrites Agentfile schema before rendering project-managed surfaces.",
+    recommended: true,
+  });
+  commands.push(input.schema.nextCommand, "anamnesis doctor");
+
+  return {
+    gates,
+    choices,
+    commands: [...new Set(commands)],
+  };
 }
 
 function projectChoices(input: {

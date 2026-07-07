@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { update } from "./update.js";
 import { init } from "./init.js";
+import type { AgentfileMigration } from "./migrate.js";
 import { readAgentfile, writeAgentfile } from "../core/agentfile.js";
 import { findRegion, upsertRegion } from "../core/regions.js";
 import {
@@ -160,6 +161,25 @@ function setupPrismaProject(library: string): {
   return { project, library };
 }
 
+const addBackupRetentionMigration: AgentfileMigration = {
+  id: "v1-add-backup-retention",
+  fromVersion: 1,
+  toVersion: 1,
+  title: "Add backup retention default",
+  applies(raw) {
+    const settings = (raw as { settings?: Record<string, unknown> }).settings;
+    return settings?.backup_retention === undefined;
+  },
+  apply(raw) {
+    const object = raw as Record<string, unknown>;
+    const settings = {
+      ...((object.settings as Record<string, unknown> | undefined) ?? {}),
+      backup_retention: 10,
+    };
+    return { ...object, settings };
+  },
+};
+
 // ---------------------------------------------------------------------------
 
 describe("update — preconditions", () => {
@@ -174,6 +194,28 @@ describe("update — preconditions", () => {
         allowExecAdapters: false,
       }),
     ).toThrow(/no Agentfile found/);
+  });
+
+  it("requires Agentfile migration before planning managed surface updates", () => {
+    const library = makeLibrary();
+    const { project } = setupPrismaProject(library);
+    const agentfilePath = path.join(project, "Agentfile");
+    const agentsPath = path.join(project, "AGENTS.md");
+    const beforeAgentfile = fs.readFileSync(agentfilePath, "utf8");
+    const beforeAgents = fs.readFileSync(agentsPath, "utf8");
+
+    expect(() =>
+      update({
+        projectRoot: project,
+        libraryRoot: library,
+        apply: true,
+        allowExecAdapters: false,
+        agentfileMigrations: [addBackupRetentionMigration],
+      }),
+    ).toThrow(/Agentfile schema migration is required before update/);
+
+    expect(fs.readFileSync(agentfilePath, "utf8")).toBe(beforeAgentfile);
+    expect(fs.readFileSync(agentsPath, "utf8")).toBe(beforeAgents);
   });
 
   it("errors when Agentfile references a fragment missing from the library", () => {

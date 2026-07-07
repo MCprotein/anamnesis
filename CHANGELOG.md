@@ -24,6 +24,9 @@ could include breaking changes.
 - Added structured `upgrade plan` choices for package upgrades, schema
   migration, executable-adapter previews/applies, user-modified managed
   surfaces, pinned fragments, rulebook suggestions, and doctor follow-up.
+- Added an Agentfile migration gate so `update` stops before rendering or
+  writing managed surfaces when a schema migration is required; `upgrade plan`
+  now stops at that schema gate and shows the migration choice first.
 
 ## [1.9.6] — 2026-07-07
 

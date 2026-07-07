@@ -90,6 +90,11 @@ import {
   resolveKnownSurfaceConflicts,
   type SurfaceConflictResolution,
 } from "../core/adoption.js";
+import {
+  migrateAgentfile,
+  MigrateError,
+  type AgentfileMigration,
+} from "./migrate.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,6 +107,8 @@ export interface UpdateOptions {
   allowExecAdapters: boolean;
   /** Explicitly move pinned entries to the library-current version. */
   bumpPinned?: boolean;
+  /** Override the Agentfile migration set; defaults to built-in migrations. */
+  agentfileMigrations?: readonly AgentfileMigration[];
   now?: () => Date;
 }
 
@@ -428,6 +435,25 @@ export function update(opts: UpdateOptions): UpdateResult {
   if (!findAgentfile(projectRoot)) {
     throw new UpdateError(
       `no Agentfile found in ${projectRoot}. Run 'anamnesis init' first.`,
+    );
+  }
+  let schemaPlan: ReturnType<typeof migrateAgentfile>;
+  try {
+    schemaPlan = migrateAgentfile({
+      projectRoot,
+      apply: false,
+      migrations: opts.agentfileMigrations,
+    });
+  } catch (e) {
+    if (e instanceof MigrateError) {
+      throw new UpdateError(e.message);
+    }
+    throw e;
+  }
+  if (schemaPlan.changed) {
+    throw new UpdateError(
+      `Agentfile schema migration is required before update. ` +
+        `Run \`${schemaPlan.nextCommand}\` first.`,
     );
   }
   const agentfile = readAgentfile(projectRoot);

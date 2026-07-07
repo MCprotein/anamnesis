@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { init } from "./init.js";
 import { update } from "./update.js";
 import { upgradePlan } from "./upgrade_plan.js";
+import type { AgentfileMigration } from "./migrate.js";
 import { upsertRegion } from "../core/regions.js";
 
 function tmpDir(prefix: string): string {
@@ -55,6 +56,25 @@ function installProject(library: string): string {
   });
   return project;
 }
+
+const addBackupRetentionMigration: AgentfileMigration = {
+  id: "v1-add-backup-retention",
+  fromVersion: 1,
+  toVersion: 1,
+  title: "Add backup retention default",
+  applies(raw) {
+    const settings = (raw as { settings?: Record<string, unknown> }).settings;
+    return settings?.backup_retention === undefined;
+  },
+  apply(raw) {
+    const object = raw as Record<string, unknown>;
+    const settings = {
+      ...((object.settings as Record<string, unknown> | undefined) ?? {}),
+      backup_retention: 10,
+    };
+    return { ...object, settings };
+  },
+};
 
 describe("upgrade plan", () => {
   it("combines package, project status, update dry-run, and doctor summaries", () => {
@@ -122,6 +142,49 @@ describe("upgrade plan", () => {
       expect.arrayContaining([
         "npm install -g @mcprotein/anamnesis@1.9.0 --registry=https://registry.npmjs.org --@mcprotein:registry=https://registry.npmjs.org --fetch-timeout=10000 --fetch-retries=0",
         "anamnesis update --dry-run --allow-exec-adapters",
+        "anamnesis doctor",
+      ]),
+    );
+  });
+
+  it("stops at the schema migration gate before project update diagnostics", () => {
+    const library = makeLibrary({ version: 1 });
+    const project = installProject(library);
+
+    const result = upgradePlan({
+      projectRoot: project,
+      libraryRoot: library,
+      currentVersion: "1.9.0",
+      latestVersion: "1.9.0",
+      agentfileMigrations: [addBackupRetentionMigration],
+    });
+
+    expect(result.project.kind).toBe("managed");
+    expect(result.project.schema).toMatchObject({
+      migrationRequired: true,
+      nextCommand: "anamnesis migrate agentfile --apply",
+    });
+    expect(result.project).not.toHaveProperty("statusSummary");
+    expect(result.project).not.toHaveProperty("updateSummary");
+    expect(result.project).not.toHaveProperty("doctorSummary");
+    expect(result.project.gates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "agentfile-migration-required" }),
+      ]),
+    );
+    expect(result.project.choices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "migrate-agentfile-schema",
+          effect: "local-write",
+          command: "anamnesis migrate agentfile --apply",
+          recommended: true,
+        }),
+      ]),
+    );
+    expect(result.project.commands).toEqual(
+      expect.arrayContaining([
+        "anamnesis migrate agentfile --apply",
         "anamnesis doctor",
       ]),
     );
