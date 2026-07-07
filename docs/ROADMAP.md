@@ -1497,7 +1497,7 @@ Release criteria met:
 
 ---
 
-## v1.11 — *in progress*
+## v1.11 — *shipped 2026-07-07*
 
 > **Theme: guided upgrade execution UX**
 
@@ -1511,6 +1511,18 @@ presentation layer over the deterministic command and benchmark evidence.
 | 1 | **Choice execution command** | done | Added `upgrade apply-choice <id>` as a safe executor over existing `upgrade plan` choices. It does not shell out arbitrary command strings: supported choice ids map to internal commands. Read-only choices execute directly, manual choices stay guidance-only, and local-write/package-install choices preview by default unless `--apply` is explicit. |
 | 2 | **Interactive/TUI chooser** | done | Added `upgrade choose`, a no-dependency terminal chooser that renders numbered `upgrade plan` choices, accepts either a number or choice id, and delegates execution to `upgrade apply-choice`. Non-interactive scripts can pass `--choice <id|number>`; without a TTY or explicit choice it fails closed and points users back to `upgrade plan` / `upgrade apply-choice`. |
 | 3 | **Choice execution evidence** | done | Extended `benchmark upgrade` with a choice-execution fixture that verifies preview-required behavior, no writes before `--apply`, successful apply, post-upgrade pending writes, doctor errors, drift, and unsupported-choice count. Current generated evidence is 18/18 pass with zero pending writes, doctor errors, drift, or unsupported choices. |
+
+Release criteria met:
+
+- `upgrade choose` and `upgrade apply-choice` are presentation/execution layers
+  over the deterministic `upgrade plan` output, not a replacement for the
+  scriptable plan.
+- Local-write and package-install choices remain preview-first unless
+  `--apply` is explicit.
+- Choice execution is benchmarked with generated evidence and no unsupported
+  choice ids in the public-safe fixture set.
+- `v1.11.0` was published to npmjs.org, GitHub Packages, and GitHub Releases,
+  then verified with the published CLI smoke check.
 
 ---
 
