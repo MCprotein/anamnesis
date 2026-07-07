@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-07-07
+
 ### Added
 
 - Added `anamnesis upgrade apply-choice <id>`, a safe executor for structured
