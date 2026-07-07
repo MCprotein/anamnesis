@@ -29,7 +29,6 @@ import {
   detectConflicts,
   type FragmentDefinition,
 } from "../core/fragments.js";
-import { effectiveScopes } from "../core/scope.js";
 import {
   detectMonorepo,
   type MonorepoDetection,

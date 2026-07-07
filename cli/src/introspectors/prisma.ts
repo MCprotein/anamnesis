@@ -105,7 +105,7 @@ function parseBlocks(text: string): RawBlock[] {
   const blocks: RawBlock[] = [];
   let cur: RawBlock | null = null;
   let depth = 0;
-  for (let raw of lines) {
+  for (const raw of lines) {
     const line = stripComments(raw).trim();
     if (!cur) {
       // Try to start a block.

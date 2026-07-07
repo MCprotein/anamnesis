@@ -1,0 +1,25 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
+  "files": {
+    "includes": ["cli/src/**/*.ts"]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        "noUnreachable": "error",
+        "noSwitchDeclarations": "error"
+      },
+      "suspicious": {
+        "noDuplicateObjectKeys": "error",
+        "noFallthroughSwitchClause": "warn"
+      },
+      "style": {
+        "useConst": "error"
+      }
+    }
+  }
+}

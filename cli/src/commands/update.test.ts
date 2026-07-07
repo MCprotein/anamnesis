@@ -1,11 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { update, UpdateError } from "./update.js";
+import { update } from "./update.js";
 import { init } from "./init.js";
 import { readAgentfile, writeAgentfile } from "../core/agentfile.js";
-import { readManifest } from "../core/manifest.js";
 import { findRegion, upsertRegion } from "../core/regions.js";
 import {
   EVIDENCE_LOG_PATH,
@@ -1121,7 +1120,7 @@ fragments: []
     const library = makeMonorepoLibrary();
     const project = setupMonorepo(library);
 
-    const result = update({
+    update({
       projectRoot: project,
       libraryRoot: library,
       apply: true,

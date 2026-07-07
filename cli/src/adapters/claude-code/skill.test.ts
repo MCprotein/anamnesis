@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { skillRenderer } from "./skill.js";
-import { RenderError, type RenderContext } from "../../core/render.js";
+import type { RenderContext } from "../../core/render.js";
 import type { FragmentDefinition } from "../../core/fragments.js";
 
 function tmpDir(): string {

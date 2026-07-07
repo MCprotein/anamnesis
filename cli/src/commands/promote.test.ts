@@ -3,11 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { parse as parseYaml } from "yaml";
-import {
-  promote,
-  detectCapabilityType,
-  PromoteError,
-} from "./promote.js";
+import { promote, detectCapabilityType } from "./promote.js";
 import { loadFragment } from "../core/fragments.js";
 
 function tmpDir(prefix: string): string {

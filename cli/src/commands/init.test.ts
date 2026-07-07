@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { init, InitError, summarizeChanges } from "./init.js";
+import { init, summarizeChanges } from "./init.js";
 import { readAgentfile } from "../core/agentfile.js";
 import { readManifest } from "../core/manifest.js";
 import { findRegion } from "../core/regions.js";

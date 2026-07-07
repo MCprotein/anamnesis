@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  effectiveScopes,
-  isMultiScope,
-  ScopeResolutionError,
-} from "./scope.js";
+import { effectiveScopes, isMultiScope } from "./scope.js";
 import { parseAgentfile } from "./agentfile.js";
 
 // ---------------------------------------------------------------------------

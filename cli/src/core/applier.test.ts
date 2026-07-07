@@ -7,24 +7,11 @@ import {
   applyChanges,
   backupBeforeApply,
   isExecAdapterPath,
-  type RegionChange,
   type FileChange,
 } from "./applier.js";
-import {
-  emptyManifest,
-  upsertRegion as upsertRegionEntry,
-  upsertFile as upsertFileEntry,
-  type Manifest,
-  type RegionEntry,
-  type FileEntry,
-} from "./manifest.js";
+import { emptyManifest } from "./manifest.js";
 import { findRegion, upsertRegion } from "./regions.js";
-import { sha256 } from "../util/hash.js";
-import type {
-  RenderAction,
-  RegionAction,
-  FileAction,
-} from "./render.js";
+import type { RegionAction, FileAction } from "./render.js";
 
 function tmpProject(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-applier-"));
