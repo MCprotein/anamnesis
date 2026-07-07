@@ -1526,7 +1526,7 @@ Release criteria met:
 
 ---
 
-## v1.12 — *in progress*
+## v1.12 — *shipped 2026-07-07*
 
 > **Theme: SessionStart budget diagnostics in daily maintenance**
 
@@ -1542,7 +1542,7 @@ current-project startup payload size visible in `status` and actionable in
 | 2 | **Status/doctor surfacing** | done | `anamnesis status` now prints the compact SessionStart budget line, and `anamnesis doctor` raises a `session-context-budget-exceeded` warning when the compact startup payload exceeds the default budget. This closes the v1.5 status/doctor surfacing gap without adding a new Agentfile schema setting. |
 | 3 | **Regression coverage** | done | Added tests for startup-active source selection, over-budget detection, `status` summary output, and `doctor` warning generation. Self-check on this repo reports `115/800` estimated compact startup tokens and no doctor warnings. |
 
-Release criteria:
+Release criteria met:
 
 - The diagnostic remains read-only and does not change SessionStart hook
   output by itself.
