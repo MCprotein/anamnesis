@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-07-07
+
 ### Changed
 
 - Planned v1.10 as the next minor release line for guided upgrade decisions,
