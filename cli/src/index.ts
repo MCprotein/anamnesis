@@ -27,6 +27,11 @@ import {
   type UpgradePlanResult,
 } from "./commands/upgrade_plan.js";
 import {
+  upgradeApplyChoice,
+  UpgradeApplyChoiceError,
+  type UpgradeApplyChoiceResult,
+} from "./commands/upgrade_apply_choice.js";
+import {
   detectUpgradeProjectGuidance,
   formatUpgradeProjectGuidance,
 } from "./commands/upgrade_project_guidance.js";
@@ -361,6 +366,7 @@ Commands:
   update                        Re-apply library state (dry-run by default)
   upgrade                       Check or update the installed anamnesis CLI
   upgrade plan                  Read-only package + project plan with choices
+  upgrade apply-choice <id>     Execute one supported upgrade-plan choice
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
   release check                 Run the read-only release readiness gate
@@ -451,6 +457,15 @@ Flags (upgrade plan):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
   --registry <url>              Package registry (default: https://registry.npmjs.org)
+  --json                        Print structured JSON
+
+Flags (upgrade apply-choice):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --registry <url>              Package registry (default: https://registry.npmjs.org)
+  --apply                       Execute local-write or package-install choices
+                                  after review; without it, those choices only
+                                  run their safe preview when available
   --json                        Print structured JSON
 
 Flags (status / doctor):
@@ -1925,6 +1940,27 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
   }
 }
 
+function reportUpgradeApplyChoice(result: UpgradeApplyChoiceResult): void {
+  console.log(`anamnesis upgrade apply-choice — ${result.choiceId}`);
+  console.log(`  status: ${result.status}`);
+  console.log(`  effect: ${result.choice.effect}`);
+  console.log(`  operation: ${result.operation}`);
+  console.log(`  label: ${result.choice.label}`);
+  if (result.command) {
+    console.log(`  command: ${result.command}`);
+  }
+  if (result.previewCommand) {
+    console.log(`  preview: ${result.previewCommand}`);
+  }
+  console.log(`  message: ${result.message}`);
+  if (result.summary.length > 0) {
+    console.log("  summary:");
+    for (const line of result.summary) {
+      console.log(`    ${line}`);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -1995,6 +2031,28 @@ async function main(argv: string[]): Promise<number> {
 
     case "upgrade":
       try {
+        if (positional[0] === "apply-choice") {
+          const choiceId = positional[1];
+          if (!choiceId) {
+            console.error("error: usage: anamnesis upgrade apply-choice <id>");
+            return 1;
+          }
+          const result = upgradeApplyChoice({
+            choiceId,
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            libraryRoot:
+              (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+            registry: flags["registry"] as string | undefined,
+            apply: flags["apply"] === true,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportUpgradeApplyChoice(result);
+          }
+          return result.status === "unsupported" ? 1 : 0;
+        }
         if (positional[0] === "plan") {
           const result = upgradePlan({
             projectRoot:
@@ -2021,7 +2079,7 @@ async function main(argv: string[]): Promise<number> {
         }
         return 0;
       } catch (e) {
-        if (e instanceof UpgradeError) {
+        if (e instanceof UpgradeError || e instanceof UpgradeApplyChoiceError) {
           console.error(`error: ${e.message}`);
           return 1;
         }

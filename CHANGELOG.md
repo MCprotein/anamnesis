@@ -7,6 +7,19 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added `anamnesis upgrade apply-choice <id>`, a safe executor for structured
+  `upgrade plan` choices. Read-only choices run directly, while local-write and
+  package-install choices preview by default and require `--apply` before
+  writing.
+- Added an explicit `apply-content-only-update` upgrade-plan choice so
+  non-executable managed content updates can be selected separately from
+  executable adapter updates.
+- Extended `anamnesis benchmark upgrade` with a choice-execution fixture and
+  numeric choice metrics. The current public-safe run is 18/18 pass, including
+  preview-required guardrails and zero unsupported choices.
+
 ## [1.10.0] — 2026-07-07
 
 ### Changed

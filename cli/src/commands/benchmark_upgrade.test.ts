@@ -29,17 +29,21 @@ describe("upgrade benchmark", () => {
 
     expect(result.ok).toBe(true);
     expect(result.summary).toMatchObject({
-      fixtures: 5,
-      runs: 5,
-      passed: 5,
+      fixtures: 6,
+      runs: 6,
+      passed: 6,
       failed: 0,
       passRatePct: 100,
       postPendingTotal: 0,
       doctorErrorsTotal: 0,
       driftTotal: 0,
+      choiceExecutedTotal: 2,
+      choicePreviewRequiredTotal: 1,
+      choiceUnsupportedTotal: 0,
     });
     expect(result.fixtures.map((fixture) => fixture.fixtureId)).toEqual([
       "clean-old-no-settings",
+      "choice-execution",
       "pinned-archive",
       "partial-adapter",
       "stale-codex-hook",
@@ -78,10 +82,13 @@ describe("upgrade benchmark", () => {
       command: ["anamnesis", "benchmark", "upgrade"],
       summary: {
         schema_version: "anamnesis.upgrade_benchmark.v1",
-        fixtures: 5,
-        runs: 5,
+        fixtures: 6,
+        runs: 6,
         failed: 0,
         pass_rate_pct: 100,
+        choice_executed_total: 2,
+        choice_preview_required_total: 1,
+        choice_unsupported_total: 0,
       },
     });
   });

@@ -73,6 +73,7 @@ Check whether the installed CLI is behind npmjs.org:
 ```bash
 anamnesis upgrade
 anamnesis upgrade plan      # read-only package + project upgrade plan with choices
+anamnesis upgrade apply-choice <id>  # run one supported choice; writes require --apply
 anamnesis upgrade --apply   # runs npm install -g only when a newer version exists
 ```
 
@@ -91,6 +92,9 @@ and `update` stops before rendering or writing managed surfaces. Run
 `anamnesis migrate agentfile --apply`, then rerun `upgrade plan` / `update`.
 `upgrade plan` also reports optional settings that are using implicit defaults
 so existing Agentfiles do not need formatting churn just to learn new knobs.
+To act on one structured choice, run `anamnesis upgrade apply-choice <id>`.
+Read-only choices execute directly; local-write and package-install choices
+preview by default and require `--apply` before they write.
 
 Building from source instead (during development or for forks):
 
@@ -158,6 +162,7 @@ managed context-review regions to existing docs without replacing your prose.
 anamnesis init      # first-time setup; writes install evidence
 anamnesis update    # library updates + drift detection (dry-run by default; --apply writes evidence)
 anamnesis upgrade plan  # read-only package + project upgrade plan with choices
+anamnesis upgrade apply-choice <id>  # execute one supported choice; --apply required for writes
 anamnesis update --bump-pinned  # explicitly move pinned fragments to current
 anamnesis status    # fragments, drift, ontology gaps, continuity, evidence, context diagnostic summary
 anamnesis doctor    # read-only installation integrity + continuity/ontology/context diagnostics
@@ -312,10 +317,10 @@ Full generated evidence is in
 
 ### Upgrade benchmark
 
-v1.10 adds a deterministic upgrade benchmark for public-safe existing-project
+The deterministic upgrade benchmark covers public-safe existing-project
 fixtures. It repeatedly runs sanitized old-project states through
-`init`/`update`/`status`/`doctor` and keeps pass/fail dimensions separate from
-summary convenience numbers.
+`init`/`update`/`status`/`doctor` and the guided `upgrade apply-choice` path,
+keeping pass/fail dimensions separate from summary convenience numbers.
 
 ![Upgrade benchmark pass rate](docs/benchmark-evidence/upgrade/upgrade-pass-rate.svg)
 
@@ -324,11 +329,13 @@ summary convenience numbers.
 Current run:
 
 - Fixture coverage: clean old project without settings, pinned historical
-  fragment archive, partial adapter choice, stale Codex hook refresh, and
-  suggested-but-declined fragment.
-- Repeated fixture runs: `15/15` passed (`100%`).
+  fragment archive, partial adapter choice, stale Codex hook refresh,
+  suggested-but-declined fragment, and choice execution command.
+- Repeated fixture runs: `18/18` passed (`100%`).
 - Post-upgrade pending writes: `0`; doctor errors: `0`; manifest drift count:
   `0`.
+- Choice executions: `6`; preview-required guardrails: `3`; unsupported
+  choices: `0`.
 
 Full generated evidence is in
 [`docs/benchmark-evidence/upgrade/`](docs/benchmark-evidence/upgrade/).

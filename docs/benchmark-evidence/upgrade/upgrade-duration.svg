@@ -1,22 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="920" height="318" viewBox="0 0 920 318" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="362" viewBox="0 0 920 362" role="img" aria-labelledby="title desc">
 <title id="title">Upgrade benchmark average duration</title>
 <desc id="desc">Bar chart for Upgrade benchmark average duration.</desc>
-<rect width="920" height="318" fill="#ffffff"/>
+<rect width="920" height="362" fill="#ffffff"/>
 <text x="24" y="34" font-size="20" font-weight="700" fill="#111827">Upgrade benchmark average duration</text>
-<line x1="270" y1="50" x2="270" y2="282" stroke="#d1d5db"/>
+<line x1="270" y1="50" x2="270" y2="326" stroke="#d1d5db"/>
 <text x="256" y="83" text-anchor="end" font-size="12" fill="#374151">Clean old project without settings</text>
-<rect x="270" y="66" width="602.0" height="22" fill="#2563eb"><title>clean-old-no-settings: 13.06ms</title></rect>
-<text x="880.0" y="82" font-size="12" fill="#111827">13.06ms</text>
-<text x="256" y="127" text-anchor="end" font-size="12" fill="#374151">Pinned historical fragment archive</text>
-<rect x="270" y="110" width="355.4" height="22" fill="#2563eb"><title>pinned-archive: 7.71ms</title></rect>
-<text x="633.4" y="126" font-size="12" fill="#111827">7.71ms</text>
-<text x="256" y="171" text-anchor="end" font-size="12" fill="#374151">Partial adapter choice</text>
-<rect x="270" y="154" width="392.7" height="22" fill="#2563eb"><title>partial-adapter: 8.52ms</title></rect>
-<text x="670.7" y="170" font-size="12" fill="#111827">8.52ms</text>
-<text x="256" y="215" text-anchor="end" font-size="12" fill="#374151">Stale Codex hook refresh</text>
-<rect x="270" y="198" width="510.3" height="22" fill="#2563eb"><title>stale-codex-hook: 11.07ms</title></rect>
-<text x="788.3" y="214" font-size="12" fill="#111827">11.07ms</text>
-<text x="256" y="259" text-anchor="end" font-size="12" fill="#374151">Suggested-but-declined fragment</text>
-<rect x="270" y="242" width="228.2" height="22" fill="#2563eb"><title>declined-suggestion: 4.95ms</title></rect>
-<text x="506.2" y="258" font-size="12" fill="#111827">4.95ms</text>
+<rect x="270" y="66" width="602.0" height="22" fill="#2563eb"><title>clean-old-no-settings: 16.65ms</title></rect>
+<text x="880.0" y="82" font-size="12" fill="#111827">16.65ms</text>
+<text x="256" y="127" text-anchor="end" font-size="12" fill="#374151">Choice execution command</text>
+<rect x="270" y="110" width="576.7" height="22" fill="#2563eb"><title>choice-execution: 15.95ms</title></rect>
+<text x="854.7" y="126" font-size="12" fill="#111827">15.95ms</text>
+<text x="256" y="171" text-anchor="end" font-size="12" fill="#374151">Pinned historical fragment archive</text>
+<rect x="270" y="154" width="278.8" height="22" fill="#2563eb"><title>pinned-archive: 7.71ms</title></rect>
+<text x="556.8" y="170" font-size="12" fill="#111827">7.71ms</text>
+<text x="256" y="215" text-anchor="end" font-size="12" fill="#374151">Partial adapter choice</text>
+<rect x="270" y="198" width="365.9" height="22" fill="#2563eb"><title>partial-adapter: 10.12ms</title></rect>
+<text x="643.9" y="214" font-size="12" fill="#111827">10.12ms</text>
+<text x="256" y="259" text-anchor="end" font-size="12" fill="#374151">Stale Codex hook refresh</text>
+<rect x="270" y="242" width="392.3" height="22" fill="#2563eb"><title>stale-codex-hook: 10.85ms</title></rect>
+<text x="670.3" y="258" font-size="12" fill="#111827">10.85ms</text>
+<text x="256" y="303" text-anchor="end" font-size="12" fill="#374151">Suggested-but-declined fragment</text>
+<rect x="270" y="286" width="226.0" height="22" fill="#2563eb"><title>declined-suggestion: 6.25ms</title></rect>
+<text x="504.0" y="302" font-size="12" fill="#111827">6.25ms</text>
 </svg>

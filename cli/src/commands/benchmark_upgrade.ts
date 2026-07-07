@@ -15,6 +15,7 @@ import { doctor } from "./doctor.js";
 import { init } from "./init.js";
 import { status } from "./status.js";
 import { update, type UpdateResult } from "./update.js";
+import { upgradeApplyChoice } from "./upgrade_apply_choice.js";
 import { summarizePlannedChanges } from "./upgrade_plan.js";
 
 export const UPGRADE_BENCHMARK_SCHEMA_VERSION =
@@ -50,6 +51,11 @@ export interface UpgradeBenchmarkRunMetrics {
   fragment_updates_available: number;
   fragment_library_missing: number;
   suggested_count: number;
+  choice_executed: number;
+  choice_applied: number;
+  choice_preview_required: number;
+  choice_manual: number;
+  choice_unsupported: number;
 }
 
 export interface UpgradeBenchmarkRun {
@@ -78,6 +84,9 @@ export interface UpgradeBenchmarkFixtureSummary {
   postPendingTotal: number;
   doctorErrorsTotal: number;
   driftTotal: number;
+  choiceExecutedTotal: number;
+  choicePreviewRequiredTotal: number;
+  choiceUnsupportedTotal: number;
 }
 
 export interface UpgradeBenchmarkArtifacts {
@@ -105,6 +114,9 @@ export interface UpgradeBenchmarkResult {
     postPendingTotal: number;
     doctorErrorsTotal: number;
     driftTotal: number;
+    choiceExecutedTotal: number;
+    choicePreviewRequiredTotal: number;
+    choiceUnsupportedTotal: number;
   };
   fixtures: UpgradeBenchmarkFixtureSummary[];
   runs: UpgradeBenchmarkRun[];
@@ -204,6 +216,11 @@ const FIXTURES: readonly UpgradeBenchmarkFixture[] = [
     id: "clean-old-no-settings",
     label: "Clean old project without settings",
     execute: cleanOldNoSettingsFixture,
+  },
+  {
+    id: "choice-execution",
+    label: "Choice execution command",
+    execute: choiceExecutionFixture,
   },
   {
     id: "pinned-archive",
@@ -311,6 +328,79 @@ function cleanOldNoSettingsFixture(
         "New content rendered",
         agentsText.includes("v2 rules"),
         "AGENTS.md contains v2 rules",
+      ),
+    ],
+  };
+}
+
+function choiceExecutionFixture(
+  ctx: UpgradeBenchmarkFixtureContext,
+): FixtureExecutionResult {
+  const oldLibrary = writeBenchmarkLibrary(ctx.tempRoot, "old-library", {
+    featureVersion: 1,
+    featureContent: "## Feature\n\nv1 rules.\n",
+  });
+  const newLibrary = writeBenchmarkLibrary(ctx.tempRoot, "new-library", {
+    featureVersion: 2,
+    featureContent: "## Feature\n\nv2 rules.\n",
+  });
+  const project = installFeatureProject(ctx.tempRoot, oldLibrary, ctx.now);
+  const agentsPath = path.join(project, "AGENTS.md");
+  const beforePreview = fs.readFileSync(agentsPath, "utf8");
+
+  const previewChoice = upgradeApplyChoice({
+    choiceId: "apply-content-only-update",
+    projectRoot: project,
+    libraryRoot: newLibrary,
+    currentVersion: "1.10.0",
+    latestVersion: "1.10.0",
+  });
+  const afterPreview = fs.readFileSync(agentsPath, "utf8");
+
+  const appliedChoice = upgradeApplyChoice({
+    choiceId: "apply-content-only-update",
+    projectRoot: project,
+    libraryRoot: newLibrary,
+    currentVersion: "1.10.0",
+    latestVersion: "1.10.0",
+    apply: true,
+  });
+  const applied = updateExecution(appliedChoice.execution);
+  const metrics = collectUpgradeMetrics(project, newLibrary, applied, ctx.now, {
+    choice_executed: 2,
+    choice_applied: appliedChoice.status === "applied" ? 1 : 0,
+    choice_preview_required:
+      previewChoice.status === "preview-required" ? 1 : 0,
+  });
+  const agentsText = fs.readFileSync(agentsPath, "utf8");
+
+  return {
+    metrics,
+    checks: [
+      ...commonHealthChecks(metrics),
+      check(
+        "choice-preview-required",
+        "Choice preview required",
+        previewChoice.status === "preview-required",
+        `status=${previewChoice.status}`,
+      ),
+      check(
+        "choice-preview-did-not-write",
+        "Choice preview did not write",
+        afterPreview === beforePreview,
+        "AGENTS.md unchanged before --apply",
+      ),
+      check(
+        "choice-apply-status",
+        "Choice apply status",
+        appliedChoice.status === "applied",
+        `status=${appliedChoice.status}`,
+      ),
+      check(
+        "choice-apply-rendered-content",
+        "Choice apply rendered content",
+        agentsText.includes("v2 rules"),
+        "AGENTS.md contains v2 rules after --apply",
       ),
     ],
   };
@@ -745,6 +835,7 @@ function collectUpgradeMetrics(
   libraryRoot: string,
   applied: UpdateResult,
   now: () => Date,
+  choiceMetrics: Partial<ChoiceMetricCounts> = {},
 ): UpgradeBenchmarkRunMetrics {
   const applySummary = summarizePlannedChanges(applied.changes);
   const postDryRun = update({
@@ -780,6 +871,27 @@ function collectUpgradeMetrics(
     fragment_updates_available: postStatus.summary.fragmentUpdatesAvailable,
     fragment_library_missing: postStatus.summary.fragmentLibraryMissing,
     suggested_count: postStatus.summary.suggestedCount,
+    ...emptyChoiceMetrics(),
+    ...choiceMetrics,
+  };
+}
+
+type ChoiceMetricCounts = Pick<
+  UpgradeBenchmarkRunMetrics,
+  | "choice_executed"
+  | "choice_applied"
+  | "choice_preview_required"
+  | "choice_manual"
+  | "choice_unsupported"
+>;
+
+function emptyChoiceMetrics(): ChoiceMetricCounts {
+  return {
+    choice_executed: 0,
+    choice_applied: 0,
+    choice_preview_required: 0,
+    choice_manual: 0,
+    choice_unsupported: 0,
   };
 }
 
@@ -817,6 +929,12 @@ function commonHealthChecks(
       metrics.fragment_updates_available === 0 &&
         metrics.fragment_library_missing === 0,
       `updates=${metrics.fragment_updates_available}, missing=${metrics.fragment_library_missing}`,
+    ),
+    check(
+      "choice-execution-supported",
+      "Choice execution supported",
+      metrics.choice_unsupported === 0,
+      `unsupported=${metrics.choice_unsupported}`,
     ),
   ];
 }
@@ -861,6 +979,12 @@ function summarizeFixtures(
       driftTotal:
         sumMetric(fixtureRuns, "drift_modified") +
         sumMetric(fixtureRuns, "drift_missing"),
+      choiceExecutedTotal: sumMetric(fixtureRuns, "choice_executed"),
+      choicePreviewRequiredTotal: sumMetric(
+        fixtureRuns,
+        "choice_preview_required",
+      ),
+      choiceUnsupportedTotal: sumMetric(fixtureRuns, "choice_unsupported"),
     };
   });
 }
@@ -883,6 +1007,9 @@ function summarizeUpgradeBenchmark(
     doctorErrorsTotal: sumMetric(runs, "doctor_errors"),
     driftTotal:
       sumMetric(runs, "drift_modified") + sumMetric(runs, "drift_missing"),
+    choiceExecutedTotal: sumMetric(runs, "choice_executed"),
+    choicePreviewRequiredTotal: sumMetric(runs, "choice_preview_required"),
+    choiceUnsupportedTotal: sumMetric(runs, "choice_unsupported"),
   };
 }
 
@@ -925,13 +1052,16 @@ function renderUpgradeBenchmarkMarkdown(
     `- post-upgrade pending writes: ${result.summary.postPendingTotal}`,
     `- doctor errors: ${result.summary.doctorErrorsTotal}`,
     `- manifest drift count: ${result.summary.driftTotal}`,
+    `- choice executions: ${result.summary.choiceExecutedTotal}`,
+    `- choice previews required: ${result.summary.choicePreviewRequiredTotal}`,
+    `- unsupported choices: ${result.summary.choiceUnsupportedTotal}`,
     "",
-    "| Fixture | Runs | Pass rate | Avg ms | Max ms | Pending | Doctor errors | Drift |",
-    "|---|---:|---:|---:|---:|---:|---:|---:|",
+    "| Fixture | Runs | Pass rate | Avg ms | Max ms | Pending | Doctor errors | Drift | Choice exec | Choice preview | Unsupported |",
+    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
   ];
   for (const fixture of result.fixtures) {
     lines.push(
-      `| ${fixture.fixtureLabel} | ${fixture.runs} | ${fixture.passRatePct}% | ${fixture.durationMs.average} | ${fixture.durationMs.max} | ${fixture.postPendingTotal} | ${fixture.doctorErrorsTotal} | ${fixture.driftTotal} |`,
+      `| ${fixture.fixtureLabel} | ${fixture.runs} | ${fixture.passRatePct}% | ${fixture.durationMs.average} | ${fixture.durationMs.max} | ${fixture.postPendingTotal} | ${fixture.doctorErrorsTotal} | ${fixture.driftTotal} | ${fixture.choiceExecutedTotal} | ${fixture.choicePreviewRequiredTotal} | ${fixture.choiceUnsupportedTotal} |`,
     );
   }
   lines.push(
@@ -1029,6 +1159,9 @@ function upgradeBenchmarkEvidenceRecord(
       post_pending_total: result.summary.postPendingTotal,
       doctor_errors_total: result.summary.doctorErrorsTotal,
       drift_total: result.summary.driftTotal,
+      choice_executed_total: result.summary.choiceExecutedTotal,
+      choice_preview_required_total: result.summary.choicePreviewRequiredTotal,
+      choice_unsupported_total: result.summary.choiceUnsupportedTotal,
     },
     details: {
       fixtures: result.fixtures.map((fixture) => ({
@@ -1039,12 +1172,27 @@ function upgradeBenchmarkEvidenceRecord(
         post_pending_total: fixture.postPendingTotal,
         doctor_errors_total: fixture.doctorErrorsTotal,
         drift_total: fixture.driftTotal,
+        choice_executed_total: fixture.choiceExecutedTotal,
+        choice_preview_required_total: fixture.choicePreviewRequiredTotal,
+        choice_unsupported_total: fixture.choiceUnsupportedTotal,
       })),
     },
     ...(Object.keys(result.artifacts).length > 0
       ? { artifacts: result.artifacts as Record<string, string> }
       : {}),
   };
+}
+
+function updateExecution(value: unknown): UpdateResult {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "changes" in value &&
+    "writtenToDisk" in value
+  ) {
+    return value as UpdateResult;
+  }
+  throw new UpgradeBenchmarkError("choice execution did not return an update result");
 }
 
 function renderBarSvg(input: {

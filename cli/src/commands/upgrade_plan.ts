@@ -620,6 +620,19 @@ function projectChoices(input: {
     });
   }
 
+  if (input.updateSummary.create > 0 || input.updateSummary.update > 0) {
+    choices.push({
+      id: "apply-content-only-update",
+      gateKind: "fragment-updates-available",
+      label: "Apply content-only project updates after review",
+      effect: "local-write",
+      command: "anamnesis update --apply",
+      outcome:
+        "Writes reviewed non-executable managed content; executable adapter files remain gated unless explicitly allowed.",
+      recommended: false,
+    });
+  }
+
   if (input.updateSummary.blocked > 0) {
     choices.push({
       id: "apply-executable-adapter-update",
