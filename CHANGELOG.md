@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-07-07
+
 ### Added
 
 - Added compact SessionStart budget diagnostics to `anamnesis status` and
