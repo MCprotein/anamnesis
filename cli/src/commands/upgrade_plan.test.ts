@@ -97,6 +97,27 @@ describe("upgrade plan", () => {
         }),
       ]),
     );
+    expect(result.project.choices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "upgrade-cli-package",
+          effect: "package-install",
+          recommended: true,
+        }),
+        expect.objectContaining({
+          id: "preview-executable-adapter-update",
+          effect: "read-only",
+          command: "anamnesis update --dry-run --allow-exec-adapters",
+          recommended: true,
+        }),
+        expect.objectContaining({
+          id: "apply-executable-adapter-update",
+          effect: "local-write",
+          command: "anamnesis update --apply --allow-exec-adapters",
+          recommended: false,
+        }),
+      ]),
+    );
     expect(result.project.commands).toEqual(
       expect.arrayContaining([
         "npm install -g @mcprotein/anamnesis@1.9.0 --registry=https://registry.npmjs.org --@mcprotein:registry=https://registry.npmjs.org --fetch-timeout=10000 --fetch-retries=0",
@@ -150,6 +171,24 @@ describe("upgrade plan", () => {
         }),
       ]),
     );
+    expect(result.project.choices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "keep-local-managed-edits",
+          effect: "manual",
+          recommended: true,
+        }),
+        expect.objectContaining({
+          id: "manually-merge-managed-surfaces",
+          effect: "manual",
+          recommended: false,
+        }),
+        expect.objectContaining({
+          id: "inspect-doctor-issues",
+          command: "anamnesis doctor",
+        }),
+      ]),
+    );
   });
 
   it("returns an unmanaged project plan without running project diagnostics", () => {
@@ -168,6 +207,13 @@ describe("upgrade plan", () => {
     expect(result.project).not.toHaveProperty("doctorSummary");
     expect(result.project.gates).toEqual([
       expect.objectContaining({ kind: "project-unmanaged" }),
+    ]);
+    expect(result.project.choices).toEqual([
+      expect.objectContaining({
+        id: "preview-init",
+        effect: "read-only",
+        command: "anamnesis init --dry-run",
+      }),
     ]);
   });
 });

@@ -21,6 +21,9 @@ could include breaking changes.
   package, changelog, roadmap, and release verification commands.
 - Clarified `benchmark prompt-gate` human-facing output so non-blocking
   prototype risks read as risk/watch signals instead of release failures.
+- Added structured `upgrade plan` choices for package upgrades, schema
+  migration, executable-adapter previews/applies, user-modified managed
+  surfaces, pinned fragments, rulebook suggestions, and doctor follow-up.
 
 ## [1.9.6] — 2026-07-07
 

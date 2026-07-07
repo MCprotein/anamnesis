@@ -341,7 +341,7 @@ Commands:
   init                          First-time setup for the current project
   update                        Re-apply library state (dry-run by default)
   upgrade                       Check or update the installed anamnesis CLI
-  upgrade plan                  Read-only package + project upgrade plan
+  upgrade plan                  Read-only package + project plan with choices
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
   release check                 Run the read-only release readiness gate
@@ -1829,6 +1829,22 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
     }
   } else {
     console.log("  gates: none");
+  }
+
+  if (project.choices.length > 0) {
+    console.log("  choices:");
+    for (const choice of project.choices) {
+      const recommended = choice.recommended ? " recommended" : "";
+      console.log(
+        `    ${choice.id} [${choice.effect}${recommended}]: ${choice.label}`,
+      );
+      if (choice.command) {
+        console.log(`      command: ${choice.command}`);
+      }
+      console.log(`      outcome: ${choice.outcome}`);
+    }
+  } else {
+    console.log("  choices: none");
   }
 
   console.log("  next commands:");

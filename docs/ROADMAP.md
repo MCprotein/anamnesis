@@ -1475,7 +1475,7 @@ extra checks.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Guided conflict choices** | planned | Convert common upgrade gates into explicit selectable decisions: include executable adapters, keep local user-modified content, open/manual-merge library content, bump pinned fragments, leave pinned fragments as-is, add suggested fragments, or mark suggestions declined. |
+| 1 | **Guided conflict choices** | partial | `upgrade plan` now emits structured choices for package upgrades, schema migration, executable-adapter preview/apply, local managed edits, pinned fragments, suggested fragments, and doctor follow-up. Remaining work: interactive/TUI selection or command-specific choice execution, while preserving non-interactive defaults. |
 | 2 | **Optional setting materialization policy** | planned | Decide which new Agentfile settings should remain parser defaults and which should be written into existing Agentfiles. The plan should explain newly available knobs without forcing formatting churn. |
 | 3 | **Schema migration gate integration** | planned | Make `update` and `upgrade plan` detect when `migrate agentfile` is required before rendering or writing managed surfaces. Required schema changes must stay backup-first and dry-run visible. |
 | 4 | **Historical compatibility fixture matrix** | planned | Add representative published-state fixtures for v1.4, v1.5, v1.7, pinned fragments, partial adapter installs, stale hook registrations, hook config preservation, and suggested-but-declined fragments. |
