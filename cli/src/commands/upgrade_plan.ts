@@ -1,5 +1,8 @@
 import * as path from "node:path";
+import * as fs from "node:fs";
+import { parse as parseYaml } from "yaml";
 import {
+  AGENTFILE_SETTING_DEFAULTS,
   findAgentfile,
   readAgentfile,
 } from "../core/agentfile.js";
@@ -52,6 +55,24 @@ export interface UpgradePlanChoice {
   recommended: boolean;
 }
 
+export type UpgradePlanSettingsMaterialization =
+  | "implicit-defaults"
+  | "explicit-partial-settings"
+  | "explicit-settings";
+
+export interface UpgradePlanSettingDefault {
+  key: string;
+  defaultValue: string | number | boolean;
+  materialized: boolean;
+}
+
+export interface UpgradePlanSettingsPolicy {
+  materialization: UpgradePlanSettingsMaterialization;
+  defaults: UpgradePlanSettingDefault[];
+  message: string;
+  next: string;
+}
+
 export interface UpgradePlanProject {
   kind: UpgradePlanProjectKind;
   projectRoot: string;
@@ -66,6 +87,7 @@ export interface UpgradePlanProject {
   statusSummary?: StatusResult["summary"];
   updateSummary?: ChangeSummary;
   doctorSummary?: DoctorResult["summary"];
+  settingsPolicy?: UpgradePlanSettingsPolicy;
   gates: UpgradePlanGate[];
   choices: UpgradePlanChoice[];
   commands: string[];
@@ -189,17 +211,20 @@ function inspectProject(input: {
       migrationRequired: schemaPlan.changed,
       nextCommand: schemaPlan.nextCommand,
     };
+    const settingsPolicy = inspectSettingsPolicy(agentfilePath);
 
     if (schemaPlan.changed) {
       const schemaOnly = schemaMigrationPlan({
         packageResult: input.packageResult,
         schema: schemaPlan,
+        settingsPolicy,
       });
       return {
         kind: "managed",
         projectRoot: input.projectRoot,
         agentfilePath: relAgentfile,
         schema,
+        settingsPolicy,
         gates: schemaOnly.gates,
         choices: schemaOnly.choices,
         commands: schemaOnly.commands,
@@ -238,6 +263,7 @@ function inspectProject(input: {
       statusSummary: st.summary,
       updateSummary,
       doctorSummary: health.summary,
+      settingsPolicy,
       gates,
       choices: projectChoices({
         packageResult: input.packageResult,
@@ -245,6 +271,7 @@ function inspectProject(input: {
         updateSummary,
         doctor: health,
         schema: schemaPlan,
+        settingsPolicy,
       }),
       commands: nextCommands({
         packageResult: input.packageResult,
@@ -385,6 +412,7 @@ function projectGates(input: {
 function schemaMigrationPlan(input: {
   packageResult: UpgradeResult;
   schema: ReturnType<typeof migrateAgentfile>;
+  settingsPolicy: UpgradePlanSettingsPolicy;
 }): {
   gates: UpgradePlanGate[];
   choices: UpgradePlanChoice[];
@@ -435,6 +463,7 @@ function schemaMigrationPlan(input: {
     recommended: true,
   });
   commands.push(input.schema.nextCommand, "anamnesis doctor");
+  choices.push(...settingsMaterializationChoices(input.settingsPolicy));
 
   return {
     gates,
@@ -443,12 +472,94 @@ function schemaMigrationPlan(input: {
   };
 }
 
+function inspectSettingsPolicy(agentfilePath: string): UpgradePlanSettingsPolicy {
+  const content = fs.readFileSync(agentfilePath, "utf8");
+  const raw = parseYaml(content);
+  const rawObject = recordOrUndefined(raw);
+  const rawSettings = recordOrUndefined(rawObject?.settings);
+  const explicitKeys = new Set(Object.keys(rawSettings ?? {}));
+  const defaults = Object.entries(AGENTFILE_SETTING_DEFAULTS).map(
+    ([key, defaultValue]) => ({
+      key,
+      defaultValue,
+      materialized: explicitKeys.has(key),
+    }),
+  );
+  const implicitCount = defaults.filter((entry) => !entry.materialized).length;
+
+  if (!rawSettings) {
+    return {
+      materialization: "implicit-defaults",
+      defaults,
+      message:
+        "Agentfile has no settings block; optional settings use runtime defaults without Agentfile churn.",
+      next:
+        "Keep defaults implicit unless you want to tune a setting; add only the keys you need.",
+    };
+  }
+
+  if (implicitCount > 0) {
+    return {
+      materialization: "explicit-partial-settings",
+      defaults,
+      message:
+        `${implicitCount} optional setting default(s) are implicit because they are absent from the settings block.`,
+      next:
+        "Leave missing defaults implicit, or add only the settings you want to tune.",
+    };
+  }
+
+  return {
+    materialization: "explicit-settings",
+    defaults,
+    message: "Agentfile materializes every known optional setting.",
+    next: "No optional setting materialization action is required.",
+  };
+}
+
+function recordOrUndefined(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function settingsMaterializationChoices(
+  settingsPolicy: UpgradePlanSettingsPolicy,
+): UpgradePlanChoice[] {
+  const implicit = settingsPolicy.defaults.filter(
+    (entry) => !entry.materialized,
+  );
+  if (implicit.length === 0) return [];
+
+  return [
+    {
+      id: "keep-implicit-setting-defaults",
+      gateKind: "optional-settings",
+      label: "Keep optional setting defaults implicit",
+      effect: "manual",
+      outcome:
+        "Avoids Agentfile formatting churn; runtime defaults continue to apply unless an explicit setting is needed.",
+      recommended: true,
+    },
+    {
+      id: "materialize-optional-settings",
+      gateKind: "optional-settings",
+      label: "Materialize only the settings you want to tune",
+      effect: "manual",
+      outcome:
+        `Edit Agentfile settings for selected keys only; currently implicit: ${implicit.map((entry) => entry.key).join(", ")}.`,
+      recommended: false,
+    },
+  ];
+}
+
 function projectChoices(input: {
   packageResult: UpgradeResult;
   status: StatusResult;
   updateSummary: ChangeSummary;
   doctor: DoctorResult;
   schema: ReturnType<typeof migrateAgentfile>;
+  settingsPolicy: UpgradePlanSettingsPolicy;
 }): UpgradePlanChoice[] {
   const choices: UpgradePlanChoice[] = [];
 
@@ -604,6 +715,8 @@ function projectChoices(input: {
       recommended: input.doctor.summary.errors > 0,
     });
   }
+
+  choices.push(...settingsMaterializationChoices(input.settingsPolicy));
 
   return choices;
 }

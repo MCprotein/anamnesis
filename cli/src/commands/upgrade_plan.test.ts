@@ -147,6 +147,45 @@ describe("upgrade plan", () => {
     );
   });
 
+  it("reports optional setting defaults without materializing Agentfile settings", () => {
+    const library = makeLibrary({ version: 1 });
+    const project = installProject(library);
+    const agentfilePath = path.join(project, "Agentfile");
+    const before = fs.readFileSync(agentfilePath, "utf8");
+
+    const result = upgradePlan({
+      projectRoot: project,
+      libraryRoot: library,
+      currentVersion: "1.9.0",
+      latestVersion: "1.9.0",
+    });
+
+    expect(result.project.settingsPolicy).toMatchObject({
+      materialization: "implicit-defaults",
+    });
+    expect(
+      result.project.settingsPolicy?.defaults.find(
+        (entry) => entry.key === "backup_retention",
+      ),
+    ).toMatchObject({
+      defaultValue: 10,
+      materialized: false,
+    });
+    expect(result.project.choices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "keep-implicit-setting-defaults",
+          recommended: true,
+        }),
+        expect.objectContaining({
+          id: "materialize-optional-settings",
+          recommended: false,
+        }),
+      ]),
+    );
+    expect(fs.readFileSync(agentfilePath, "utf8")).toBe(before);
+  });
+
   it("stops at the schema migration gate before project update diagnostics", () => {
     const library = makeLibrary({ version: 1 });
     const project = installProject(library);

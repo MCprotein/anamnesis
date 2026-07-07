@@ -27,6 +27,9 @@ could include breaking changes.
 - Added an Agentfile migration gate so `update` stops before rendering or
   writing managed surfaces when a schema migration is required; `upgrade plan`
   now stops at that schema gate and shows the migration choice first.
+- Added an optional-settings materialization policy to `upgrade plan`: existing
+  Agentfiles keep defaults implicit by default, and the plan reports which
+  settings are implicit vs explicitly materialized.
 
 ## [1.9.6] — 2026-07-07
 

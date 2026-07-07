@@ -67,16 +67,35 @@ const declinedSchema = z
   })
   .strict();
 
+export const AGENTFILE_SETTING_DEFAULTS = {
+  ontology_file: "system_graph.yaml",
+  agents_md_path: "AGENTS.md",
+  claude_md_path: "CLAUDE.md",
+  commit_on_apply: false,
+  backup_retention: 10,
+  max_warm_handoff_archives: 5,
+  max_cold_handoff_age_days: 90,
+  max_handoff_bytes: 512 * 1024,
+} as const;
+
 const settingsSchema = z
   .object({
-    ontology_file: z.string().default("system_graph.yaml"),
-    agents_md_path: z.string().default("AGENTS.md"),
-    claude_md_path: z.string().default("CLAUDE.md"),
-    commit_on_apply: z.boolean().default(false),
-    backup_retention: z.number().int().nonnegative().default(10),
-    max_warm_handoff_archives: z.number().int().nonnegative().default(5),
-    max_cold_handoff_age_days: z.number().int().nonnegative().default(90),
-    max_handoff_bytes: z.number().int().positive().default(512 * 1024),
+    ontology_file: z.string().default(AGENTFILE_SETTING_DEFAULTS.ontology_file),
+    agents_md_path: z.string().default(AGENTFILE_SETTING_DEFAULTS.agents_md_path),
+    claude_md_path: z.string().default(AGENTFILE_SETTING_DEFAULTS.claude_md_path),
+    commit_on_apply: z.boolean().default(AGENTFILE_SETTING_DEFAULTS.commit_on_apply),
+    backup_retention: z.number().int().nonnegative().default(
+      AGENTFILE_SETTING_DEFAULTS.backup_retention,
+    ),
+    max_warm_handoff_archives: z.number().int().nonnegative().default(
+      AGENTFILE_SETTING_DEFAULTS.max_warm_handoff_archives,
+    ),
+    max_cold_handoff_age_days: z.number().int().nonnegative().default(
+      AGENTFILE_SETTING_DEFAULTS.max_cold_handoff_age_days,
+    ),
+    max_handoff_bytes: z.number().int().positive().default(
+      AGENTFILE_SETTING_DEFAULTS.max_handoff_bytes,
+    ),
   })
   .strict();
 

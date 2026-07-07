@@ -89,6 +89,8 @@ anamnesis doctor
 If the Agentfile schema needs migration, `upgrade plan` shows that gate first
 and `update` stops before rendering or writing managed surfaces. Run
 `anamnesis migrate agentfile --apply`, then rerun `upgrade plan` / `update`.
+`upgrade plan` also reports optional settings that are using implicit defaults
+so existing Agentfiles do not need formatting churn just to learn new knobs.
 
 Building from source instead (during development or for forks):
 

@@ -1796,6 +1796,16 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
         (project.schema.migrationRequired ? " (migration required)" : " (supported)"),
     );
   }
+  if (project.settingsPolicy) {
+    const materialized = project.settingsPolicy.defaults.filter(
+      (entry) => entry.materialized,
+    ).length;
+    console.log(
+      `    settings: ${project.settingsPolicy.materialization} (${materialized}/${project.settingsPolicy.defaults.length} defaults materialized)`,
+    );
+    console.log(`      ${project.settingsPolicy.message}`);
+    console.log(`      next: ${project.settingsPolicy.next}`);
+  }
   if (project.statusSummary) {
     console.log(
       `    fragments: updates=${project.statusSummary.fragmentUpdatesAvailable}, pinned=${project.statusSummary.fragmentPinned}, missing=${project.statusSummary.fragmentLibraryMissing}`,
