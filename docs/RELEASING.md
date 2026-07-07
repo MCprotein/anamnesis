@@ -117,6 +117,8 @@ tag, npm publish, or GitHub Release steps unless the recovery section applies.
    This updates `package.json`, `package-lock.json`, `CHANGELOG.md`, and the
    README patch marker when applicable. It also records the dogfood self-check,
    refreshes the benchmark gallery, and runs `npm run release:check`.
+   The release check includes the Biome lint gate, dogfood, doctor,
+   benchmark-gallery validation, prompt-gate decision report, and build.
 
    Use dry-run when checking the next cut without touching files:
 
@@ -136,10 +138,10 @@ tag, npm publish, or GitHub Release steps unless the recovery section applies.
    remote changes and prints the next push command.
 
 4. Wait for the tag-triggered `Publish` workflow to complete. The workflow
-   publishes or verifies npmjs.org and GitHub Packages, checks registry parity,
-   then creates or updates the GitHub Release for the tag. Manual runs are also
-   available from the GitHub Actions UI via `workflow_dispatch`, but only tag
-   runs create a GitHub Release.
+   runs lint/typecheck/test/build, publishes or verifies npmjs.org and GitHub
+   Packages, checks registry parity, then creates or updates the GitHub
+   Release for the tag. Manual runs are also available from the GitHub Actions
+   UI via `workflow_dispatch`, but only tag runs create a GitHub Release.
 
 5. Verify the public release:
 

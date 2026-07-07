@@ -808,6 +808,26 @@ describe("benchmarkReport", () => {
     expect(result.markdown).toContain("Implement prompt-time delta: no");
   });
 
+  it("renders prompt-gate risk assessments without changing machine statuses", () => {
+    const { project, library } = setupBenchmarkProject();
+
+    const result = promptDeltaGate({
+      projectRoot: project,
+      libraryRoot: library,
+      maxPromptDeltaTokens: 1,
+      now: () => new Date("2026-05-07T09:05:00.000Z"),
+    });
+
+    expect(
+      result.signals.find((signal) => signal.id === "prompt-token-budget"),
+    ).toMatchObject({ status: "fail" });
+    expect(result.markdown).toContain("| Signal | Assessment | Detail |");
+    expect(result.markdown).toContain("| Prompt-time token budget | risk |");
+    expect(result.markdown).not.toContain(
+      "| Prompt-time token budget | fail |",
+    );
+  });
+
   it("uses session-context and retrieval benchmark evidence in prompt gate", () => {
     const { project, library } = setupBenchmarkProject();
     sessionContextBenchmark({

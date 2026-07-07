@@ -60,6 +60,10 @@ risk, and returns one of three decisions:
 - `prototype`: a bounded non-default experiment is justified; default shipping
   still needs dedupe and smoke evidence.
 
+Human-facing prompt-gate reports label signal assessments as `pass`, `watch`,
+or `risk`. Machine-readable evidence keeps the stable `pass` / `warn` /
+`fail` signal statuses for compatibility.
+
 Use `benchmark compare` for before/after adoption evidence. It reads two
 `benchmark report --json` files and reports raw scorecard deltas rather than
 collapsing the result into a single opaque score.

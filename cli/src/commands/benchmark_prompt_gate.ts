@@ -857,16 +857,29 @@ function renderPromptDeltaGateMarkdown(input: {
     `- max prompt delta budget: ${input.contextBudget.maxPromptDeltaTokens} tokens`,
     `- duplicate context risk: ${input.contextBudget.duplicateContextRisk}`,
     "",
-    "| Signal | Status | Detail |",
+    "| Signal | Assessment | Detail |",
     "|---|---|---|",
     ...input.signals.map(
       (signal) =>
-        `| ${escapeCell(signal.label)} | ${signal.status} | ${escapeCell(signal.detail)} |`,
+        `| ${escapeCell(signal.label)} | ${promptDeltaSignalAssessment(signal.status)} | ${escapeCell(signal.detail)} |`,
     ),
     "",
     "Required before default shipping:",
     ...input.requiredBeforeShip.map((item) => `- ${item}`),
   ].join("\n");
+}
+
+function promptDeltaSignalAssessment(
+  status: PromptDeltaGateSignalStatus,
+): string {
+  switch (status) {
+    case "pass":
+      return "pass";
+    case "warn":
+      return "watch";
+    case "fail":
+      return "risk";
+  }
 }
 
 function objectField(

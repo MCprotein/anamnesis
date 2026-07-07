@@ -7,6 +7,21 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Planned v1.10 as the next minor release line for guided upgrade decisions,
+  release-gate alignment, stale agent-facing status cleanup, dev dependency
+  audit refresh, and clearer prompt-gate UX.
+- Added `npm run lint` to the scripted release readiness path, publish
+  preflight, and tag publish workflow so the Biome gate is enforced by
+  automation rather than contributor memory.
+- Refreshed the development-only `vitest` / `vite` / `tsx` / `esbuild`
+  toolchain so the release-readiness audit path is clean again.
+- Replaced stale repo-local status copy in `AGENTS.md` with pointers to the
+  package, changelog, roadmap, and release verification commands.
+- Clarified `benchmark prompt-gate` human-facing output so non-blocking
+  prototype risks read as risk/watch signals instead of release failures.
+
 ## [1.9.6] — 2026-07-07
 
 ### Documentation

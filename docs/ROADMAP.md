@@ -1463,11 +1463,15 @@ gap. No code or CLI behavior changes.
 
 ## v1.10 — *planned*
 
-> **Theme: guided upgrade decisions and compatibility depth**
+> **Theme: guided upgrade decisions, release gates, and compatibility depth**
 
 v1.10 should take the deterministic `upgrade plan` from v1.9 and turn its
 reported gates into clearer choices. It should still keep the default path
-scriptable, dry-run-first, and safe for unattended use.
+scriptable, dry-run-first, and safe for unattended use. The v1.9 patch line
+also exposed a smaller quality-track gap: release, contributor, and agent
+guidance now mention lint and benchmark gates, so the automated gates and their
+output should match that contract instead of relying on humans to remember
+extra checks.
 
 | # | Item | Status | Description |
 |---|---|---|---|
@@ -1476,6 +1480,21 @@ scriptable, dry-run-first, and safe for unattended use.
 | 3 | **Schema migration gate integration** | planned | Make `update` and `upgrade plan` detect when `migrate agentfile` is required before rendering or writing managed surfaces. Required schema changes must stay backup-first and dry-run visible. |
 | 4 | **Historical compatibility fixture matrix** | planned | Add representative published-state fixtures for v1.4, v1.5, v1.7, pinned fragments, partial adapter installs, stale hook registrations, hook config preservation, and suggested-but-declined fragments. |
 | 5 | **Upgrade benchmark evidence** | planned | Add repeated public-safe upgrade behavior evidence before making stronger compatibility claims. Keep numeric pass/fail dimensions separate from convenience summaries. |
+| 6 | **Release gate alignment** | done | Make the scripted release path run the same quality gates documented for contributors and agents: include `npm run lint` in `release:check`, `prepublishOnly`, and the tag publish workflow before typecheck/test/build can publish a package. Keep `release:verify` as the public registry/GitHub Release/CLI smoke gate. |
+| 7 | **Agent-facing status cleanup** | done | Remove stale repo-local status copy such as `v0.1 alpha` / `Pre-1.0` from `AGENTS.md`, or replace it with a pointer to `package.json`, `CHANGELOG.md`, and this roadmap. Avoid hardcoded test counts or release-state claims that drift after patch cuts. |
+| 8 | **Dev dependency security refresh** | done | Refresh development-only dependencies that currently produce `npm audit` warnings (`vitest`/`vite`/`esbuild` path and related transitive packages) while keeping runtime `npm audit --omit=dev` clean. Treat this as release-readiness hardening, not a runtime security incident. |
+| 9 | **Prompt-gate UX semantics** | done | Clarify `benchmark prompt-gate` output so non-blocking risk signals do not look like release failures. Keep the decision conservative (`collect-more-evidence` / no prompt-time injection) unless repeated benchmark evidence justifies a bounded prototype. |
+
+Exit criteria for this release line:
+
+- Existing v1.9 upgrade-plan behavior still works non-interactively and
+  remains dry-run-first.
+- Guided choices are optional on top of the deterministic plan, not a new
+  requirement for scripts or CI.
+- `npm run release:check`, the tag publish workflow, and contributor docs agree
+  on which local gates define release readiness.
+- Public verification still ends with npmjs.org, GitHub Packages, GitHub
+  Release, and published CLI smoke checks for the same version.
 
 ---
 

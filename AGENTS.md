@@ -45,7 +45,9 @@ incident recovery path in `docs/RELEASING.md`.
 
 ## Status
 
-v0.1 alpha — daily use across 4 repos. Pre-1.0 — Agentfile schema may break before v1.0.
+Current release state is tracked in `package.json`, `CHANGELOG.md`, and
+`docs/ROADMAP.md`. Verify public availability with `npm run release:status`
+and `npm run release:verify -- --version <version>`.
 
 ---
 

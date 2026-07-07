@@ -1591,13 +1591,29 @@ function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
     `  context budget: ~${result.contextBudget.estimatedTokens}/${result.contextBudget.maxPromptDeltaTokens} tokens, duplicate risk ${result.contextBudget.duplicateContextRisk}`,
   );
   for (const signal of result.signals) {
-    console.log(`  ${signal.status.padEnd(4)} ${signal.label}: ${signal.detail}`);
+    const assessment = formatPromptDeltaSignalAssessment(signal.status);
+    console.log(
+      `  ${assessment.padEnd(5)} ${signal.label}: ${signal.detail}`,
+    );
   }
   if (result.appendedPath) {
     console.log(`  appended: ${result.appendedPath}`);
   }
   if (result.evidenceRecordPath) {
     console.log(`  evidence: ${result.evidenceRecordPath}`);
+  }
+}
+
+function formatPromptDeltaSignalAssessment(status: string): string {
+  switch (status) {
+    case "pass":
+      return "pass";
+    case "warn":
+      return "watch";
+    case "fail":
+      return "risk";
+    default:
+      return status;
   }
 }
 
