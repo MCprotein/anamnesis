@@ -7,6 +7,27 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.9.5] — 2026-07-07
+
+### Added
+
+- Added `core/handoff_active_text.test.ts` and
+  `core/executable_security.test.ts`, covering handoff text parsing and the
+  executable-adapter security signal detection that previously had no
+  direct test coverage.
+
+### Changed
+
+- Replaced the no-op `lint` script with a real Biome-based lint gate
+  (narrow, correctness-focused rule set) and fixed the initial violations.
+- Deduplicated four copies of handoff `active.md` text-parsing helpers
+  (`isCompletedHandoffTaskLine`, `activeHandoffOpenTaskLines`,
+  `extractArchiveRefs`, `newestHandoffArchive`) into
+  `core/handoff_active_text.ts`.
+- Reconciled `docs/ROADMAP.md` state: fixed the stale v1.9.3 heading and
+  backfilled the missing v1.9.4 section; added short cross-references
+  between the four benchmark docs.
+
 ## [1.9.4] — 2026-07-05
 
 ### Fixed
