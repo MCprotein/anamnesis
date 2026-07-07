@@ -1503,13 +1503,13 @@ Release criteria met:
 
 v1.10 made upgrade choices deterministic and inspectable. v1.11 turns selected
 choices into executable workflow steps while keeping the default
-non-interactive path safe for CI and scripted users. Interactive UX remains a
-candidate on top of the deterministic command and benchmark evidence.
+non-interactive path safe for CI and scripted users. Interactive UX stays a
+presentation layer over the deterministic command and benchmark evidence.
 
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Choice execution command** | done | Added `upgrade apply-choice <id>` as a safe executor over existing `upgrade plan` choices. It does not shell out arbitrary command strings: supported choice ids map to internal commands. Read-only choices execute directly, manual choices stay guidance-only, and local-write/package-install choices preview by default unless `--apply` is explicit. |
-| 2 | **Interactive/TUI chooser** | candidate | Consider a small guided chooser for humans after command-specific execution is stable. It should be a presentation layer over the deterministic `upgrade plan` JSON, not a separate decision engine. |
+| 2 | **Interactive/TUI chooser** | done | Added `upgrade choose`, a no-dependency terminal chooser that renders numbered `upgrade plan` choices, accepts either a number or choice id, and delegates execution to `upgrade apply-choice`. Non-interactive scripts can pass `--choice <id|number>`; without a TTY or explicit choice it fails closed and points users back to `upgrade plan` / `upgrade apply-choice`. |
 | 3 | **Choice execution evidence** | done | Extended `benchmark upgrade` with a choice-execution fixture that verifies preview-required behavior, no writes before `--apply`, successful apply, post-upgrade pending writes, doctor errors, drift, and unsupported-choice count. Current generated evidence is 18/18 pass with zero pending writes, doctor errors, drift, or unsupported choices. |
 
 ---

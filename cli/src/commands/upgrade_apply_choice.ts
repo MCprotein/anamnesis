@@ -67,6 +67,7 @@ export interface UpgradeApplyChoiceOptions
   extends Omit<UpgradePlanOptions, "apply"> {
   choiceId: string;
   apply?: boolean;
+  plan?: UpgradePlanResult;
 }
 
 export class UpgradeApplyChoiceError extends Error {
@@ -81,12 +82,14 @@ export function upgradeApplyChoice(
 ): UpgradeApplyChoiceResult {
   const projectRoot = path.resolve(opts.projectRoot);
   const libraryRoot = path.resolve(opts.libraryRoot);
-  const plan = upgradePlan({
-    ...opts,
-    projectRoot,
-    libraryRoot,
-    apply: false,
-  });
+  const plan =
+    opts.plan ??
+    upgradePlan({
+      ...opts,
+      projectRoot,
+      libraryRoot,
+      apply: false,
+    });
   const choice = plan.project.choices.find((entry) => entry.id === opts.choiceId);
 
   if (!choice) {

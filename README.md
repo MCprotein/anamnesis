@@ -74,6 +74,7 @@ Check whether the installed CLI is behind npmjs.org:
 anamnesis upgrade
 anamnesis upgrade plan      # read-only package + project upgrade plan with choices
 anamnesis upgrade apply-choice <id>  # run one supported choice; writes require --apply
+anamnesis upgrade choose    # interactive chooser over the same plan choices
 anamnesis upgrade --apply   # runs npm install -g only when a newer version exists
 ```
 
@@ -95,6 +96,8 @@ so existing Agentfiles do not need formatting churn just to learn new knobs.
 To act on one structured choice, run `anamnesis upgrade apply-choice <id>`.
 Read-only choices execute directly; local-write and package-install choices
 preview by default and require `--apply` before they write.
+For a guided terminal flow, run `anamnesis upgrade choose`; scripts can pass
+`--choice <id|number>` to avoid prompting while still using the same executor.
 
 Building from source instead (during development or for forks):
 
@@ -163,6 +166,7 @@ anamnesis init      # first-time setup; writes install evidence
 anamnesis update    # library updates + drift detection (dry-run by default; --apply writes evidence)
 anamnesis upgrade plan  # read-only package + project upgrade plan with choices
 anamnesis upgrade apply-choice <id>  # execute one supported choice; --apply required for writes
+anamnesis upgrade choose  # interactive chooser over the same plan choices
 anamnesis update --bump-pinned  # explicitly move pinned fragments to current
 anamnesis status    # fragments, drift, ontology gaps, continuity, evidence, context diagnostic summary
 anamnesis doctor    # read-only installation integrity + continuity/ontology/context diagnostics

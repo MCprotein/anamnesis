@@ -32,6 +32,11 @@ import {
   type UpgradeApplyChoiceResult,
 } from "./commands/upgrade_apply_choice.js";
 import {
+  upgradeChoose,
+  UpgradeChooseError,
+  type UpgradeChooseResult,
+} from "./commands/upgrade_choose.js";
+import {
   detectUpgradeProjectGuidance,
   formatUpgradeProjectGuidance,
 } from "./commands/upgrade_project_guidance.js";
@@ -367,6 +372,7 @@ Commands:
   upgrade                       Check or update the installed anamnesis CLI
   upgrade plan                  Read-only package + project plan with choices
   upgrade apply-choice <id>     Execute one supported upgrade-plan choice
+  upgrade choose                Interactive chooser over upgrade-plan choices
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
   release check                 Run the read-only release readiness gate
@@ -463,6 +469,16 @@ Flags (upgrade apply-choice):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
   --registry <url>              Package registry (default: https://registry.npmjs.org)
+  --apply                       Execute local-write or package-install choices
+                                  after review; without it, those choices only
+                                  run their safe preview when available
+  --json                        Print structured JSON
+
+Flags (upgrade choose):
+  --project-root <path>         Target directory (default: cwd)
+  --library <path>              Library path (default: bundled)
+  --registry <url>              Package registry (default: https://registry.npmjs.org)
+  --choice <id|number>          Select without prompting (useful for scripts)
   --apply                       Execute local-write or package-install choices
                                   after review; without it, those choices only
                                   run their safe preview when available
@@ -1961,6 +1977,14 @@ function reportUpgradeApplyChoice(result: UpgradeApplyChoiceResult): void {
   }
 }
 
+function reportUpgradeChoose(result: UpgradeChooseResult): void {
+  console.log(`anamnesis upgrade choose — ${result.selectedChoiceId}`);
+  console.log(`  interactive: ${result.interactive}`);
+  console.log(`  choices: ${result.menu.length}`);
+  console.log("");
+  reportUpgradeApplyChoice(result.execution);
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -2031,6 +2055,24 @@ async function main(argv: string[]): Promise<number> {
 
     case "upgrade":
       try {
+        if (positional[0] === "choose") {
+          const result = await upgradeChoose({
+            choiceInput:
+              (flags["choice"] as string | undefined) ?? positional[1],
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            libraryRoot:
+              (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+            registry: flags["registry"] as string | undefined,
+            apply: flags["apply"] === true,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportUpgradeChoose(result);
+          }
+          return result.execution.status === "unsupported" ? 1 : 0;
+        }
         if (positional[0] === "apply-choice") {
           const choiceId = positional[1];
           if (!choiceId) {
@@ -2079,7 +2121,11 @@ async function main(argv: string[]): Promise<number> {
         }
         return 0;
       } catch (e) {
-        if (e instanceof UpgradeError || e instanceof UpgradeApplyChoiceError) {
+        if (
+          e instanceof UpgradeError ||
+          e instanceof UpgradeApplyChoiceError ||
+          e instanceof UpgradeChooseError
+        ) {
           console.error(`error: ${e.message}`);
           return 1;
         }

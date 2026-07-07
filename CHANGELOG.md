@@ -16,6 +16,9 @@ could include breaking changes.
 - Added an explicit `apply-content-only-update` upgrade-plan choice so
   non-executable managed content updates can be selected separately from
   executable adapter updates.
+- Added `anamnesis upgrade choose`, an interactive terminal chooser over the
+  same deterministic `upgrade plan` choices. Non-interactive scripts can pass
+  `--choice <id|number>` and still use the safe `apply-choice` executor.
 - Extended `anamnesis benchmark upgrade` with a choice-execution fixture and
   numeric choice metrics. The current public-safe run is 18/18 pass, including
   preview-required guardrails and zero unsupported choices.
