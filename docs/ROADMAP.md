@@ -1461,17 +1461,16 @@ gap. No code or CLI behavior changes.
 
 ---
 
-## v1.10 — *planned*
+## v1.10 — *shipped 2026-07-07*
 
 > **Theme: guided upgrade decisions, release gates, and compatibility depth**
 
-v1.10 should take the deterministic `upgrade plan` from v1.9 and turn its
-reported gates into clearer choices. It should still keep the default path
-scriptable, dry-run-first, and safe for unattended use. The v1.9 patch line
-also exposed a smaller quality-track gap: release, contributor, and agent
-guidance now mention lint and benchmark gates, so the automated gates and their
-output should match that contract instead of relying on humans to remember
-extra checks.
+v1.10 took the deterministic `upgrade plan` from v1.9 and turned its
+reported gates into clearer choices. The default path remains scriptable,
+dry-run-first, and safe for unattended use. The v1.9 patch line also exposed a
+smaller quality-track gap: release, contributor, and agent guidance mentioned
+lint and benchmark gates, so v1.10 aligned the automated gates and their output
+with that contract instead of relying on humans to remember extra checks.
 
 | # | Item | Status | Description |
 |---|---|---|---|
@@ -1480,12 +1479,12 @@ extra checks.
 | 3 | **Schema migration gate integration** | done | `update` now checks `migrate agentfile` dry-run state before planning managed surface renders and stops with the migration command when required. `upgrade plan` stops at the schema gate before status/update/doctor diagnostics and emits the migration choice first. Required schema changes stay backup-first and dry-run visible. |
 | 4 | **Historical compatibility fixture matrix** | done | Expanded `upgrade_compatibility.test.ts` with representative published-state fixtures for v1.4, v1.5, and v1.7 Agentfile shapes, pinned fragment archives, partial adapter installs, stale Codex hook registration refresh, hook config preservation, and suggested-but-declined fragments. |
 | 5 | **Upgrade benchmark evidence** | done | Added `anamnesis benchmark upgrade`, which repeatedly runs public-safe existing-project upgrade fixtures and writes JSON/Markdown/SVG evidence under `docs/benchmark-evidence/upgrade/`. Current evidence is 15/15 pass across clean old projects, pinned archives, partial adapter choices, stale Codex hook refresh, and suggested-but-declined fragments, with zero post-upgrade pending writes, doctor errors, or manifest drift. |
-| 6 | **Release gate alignment** | done | Make the scripted release path run the same quality gates documented for contributors and agents: include `npm run lint` in `release:check`, `prepublishOnly`, and the tag publish workflow before typecheck/test/build can publish a package. Keep `release:verify` as the public registry/GitHub Release/CLI smoke gate. |
-| 7 | **Agent-facing status cleanup** | done | Remove stale repo-local status copy such as `v0.1 alpha` / `Pre-1.0` from `AGENTS.md`, or replace it with a pointer to `package.json`, `CHANGELOG.md`, and this roadmap. Avoid hardcoded test counts or release-state claims that drift after patch cuts. |
-| 8 | **Dev dependency security refresh** | done | Refresh development-only dependencies that currently produce `npm audit` warnings (`vitest`/`vite`/`esbuild` path and related transitive packages) while keeping runtime `npm audit --omit=dev` clean. Treat this as release-readiness hardening, not a runtime security incident. |
+| 6 | **Release gate alignment** | done | The scripted release path now runs the same quality gates documented for contributors and agents: `npm run lint` is included in `release:check`, `prepublishOnly`, and the tag publish workflow before typecheck/test/build can publish a package. `release:verify` remains the public registry/GitHub Release/CLI smoke gate. |
+| 7 | **Agent-facing status cleanup** | done | Replaced stale repo-local status copy such as `v0.1 alpha` / `Pre-1.0` in `AGENTS.md` with pointers to `package.json`, `CHANGELOG.md`, and this roadmap. Avoids hardcoded test counts or release-state claims that drift after patch cuts. |
+| 8 | **Dev dependency security refresh** | done | Refreshed development-only dependencies that produced `npm audit` warnings (`vitest`/`vite`/`esbuild` path and related transitive packages) while keeping runtime `npm audit --omit=dev` clean. Treats this as release-readiness hardening, not a runtime security incident. |
 | 9 | **Prompt-gate UX semantics** | done | Clarify `benchmark prompt-gate` output so non-blocking risk signals do not look like release failures. Keep the decision conservative (`collect-more-evidence` / no prompt-time injection) unless repeated benchmark evidence justifies a bounded prototype. |
 
-Exit criteria for this release line:
+Release criteria met:
 
 - Existing v1.9 upgrade-plan behavior still works non-interactively and
   remains dry-run-first.
