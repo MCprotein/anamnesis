@@ -7,6 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.9.6] — 2026-07-07
+
+### Documentation
+
+- Surfaced the `npm run lint` step alongside typecheck/test in `AGENTS.md`
+  and `CONTRIBUTING.md`, and dropped stale hardcoded test counts, following
+  up on the v1.9.5 Biome lint gate.
+
 ## [1.9.5] — 2026-07-07
 
 ### Added
