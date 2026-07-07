@@ -1447,6 +1447,20 @@ design and characterization-test pass, not a patch-release bolt-on.
 
 ---
 
+## v1.9.6 — *release cut 2026-07-07*
+
+> **Theme: contributor documentation follow-up**
+
+v1.9.5 turned the `lint` script into a real Biome gate but did not surface
+it in the contributor and agent guides. v1.9.6 closes that documentation
+gap. No code or CLI behavior changes.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Document the lint step** | done | Added `npm run lint` alongside typecheck/test in `AGENTS.md` and `CONTRIBUTING.md`, and dropped the stale hardcoded test counts. |
+
+---
+
 ## v1.10 — *planned*
 
 > **Theme: guided upgrade decisions and compatibility depth**
