@@ -1377,7 +1377,7 @@ project updates while warnings may be expected agent-required follow-up.
 
 ---
 
-## v1.9.3 — *planned patch*
+## v1.9.3 — *release cut 2026-07-03*
 
 > **Theme: release automation hardening**
 
@@ -1404,6 +1404,46 @@ Exit criteria:
   GitHub Release, tag, or branch cleanup commands during the normal path.
 - Fresh agent sessions see the release invariant in `AGENTS.md` before doing
   release work.
+
+---
+
+## v1.9.4 — *release cut 2026-07-05*
+
+> **Theme: build and release verification hardening**
+
+v1.9.3's scripted release path exposed two follow-on gaps: a locally built
+CLI entrypoint could lose its executable bit, and the dogfood release gate's
+cross-agent checks had no explicit timeout budget. v1.9.4 closes both without
+changing package behavior.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Postbuild executable-bit guard** | done | Added a `postbuild` script so `cli/dist/index.js` keeps its executable bit after every local build. |
+| 2 | **Dogfood release verification stabilization** | done | Gave the slower cross-agent dogfood tests an explicit timeout budget so release verification does not flake under load. |
+
+---
+
+## v1.9.5 — *release cut 2026-07-07*
+
+> **Theme: internal quality and maintenance hardening**
+
+v1.9.5 is a maintenance patch: it turns on real lint enforcement,
+deduplicates handoff-parsing helpers into a shared module, adds a missing
+test suite for the executable-adapter security gate, and reconciles stale
+roadmap/handoff state. No user-facing CLI behavior changes.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Real lint gate** | done | Replaced the no-op `lint` script with Biome, using a narrow correctness-focused rule set; fixed the initial 16 violations. |
+| 2 | **Handoff text-parsing dedup** | done | Extracted `isCompletedHandoffTaskLine`, `activeHandoffOpenTaskLines`, `extractArchiveRefs`, and `newestHandoffArchive` into `core/handoff_active_text.ts`, replacing four duplicated implementations across `status.ts`, `context_diagnostics.ts`, `handoff_draft.ts`, and `benchmark_prompt_gate.ts`. |
+| 3 | **Executable security test coverage** | done | Added `core/executable_security.test.ts` covering the security-signal detection boundary that previously had no direct unit tests. |
+| 4 | **Adapter component test coverage (codex/cursor)** | deferred | Scope: `adapters/{codex,cursor}/{ontology,skill,slash_command,task_harness,executable_hook}.ts`; deferred to a follow-up patch rather than bundled into this maintenance release. |
+| 5 | **Roadmap state reconciliation** | done | Fixed the stale "planned patch" heading on the already-shipped v1.9.3 section and backfilled the missing v1.9.4 section. |
+
+**Backlog note**: `index.ts` (~2663 lines) and `dogfood.ts` (~1705 lines) are
+the highest-churn modules in the repo. Splitting `index.ts`'s command
+dispatch and extracting `dogfood.ts`'s sub-concerns deserves a dedicated
+design and characterization-test pass, not a patch-release bolt-on.
 
 ---
 

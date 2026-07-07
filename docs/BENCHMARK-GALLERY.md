@@ -5,6 +5,12 @@ and sanitized fixture evidence.
 
 README claim wording is tracked in [`docs/README-CLAIMS.md`](README-CLAIMS.md).
 
+See also: [`BENCHMARKS.md`](BENCHMARKS.md) (the full raw deterministic
+reports this page curates from), [`BENCHMARK-TRACES.md`](BENCHMARK-TRACES.md)
+(append-only phase/timing rollups), and
+[`AGENT-TASK-BENCHMARKS.md`](AGENT-TASK-BENCHMARKS.md) (model-dependent task
+runs).
+
 <!-- anamnesis:benchmark-gallery:start -->
 ## Generated Evidence
 

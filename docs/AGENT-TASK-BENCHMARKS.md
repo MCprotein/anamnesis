@@ -7,6 +7,10 @@ benchmark reports measure context surfaces on disk. Agent task benchmarks
 measure how one agent/model run behaved on a fixed task prompt, so they are
 model-dependent and need repeated runs before any public claim.
 
+See also: [`BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md) (public-curated
+subset of `BENCHMARKS.md`) and [`BENCHMARK-TRACES.md`](BENCHMARK-TRACES.md)
+(append-only phase/timing rollups).
+
 ## Commands
 
 ```bash
