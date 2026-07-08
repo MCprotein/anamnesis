@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-07-08
+
 ### Added
 
 - Added deterministic prose document path-reference drift diagnostics to
