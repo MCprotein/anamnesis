@@ -365,6 +365,95 @@ describe("context diagnostics", () => {
     );
   });
 
+  it("reports missing project paths referenced from prose docs", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-doc-paths-");
+    writeFile(project, "src/current.ts", "export {};\n");
+    writeFile(project, "scripts/current.sh", "#!/bin/sh\n");
+    writeFile(project, "docs/current.md", "# Current\n");
+    writeFile(
+      project,
+      "README.md",
+      [
+        "# Fixture",
+        "",
+        "- current source: `src/current.ts`",
+        "- stale source: `src/deleted.ts`",
+        "- stale docs path: [old docs](docs/old.md)",
+        "- ignored URL: https://example.com/docs/old.md",
+        "- ignored placeholder: `/path/to/your/project`",
+        "- ignored sibling repo: `../other-repo/docs/old.md`",
+        "- ignored generated dir: `node_modules/pkg/index.js`",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      "CLAUDE.md",
+      [
+        "# Claude",
+        "",
+        "- deleted command path: scripts/deploy-old.sh",
+        "- current docs path: docs/current.md",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      "docs/PROJECT-CONTEXT.md",
+      [
+        "# Context",
+        "",
+        "- current source file: src/legacy/file.ts",
+        "",
+      ].join("\n"),
+    );
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.ok).toBe(false);
+    expect(result.summary.byCode["doc-file-reference-missing"]).toBe(4);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "doc-file-reference-missing",
+          source_path: "README.md",
+          stable_ref: "line:4:file:src/deleted.ts",
+          related: ["src/deleted.ts"],
+        }),
+        expect.objectContaining({
+          code: "doc-file-reference-missing",
+          source_path: "README.md",
+          stable_ref: "line:5:file:docs/old.md",
+          related: ["docs/old.md"],
+        }),
+        expect.objectContaining({
+          code: "doc-file-reference-missing",
+          source_path: "CLAUDE.md",
+          stable_ref: "line:3:file:scripts/deploy-old.sh",
+          related: ["scripts/deploy-old.sh"],
+        }),
+        expect.objectContaining({
+          code: "doc-file-reference-missing",
+          source_path: "docs/PROJECT-CONTEXT.md",
+          stable_ref: "line:3:file:src/legacy/file.ts",
+          related: ["src/legacy/file.ts"],
+        }),
+      ]),
+    );
+    expect(result.issues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "doc-file-reference-missing",
+          related: ["../other-repo/docs/old.md"],
+        }),
+        expect.objectContaining({
+          code: "doc-file-reference-missing",
+          related: ["node_modules/pkg/index.js"],
+        }),
+      ]),
+    );
+  });
+
   it("does not treat bootstrap generator metadata as ontology entities", () => {
     const project = tmpDir("anamnesis-context-diagnostics-bootstrap-metadata-");
     writeFile(

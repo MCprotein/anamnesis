@@ -1554,6 +1554,32 @@ Release criteria met:
 
 ---
 
+## v1.13 — *planned*
+
+> **Theme: first-run guidance and prose-doc freshness**
+
+Dogfood on downstream projects exposed two adjacent UX gaps: stale prose docs
+can keep misleading agents even when managed context is clean, and first-time
+users need clearer command guidance before they learn the full CLI surface.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Prose doc file-reference drift** | done on main | Extended `context diagnose` with deterministic repo-relative path-token checks for `README.md`, `CLAUDE.md`, and `docs/**/*.md`. Missing file references warn without attempting semantic truth checks. URLs, placeholders, sibling-repo paths, generated/code-heavy `AGENTS.md`, and common generated directories are ignored to reduce false positives. |
+| 2 | **Doc freshness review surface** | planned | Add an agent-facing semantic review path for claims the CLI cannot safely prove, such as present-tense architecture statements that still point at a moved or deleted subsystem. Keep deterministic CLI facts separate from agent judgment. |
+| 3 | **Bare CLI first-run guide** | done on main | `anamnesis` with no command now prints a concise guide for previewing first-time adoption, installing all agent surfaces, verifying with `doctor`/`status`, updating, planning upgrades, and running agent follow-ups. `anamnesis --help` remains the full command reference. |
+| 4 | **Init next-step guidance** | done on main | `anamnesis init` output now ends with an explicit next-step block: how to apply a reviewed dry-run, when `--tools all --allow-exec-adapters` is needed, which verification commands to run next, and which follow-ups are intentionally agent-required (`/ontology-enrich`, `/handoff-prepare`). |
+
+Exit criteria:
+
+- `context diagnose` catches stale prose file references without requiring an
+  LLM or a local database.
+- Bare `anamnesis` is useful for a new user without dumping every advanced
+  command and benchmark flag.
+- First-time `init` output answers "am I done, and if not, what exact command
+  comes next?".
+
+---
+
 ## Parked ideas (outside the accepted roadmap)
 
 These have been discussed, but they are not active roadmap work. Bring them

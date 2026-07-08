@@ -67,6 +67,8 @@ npx @mcprotein/anamnesis init --dry-run
 ```
 
 Either way, the CLI is invoked as `anamnesis`.
+Running `anamnesis` with no command prints a concise first-run guide; use
+`anamnesis --help` for the full command reference.
 
 Check whether the installed CLI is behind npmjs.org:
 
@@ -180,7 +182,7 @@ anamnesis migrate agentfile  # schema migration readiness check; --apply writes 
 anamnesis dogfood check --append  # score and record self-check continuity evidence
 anamnesis context index --write  # build a local source-pointer index
 anamnesis context query "managed region"  # retrieve exact context pointers
-anamnesis context diagnose  # report handoff, ontology, docs/bootstrap, and evidence consistency issues
+anamnesis context diagnose  # report handoff, ontology, prose-doc path drift, docs/bootstrap, and evidence issues
 anamnesis context resume  # print a compact resume bundle with size metrics
 anamnesis gc --dry-run  # preview task-harness retention and disk-budget cleanup candidates
 anamnesis benchmark report --append  # record deterministic context-quality scorecard evidence

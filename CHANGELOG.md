@@ -7,6 +7,23 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added deterministic prose document path-reference drift diagnostics to
+  `anamnesis context diagnose`. It now warns when `README.md`, `CLAUDE.md`, or
+  `docs/**/*.md` reference missing project-local paths, while
+  avoiding URLs, placeholders, sibling-repo paths, and common generated
+  directories.
+
+### Changed
+
+- Changed bare `anamnesis` output from the full command reference to a concise
+  first-run guide with preview, install, verify, update, upgrade, and
+  agent-follow-up commands. `anamnesis --help` still prints the full reference.
+- Changed `anamnesis init` reports to end with explicit next steps for applying
+  dry-runs, verifying installs, selecting all agent surfaces, and running
+  agent-required semantic/handoff follow-ups.
+
 ## [1.12.0] — 2026-07-07
 
 ### Added

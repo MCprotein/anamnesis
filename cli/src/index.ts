@@ -161,6 +161,8 @@ import {
   formatBootstrapGenerationBoundaryLines,
   formatGenerationBoundaryLines,
 } from "./core/generation-boundary.js";
+import { formatGettingStartedGuide } from "./core/cli_guide.js";
+import { formatInitNextStepLines } from "./core/init_next_steps.js";
 import { PACKAGE_VERSION } from "./core/version.js";
 import type { ToolName } from "./core/agentfile.js";
 
@@ -691,6 +693,10 @@ Docs: https://github.com/MCprotein/anamnesis`,
   );
 }
 
+function printGettingStartedGuide(): void {
+  console.log(formatGettingStartedGuide(VERSION));
+}
+
 // ---------------------------------------------------------------------------
 // Reporters
 // ---------------------------------------------------------------------------
@@ -781,6 +787,13 @@ function reportInit(result: InitResult): void {
   console.log(
     "    agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
   );
+  for (const line of formatInitNextStepLines({
+    writtenToDisk: result.writtenToDisk,
+    blockedWrites: s.blocked,
+    tools: result.agentfile.tools,
+  })) {
+    console.log(line);
+  }
 }
 
 function reportStatus(result: StatusResult, projectRoot: string): void {
@@ -2017,7 +2030,7 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (!command) {
-    printHelp();
+    printGettingStartedGuide();
     return 0;
   }
 

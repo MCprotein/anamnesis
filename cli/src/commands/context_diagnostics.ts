@@ -24,6 +24,7 @@ export const CONTEXT_DIAGNOSTICS_SCHEMA_VERSION =
 export type ContextDiagnosticSeverity = "warning" | "info";
 
 export type ContextDiagnosticCode =
+  | "doc-file-reference-missing"
   | "docs-bootstrap-conflict"
   | "handoff-active-archive-inactive"
   | "handoff-active-completed-entry"
@@ -92,6 +93,12 @@ interface DocFactClaim {
   value: string;
 }
 
+interface DocPathReference {
+  sourcePath: string;
+  lineNumber: number;
+  target: string;
+}
+
 interface HandoffFrontmatter {
   gitRef?: string;
   handoffStatus?: string;
@@ -100,6 +107,7 @@ interface HandoffFrontmatter {
 }
 
 const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
+  "doc-file-reference-missing",
   "docs-bootstrap-conflict",
   "handoff-active-archive-inactive",
   "handoff-active-completed-entry",
@@ -133,6 +141,7 @@ export function contextDiagnostics(
   const issues = [
     ...handoffIssues(projectRoot, now, handoffThresholds),
     ...ontologyIssues(projectRoot),
+    ...docFileReferenceIssues(projectRoot),
     ...docsBootstrapIssues(projectRoot),
     ...evidenceIssues(projectRoot),
   ].sort(compareIssues);
@@ -359,6 +368,30 @@ function docsBootstrapIssues(projectRoot: string): ContextDiagnosticIssue[] {
         "Update the document claim or re-run `anamnesis ontology bootstrap` if the project files changed.",
     });
   }
+  return issues;
+}
+
+function docFileReferenceIssues(projectRoot: string): ContextDiagnosticIssue[] {
+  const issues: ContextDiagnosticIssue[] = [];
+  const seen = new Set<string>();
+
+  for (const ref of docPathReferences(projectRoot)) {
+    if (safeProjectFileExists(projectRoot, ref.target)) continue;
+    const key = `${ref.sourcePath}:${ref.lineNumber}:${ref.target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    issues.push({
+      severity: "warning",
+      code: "doc-file-reference-missing",
+      message: `document references missing project path ${ref.target}`,
+      source_path: ref.sourcePath,
+      stable_ref: `line:${ref.lineNumber}:file:${ref.target}`,
+      related: [ref.target],
+      repair:
+        "Update the prose document to point at the current file, or remove the stale path reference.",
+    });
+  }
+
   return issues;
 }
 
@@ -623,15 +656,47 @@ function docFactClaims(projectRoot: string): DocFactClaim[] {
 
 function diagnosticDocPaths(projectRoot: string): string[] {
   const docs = new Set<string>();
-  if (fs.existsSync(path.join(projectRoot, "README.md"))) {
-    docs.add("README.md");
+  for (const rootDoc of ["README.md", "CLAUDE.md"]) {
+    if (fs.existsSync(path.join(projectRoot, rootDoc))) {
+      docs.add(rootDoc);
+    }
   }
   for (const relPath of walkFiles(projectRoot, "docs")) {
     if (!relPath.endsWith(".md")) continue;
     if (relPath.startsWith("docs/benchmark-evidence/")) continue;
+    if (relPath.startsWith("docs/deprecated/")) continue;
     docs.add(relPath);
   }
   return [...docs].sort();
+}
+
+function docPathReferences(projectRoot: string): DocPathReference[] {
+  const references: DocPathReference[] = [];
+  const rootNames = projectRootEntryNames(projectRoot);
+
+  for (const relPath of diagnosticDocPaths(projectRoot)) {
+    const lines = fs
+      .readFileSync(path.join(projectRoot, relPath), "utf8")
+      .split(/\r?\n/);
+    let inFence = false;
+    lines.forEach((line, index) => {
+      if (line.trimStart().startsWith("```")) {
+        inFence = !inFence;
+        return;
+      }
+      if (inFence) return;
+      if (!shouldScanDocPathLine(line)) return;
+      for (const target of extractDocLocalPathReferences(line, rootNames)) {
+        references.push({
+          sourcePath: relPath,
+          lineNumber: index + 1,
+          target,
+        });
+      }
+    });
+  }
+
+  return references;
 }
 
 function walkFiles(projectRoot: string, relDir: string): string[] {
@@ -713,6 +778,219 @@ function normalizeInlinePath(value: string): string | undefined {
   if (/[\s*?[\]{}<>|]/.test(trimmed)) return undefined;
   if (trimmed.startsWith("-")) return undefined;
   return trimmed.replace(/[.,;)]+$/g, "");
+}
+
+function extractDocLocalPathReferences(
+  line: string,
+  rootNames: ReadonlySet<string>,
+): string[] {
+  const refs = new Set<string>();
+
+  for (const target of extractBacktickLocalPaths(line)) {
+    const normalized = normalizeDocPathReference(target, rootNames);
+    if (normalized) refs.add(normalized);
+  }
+
+  for (const match of line.matchAll(/\[[^\]]+\]\(([^)\s#]+)(?:#[^)]+)?\)/g)) {
+    const normalized = normalizeDocPathReference(match[1]!, rootNames);
+    if (normalized) refs.add(normalized);
+  }
+
+  const withoutUrls = line.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, " ");
+  for (const rawToken of withoutUrls.split(/\s+/)) {
+    const normalized = normalizeDocPathReference(rawToken, rootNames);
+    if (normalized) refs.add(normalized);
+  }
+
+  return [...refs].sort();
+}
+
+function normalizeDocPathReference(
+  value: string,
+  rootNames: ReadonlySet<string>,
+): string | undefined {
+  const hadTrailingSlash = /\/[`'"\])}:,.;]*$/.test(value.trim());
+  let candidate = value
+    .trim()
+    .replace(/^[>*+-]+/, "")
+    .replace(/^[`'"\[({]+/, "")
+    .replace(/[`'"\])}:,.;]+$/g, "");
+  const anchor = candidate.indexOf("#");
+  if (anchor >= 0) candidate = candidate.slice(0, anchor);
+  const normalized = normalizeInlinePath(candidate);
+  if (!normalized) return undefined;
+  if (!looksLikeLocalFilePointer(normalized)) return undefined;
+  if (normalized.startsWith("../")) return undefined;
+  if (normalized.startsWith("@")) return undefined;
+  if (normalized.includes(":")) return undefined;
+  if (normalized.includes("$")) return undefined;
+  if (normalized.includes("=")) return undefined;
+  if (normalized.includes("`")) return undefined;
+  if (normalized.includes("\\n")) return undefined;
+  if (normalized.includes("...")) return undefined;
+  if (normalized === ".anamnesis/agentfile.yaml") return undefined;
+  if (normalized.startsWith(".anamnesis/logs/")) return undefined;
+  if (normalized.startsWith(".anamnesis/context/")) return undefined;
+  if (/[/\\](?:node_modules|\.git|dist|build|coverage|\.next|\.venv|venv)(?:[/\\]|$)/.test(`/${normalized}`)) {
+    return undefined;
+  }
+
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.some(isPlaceholderPathSegment)) return undefined;
+  if (
+    segments.slice(0, -1).some((segment) => {
+      const ext = segment.includes(".")
+        ? segment.split(".").pop()!.toLowerCase()
+        : "";
+      return DOC_PATH_EXTENSIONS.has(ext);
+    })
+  ) {
+    return undefined;
+  }
+  if (!hasRepoLocalPathShape(normalized, hadTrailingSlash, rootNames)) {
+    return undefined;
+  }
+  if (
+    segments.some((segment) =>
+      /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.md$/.test(segment),
+    )
+  ) {
+    return undefined;
+  }
+
+  return normalized.replace(/\/+$/g, "");
+}
+
+const DOC_PATH_EXTENSIONS = new Set([
+  "bash",
+  "cjs",
+  "conf",
+  "css",
+  "env",
+  "gif",
+  "go",
+  "html",
+  "java",
+  "jpeg",
+  "jpg",
+  "js",
+  "json",
+  "jsonl",
+  "jsx",
+  "kt",
+  "lock",
+  "md",
+  "mdx",
+  "mjs",
+  "png",
+  "prisma",
+  "py",
+  "rb",
+  "rs",
+  "scss",
+  "sh",
+  "sql",
+  "svg",
+  "toml",
+  "ts",
+  "tsx",
+  "txt",
+  "webp",
+  "xml",
+  "yaml",
+  "yml",
+  "zsh",
+]);
+
+const DOC_EXTENSIONLESS_FILES = new Set([
+  "Agentfile",
+  "Dockerfile",
+  "LICENSE",
+  "Makefile",
+]);
+
+function hasRepoLocalPathShape(
+  value: string,
+  hadTrailingSlash: boolean,
+  rootNames: ReadonlySet<string>,
+): boolean {
+  const segments = value.split("/").filter(Boolean);
+  if (segments.length === 0) return false;
+  const first = segments[0]!;
+  const basename = segments[segments.length - 1]!;
+  if (!rootNames.has(first)) return false;
+  if (DOC_EXTENSIONLESS_FILES.has(basename)) return true;
+  const ext = basename.includes(".")
+    ? basename.split(".").pop()!.toLowerCase()
+    : "";
+  if (DOC_PATH_EXTENSIONS.has(ext)) return true;
+  return value.includes("/") && hadTrailingSlash;
+}
+
+function shouldScanDocPathLine(line: string): boolean {
+  const lower = line.toLowerCase();
+  if (
+    lower.includes("for example") ||
+    lower.includes("e.g.") ||
+    lower.includes("example:") ||
+    lower.includes("placeholder") ||
+    lower.includes("template") ||
+    lower.includes("create missing") ||
+    lower.includes("scaffold") ||
+    lower.includes("by default") ||
+    lower.includes("source log")
+  ) {
+    return false;
+  }
+
+  return [
+    "current",
+    "currently",
+    "now",
+    "source",
+    "entrypoint",
+    "path",
+    "file",
+    "directory",
+    "script",
+    "command",
+    "deploy",
+    "deployment",
+    "present",
+    "lives",
+    "located",
+    "points",
+    "reference",
+    "uses",
+    "reads",
+    "writes",
+  ].some((marker) => lower.includes(marker));
+}
+
+function projectRootEntryNames(projectRoot: string): Set<string> {
+  const names = new Set<string>();
+  for (const entry of fs.readdirSync(projectRoot, { withFileTypes: true })) {
+    names.add(entry.name);
+  }
+  return names;
+}
+
+function isPlaceholderPathSegment(segment: string): boolean {
+  const lower = segment.toLowerCase();
+  return (
+    lower === "path" ||
+    lower === "to" ||
+    lower === "your" ||
+    lower === "project" ||
+    lower === "repo" ||
+    lower === "example" ||
+    lower === "sample" ||
+    lower === "foo" ||
+    lower === "bar" ||
+    lower === "baz" ||
+    lower.startsWith("<") ||
+    lower.endsWith(">")
+  );
 }
 
 function looksLikeLocalFilePointer(value: string): boolean {
