@@ -901,6 +901,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
       ".claude/skills/load-context/SKILL.md",
       ".claude/skills/ontology-enrich/SKILL.md",
       ".claude/skills/anamnesis-init/SKILL.md",
+      ".claude/skills/doc-freshness-review/SKILL.md",
     );
   }
   if (tools.includes("codex")) {
@@ -915,6 +916,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
       "AGENTS.md [region:codex-skill-load-context]",
       "AGENTS.md [region:codex-skill-ontology-enrich]",
       "AGENTS.md [region:codex-skill-anamnesis-init]",
+      "AGENTS.md [region:codex-skill-doc-freshness-review]",
     );
   }
   if (tools.includes("cursor")) {
@@ -924,6 +926,7 @@ function adapterContinuityTargets(tools: Agentfile["tools"]): string[] {
       ".cursor/rules/load-context.mdc",
       ".cursor/rules/ontology-enrich.mdc",
       ".cursor/rules/anamnesis-init.mdc",
+      ".cursor/rules/doc-freshness-review.mdc",
     );
   }
   return targets;

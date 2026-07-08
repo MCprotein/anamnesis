@@ -165,6 +165,16 @@ describe("cross-agent context continuity acceptance", () => {
         "--enhance-docs",
       ],
     );
+    expectContainsAll(
+      fileByPath(actions, ".claude/skills/doc-freshness-review/SKILL.md")
+        .content,
+      [
+        "semantic freshness",
+        "anamnesis context diagnose",
+        "stale-current-claim",
+        "needs-human-confirmation",
+      ],
+    );
   });
 
   it("renders Codex native hooks plus AGENTS.md fallbacks", () => {
@@ -243,6 +253,15 @@ describe("cross-agent context continuity acceptance", () => {
       "--scaffold-docs",
       "--enhance-docs",
     ]);
+    expectContainsAll(
+      regionById(actions, "codex-skill-doc-freshness-review").content,
+      [
+        "Skill: `doc-freshness-review`",
+        "semantic freshness",
+        "anamnesis context diagnose",
+        "stale-current-claim",
+      ],
+    );
   });
 
   it("renders Cursor rule fallbacks for commands and skills", () => {
@@ -284,6 +303,15 @@ describe("cross-agent context continuity acceptance", () => {
         "multiple-choice question",
         "--scaffold-docs",
         "--enhance-docs",
+      ],
+    );
+    expectContainsAll(
+      fileByPath(actions, ".cursor/rules/doc-freshness-review.mdc").content,
+      [
+        "agentRequested: true",
+        "semantic freshness",
+        "anamnesis context diagnose",
+        "needs-human-confirmation",
       ],
     );
   });

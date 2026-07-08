@@ -51,7 +51,7 @@ and `npm run release:verify -- --version <version>`.
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@15 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@18 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -71,6 +71,7 @@ and `npm run release:verify -- --version <version>`.
 - `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.
   결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.
 - `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
+- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
 
@@ -1118,4 +1119,86 @@ existing-doc enhancement.
   should contain open questions and review checklists until evidence exists.
 - If `Agentfile` already exists, stop the init path and use
   `anamnesis update --dry-run` instead.
+<!-- /anamnesis:region -->
+
+<!-- anamnesis:region id=codex-skill-doc-freshness-review fragment=base@18 -->
+### Skill: `doc-freshness-review`
+
+When the user asks for "doc-freshness-review" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+
+**Declared side effects:** `read-only`.
+
+# doc-freshness-review
+
+Use this skill to review prose documentation for stale meaning that deterministic
+CLI checks cannot safely prove.
+
+This is a semantic freshness review, not a deterministic file-existence check.
+`anamnesis context diagnose` catches missing project-local path references. This
+skill is the agent-facing second pass: it compares doc claims against current
+repo evidence and reports likely stale architecture, workflow, setup, release,
+or operational statements.
+
+## Default Mode
+
+Read-only review. Do not edit files unless the user explicitly asks for doc
+updates after seeing the report.
+
+## Steps
+
+1. Run or inspect `anamnesis context diagnose` first. Treat
+   `doc-file-reference-missing` warnings as deterministic evidence, not agent
+   judgment.
+
+2. Identify candidate prose docs:
+   - `README.md`
+   - `CLAUDE.md`
+   - `docs/**/*.md`
+
+   Skip generated or historical material unless it is clearly presented as
+   current user guidance:
+   - `AGENTS.md`
+   - `docs/deprecated/**`
+   - benchmark evidence snapshots
+   - vendored, generated, cache, or build directories
+
+3. Gather current-state evidence before judging a claim:
+   - `git status --short`
+   - recent changed, moved, or deleted paths from git history
+   - current repo tree around the claimed path, command, config, or workflow
+   - `Agentfile`, `.anamnesis/manifest.json`, and generated managed regions
+     when the claim is about installed anamnesis surfaces
+
+4. Review only claims that affect a future agent or user:
+   - present-tense architecture or directory claims
+   - setup, release, publish, or upgrade commands
+   - agent-surface availability claims for Claude Code, Codex, or Cursor
+   - lifecycle or retention behavior that could change what enters context
+   - file paths that still exist but no longer support the described behavior
+
+5. Produce a report grouped by severity:
+   - `stale-current-claim`: evidence strongly contradicts the doc claim
+   - `stale-path-claim`: path exists or once existed, but the surrounding claim
+     appears outdated
+   - `needs-human-confirmation`: evidence is mixed or intent cannot be inferred
+   - `ok`: reviewed high-risk claims with no issue found
+
+6. For each issue, include:
+   - doc path and line when available
+   - the claim being reviewed
+   - current evidence
+   - confidence: `high`, `medium`, or `low`
+   - recommended edit in one sentence
+
+7. Stop after the report. If the user asks you to apply fixes, make the smallest
+   doc edits needed and run `anamnesis context diagnose` again.
+
+## Boundaries
+
+- Do not ingest or summarize full past chat transcripts.
+- Do not treat semantic judgment as deterministic CLI truth.
+- Do not rewrite examples, old release notes, or deprecated docs just because
+  they mention historical paths.
+- Prefer `needs-human-confirmation` over a confident stale claim when evidence
+  is weak.
 <!-- /anamnesis:region -->

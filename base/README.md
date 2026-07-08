@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 12 capabilities (covers all 6 types; v15+)
+├── fragment.yaml                # 13 capabilities (covers all 6 types; v18+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -28,8 +28,10 @@ base/
         │   └── SKILL.md         # load-context skill
         ├── ontology-enrich/
         │   └── SKILL.md         # Layer B ontology enrichment + schema/re-run lifecycle skill
-        └── anamnesis-init/
-            └── SKILL.md         # agent-guided init workflow with docs-choice question
+        ├── anamnesis-init/
+        │   └── SKILL.md         # agent-guided init workflow with docs-choice question
+        └── doc-freshness-review/
+            └── SKILL.md         # semantic stale-doc review after deterministic diagnostics
 └── adapters/codex/
     └── hooks/
         └── session-start.mjs    # Native Codex SessionStart JSON wrapper
@@ -70,5 +72,6 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 | `adapters/claude-code/skills/load-context/SKILL.md` | `.claude/skills/load-context/SKILL.md` |
 | `adapters/claude-code/skills/ontology-enrich/SKILL.md` | `.claude/skills/ontology-enrich/SKILL.md` |
 | `adapters/claude-code/skills/anamnesis-init/SKILL.md` | `.claude/skills/anamnesis-init/SKILL.md` |
+| `adapters/claude-code/skills/doc-freshness-review/SKILL.md` | `.claude/skills/doc-freshness-review/SKILL.md` |
 
 Without `--allow-exec-adapters`, the AGENTS.md region and ontology file install but native/executable adapter files such as Claude Code hooks/commands/skills, Cursor rules, and Codex native hook wrappers are reported as `blocked` (supply-chain protection).

@@ -1,12 +1,12 @@
 id: base
-version: 17
+version: 18
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
   the ontology-enrich lifecycle/schema contract, the agent-guided
-  anamnesis-init workflow, the context-continuity task harness, and the
-  AGENTS.md baseline region. anamnesis init auto-includes this fragment
-  regardless of rulebook matches.
+  anamnesis-init workflow, the doc-freshness-review semantic review workflow,
+  the context-continuity task harness, and the AGENTS.md baseline region.
+  anamnesis init auto-includes this fragment regardless of rulebook matches.
 capabilities:
   - type: project_memory
     source: content/agents.snippet.md
@@ -64,6 +64,11 @@ capabilities:
     source: adapters/claude-code/skills/anamnesis-init
     side_effects: [local-write]
 
+  - type: skill
+    name: doc-freshness-review
+    source: adapters/claude-code/skills/doc-freshness-review
+    side_effects: [read-only]
+
   - type: task_harness
     name: context-continuity
     source: task-harnesses/context-continuity.yaml
@@ -87,3 +92,4 @@ owns:
   - file: .claude/skills/load-context/SKILL.md
   - file: .claude/skills/ontology-enrich/SKILL.md
   - file: .claude/skills/anamnesis-init/SKILL.md
+  - file: .claude/skills/doc-freshness-review/SKILL.md

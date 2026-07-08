@@ -14,6 +14,9 @@ could include breaking changes.
   `docs/**/*.md` reference missing project-local paths, while
   avoiding URLs, placeholders, sibling-repo paths, and common generated
   directories.
+- Added the `doc-freshness-review` base skill so Claude Code, Codex, and Cursor
+  agents have a read-only semantic review path for stale README/CLAUDE/docs
+  claims that deterministic diagnostics cannot prove.
 
 ### Changed
 

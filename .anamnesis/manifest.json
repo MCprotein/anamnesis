@@ -5,11 +5,11 @@
       "file": "AGENTS.md",
       "region_id": "anamnesis-base",
       "fragment_id": "base",
-      "fragment_version": 15,
-      "template_version": 15,
+      "fragment_version": 18,
+      "template_version": 18,
       "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "last_applied_hash": "sha256:0b7c1ab84216615136e409f788e97ff9d660604522cf5a4ea6396337596d5920",
-      "current_user_hash": "sha256:0b7c1ab84216615136e409f788e97ff9d660604522cf5a4ea6396337596d5920"
+      "last_applied_hash": "sha256:2473273186ee29d61988ba53f626356f4888915f46b8fa8dd7c2780e9eb3d462",
+      "current_user_hash": "sha256:2473273186ee29d61988ba53f626356f4888915f46b8fa8dd7c2780e9eb3d462"
     },
     {
       "file": "AGENTS.md",
@@ -110,6 +110,16 @@
       "base_rendered_hash": "sha256:fd01afd0d5fe91a5133b1c9c5adec0ee785757cdd899148438b8a405ebf4d725",
       "last_applied_hash": "sha256:ed3c6049cb9c0c4bf4fb92c0ad3823c07672723e59ffbbf89547f6ad1b8013f7",
       "current_user_hash": "sha256:ed3c6049cb9c0c4bf4fb92c0ad3823c07672723e59ffbbf89547f6ad1b8013f7"
+    },
+    {
+      "file": "AGENTS.md",
+      "region_id": "codex-skill-doc-freshness-review",
+      "fragment_id": "base",
+      "fragment_version": 18,
+      "template_version": 18,
+      "base_rendered_hash": "sha256:974f5f910ebf922e7adb85a186ab929a345829c1fed4657133aa7c4367e65ddb",
+      "last_applied_hash": "sha256:974f5f910ebf922e7adb85a186ab929a345829c1fed4657133aa7c4367e65ddb",
+      "current_user_hash": "sha256:974f5f910ebf922e7adb85a186ab929a345829c1fed4657133aa7c4367e65ddb"
     }
   ],
   "files": [
@@ -266,6 +276,20 @@
       "fragment_version": 14,
       "last_applied_hash": "sha256:6a0d037b43df1a9cba9afb501295f78103660c18bf99a0a87f37a6d68c56df97",
       "current_user_hash": "sha256:6a0d037b43df1a9cba9afb501295f78103660c18bf99a0a87f37a6d68c56df97"
+    },
+    {
+      "path": ".claude/skills/doc-freshness-review/SKILL.md",
+      "fragment_id": "base",
+      "fragment_version": 18,
+      "last_applied_hash": "sha256:b8dd9d6e99084bac25a9c944d3bb1f11b90c675a375060e99fae048df596015e",
+      "current_user_hash": "sha256:b8dd9d6e99084bac25a9c944d3bb1f11b90c675a375060e99fae048df596015e"
+    },
+    {
+      "path": ".cursor/rules/doc-freshness-review.mdc",
+      "fragment_id": "base",
+      "fragment_version": 18,
+      "last_applied_hash": "sha256:69299194fa9535a741d9645e368e83f7789c95750c4e87728f2b0f43099122a6",
+      "current_user_hash": "sha256:69299194fa9535a741d9645e368e83f7789c95750c4e87728f2b0f43099122a6"
     }
   ]
 }

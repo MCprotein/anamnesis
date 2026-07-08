@@ -169,6 +169,7 @@ describe("init", () => {
     expect(agentsMd).toContain("codex-cmd-handoff-prepare");
     expect(agentsMd).toContain("codex-skill-ontology-enrich");
     expect(agentsMd).toContain("codex-skill-anamnesis-init");
+    expect(agentsMd).toContain("codex-skill-doc-freshness-review");
     expect(
       fs.existsSync(path.join(project, ".cursor/rules/handoff-prepare-cmd.mdc")),
     ).toBe(true);
@@ -180,7 +181,17 @@ describe("init", () => {
     ).toBe(true);
     expect(
       fs.existsSync(
+        path.join(project, ".cursor/rules/doc-freshness-review.mdc"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
         path.join(project, ".claude/skills/anamnesis-init/SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(project, ".claude/skills/doc-freshness-review/SKILL.md"),
       ),
     ).toBe(true);
   });

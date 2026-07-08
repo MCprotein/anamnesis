@@ -213,6 +213,7 @@ semantic generation:
 | Agent (`anamnesis-init`) | selected `anamnesis init` command flags | Multiple-choice README/docs choice before an agent runs first-time setup for the user |
 | CLI (`ontology bootstrap`) | `.anamnesis/ontology/*.bootstrap.yaml` | Regenerable Layer A facts under `schema_version: anamnesis.bootstrap.v1` with deterministic `generator` and `facts` fields |
 | Agent (`/ontology-enrich`) | `.anamnesis/ontology/*.enriched.yaml` | Layer B semantics under `schema_version: anamnesis.enriched.v1` with stable IDs, evidence, confidence, append-safe re-runs, `supersedes`, and `open_questions` |
+| Agent (`doc-freshness-review`) | read-only stale-doc report | Semantic README/CLAUDE/docs freshness review for claims deterministic diagnostics cannot prove |
 | Agent (`/handoff-prepare`) | `.anamnesis/handoff/active.md` plus timestamped archives | Current task state for switching sessions or agents |
 
 CLI commands print this boundary so users can tell whether the current
@@ -223,7 +224,8 @@ and fragments that do not yet have a Layer A introspector; `doctor` turns
 actionable gaps into repair warnings. When Layer A facts are missing or
 stale, the guidance continues into `/ontology-enrich` so the active agent can
 draft the semantic `.enriched.yaml` layer instead of leaving users to write it
-by hand.
+by hand. When prose docs may be semantically stale, `doc-freshness-review`
+keeps that agent judgment separate from deterministic CLI diagnostics.
 
 Layer A is intentionally a baseline, not a promise to model every framework
 in depth. The CLI extracts facts it can prove from files; Layer B uses the
@@ -249,7 +251,7 @@ single `gc` run. See [`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md).
 
 | id | trigger | capabilities |
 |---|---|---|
-| `base` | always (auto-included) | project_memory, ontology, 4× executable_hook, 2× slash_command, 3× skill, task_harness |
+| `base` | always (auto-included) | project_memory, ontology, 4× executable_hook, 2× slash_command, 4× skill, task_harness |
 | `prisma` | `@prisma/client` in `package.json` or `prisma/schema.prisma` | project_memory, ontology, executable_hook |
 | `k8s` | `k8s/` directory | project_memory, ontology, executable_hook (yaml-lint) |
 | `nestjs` | `@nestjs/core` in `package.json` | project_memory, ontology |
