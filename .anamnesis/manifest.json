@@ -8,8 +8,8 @@
       "fragment_version": 19,
       "template_version": 19,
       "base_rendered_hash": "sha256:3a4aef3eb8b037c645248060c47b10bde66d96f83deba5b724286e6d9a71e9ca",
-      "last_applied_hash": "sha256:2ceaf635bf1fc7da79a20a5cf7c574b19210cdf46edb1cb139497c41e944912d",
-      "current_user_hash": "sha256:2ceaf635bf1fc7da79a20a5cf7c574b19210cdf46edb1cb139497c41e944912d"
+      "last_applied_hash": "sha256:1ffaf7c49c415e5c0aa71130d5767fba3dfa98abd1f51937e6fd8aa0e7fdbd1c",
+      "current_user_hash": "sha256:1ffaf7c49c415e5c0aa71130d5767fba3dfa98abd1f51937e6fd8aa0e7fdbd1c"
     },
     {
       "file": "AGENTS.md",
@@ -108,8 +108,8 @@
       "fragment_version": 19,
       "template_version": 19,
       "base_rendered_hash": "sha256:fd01afd0d5fe91a5133b1c9c5adec0ee785757cdd899148438b8a405ebf4d725",
-      "last_applied_hash": "sha256:7882ad2346fcf1d7d7b9e4825dcea0e1efd5bfefdd57b064c0909f0c4204f611",
-      "current_user_hash": "sha256:7882ad2346fcf1d7d7b9e4825dcea0e1efd5bfefdd57b064c0909f0c4204f611"
+      "last_applied_hash": "sha256:354b899f9e720bac357cca87144184f4fdeb777fcd94a97704190ff63032e63f",
+      "current_user_hash": "sha256:354b899f9e720bac357cca87144184f4fdeb777fcd94a97704190ff63032e63f"
     },
     {
       "file": "AGENTS.md",
@@ -259,16 +259,16 @@
     {
       "path": ".claude/skills/anamnesis-init/SKILL.md",
       "fragment_id": "base",
-      "fragment_version": 11,
-      "last_applied_hash": "sha256:92ce5f4d9cdca79e60ab9e3aa2b470fb1f1ff4b808c1b6781b401c83f9aefdf3",
-      "current_user_hash": "sha256:92ce5f4d9cdca79e60ab9e3aa2b470fb1f1ff4b808c1b6781b401c83f9aefdf3"
+      "fragment_version": 19,
+      "last_applied_hash": "sha256:b2a5d8596172be47834d4f0753c8c5634feffd6308193a00a4b3d480029ea5cf",
+      "current_user_hash": "sha256:b2a5d8596172be47834d4f0753c8c5634feffd6308193a00a4b3d480029ea5cf"
     },
     {
       "path": ".cursor/rules/anamnesis-init.mdc",
       "fragment_id": "base",
-      "fragment_version": 14,
-      "last_applied_hash": "sha256:66894b84f694ddf6201492a643cfdaa56292d67c8fa119cb983a375d707c2970",
-      "current_user_hash": "sha256:66894b84f694ddf6201492a643cfdaa56292d67c8fa119cb983a375d707c2970"
+      "fragment_version": 19,
+      "last_applied_hash": "sha256:80bd68693026c4b7964d021801a4619d8745cd291fd43b95af177f0e53f5677b",
+      "current_user_hash": "sha256:80bd68693026c4b7964d021801a4619d8745cd291fd43b95af177f0e53f5677b"
     },
     {
       "path": ".anamnesis/task-harnesses/context-continuity.yaml",
@@ -309,8 +309,8 @@
       "path": ".codex/skills/anamnesis-init/SKILL.md",
       "fragment_id": "base",
       "fragment_version": 19,
-      "last_applied_hash": "sha256:92ce5f4d9cdca79e60ab9e3aa2b470fb1f1ff4b808c1b6781b401c83f9aefdf3",
-      "current_user_hash": "sha256:92ce5f4d9cdca79e60ab9e3aa2b470fb1f1ff4b808c1b6781b401c83f9aefdf3"
+      "last_applied_hash": "sha256:b2a5d8596172be47834d4f0753c8c5634feffd6308193a00a4b3d480029ea5cf",
+      "current_user_hash": "sha256:b2a5d8596172be47834d4f0753c8c5634feffd6308193a00a4b3d480029ea5cf"
     },
     {
       "path": ".codex/skills/doc-freshness-review/SKILL.md",
