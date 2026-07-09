@@ -26,6 +26,12 @@ fragments:
   );
 }
 
+function writeFile(project: string, relPath: string, content: string): void {
+  const absPath = path.join(project, relPath);
+  fs.mkdirSync(path.dirname(absPath), { recursive: true });
+  fs.writeFileSync(absPath, content, "utf8");
+}
+
 describe("CLI entrypoint", () => {
   it("prints the getting-started guide with no command", () => {
     const result = spawnSync(process.execPath, ["--import", "tsx", indexPath], {
@@ -95,6 +101,40 @@ describe("CLI entrypoint", () => {
       expect(result.stdout).toContain("Subcommands");
       expect(result.stdout).not.toContain("unknown");
     }
+  });
+
+  it("prints context docs JSON from the CLI", () => {
+    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-docs-"));
+    writeFile(project, "README.md", "# Fixture\n\nSee [Guide](docs/guide.md).\n");
+    writeFile(project, "docs/guide.md", "# Guide\n");
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        indexPath,
+        "context",
+        "docs",
+        "--project-root",
+        project,
+        "--json",
+      ],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    const parsed = JSON.parse(result.stdout) as {
+      schema_version: string;
+      summary: { pages: number; brokenLinks: number };
+    };
+    expect(parsed.schema_version).toBe("anamnesis.context_docs.v1");
+    expect(parsed.summary.pages).toBe(2);
+    expect(parsed.summary.brokenLinks).toBe(0);
   });
 
   it("prints first-install next steps after init reports", () => {

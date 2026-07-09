@@ -185,6 +185,7 @@ anamnesis hooks summary --append  # summarize hook logs and record runtime evide
 anamnesis migrate agentfile  # schema migration readiness check; --apply writes after backup
 anamnesis dogfood check --append  # score and record self-check continuity evidence
 anamnesis context index --write  # build a local source-pointer index
+anamnesis context docs  # summarize Markdown pages, links, backlinks, and ontology refs
 anamnesis context query "managed region"  # retrieve exact context pointers
 anamnesis context diagnose  # report handoff, ontology, prose-doc path drift, docs/bootstrap, and evidence issues
 anamnesis context resume  # print a compact resume bundle with size metrics

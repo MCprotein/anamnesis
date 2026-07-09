@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added `anamnesis context docs`, a read-only Markdown document graph summary
+  that reports scanned pages, headings, internal/external/broken links,
+  backlinks, canonical docs, and ontology source references with JSON output
+  for tests and CI.
+
 ### Changed
 
 - Documented the v1.17 ontology source-management direction: keep ontology as

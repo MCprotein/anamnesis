@@ -198,6 +198,7 @@ function namespaceRows(namespace: HelpNamespace) {
     case "context":
       return [
         { command: "context index", description: "Build a local source-pointer index." },
+        { command: "context docs", description: "Summarize Markdown pages, links, backlinks, and ontology refs." },
         { command: "context query <query>", description: "Search indexed context and print exact source pointers." },
         { command: "context diagnose", description: "Report stale handoff, ontology, docs, and evidence issues." },
         { command: "context resume", description: "Print or write a compact resume bundle." },

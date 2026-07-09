@@ -120,6 +120,10 @@ import {
   type ContextQueryResult,
 } from "./commands/context_index.js";
 import {
+  contextDocs,
+  type ContextDocsResult,
+} from "./commands/context_docs.js";
+import {
   contextDiagnostics,
   type ContextDiagnosticsResult,
 } from "./commands/context_diagnostics.js";
@@ -424,6 +428,8 @@ Commands:
                                   a record to docs/DOGFOOD.md
   context index                 Build a local JSONL context index from
                                   agent rules, ontology, handoffs, and docs
+  context docs                  Summarize Markdown document graph, links,
+                                  backlinks, and ontology source refs
   context query                 Search the local context index and print
                                   source pointers for exact follow-up reads
   context diagnose              Report stale handoff pointers, ontology
@@ -572,6 +578,12 @@ Flags (context index):
   --json                        Print structured JSON
   --write                       Write .anamnesis/context/index.jsonl
   --output <path>               Override index output path
+
+Flags (context docs):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --catalog <path>              Override optional document catalog path
+                                  (default: .anamnesis/docs/catalog.yaml)
 
 Flags (context query):
   --project-root <path>         Target directory (default: cwd)
@@ -1413,6 +1425,56 @@ function reportContextIndex(result: ContextIndexResult): void {
     console.log(`  written: ${result.writtenPath}`);
   } else {
     console.log("  (dry-run - re-run with --write to write the index)");
+  }
+}
+
+function reportContextDocs(result: ContextDocsResult): void {
+  console.log("anamnesis context docs");
+  console.log(`  pages: ${result.summary.pages} (${result.summary.canonicalPages} canonical)`);
+  console.log(`  headings: ${result.summary.headings}`);
+  console.log(
+    `  links: ${result.summary.links} ` +
+      `(internal=${result.summary.internalLinks}, external=${result.summary.externalLinks}, broken=${result.summary.brokenLinks})`,
+  );
+  console.log(
+    `  backlinks: ${result.summary.backlinks}, ontology refs: ${result.summary.ontologyRefs} ` +
+      `(missing=${result.summary.missingOntologyRefs})`,
+  );
+  if (result.catalog.path) {
+    console.log(`  catalog: ${result.catalog.path}`);
+  } else {
+    console.log("  catalog: default roots");
+  }
+  const canonical = result.pages.filter((page) => page.canonical);
+  if (canonical.length > 0) {
+    console.log("  canonical docs:");
+    for (const page of canonical.slice(0, 8)) {
+      console.log(`    - ${page.source_path} (${page.heading_count} heading(s))`);
+    }
+  }
+  const broken = result.links.filter(
+    (link) => link.status === "missing" || link.status === "missing-anchor",
+  );
+  if (broken.length > 0) {
+    console.log("  broken links:");
+    for (const link of broken.slice(0, 8)) {
+      console.log(
+        `    - ${link.source_path}:${link.line} -> ${link.target} (${link.status})`,
+      );
+    }
+  }
+  const missingOntologyRefs = result.ontology_refs.filter((ref) => ref.status === "missing");
+  if (missingOntologyRefs.length > 0) {
+    console.log("  missing ontology refs:");
+    for (const ref of missingOntologyRefs.slice(0, 8)) {
+      console.log(`    - ${ref.source_path}:${ref.line} -> ${ref.target}`);
+    }
+  }
+  if (result.warnings.length > 0) {
+    console.log(`  warnings: ${result.warnings.length}`);
+    for (const warning of result.warnings.slice(0, 5)) {
+      console.log(`    - ${warning}`);
+    }
   }
 }
 
@@ -2613,6 +2675,7 @@ async function main(argv: string[]): Promise<number> {
       }
       if (
         sub !== "index" &&
+        sub !== "docs" &&
         sub !== "query" &&
         sub !== "diagnose" &&
         sub !== "resume" &&
@@ -2623,6 +2686,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `usage: anamnesis context index [--json] [--write] [--output=<path>]`,
+        );
+        console.error(
+          `       anamnesis context docs [--json] [--catalog=<path>]`,
         );
         console.error(
           `       anamnesis context query [--kind=<kind>] [--limit=<n>] [--index=<path>] <query>`,
@@ -2650,6 +2716,20 @@ async function main(argv: string[]): Promise<number> {
             console.log(JSON.stringify(result, null, 2));
           } else {
             reportContextIndex(result);
+          }
+          return 0;
+        }
+
+        if (sub === "docs") {
+          const result = contextDocs({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            catalogPath: flags["catalog"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportContextDocs(result);
           }
           return 0;
         }
