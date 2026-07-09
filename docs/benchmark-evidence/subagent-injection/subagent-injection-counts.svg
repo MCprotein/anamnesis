@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="320" viewBox="0 0 860 320" role="img" aria-label="Subagent Injection Counts">
+<rect width="860" height="320" fill="#ffffff"/>
+<text x="24" y="28" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#0f172a">Subagent Injection Counts</text>
+<line x1="72" y1="248" x2="812" y2="248" stroke="#94a3b8"/>
+<line x1="72" y1="48" x2="72" y2="248" stroke="#94a3b8"/>
+<rect x="146" y="48" width="92.5" height="200" fill="#0f766e"/>
+<rect x="248.5" y="248" width="92.5" height="0" fill="#b91c1c"/>
+<text x="192.25" y="40" text-anchor="middle" font-size="12">20</text>
+<text x="294.75" y="240" text-anchor="middle" font-size="12">0</text>
+<text x="238.5" y="278" text-anchor="middle" font-size="12">Separate startup</text>
+<rect x="516" y="48" width="92.5" height="200" fill="#0f766e"/>
+<rect x="618.5" y="248" width="92.5" height="0" fill="#b91c1c"/>
+<text x="562.25" y="40" text-anchor="middle" font-size="12">20</text>
+<text x="664.75" y="240" text-anchor="middle" font-size="12">0</text>
+<text x="608.5" y="278" text-anchor="middle" font-size="12">Same session prompt contract</text>
+<rect x="650" y="28" width="12" height="12" fill="#0f766e"/>
+<text x="668" y="39" font-size="12">injected / accepted</text>
+<rect x="650" y="48" width="12" height="12" fill="#b91c1c"/>
+<text x="668" y="59" font-size="12">missed / rejected</text>
+</svg>

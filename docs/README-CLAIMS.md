@@ -31,6 +31,7 @@ or broad model-intelligence claims.
 | Sanitized Next.js adoption evidence improved 3 scorecard dimensions with 0 regressions | `docs/BENCHMARKS.md`, `docs/BENCHMARK-GALLERY.md`, `docs/benchmark-evidence/public-shapes.jsonl` | One public-safe frontend adoption path, not ecosystem-wide proof |
 | Fresh public frontend and backend/infra snapshots keep continuity at `6/6` with 0 doctor errors | `docs/BENCHMARKS.md`, `docs/BENCHMARK-GALLERY.md`, `docs/benchmark-evidence/public-shapes.jsonl` | Layer B enrichment remains missing in fresh-install evidence |
 | Self-dogfood keeps cross-agent continuity at `6/6` | `docs/BENCHMARK-GALLERY.md`, `docs/DOGFOOD.md`, `npm run dogfood:check` | Self-repo has base fragment only, so Layer A/B targets are intentionally partial |
+| Subagent context benchmark currently records separate-process startup `20/20` injected and same-session prompt-contract `20/20` accepted | `docs/benchmark-evidence/subagent-injection/`, `.anamnesis/evidence/events.jsonl`, `cli/src/commands/benchmark_subagent_injection.test.ts` | Deterministic self-repo evidence; prompt-contract acceptance is not automatic SessionStart injection |
 
 ## Allowed README Wording
 
@@ -44,6 +45,8 @@ The current README may claim:
   agent-authored;
 - current public-safe evidence includes frontend, backend/infra, Python/uv,
   before/after adoption, and self-dogfood continuity;
+- subagent context evidence may report raw injection counts only when the
+  lane is startup-hook or launcher-wrapper enforced;
 - broader framework and ecosystem claims need more public-safe benchmark
   shapes.
 
@@ -58,6 +61,8 @@ Do not claim:
 - "remote signed fragments supported";
 - "benchmark-proven across the ecosystem";
 - "agent/model benchmark-proven" from a single task run;
+- "same-session native subagents automatically receive SessionStart context"
+  without direct benchmark evidence;
 - "no user review needed for generated context."
 
 ## Update Rule

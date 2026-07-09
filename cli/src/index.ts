@@ -152,6 +152,11 @@ import {
   type SessionContextBenchmarkResult,
 } from "./commands/benchmark_session_context.js";
 import {
+  subagentInjectionBenchmark,
+  SubagentInjectionBenchmarkError,
+  type SubagentInjectionBenchmarkResult,
+} from "./commands/benchmark_subagent_injection.js";
+import {
   migrateAgentfile,
   MigrateError,
   type MigrateAgentfileResult,
@@ -295,6 +300,24 @@ function parseBenchmarkRunsFlag(
   return parsed;
 }
 
+function parseBenchmarkAttemptsFlag(
+  value: string | boolean | undefined,
+): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (value === true) {
+    throw new SubagentInjectionBenchmarkError(
+      "--attempts requires a positive integer",
+    );
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new SubagentInjectionBenchmarkError(
+      "--attempts requires a positive integer",
+    );
+  }
+  return parsed;
+}
+
 function parseContextLimitFlag(
   value: string | boolean | undefined,
 ): number | undefined {
@@ -418,6 +441,9 @@ Commands:
                                   injection is justified by evidence
   benchmark session-context    Compare full vs compact SessionStart context
                                   and optionally write JSON/SVG artifacts
+  benchmark subagent-injection
+                                Measure repeated subagent context injection
+                                  and prompt-contract evidence
   migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
@@ -656,6 +682,15 @@ Flags (benchmark session-context):
   --json                        Print structured JSON
   --write                       Write JSON, markdown, and dependency-free SVG
                                   charts under docs/benchmark-evidence
+  --output <path>               Override artifact output directory
+
+Flags (benchmark subagent-injection):
+  --project-root <path>         Target directory (default: cwd)
+  --attempts <n>                Attempts per lane (default: 20)
+  --json                        Print structured JSON
+  --write                       Write JSON, markdown, and dependency-free SVG
+                                  charts under docs/benchmark-evidence
+  --append                      Record runtime evidence
   --output <path>               Override artifact output directory
 
 Flags (migrate agentfile):
@@ -1779,6 +1814,53 @@ function reportSessionContextBenchmark(
   }
 }
 
+function reportSubagentInjectionBenchmark(
+  result: SubagentInjectionBenchmarkResult,
+): void {
+  console.log("anamnesis benchmark subagent-injection");
+  console.log(`  attempts per lane: ${result.requestedAttempts}`);
+  console.log(
+    `  injection: ${result.summary.injected}/${result.summary.injectionEligibleAttempts}` +
+      ` injected, ${result.summary.missed} missed` +
+      (result.summary.injectionRatePct !== null
+        ? ` (${result.summary.injectionRatePct}%)`
+        : ""),
+  );
+  console.log(
+    `  prompt contract: ${result.summary.contractAccepted}/${result.summary.contractAttempts}` +
+      ` accepted, ${result.summary.contractRejected} rejected` +
+      (result.summary.contractPassRatePct !== null
+        ? ` (${result.summary.contractPassRatePct}%)`
+        : ""),
+  );
+  for (const lane of result.lanes) {
+    const rate = lane.injectionRatePct !== null
+      ? `${lane.injectionRatePct}% injection`
+      : lane.contractPassRatePct !== null
+        ? `${lane.contractPassRatePct}% contract`
+        : "n/a";
+    console.log(
+      `  ${lane.laneId}: ${lane.enforcement}, attempts=${lane.attempts}, ` +
+        `injected=${lane.injected}, missed=${lane.missed}, ` +
+        `accepted=${lane.accepted}, rejected=${lane.rejected}, rate=${rate}`,
+    );
+  }
+  if (result.artifacts.outputDir) {
+    console.log(`  output: ${result.artifacts.outputDir}`);
+  }
+  for (const artifact of [
+    result.artifacts.json,
+    result.artifacts.markdown,
+    result.artifacts.countsSvg,
+    result.artifacts.ratesSvg,
+  ]) {
+    if (artifact) console.log(`  artifact: ${artifact}`);
+  }
+  if (result.evidencePath) {
+    console.log(`  evidence: ${result.evidencePath}`);
+  }
+}
+
 function reportMigrate(result: MigrateAgentfileResult): void {
   const verdict = result.changed
     ? result.applied
@@ -2525,7 +2607,8 @@ async function main(argv: string[]): Promise<number> {
         sub !== "task-compare" &&
         sub !== "task-series" &&
         sub !== "prompt-gate" &&
-        sub !== "session-context"
+        sub !== "session-context" &&
+        sub !== "subagent-injection"
       ) {
         console.error(
           `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
@@ -2563,9 +2646,29 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis benchmark session-context [--json] [--write] [--output=<dir>]`,
         );
+        console.error(
+          `       anamnesis benchmark subagent-injection [--json] [--write] [--append] [--attempts=<n>] [--output=<dir>]`,
+        );
         return 1;
       }
       try {
+        if (sub === "subagent-injection") {
+          const result = subagentInjectionBenchmark({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            attempts: parseBenchmarkAttemptsFlag(flags["attempts"]),
+            write: flags["write"] === true,
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportSubagentInjectionBenchmark(result);
+          }
+          return result.ok ? 0 : 1;
+        }
+
         if (sub === "session-context") {
           const result = sessionContextBenchmark({
             projectRoot:
@@ -2783,7 +2886,8 @@ async function main(argv: string[]): Promise<number> {
           e instanceof AgentTaskBenchmarkError ||
           e instanceof AgentTaskBenchmarkSeriesError ||
           e instanceof PromptDeltaGateError ||
-          e instanceof SessionContextBenchmarkError
+          e instanceof SessionContextBenchmarkError ||
+          e instanceof SubagentInjectionBenchmarkError
         ) {
           console.error(`error: ${e.message}`);
           return 1;

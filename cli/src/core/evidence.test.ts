@@ -30,6 +30,11 @@ function record(
     "benchmark-report": ["anamnesis", "benchmark", "report"],
     "benchmark-compare": ["anamnesis", "benchmark", "compare"],
     "benchmark-trace-rollup": ["anamnesis", "benchmark", "trace"],
+    "subagent-injection-benchmark": [
+      "anamnesis",
+      "benchmark",
+      "subagent-injection",
+    ],
     "agent-task-benchmark": ["anamnesis", "benchmark", "task"],
     "agent-task-benchmark-compare": [
       "anamnesis",
@@ -242,6 +247,30 @@ describe("runtime evidence", () => {
     });
     expect(summary.byKind[0]).toMatchObject({
       kind: "benchmark-trace-rollup",
+      total: 1,
+      stale: false,
+    });
+  });
+
+  it("accepts subagent injection benchmark evidence records", () => {
+    const project = tmpDir("anamnesis-evidence-subagent-injection-");
+
+    appendEvidenceRecord(
+      project,
+      record("subagent-injection-benchmark", "2026-07-09T04:00:00.000Z"),
+    );
+
+    const summary = readEvidenceSummary(project, {
+      now: new Date("2026-07-09T04:00:01.000Z"),
+    });
+
+    expect(summary.total).toBe(1);
+    expect(summary.latest).toMatchObject({
+      kind: "subagent-injection-benchmark",
+      command: ["anamnesis", "benchmark", "subagent-injection"],
+    });
+    expect(summary.byKind[0]).toMatchObject({
+      kind: "subagent-injection-benchmark",
       total: 1,
       stale: false,
     });

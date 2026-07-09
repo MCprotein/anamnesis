@@ -154,6 +154,7 @@ anamnesis status --json
 anamnesis doctor
 anamnesis dogfood check --append
 anamnesis benchmark report --append
+anamnesis benchmark subagent-injection --attempts 20 --write --append
 ```
 
 What to look for:

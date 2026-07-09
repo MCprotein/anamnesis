@@ -21,6 +21,7 @@ anamnesis benchmark gallery --validate
 anamnesis benchmark trace --append
 anamnesis benchmark prompt-gate
 anamnesis benchmark session-context --write
+anamnesis benchmark subagent-injection --attempts 20 --write --append
 anamnesis benchmark task-compare --template
 ```
 
@@ -75,6 +76,14 @@ markdown, and dependency-free SVG charts under
 [`docs/benchmark-evidence/session-context/`](benchmark-evidence/session-context/).
 `benchmark prompt-gate` reads the generated `session-context.json` artifact
 from this directory automatically.
+
+Use `benchmark subagent-injection --attempts <n> --write --append` for v1.15
+subagent context evidence. It records raw repeated-run counts for
+startup-hook/launcher-wrapper injection separately from same-session native
+subagent prompt-contract acceptance, then writes JSON, markdown, runtime
+evidence, and dependency-free SVG charts under
+[`docs/benchmark-evidence/subagent-injection/`](benchmark-evidence/subagent-injection/).
+Do not treat prompt-contract acceptance as automatic SessionStart injection.
 
 Public-safe summaries and claim boundaries live in
 [`docs/BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md). Sanitized public-shape

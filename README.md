@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-693%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![tests](https://img.shields.io/badge/tests-697%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Main-branch docs may describe unreleased work. The npm badge is the source of
 truth for the latest version currently published to npmjs.org.
@@ -197,6 +197,7 @@ anamnesis benchmark task --input task-run.json --append  # record an agent task 
 anamnesis benchmark task-compare --template  # create a paired full/compact task template
 anamnesis benchmark task-compare --full full.json --compact compact.json --append  # compare paired full/compact task runs
 anamnesis benchmark task-series --write  # roll up repeated task-compare evidence with graphs
+anamnesis benchmark subagent-injection --attempts 20 --write --append  # count subagent context injection and contract evidence
 anamnesis benchmark prompt-gate  # decide using scorecard, session-context, and retrieval evidence
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
@@ -327,6 +328,25 @@ Current run:
 Full generated evidence is in
 [`docs/benchmark-evidence/session-context/`](docs/benchmark-evidence/session-context/).
 
+### Subagent context benchmark
+
+v1.15 adds a deterministic repeated-run benchmark for subagent context
+enforcement. It keeps startup-hook or launcher-wrapper injection separate from
+same-session native subagent prompt-contract evidence.
+
+![Subagent injection counts](docs/benchmark-evidence/subagent-injection/subagent-injection-counts.svg)
+
+![Subagent injection rates](docs/benchmark-evidence/subagent-injection/subagent-injection-rates.svg)
+
+Current run:
+
+- Separate-process startup lane: `20/20` injected, `0` missed.
+- Same-session native subagent lane: `20/20` prompt-contract accepted, `0`
+  rejected. This is not claimed as automatic SessionStart injection.
+
+Full generated evidence is in
+[`docs/benchmark-evidence/subagent-injection/`](docs/benchmark-evidence/subagent-injection/).
+
 ### Upgrade benchmark
 
 The deterministic upgrade benchmark covers public-safe existing-project
@@ -400,7 +420,7 @@ used for deterministic README score claims.
 | **v1.12** | Compact SessionStart budget diagnostics | shipped 2026-07-07 |
 | **v1.13** | First-run UX and stale-doc/path diagnostics | shipped 2026-07-08 |
 | **v1.14** | Codex native skill parity and adapter surface evidence | shipped 2026-07-09 |
-| **v1.15** | Subagent context contract and injection-success evidence | planned |
+| **v1.15** | Subagent context contract and injection-success evidence | in progress |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

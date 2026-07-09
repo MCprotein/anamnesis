@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="300" viewBox="0 0 860 300" role="img" aria-label="Subagent Injection Rates">
+<rect width="860" height="300" fill="#ffffff"/>
+<text x="24" y="28" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#0f172a">Subagent Injection Rates</text>
+<line x1="72" y1="238" x2="812" y2="238" stroke="#94a3b8"/>
+<line x1="72" y1="48" x2="72" y2="238" stroke="#94a3b8"/>
+<rect x="183" y="48" width="120" height="190" fill="#2563eb"/>
+<text x="243" y="40" text-anchor="middle" font-size="12">100%</text>
+<text x="243" y="264" text-anchor="middle" font-size="12">Separate startup</text>
+<rect x="553" y="48" width="120" height="190" fill="#7c3aed"/>
+<text x="613" y="40" text-anchor="middle" font-size="12">100%</text>
+<text x="613" y="264" text-anchor="middle" font-size="12">Same session prompt contract</text>
+<text x="72" y="288" font-size="12" fill="#475569">Blue = injection rate. Purple = prompt-contract acceptance rate.</text>
+</svg>

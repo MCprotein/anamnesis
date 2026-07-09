@@ -1,0 +1,1357 @@
+{
+  "schemaVersion": "anamnesis.subagent_injection_benchmark.v1",
+  "projectRoot": ".",
+  "generatedAt": "2026-07-09T01:59:00.154Z",
+  "requestedAttempts": 20,
+  "ok": true,
+  "summary": {
+    "lanes": 2,
+    "attempts": 40,
+    "injectionEligibleAttempts": 20,
+    "injected": 20,
+    "missed": 0,
+    "injectionRatePct": 100,
+    "contractAttempts": 20,
+    "contractAccepted": 20,
+    "contractRejected": 0,
+    "contractPassRatePct": 100
+  },
+  "lanes": [
+    {
+      "laneId": "separate-process-startup",
+      "label": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "attempts": 20,
+      "injectionEligibleAttempts": 20,
+      "injected": 20,
+      "missed": 0,
+      "accepted": 0,
+      "rejected": 0,
+      "injectionRatePct": 100,
+      "contractPassRatePct": null
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "label": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "attempts": 20,
+      "injectionEligibleAttempts": 0,
+      "injected": 0,
+      "missed": 0,
+      "accepted": 20,
+      "rejected": 0,
+      "injectionRatePct": null,
+      "contractPassRatePct": 100
+    }
+  ],
+  "attempts": [
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 1,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 1,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 2,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 2,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 3,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 3,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 4,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 4,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 5,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 5,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 6,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 6,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 7,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 7,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 8,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 8,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 9,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 9,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 10,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 10,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 11,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 11,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 12,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 12,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 13,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 13,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 14,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 14,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 15,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 15,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 16,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 16,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 17,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 17,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 18,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 18,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 19,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 19,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    },
+    {
+      "laneId": "separate-process-startup",
+      "laneLabel": "Separate process startup",
+      "enforcement": "startup-hook-or-wrapper",
+      "iteration": 20,
+      "injectionEligible": true,
+      "status": "injected",
+      "sourcePointers": 2,
+      "evidenceSources": [
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md"
+      ],
+      "checks": [
+        {
+          "id": "startup-sources",
+          "label": "Startup source pointers",
+          "status": "pass",
+          "detail": "2 startup-active source pointer(s)"
+        },
+        {
+          "id": "required-rules",
+          "label": "Retrieval rules",
+          "status": "pass",
+          "detail": "2/2 compact startup retrieval rule(s) present"
+        }
+      ]
+    },
+    {
+      "laneId": "same-session-prompt-contract",
+      "laneLabel": "Same-session prompt contract",
+      "enforcement": "prompt-contract",
+      "iteration": 20,
+      "injectionEligible": false,
+      "status": "accepted",
+      "sourcePointers": 7,
+      "evidenceSources": [
+        "AGENTS.md",
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+        ".codex/skills/anamnesis-init/SKILL.md",
+        ".codex/skills/doc-freshness-review/SKILL.md",
+        ".codex/skills/load-context/SKILL.md",
+        ".codex/skills/ontology-enrich/SKILL.md"
+      ],
+      "checks": [
+        {
+          "id": "contract-sources",
+          "label": "Contract source evidence",
+          "status": "pass",
+          "detail": "7 required source evidence pointer(s)"
+        },
+        {
+          "id": "all-sources-listed",
+          "label": "All source pointers listed",
+          "status": "pass",
+          "detail": "contract prompt lists every required source pointer"
+        },
+        {
+          "id": "no-auto-injection-claim",
+          "label": "No false automatic-injection claim",
+          "status": "pass",
+          "detail": "same-session native subagents are labelled prompt-contract enforced"
+        }
+      ]
+    }
+  ],
+  "artifacts": {
+    "outputDir": "docs/benchmark-evidence/subagent-injection",
+    "json": "docs/benchmark-evidence/subagent-injection/subagent-injection.json",
+    "markdown": "docs/benchmark-evidence/subagent-injection/subagent-injection.md",
+    "countsSvg": "docs/benchmark-evidence/subagent-injection/subagent-injection-counts.svg",
+    "ratesSvg": "docs/benchmark-evidence/subagent-injection/subagent-injection-rates.svg"
+  },
+  "markdown": "# Subagent Injection Benchmark — 2026-07-09T01:59:00.154Z\n\nDeterministic benchmark for subagent context enforcement. Startup-hook or launcher-wrapper lanes count actual injection eligibility; same-session native subagents are reported as prompt-contract evidence, not as automatic SessionStart injection.\n\nRequested attempts per lane: 20\nInjection eligible attempts: 20/20 injected\nMissed injections: 0\nPrompt-contract accepted: 20/20\n\n| Lane | Enforcement | Attempts | Injected | Missed | Accepted | Rejected | Rate |\n|---|---|---:|---:|---:|---:|---:|---:|\n| Separate process startup | startup-hook-or-wrapper | 20 | 20 | 0 | 0 | 0 | 100% |\n| Same-session prompt contract | prompt-contract | 20 | 0 | 0 | 20 | 0 | 100% |\n\n## Charts\n\n![Subagent injection counts](subagent-injection-counts.svg)\n![Subagent injection rates](subagent-injection-rates.svg)"
+}

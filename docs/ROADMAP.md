@@ -1608,7 +1608,7 @@ Exit criteria:
 
 ---
 
-## v1.15 — *planned*
+## v1.15 — *in progress*
 
 > **Theme: subagent context contract and injection-success evidence**
 
@@ -1621,11 +1621,11 @@ boundary explicit and adds repeated-run evidence.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Subagent context contract** | planned | Define the leader-to-subagent contract for work that depends on project memory: the leader must either pass a compact anamnesis context preamble or require the subagent to read and report the exact source pointers it used (`AGENTS.md`, `.anamnesis/handoff/active.md`, startup-active warm archives, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, and relevant `.codex/skills/*`). |
+| 1 | **Subagent context contract** | done in branch | Define the leader-to-subagent contract for work that depends on project memory: the leader must either pass a compact anamnesis context preamble or require the subagent to read and report the exact source pointers it used (`AGENTS.md`, `.anamnesis/handoff/active.md`, startup-active warm archives, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, and relevant `.codex/skills/*`). |
 | 2 | **Separate-process hydration path** | planned | Add or validate a launch-wrapper path for externally started subagents and worker processes so they can receive the same compact startup context as a fresh top-level agent session. This path can be treated as enforceable because it controls process startup. |
-| 3 | **Same-session native subagent guardrails** | planned | Treat same-session native subagents as prompt-contract enforced until the runtime exposes a subagent hook or equivalent startup interception point. The leader should reject subagent reports that omit required context evidence for tasks that need project state. |
-| 4 | **Injection success benchmark** | planned | Add a repeated-run benchmark that reports raw attempts, injected count, missed count, injection rate, and evidence quality. The intended report shape is `attempts=N`, `injected=K`, `missed=N-K`, `injection_rate=K/N`, plus JSON/Markdown evidence and SVG graphs. |
-| 5 | **Status/doctor surfacing** | planned | Surface whether subagent context enforcement is available for the configured tools, whether the last benchmark has acceptable evidence, and whether any lane is only prompt-contract enforced rather than startup-hook enforced. |
+| 3 | **Same-session native subagent guardrails** | done in branch | Treat same-session native subagents as prompt-contract enforced until the runtime exposes a subagent hook or equivalent startup interception point. The leader should reject subagent reports that omit required context evidence for tasks that need project state. |
+| 4 | **Injection success benchmark** | done in branch | `anamnesis benchmark subagent-injection --attempts <n>` now reports raw attempts, injected count, missed count, injection rate, prompt-contract accepted/rejected counts, JSON/Markdown evidence, runtime evidence, and SVG graphs. Current dogfood run: separate-process startup `20/20` injected; same-session prompt-contract `20/20` accepted. |
+| 5 | **Status/doctor surfacing** | partial in branch | `status` now reads the appended `subagent-injection-benchmark` runtime evidence through the shared evidence summary. A dedicated `doctor` warning for missing/stale subagent evidence remains a follow-up so projects are not warned before the benchmark threshold policy is finalized. |
 
 Benchmark design:
 
