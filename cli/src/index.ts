@@ -395,7 +395,9 @@ Usage:
 
 Commands:
   init                          First-time setup for the current project
-  update                        Re-apply library state (dry-run by default)
+  apply                         Apply project-managed changes
+                                  (writes by default; --dry-run previews)
+  update                        Deprecated compatibility command for apply
   upgrade                       Check or update the installed anamnesis CLI
   upgrade plan                  Read-only package + project plan with choices
   upgrade apply-choice <id>     Execute one supported upgrade-plan choice
@@ -478,10 +480,13 @@ Flags (init):
   --enhance-docs                Add/refresh managed context-review regions in
                                   existing README/docs files
 
-Flags (update):
+Flags (apply / deprecated update):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
-  --apply                       Actually write (default is dry-run)
+  --dry-run                     Preview project-managed changes without writing
+                                  (apply only; update is preview by default)
+  --apply                       Compatibility flag: write when using update;
+                                  accepted by apply for old muscle memory
   --bump-pinned                 Explicitly bump pinned fragments to current
   --allow-exec-adapters         Permit executable adapter writes
                                   (.claude/*, .cursor/rules, Codex hooks)
@@ -1931,10 +1936,20 @@ function formatWholeFileDiff(result: MigrateAgentfileResult): string[] {
   return lines;
 }
 
-function reportUpdate(result: UpdateResult): void {
+function printUpdateDeprecationWarning(): void {
+  console.error(
+    "warning: `anamnesis update` is deprecated; use `anamnesis apply --dry-run` to preview project changes or `anamnesis apply` to write reviewed changes. `update --apply` remains available for compatibility.",
+  );
+}
+
+function reportUpdate(
+  result: UpdateResult,
+  opts: { commandName?: "apply" | "update" } = {},
+): void {
+  const commandName = opts.commandName ?? "update";
   const s = summarizeChanges(result.changes);
   const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
-  console.log(`anamnesis update — ${result.agentfile.project.name}`);
+  console.log(`anamnesis ${commandName} — ${result.agentfile.project.name}`);
   console.log(`  fragments: ${fragIds}`);
   console.log(
     `  changes: create=${s.create} update=${s.update} noop=${s.noop} blocked=${s.blocked} user-modified=${s.userModified}`,
@@ -1974,7 +1989,13 @@ function reportUpdate(result: UpdateResult): void {
       console.log(`  evidence: ${result.evidencePath}`);
     }
   } else {
-    console.log("  (dry-run — re-run with --apply to actually write)");
+    if (commandName === "apply") {
+      console.log("  (dry-run — re-run without --dry-run to actually write)");
+    } else {
+      console.log(
+        "  (dry-run — use `anamnesis apply` to write; `update --apply` remains available for compatibility)",
+      );
+    }
   }
 }
 
@@ -2169,8 +2190,34 @@ async function main(argv: string[]): Promise<number> {
         throw e;
       }
 
+    case "apply":
+      try {
+        if (flags["dry-run"] === true && flags["apply"] === true) {
+          throw new UpdateError(
+            "`anamnesis apply` cannot combine --dry-run and --apply",
+          );
+        }
+        const result = update({
+          projectRoot: (flags["project-root"] as string | undefined) ?? process.cwd(),
+          libraryRoot:
+            (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          apply: flags["dry-run"] !== true,
+          bumpPinned: flags["bump-pinned"] === true,
+          allowExecAdapters: flags["allow-exec-adapters"] === true,
+        });
+        reportUpdate(result, { commandName: "apply" });
+        return 0;
+      } catch (e) {
+        if (e instanceof UpdateError) {
+          console.error(`error: ${e.message}`);
+          return 1;
+        }
+        throw e;
+      }
+
     case "update":
       try {
+        printUpdateDeprecationWarning();
         const result = update({
           projectRoot: (flags["project-root"] as string | undefined) ?? process.cwd(),
           libraryRoot:
@@ -2179,7 +2226,7 @@ async function main(argv: string[]): Promise<number> {
           bumpPinned: flags["bump-pinned"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
         });
-        reportUpdate(result);
+        reportUpdate(result, { commandName: "update" });
         return 0;
       } catch (e) {
         if (e instanceof UpdateError) {

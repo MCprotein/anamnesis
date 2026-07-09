@@ -79,7 +79,7 @@ export function collectOntologyGaps(
           severity: "warning",
           target: staticRel,
           detail: `static ontology slice for '${installed.id}' is missing`,
-          next: "Run `anamnesis update --dry-run` to inspect the managed ontology repair, then `anamnesis update --apply` if the plan is acceptable.",
+          next: "Run `anamnesis apply --dry-run` to inspect the managed ontology repair, then `anamnesis apply` if the plan is acceptable.",
         });
       }
 

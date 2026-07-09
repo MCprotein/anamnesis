@@ -7,6 +7,17 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added `anamnesis apply` as the preferred project-managed change command.
+  It writes by default and supports `--dry-run` for previews.
+
+### Deprecated
+
+- Deprecated `anamnesis update` as a compatibility command. It still works,
+  but now prints guidance to use `anamnesis apply --dry-run` for previews and
+  `anamnesis apply` for reviewed project writes.
+
 ## [1.15.0] — 2026-07-09
 
 ### Added

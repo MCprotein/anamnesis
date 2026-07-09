@@ -219,7 +219,7 @@ export function init(opts: InitOptions): InitResult {
   const existing = findAgentfile(projectRoot);
   if (existing) {
     throw new InitError(
-      `Agentfile already present at ${existing}. Use \`anamnesis update\` to re-run.`,
+      `Agentfile already present at ${existing}. Use \`anamnesis apply --dry-run\` to preview project-managed changes.`,
     );
   }
 

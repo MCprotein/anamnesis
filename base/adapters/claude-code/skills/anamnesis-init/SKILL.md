@@ -71,4 +71,4 @@ existing-doc enhancement.
 - Never invent project facts. Starter docs and zero-context ontology drafts
   should contain open questions and review checklists until evidence exists.
 - If `Agentfile` already exists, stop the init path and use
-  `anamnesis update --dry-run` instead.
+  `anamnesis apply --dry-run` instead.

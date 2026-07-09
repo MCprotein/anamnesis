@@ -105,7 +105,7 @@ describe("upgrade choose", () => {
     expect(result.interactive).toBe(false);
     expect(result.selectedChoiceId).toBe("apply-content-only-update");
     expect(result.execution.status).toBe("preview-required");
-    expect(result.execution.previewCommand).toBe("anamnesis update --dry-run");
+    expect(result.execution.previewCommand).toBe("anamnesis apply --dry-run");
     expect(fs.readFileSync(agentsPath, "utf8")).toBe(before);
   });
 

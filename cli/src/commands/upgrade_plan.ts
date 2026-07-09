@@ -193,7 +193,7 @@ function inspectProject(input: {
       ],
       commands: [
         "anamnesis init --dry-run",
-        "anamnesis update --dry-run --allow-exec-adapters",
+        "anamnesis apply --dry-run --allow-exec-adapters",
       ],
     };
   }
@@ -292,7 +292,7 @@ function inspectProject(input: {
           severity: "error",
           kind: "project-inspection-failed",
           message: (e as Error).message,
-          next: "Fix the reported project issue, then rerun `anamnesis upgrade plan` before applying project updates.",
+          next: "Fix the reported project issue, then rerun `anamnesis upgrade plan` before applying project changes.",
         },
       ],
       choices: [],
@@ -341,7 +341,7 @@ function projectGates(input: {
       kind: "fragment-updates-available",
       message:
         `${input.status.summary.fragmentUpdatesAvailable} fragment update(s) available.`,
-      next: "Preview all project changes with `anamnesis update --dry-run --allow-exec-adapters`; omit the flag only if executable adapters should remain untouched.",
+      next: "Preview all project changes with `anamnesis apply --dry-run --allow-exec-adapters`; omit the flag only if executable adapters should remain untouched.",
     });
   }
 
@@ -351,7 +351,7 @@ function projectGates(input: {
       kind: "partial-adoption",
       message:
         `${input.status.partialAdoptions.length} fragment(s) are held back by preserved managed surfaces.`,
-      next: "Review `anamnesis status` partial upgrades; manually merge user-modified surfaces or rerun update with the needed permission flags.",
+      next: "Review `anamnesis status` partial upgrades; manually merge user-modified surfaces or rerun apply with the needed permission flags.",
     });
   }
 
@@ -381,7 +381,7 @@ function projectGates(input: {
       kind: "pinned-fragments",
       message:
         `${input.status.summary.fragmentPinned} pinned fragment(s) will not move unless requested.`,
-      next: "Preview with `anamnesis update --dry-run --bump-pinned --allow-exec-adapters` only after reviewing the pinned version change.",
+      next: "Preview with `anamnesis apply --dry-run --bump-pinned --allow-exec-adapters` only after reviewing the pinned version change.",
     });
   }
 
@@ -402,7 +402,7 @@ function projectGates(input: {
       message:
         `doctor reports ${input.doctor.summary.errors} error(s) and ` +
         `${input.doctor.summary.warnings} warning(s).`,
-      next: "Run `anamnesis doctor`; resolve errors before applying project updates, and review warnings for expected agent-required follow-up.",
+      next: "Run `anamnesis doctor`; resolve errors before applying project changes, and review warnings for expected agent-required follow-up.",
     });
   }
 
@@ -438,7 +438,7 @@ function schemaMigrationPlan(input: {
       effect: "package-install",
       command: input.packageResult.installCommand.join(" "),
       outcome:
-        "Updates the installed anamnesis CLI only; project-managed files still need update/doctor after package install.",
+        "Updates the installed anamnesis CLI only; project-managed files still need apply/doctor after package install.",
       recommended: true,
     });
     commands.push(input.packageResult.installCommand.join(" "));
@@ -571,7 +571,7 @@ function projectChoices(input: {
       effect: "package-install",
       command: input.packageResult.installCommand.join(" "),
       outcome:
-        "Updates the installed anamnesis CLI only; project-managed files still need update/doctor after package install.",
+        "Updates the installed anamnesis CLI only; project-managed files still need apply/doctor after package install.",
       recommended: true,
     });
   }
@@ -598,9 +598,9 @@ function projectChoices(input: {
     choices.push({
       id: "preview-content-only-update",
       gateKind: "fragment-updates-available",
-      label: "Preview content-only project update",
+      label: "Preview content-only project changes",
       effect: "read-only",
-      command: "anamnesis update --dry-run",
+      command: "anamnesis apply --dry-run",
       outcome:
         "Shows non-executable managed content changes while keeping hook/command/skill adapter writes blocked.",
       recommended: input.updateSummary.blocked === 0,
@@ -613,7 +613,7 @@ function projectChoices(input: {
           : "fragment-updates-available",
       label: "Preview with executable adapters included",
       effect: "read-only",
-      command: "anamnesis update --dry-run --allow-exec-adapters",
+      command: "anamnesis apply --dry-run --allow-exec-adapters",
       outcome:
         "Includes hooks, commands, skills, Cursor rules, and Codex skills/wrappers in the preview without writing them.",
       recommended: input.updateSummary.blocked > 0,
@@ -624,9 +624,9 @@ function projectChoices(input: {
     choices.push({
       id: "apply-content-only-update",
       gateKind: "fragment-updates-available",
-      label: "Apply content-only project updates after review",
+      label: "Apply content-only project changes after review",
       effect: "local-write",
-      command: "anamnesis update --apply",
+      command: "anamnesis apply",
       outcome:
         "Writes reviewed non-executable managed content; executable adapter files remain gated unless explicitly allowed.",
       recommended: false,
@@ -639,7 +639,7 @@ function projectChoices(input: {
       gateKind: "executable-adapter-gate",
       label: "Apply executable adapter updates after review",
       effect: "local-write",
-      command: "anamnesis update --apply --allow-exec-adapters",
+      command: "anamnesis apply --allow-exec-adapters",
       outcome:
         "Writes reviewed project surfaces and executable adapter files; local user edits remain preserved.",
       recommended: false,
@@ -668,7 +668,7 @@ function projectChoices(input: {
       label: "Manually merge library content",
       effect: "manual",
       outcome:
-        "Compare dry-run output with local files, merge wanted library content, then rerun update and doctor.",
+        "Compare dry-run output with local files, merge wanted library content, then rerun apply and doctor.",
       recommended: false,
     });
   }
@@ -680,7 +680,7 @@ function projectChoices(input: {
       label: "Keep pinned fragments unchanged",
       effect: "manual",
       outcome:
-        "Leaves pinned fragment versions as-is; future update runs will continue to preserve the pin.",
+        "Leaves pinned fragment versions as-is; future apply runs will continue to preserve the pin.",
       recommended: true,
     });
     choices.push({
@@ -688,7 +688,7 @@ function projectChoices(input: {
       gateKind: "pinned-fragments",
       label: "Preview bumping pinned fragments",
       effect: "read-only",
-      command: "anamnesis update --dry-run --bump-pinned --allow-exec-adapters",
+      command: "anamnesis apply --dry-run --bump-pinned --allow-exec-adapters",
       outcome:
         "Shows the explicit version move for pinned fragments before any local write.",
       recommended: false,
@@ -748,16 +748,16 @@ function nextCommands(input: {
   if (input.schemaChanged || input.agentfileVersion !== CURRENT_AGENTFILE_VERSION) {
     commands.push("anamnesis migrate agentfile --apply");
   }
-  commands.push("anamnesis update --dry-run --allow-exec-adapters");
+  commands.push("anamnesis apply --dry-run --allow-exec-adapters");
   if (
     input.updateSummary.create > 0 ||
     input.updateSummary.update > 0 ||
     input.updateSummary.blocked > 0
   ) {
-    commands.push("anamnesis update --apply --allow-exec-adapters");
+    commands.push("anamnesis apply --allow-exec-adapters");
   }
   if (input.status.summary.fragmentPinned > 0) {
-    commands.push("anamnesis update --dry-run --bump-pinned --allow-exec-adapters");
+    commands.push("anamnesis apply --dry-run --bump-pinned --allow-exec-adapters");
   }
   commands.push("anamnesis doctor");
   return [...new Set(commands)];

@@ -65,7 +65,7 @@ describe("upgrade apply-choice", () => {
         expect.objectContaining({
           id: "apply-content-only-update",
           effect: "local-write",
-          command: "anamnesis update --apply",
+          command: "anamnesis apply",
           recommended: false,
         }),
       ]),
@@ -89,7 +89,7 @@ describe("upgrade apply-choice", () => {
 
     expect(preview.status).toBe("preview-required");
     expect(preview.operation).toBe("update");
-    expect(preview.previewCommand).toBe("anamnesis update --dry-run");
+    expect(preview.previewCommand).toBe("anamnesis apply --dry-run");
     expect(preview.summary).toEqual(
       expect.arrayContaining([expect.stringContaining("written: false")]),
     );
@@ -106,7 +106,7 @@ describe("upgrade apply-choice", () => {
 
     expect(applied.status).toBe("applied");
     expect(applied.operation).toBe("update");
-    expect(applied.command).toBe("anamnesis update --apply");
+    expect(applied.command).toBe("anamnesis apply");
     expect(applied.summary).toEqual(
       expect.arrayContaining([expect.stringContaining("written: true")]),
     );
@@ -130,7 +130,7 @@ describe("upgrade apply-choice", () => {
 
     expect(result.status).toBe("executed-read-only");
     expect(result.operation).toBe("update");
-    expect(result.command).toBe("anamnesis update --dry-run");
+    expect(result.command).toBe("anamnesis apply --dry-run");
     expect(result.summary).toEqual(
       expect.arrayContaining([expect.stringContaining("written: false")]),
     );

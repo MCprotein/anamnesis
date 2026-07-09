@@ -217,7 +217,7 @@ function fragmentSyncCheck(st: StatusResult): ReleaseCheckItem {
         `updates=${summary.fragmentUpdatesAvailable}, ` +
         `missing=${summary.fragmentLibraryMissing}, ` +
         `partial=${summary.partialAdoptions}`,
-      next: "Run `anamnesis update --dry-run --allow-exec-adapters`, then apply or repair the listed fragments.",
+      next: "Run `anamnesis apply --dry-run --allow-exec-adapters`, then apply or repair the listed fragments.",
     };
   }
   const advisory =
@@ -252,7 +252,7 @@ function updateDryRunCheck(summary: ChangeSummary): ReleaseCheckItem {
       detail:
         `create=${summary.create}, update=${summary.update}, ` +
         `blocked=${summary.blocked}, user-modified=${summary.userModified}`,
-      next: "Run `anamnesis update --apply --allow-exec-adapters` or resolve preserved surfaces before release.",
+      next: "Run `anamnesis apply --allow-exec-adapters` or resolve preserved surfaces before release.",
     };
   }
   return {
@@ -304,7 +304,7 @@ function hookRegistrationCheck(
       detail:
         `doctor hook issues=${hookIssues.length}, codex invalid=${codex.invalid}, ` +
         `duplicates=${codex.duplicates}`,
-      next: "Repair hook config or rerun `anamnesis update --apply --allow-exec-adapters`.",
+      next: "Repair hook config or rerun `anamnesis apply --allow-exec-adapters`.",
     };
   }
   if (hookIssues.length > 0 || codex.warnings > 0) {
@@ -372,7 +372,7 @@ function updateApplyEvidenceCheck(st: StatusResult): ReleaseCheckItem {
       label: "Update apply evidence",
       status: "warn",
       detail: "no update-apply evidence record found",
-      next: "Run `anamnesis update --apply --allow-exec-adapters` after project-managed surfaces are current.",
+      next: "Run `anamnesis apply --allow-exec-adapters` after project-managed surfaces are current.",
     };
   }
   if (updateEvidence.stale) {

@@ -334,8 +334,8 @@ function addStatusIssues(
         `managed surface(s) still require review`,
       repair:
         partial.reasons.includes("blocked")
-          ? "Run `anamnesis update --dry-run --allow-exec-adapters` to inspect executable adapter writes, then `anamnesis update --apply --allow-exec-adapters` after review. Merge any user-modified managed files first."
-          : "Run `anamnesis update --dry-run --allow-exec-adapters`, manually merge the listed user-modified managed files if the library content should apply, then re-run `anamnesis update --apply --allow-exec-adapters`.",
+          ? "Run `anamnesis apply --dry-run --allow-exec-adapters` to inspect executable adapter writes, then `anamnesis apply --allow-exec-adapters` after review. Merge any user-modified managed files first."
+          : "Run `anamnesis apply --dry-run --allow-exec-adapters`, manually merge the listed user-modified managed files if the library content should apply, then re-run `anamnesis apply --allow-exec-adapters`.",
     });
   }
 
@@ -360,7 +360,7 @@ function addStatusIssues(
         target,
         message: `tracked ${e.target} differs from last applied content: ${target}`,
         repair:
-          "manual merge review required: compare the file against the latest rendered fragment output. If the local edit is intentional, keep it and accept the warning; otherwise merge the library content from the backup/update plan and re-run `anamnesis update --apply --allow-exec-adapters`.",
+          "manual merge review required: compare the file against the latest rendered fragment output. If the local edit is intentional, keep it and accept the warning; otherwise merge the library content from the backup/apply plan and re-run `anamnesis apply --allow-exec-adapters`.",
       });
     }
   }
@@ -397,7 +397,7 @@ function addDependencyIssues(
           `fragment '${problem.fragmentId}' in scope '${problem.scopePath}' ` +
           `requires missing fragment '${problem.dependencyId}'`,
         repair:
-          "Run `anamnesis update --dry-run` to inspect the dependency addition, then `anamnesis update --apply` to add the required fragment to Agentfile.",
+          "Run `anamnesis apply --dry-run` to inspect the dependency addition, then `anamnesis apply` to add the required fragment to Agentfile.",
       });
     } else {
       const pinned = problem.kind === "pinned-version-unsatisfied"
@@ -415,8 +415,8 @@ function addDependencyIssues(
           `but${pinned} installed version is ${problem.installedVersion}`,
         repair:
           problem.kind === "pinned-version-unsatisfied"
-            ? "Unpin the dependency fragment or re-run update with `--bump-pinned` after reviewing the version change."
-            : "Run `anamnesis update --apply` to bump the dependency fragment to a compatible library version.",
+            ? "Unpin the dependency fragment or re-run apply with `--bump-pinned` after reviewing the version change."
+            : "Run `anamnesis apply` to bump the dependency fragment to a compatible library version.",
       });
     }
   }
@@ -590,7 +590,7 @@ function continuityRepair(check: ContinuityCheck): string {
     case "handoff":
     case "adapter-surfaces":
     case "managed-drift":
-      return "Run `anamnesis update --dry-run --allow-exec-adapters` to inspect the planned repair. If the output is acceptable, run `anamnesis update --apply --allow-exec-adapters`; user-modified managed files still require manual merge review.";
+      return "Run `anamnesis apply --dry-run --allow-exec-adapters` to inspect the planned repair. If the output is acceptable, run `anamnesis apply --allow-exec-adapters`; user-modified managed files still require manual merge review.";
     case "ontology":
       return "Run `anamnesis ontology bootstrap --dry-run` to inspect generated ontology, then run without `--dry-run` when the bootstrap output should be written.";
     case "active-handoff":
@@ -700,7 +700,7 @@ function addSettingsIssues(
       target: ".claude/settings.json",
       message: `.claude/settings.json could not be parsed: ${(e as Error).message}`,
       repair:
-        "Fix `.claude/settings.json` so it is valid JSON, then re-run `anamnesis update --apply --allow-exec-adapters` to restore hook registrations.",
+        "Fix `.claude/settings.json` so it is valid JSON, then re-run `anamnesis apply --allow-exec-adapters` to restore hook registrations.",
     });
     return;
   }
@@ -714,7 +714,7 @@ function addSettingsIssues(
       target: ".claude/settings.json",
       message: `.claude/settings.json is missing ${reg.event}${matcher} registration for ${reg.command}`,
       repair:
-        "Re-run `anamnesis update --apply --allow-exec-adapters` after reviewing any user-modified managed hook files. If the hook file itself is user-modified, merge or restore it first so update can safely register it.",
+        "Re-run `anamnesis apply --allow-exec-adapters` after reviewing any user-modified managed hook files. If the hook file itself is user-modified, merge or restore it first so apply can safely register it.",
     });
   }
 }
@@ -747,7 +747,7 @@ function addCodexHookIssues(
       target: CODEX_CONFIG_PATH,
       message: `${CODEX_CONFIG_PATH} is missing; Codex native hooks are not enabled for this project`,
       repair:
-        "Re-run `anamnesis update --apply --allow-exec-adapters` to merge the Codex native hook feature flag.",
+        "Re-run `anamnesis apply --allow-exec-adapters` to merge the Codex native hook feature flag.",
     });
   } else {
     try {
@@ -759,7 +759,7 @@ function addCodexHookIssues(
           target: CODEX_CONFIG_PATH,
           message: `${CODEX_CONFIG_PATH} does not enable [features].hooks = true`,
           repair:
-            "Re-run `anamnesis update --apply --allow-exec-adapters` to merge the Codex native hook feature flag.",
+            "Re-run `anamnesis apply --allow-exec-adapters` to merge the Codex native hook feature flag.",
         });
       }
     } catch (e) {
@@ -780,7 +780,7 @@ function addCodexHookIssues(
       target: CODEX_HOOKS_PATH,
       message: `${CODEX_HOOKS_PATH} is missing Codex native hook registrations`,
       repair:
-        "Re-run `anamnesis update --apply --allow-exec-adapters` to merge Codex native hook registrations while preserving user hooks.",
+        "Re-run `anamnesis apply --allow-exec-adapters` to merge Codex native hook registrations while preserving user hooks.",
     });
     return;
   }
@@ -796,7 +796,7 @@ function addCodexHookIssues(
       target: CODEX_HOOKS_PATH,
       message: `${CODEX_HOOKS_PATH} could not be parsed: ${(e as Error).message}`,
       repair:
-        "Fix `.codex/hooks.json` so it is valid JSON, then re-run `anamnesis update --apply --allow-exec-adapters`.",
+        "Fix `.codex/hooks.json` so it is valid JSON, then re-run `anamnesis apply --allow-exec-adapters`.",
     });
     return;
   }
@@ -810,7 +810,7 @@ function addCodexHookIssues(
       target: CODEX_HOOKS_PATH,
       message: `${CODEX_HOOKS_PATH} is missing ${reg.event}${matcher} registration for ${reg.command}`,
       repair:
-        "Re-run `anamnesis update --apply --allow-exec-adapters` after reviewing any user-modified managed hook files.",
+        "Re-run `anamnesis apply --allow-exec-adapters` after reviewing any user-modified managed hook files.",
     });
   }
 
@@ -839,11 +839,11 @@ function codexHookOwnershipRepair(
 ): string {
   switch (warning.kind) {
     case "duplicate-command":
-      return "Remove the duplicate hook entry, or re-run `anamnesis update --apply --allow-exec-adapters` so managed anamnesis hook commands are refreshed without duplicating user hooks.";
+      return "Remove the duplicate hook entry, or re-run `anamnesis apply --allow-exec-adapters` so managed anamnesis hook commands are refreshed without duplicating user hooks.";
     case "relative-managed-command":
-      return "Re-run `anamnesis update --apply --allow-exec-adapters` to replace older relative anamnesis hook commands with Git-root-resolving wrappers.";
+      return "Re-run `anamnesis apply --allow-exec-adapters` to replace older relative anamnesis hook commands with Git-root-resolving wrappers.";
     case "stale-managed-command":
-      return "Remove the stale Codex hook registration or re-run `anamnesis update --apply --allow-exec-adapters` to regenerate managed hook wrappers and registrations.";
+      return "Remove the stale Codex hook registration or re-run `anamnesis apply --allow-exec-adapters` to regenerate managed hook wrappers and registrations.";
     case "malformed-entry":
       return "Fix `.codex/hooks.json` so every event maps to matcher entries with a `hooks` array, then re-run `anamnesis doctor`.";
   }

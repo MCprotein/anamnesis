@@ -13,9 +13,9 @@ Get started:
     anamnesis status
 
 Already using anamnesis:
-  Preview/apply project updates:
-    anamnesis update --dry-run --allow-exec-adapters
-    anamnesis update --apply --allow-exec-adapters
+  Preview/apply project-managed changes:
+    anamnesis apply --dry-run --allow-exec-adapters
+    anamnesis apply --allow-exec-adapters
 
   Plan CLI + project upgrade work:
     anamnesis upgrade plan

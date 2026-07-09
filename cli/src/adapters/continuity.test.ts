@@ -85,7 +85,7 @@ describe("cross-agent context continuity acceptance", () => {
         "Claude Code",
         "Codex",
         "Cursor",
-        "anamnesis update --dry-run",
+        "anamnesis apply --dry-run",
         "--allow-exec-adapters",
       ]);
 

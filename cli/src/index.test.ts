@@ -11,6 +11,21 @@ const repoRoot = path.resolve(
 );
 const indexPath = path.join(repoRoot, "cli/src/index.ts");
 
+function writeMinimalAgentfile(project: string): void {
+  fs.writeFileSync(
+    path.join(project, "Agentfile"),
+    `version: 1
+project:
+  name: fixture
+tools:
+  - claude-code
+fragments:
+  - id: base
+    version: 1
+`,
+  );
+}
+
 describe("CLI entrypoint", () => {
   it("prints the getting-started guide with no command", () => {
     const result = spawnSync(process.execPath, ["--import", "tsx", indexPath], {
@@ -40,6 +55,8 @@ describe("CLI entrypoint", () => {
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("Usage:");
     expect(result.stdout).toContain("Commands:");
+    expect(result.stdout).toContain("apply");
+    expect(result.stdout).toContain("Deprecated compatibility command for apply");
     expect(result.stdout).toContain("benchmark task-series");
   });
 
@@ -73,5 +90,93 @@ describe("CLI entrypoint", () => {
     );
     expect(result.stdout).toContain("semantic ontology: /ontology-enrich");
     expect(result.stdout).toContain("task handoff: /handoff-prepare");
+  });
+
+  it("previews project changes through apply --dry-run", () => {
+    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-apply-"));
+    writeMinimalAgentfile(project);
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        indexPath,
+        "apply",
+        "--project-root",
+        project,
+        "--library",
+        repoRoot,
+        "--dry-run",
+      ],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("anamnesis apply — fixture");
+    expect(result.stdout).toContain("dry-run");
+    expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(false);
+  });
+
+  it("applies project changes by default through apply", () => {
+    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-apply-write-"));
+    writeMinimalAgentfile(project);
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        indexPath,
+        "apply",
+        "--project-root",
+        project,
+        "--library",
+        repoRoot,
+      ],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("anamnesis apply — fixture");
+    expect(result.stdout).toContain("evidence:");
+    expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(true);
+  });
+
+  it("keeps update as a deprecated compatibility command", () => {
+    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-update-"));
+    writeMinimalAgentfile(project);
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        indexPath,
+        "update",
+        "--project-root",
+        project,
+        "--library",
+        repoRoot,
+      ],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("`anamnesis update` is deprecated");
+    expect(result.stdout).toContain("anamnesis update — fixture");
+    expect(result.stdout).toContain("use `anamnesis apply` to write");
+    expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(false);
   });
 });

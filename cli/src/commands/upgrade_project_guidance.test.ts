@@ -33,11 +33,11 @@ describe("upgrade project guidance", () => {
 
     expect(lines).toContain("    managed project: yes (Agentfile)");
     expect(lines).toContain(
-      "      preview: anamnesis update --dry-run --allow-exec-adapters",
+      "      preview: anamnesis apply --dry-run --allow-exec-adapters",
     );
     expect(lines).toContain("      verify:  anamnesis doctor");
     expect(lines.join("\n")).toContain(
-      "project-managed files are unchanged until update runs",
+      "project-managed files are unchanged until project apply runs",
     );
   });
 

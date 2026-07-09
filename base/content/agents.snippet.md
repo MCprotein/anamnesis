@@ -8,7 +8,7 @@
 - `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
-- 라이브러리 갱신 반영: `anamnesis update --dry-run` 으로 변경 검토 → 문제 없으면 `--apply`.
+- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.
 - `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
 ### 자주 쓰는 커맨드
@@ -19,7 +19,7 @@
 - `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
-- `anamnesis update --dry-run` — 라이브러리 갱신 변경사항 미리보기.
+- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.
 
 ### Session start: handoff 자동 확인 (도구 비종속)
 

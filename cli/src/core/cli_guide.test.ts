@@ -11,6 +11,8 @@ describe("formatGettingStartedGuide", () => {
     expect(output).toContain("anamnesis init --tools all --allow-exec-adapters");
     expect(output).toContain("anamnesis doctor");
     expect(output).toContain("anamnesis status");
+    expect(output).toContain("anamnesis apply --dry-run --allow-exec-adapters");
+    expect(output).toContain("anamnesis apply --allow-exec-adapters");
     expect(output).toContain("anamnesis upgrade plan");
     expect(output).toContain("/ontology-enrich");
     expect(output).toContain("/handoff-prepare");

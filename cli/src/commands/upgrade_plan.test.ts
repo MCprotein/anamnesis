@@ -127,13 +127,13 @@ describe("upgrade plan", () => {
         expect.objectContaining({
           id: "preview-executable-adapter-update",
           effect: "read-only",
-          command: "anamnesis update --dry-run --allow-exec-adapters",
+          command: "anamnesis apply --dry-run --allow-exec-adapters",
           recommended: true,
         }),
         expect.objectContaining({
           id: "apply-executable-adapter-update",
           effect: "local-write",
-          command: "anamnesis update --apply --allow-exec-adapters",
+          command: "anamnesis apply --allow-exec-adapters",
           recommended: false,
         }),
       ]),
@@ -141,7 +141,7 @@ describe("upgrade plan", () => {
     expect(result.project.commands).toEqual(
       expect.arrayContaining([
         "npm install -g @mcprotein/anamnesis@1.9.0 --registry=https://registry.npmjs.org --@mcprotein:registry=https://registry.npmjs.org --fetch-timeout=10000 --fetch-retries=0",
-        "anamnesis update --dry-run --allow-exec-adapters",
+        "anamnesis apply --dry-run --allow-exec-adapters",
         "anamnesis doctor",
       ]),
     );
@@ -186,7 +186,7 @@ describe("upgrade plan", () => {
     expect(fs.readFileSync(agentfilePath, "utf8")).toBe(before);
   });
 
-  it("stops at the schema migration gate before project update diagnostics", () => {
+  it("stops at the schema migration gate before project apply diagnostics", () => {
     const library = makeLibrary({ version: 1 });
     const project = installProject(library);
 

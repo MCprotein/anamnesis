@@ -53,11 +53,12 @@ Default visible commands should be grouped by user intent:
 |---|---|---|
 | Start | `anamnesis` | Guided first-run / next-action screen |
 | Start | `anamnesis init` | First project adoption, detection, and reviewed install |
-| Maintain | `anamnesis update` | Reconcile library/project state, dry-run by default |
-| Maintain | `anamnesis apply` or `anamnesis update --apply` | Apply reviewed project writes |
+| Maintain | `anamnesis apply --dry-run` | Preview project-managed changes |
+| Maintain | `anamnesis apply` | Apply reviewed project-managed changes |
+| Compatibility | `anamnesis update` | Deprecated compatibility command for older scripts and docs |
 | Maintain | `anamnesis status` | Current installed state and drift summary |
 | Maintain | `anamnesis doctor` | Problems, repair guidance, optional append evidence |
-| Maintain | `anamnesis upgrade` | Package upgrade plus project update guidance |
+| Maintain | `anamnesis upgrade` | Package upgrade plus project apply guidance |
 | Retrieve | `anamnesis context` | Index/query/resume/preamble namespace |
 | Handoff | `anamnesis handoff` | Handoff draft/close/deprecate namespace |
 
@@ -70,7 +71,7 @@ Advanced commands stay callable but move out of default help:
 | `dogfood check` | Keep maintainer-only; show in release/development docs. |
 | `hooks summary` | Keep evidence tool; do not show in first-run help. |
 | `migrate agentfile` | Show only when an Agentfile migration is relevant. |
-| `ontology bootstrap` | Keep as advanced; normal users get it through `init`/`update`. |
+| `ontology bootstrap` | Keep as advanced; normal users get it through `init`/`apply`. |
 | `gc` | Keep as explicit cleanup command; surface through `doctor` recommendations. |
 | `promote` | Keep as fragment-authoring command, not default project UX. |
 
@@ -92,8 +93,9 @@ most:
 | User intent | Preferred wording | Existing command compatibility |
 |---|---|---|
 | Install a newer anamnesis package/CLI | CLI upgrade | `anamnesis upgrade` |
-| Preview changes to the current project | Project update plan | `anamnesis update` / `anamnesis update --dry-run` |
-| Write the reviewed project changes | Project apply | `anamnesis update --apply`, with a possible `anamnesis apply` convenience alias |
+| Preview changes to the current project | Project apply preview | `anamnesis apply --dry-run` |
+| Write the reviewed project changes | Project apply | `anamnesis apply` |
+| Older compatibility path | Deprecated project update | `anamnesis update` / `anamnesis update --apply` |
 
 Rationale:
 
@@ -102,11 +104,11 @@ Rationale:
 - `apply` is clearer for the side-effecting project write step because it
   matches what the command actually does: apply the reviewed plan to local
   project files.
-- `update` still has value as the read-only planning verb because it means
-  "compare this project with the current library state."
-- The compatibility command `anamnesis update --apply` should keep working.
-  If `anamnesis apply` is added, it must be an alias or guided wrapper over
-  the same safety rules, not a new behavior path.
+- `apply --dry-run` keeps preview explicit without reusing the confusing
+  `update` verb.
+- The compatibility commands `anamnesis update` and `anamnesis update --apply`
+  keep working for existing users and scripts, but they print a deprecation
+  warning that points to `apply --dry-run` and `apply`.
 
 Target output vocabulary:
 
@@ -117,7 +119,7 @@ Anamnesis Upgrade
 
 Next
   1. anamnesis upgrade --apply
-  2. anamnesis update --dry-run --allow-exec-adapters
+  2. anamnesis apply --dry-run --allow-exec-adapters
   3. anamnesis apply --allow-exec-adapters
 ```
 
@@ -126,9 +128,9 @@ Next
 | Current flow | Preferred user-facing flow | Notes |
 |---|---|---|
 | `upgrade plan`, `upgrade choose`, `upgrade apply-choice <id>` | `upgrade` by default, with guided choices when interactive | Keep subcommands for scripts and tests. |
-| `update --apply` | `apply` wording in human output; optional `anamnesis apply` alias | Keep `update --apply` as the compatibility and script-safe form. |
+| `update` / `update --apply` | `apply --dry-run` / `apply` | Keep update as deprecated compatibility; print a warning with the preferred command. |
 | `context index/query/diagnose/resume/subagent-preamble` | `context` namespace summary plus subcommand help | Default `context` should explain the retrieval model and next commands. |
-| `ontology bootstrap` | `init` / `update` automatic bootstrap plus `doctor` repair hint | Advanced direct command remains for scoped repair. |
+| `ontology bootstrap` | `init` / `apply` automatic bootstrap plus `doctor` repair hint | Advanced direct command remains for scoped repair. |
 | `gc --dry-run` | `doctor` reports cleanup pressure, then points to `gc --dry-run` / `gc --apply` | Avoid accidental deletion from generic commands. |
 | `hooks summary`, `dogfood check`, `benchmark ...` | Maintainer/development surfaces | Keep out of first-run and basic help. |
 | Future `discover` / `fragment draft` ideas | Fold into `init` and `update` | Do not add standalone discovery commands unless dogfood proves they are needed. |
@@ -157,7 +159,7 @@ Important boundary:
 
 Preferred local-fragment flow:
 
-1. `anamnesis init --dry-run` or `anamnesis update --dry-run` prints detected
+1. `anamnesis init --dry-run` or `anamnesis apply --dry-run` prints detected
    workspace profile signals.
 2. Supported stacks use existing fragments.
 3. Unsupported but meaningful signals produce a reviewed local-fragment draft
@@ -214,7 +216,7 @@ Next
   2. anamnesis status
 ```
 
-Example project update/apply shape:
+Example project apply shape:
 
 ```text
 Anamnesis Project Update
@@ -261,9 +263,8 @@ without escape codes.
   - `anamnesis context`
   - `anamnesis handoff`
   - `anamnesis benchmark`
-- Decide whether to add `anamnesis apply` as a compatibility alias for
-  `anamnesis update --apply`. Even if the alias is deferred, human output
-  should use "Project apply" for side-effecting project writes.
+- Add `anamnesis apply` as the preferred project-write command and keep
+  `anamnesis update` as a deprecated compatibility command.
 - Make `upgrade` the preferred interactive/default path while preserving
   `upgrade plan`, `upgrade choose`, and `upgrade apply-choice`.
 - Move maintainer commands out of first-run docs unless they are part of a
@@ -284,14 +285,14 @@ without escape codes.
 - `anamnesis --help` shows grouped user-facing commands first and no longer
   dumps every advanced flag by default.
 - `anamnesis --help --all` or equivalent still exposes the full catalog.
-- Help and command output distinguish CLI upgrade, project update plan, and
+- Help and command output distinguish CLI upgrade, project apply preview, and
   project apply.
-- `doctor`, `status`, `init`, `update`, and `upgrade` have consistent headers,
+- `doctor`, `status`, `init`, `apply`, and `upgrade` have consistent headers,
   verdicts, status labels, next steps, and color/plain parity.
 - `--json` outputs are byte-for-byte unaffected except for intentional schema
   additions covered by tests.
 - Existing documented commands keep working.
-- Unknown or non-code project signals are detected during `init`/`update`
+- Unknown or non-code project signals are detected during `init`/`apply --dry-run`
   without adding a new top-level discovery command.
 - Snapshot tests cover color enabled, color disabled, non-TTY/plain mode, and
   long-path wrapping.

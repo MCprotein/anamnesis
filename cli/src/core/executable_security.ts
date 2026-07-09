@@ -57,7 +57,7 @@ export function analyzeExecutableSecurity(
         target: action.path,
         message: `executable hook '${action.path}' omits shell safety settings`,
         repair:
-          "Add `set -euo pipefail` near the top of bash/zsh hooks, or `set -eu` for portable sh hooks, then re-run `anamnesis update --apply --allow-exec-adapters`.",
+          "Add `set -euo pipefail` near the top of bash/zsh hooks, or `set -eu` for portable sh hooks, then re-run `anamnesis apply --allow-exec-adapters`.",
       });
     }
 

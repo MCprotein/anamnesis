@@ -140,7 +140,7 @@ export function upgradeApplyChoice(
         desiredApply: true,
         allowExecAdapters: false,
         bumpPinned: false,
-        previewCommand: "anamnesis update --dry-run",
+        previewCommand: "anamnesis apply --dry-run",
       });
     case "preview-executable-adapter-update":
       return executeUpdateChoice({
@@ -163,7 +163,7 @@ export function upgradeApplyChoice(
         desiredApply: true,
         allowExecAdapters: true,
         bumpPinned: false,
-        previewCommand: "anamnesis update --dry-run --allow-exec-adapters",
+        previewCommand: "anamnesis apply --dry-run --allow-exec-adapters",
       });
     case "preview-bump-pinned-fragments":
       return executeUpdateChoice({
@@ -333,10 +333,10 @@ function executeUpdateChoice(input: {
     command: shouldApply || !needsApply ? input.choice.command : undefined,
     previewCommand: needsApply ? input.previewCommand : undefined,
     message: shouldApply
-      ? "Executed the project update choice."
+      ? "Executed the project apply choice."
       : needsApply
-        ? "Previewed the project update choice; re-run with --apply to write after review."
-        : "Executed the read-only project update preview choice.",
+        ? "Previewed the project apply choice; re-run with --apply to write after review."
+        : "Executed the read-only project apply preview choice.",
     summary: [
       `update: create=${summary.create} update=${summary.update} noop=${summary.noop} blocked=${summary.blocked} user-modified=${summary.userModified}`,
       `written: ${execution.writtenToDisk}`,

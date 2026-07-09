@@ -1,10 +1,11 @@
-// `anamnesis update` — re-apply library state to a project that already has
-// an Agentfile.
+// Project apply/update engine for a project that already has an Agentfile.
+// `anamnesis apply` is the preferred CLI surface; deprecated `anamnesis update`
+// still routes here for compatibility.
 //
 // Differences from `init`:
 //   * Requires an existing Agentfile (errors otherwise — directs to `init`).
 //   * Reads the existing manifest so drift (user-modified) is preserved.
-//   * Default dry-run; `--apply` to actually write.
+//   * Preferred CLI: `apply --dry-run` previews and `apply` writes.
 //   * Backs up any files about to be updated under `.anamnesis/backups/<ts>/`.
 //   * Auto-bumps Agentfile fragment versions to match the library on apply,
 //     except when that fragment still has preserved or blocked managed surfaces.
