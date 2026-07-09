@@ -235,32 +235,53 @@ describe("cross-agent context continuity acceptance", () => {
     );
     expectContainsAll(regionById(actions, "codex-skill-load-context").content, [
       "Skill: `load-context`",
+      ".codex/skills/load-context/SKILL.md",
       "every fresh session starts from zero project context",
     ]);
+    expectContainsAll(
+      fileByPath(actions, ".codex/skills/load-context/SKILL.md").content,
+      ["name: load-context", "every fresh session starts from zero project context"],
+    );
     expectContainsAll(
       regionById(actions, "codex-skill-ontology-enrich").content,
       [
         "Skill: `ontology-enrich`",
+        ".codex/skills/ontology-enrich/SKILL.md",
         "Layer B",
         "enriched.yaml",
         "anamnesis.enriched.v1",
         "supersedes",
       ],
     );
+    expectContainsAll(
+      fileByPath(actions, ".codex/skills/ontology-enrich/SKILL.md").content,
+      ["name: ontology-enrich", "Layer B", "anamnesis.enriched.v1"],
+    );
     expectContainsAll(regionById(actions, "codex-skill-anamnesis-init").content, [
       "Skill: `anamnesis-init`",
+      ".codex/skills/anamnesis-init/SKILL.md",
       "multiple-choice question",
       "--scaffold-docs",
       "--enhance-docs",
     ]);
     expectContainsAll(
+      fileByPath(actions, ".codex/skills/anamnesis-init/SKILL.md").content,
+      ["name: anamnesis-init", "multiple-choice question"],
+    );
+    expectContainsAll(
       regionById(actions, "codex-skill-doc-freshness-review").content,
       [
         "Skill: `doc-freshness-review`",
+        ".codex/skills/doc-freshness-review/SKILL.md",
         "semantic freshness",
         "anamnesis context diagnose",
         "stale-current-claim",
       ],
+    );
+    expectContainsAll(
+      fileByPath(actions, ".codex/skills/doc-freshness-review/SKILL.md")
+        .content,
+      ["name: doc-freshness-review", "semantic freshness"],
     );
   });
 

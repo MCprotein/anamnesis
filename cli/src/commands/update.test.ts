@@ -939,6 +939,9 @@ fragments:
     expect(
       fs.existsSync(path.join(project, ".claude/skills/check/SKILL.md")),
     ).toBe(true);
+    expect(
+      fs.existsSync(path.join(project, ".codex/skills/check/SKILL.md")),
+    ).toBe(true);
     expect(fs.readFileSync(path.join(project, "AGENTS.md"), "utf8")).toContain(
       "codex-skill-check",
     );

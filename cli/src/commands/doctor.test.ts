@@ -646,6 +646,25 @@ fragments:
     );
   });
 
+  it("reports missing Codex native skill surfaces as continuity issues", () => {
+    const { project, library } = installContinuityProject();
+    fs.unlinkSync(path.join(project, ".codex/skills/load-context/SKILL.md"));
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "continuity-adapter-surface-missing",
+          target: expect.stringContaining(".codex/skills/load-context/SKILL.md"),
+          repair: expect.stringContaining("user-modified managed files"),
+        }),
+      ]),
+    );
+  });
+
   it("reports stale active handoff state as a continuity warning", () => {
     const { project, library } = installContinuityProject();
     writeActiveHandoff(project, ".anamnesis/handoff/missing.md");

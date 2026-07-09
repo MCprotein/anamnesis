@@ -1580,21 +1580,21 @@ Exit criteria:
 
 ---
 
-## v1.14 — *planned*
+## v1.14 — *in progress*
 
 > **Theme: Codex native skill parity and adapter surface evidence**
 
-v1.13 exposed a parity gap: Codex itself can use skill directories, but
-anamnesis still renders `skill` capabilities for Codex only as AGENTS.md
-fallback regions. The next line should verify the native Codex skill contract
-and add it without weakening the existing fallback path or supply-chain gates.
+v1.13 exposed a parity gap: Codex itself can use skill directories, while
+anamnesis rendered `skill` capabilities for Codex only as AGENTS.md fallback
+regions. v1.14 closes that gap by adding native project-local Codex skills
+without removing the fallback path or weakening supply-chain gates.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Codex native skill surface research** | planned | Verify the real Codex project-local skill discovery contract before changing default claims. Current repo evidence proves Codex skills exist globally under `~/.codex/skills`, but the roadmap requires a project-local smoke for `.codex/skills/<name>/SKILL.md` or the documented equivalent before marking this surface native. |
-| 2 | **Codex skill renderer parity** | planned | If the native path is verified, extend the Codex `skill` renderer to emit native skill files while keeping the existing `AGENTS.md` `codex-skill-*` fallback mandatory. Mirror nested skill assets only if Codex supports them; otherwise document and test the narrower supported shape. |
-| 3 | **Executable-adapter safety for Codex skills** | planned | Treat generated `.codex/skills/**` files as agent-behavior surfaces gated by `--allow-exec-adapters`, matching existing hook/skill safety expectations. Dry-run, blocked-write, and user-modified merge behavior must be visible in `init`, `update`, `status`, and `doctor`. |
-| 4 | **Adapter parity docs and tests** | planned | Update `README.md`, `docs/ADAPTER-PARITY.md`, `docs/AGENT-SWITCHING-GUIDE.md`, and relevant tests so Claude Code native skills, Codex native+fallback skills, and Cursor rule fallbacks are described accurately. Add a real or documented Codex smoke before changing the parity table from fallback-only to native. |
+| 1 | **Codex native skill surface research** | done | Verified the real Codex project-local skill discovery contract with `codex exec -C <tmp-project> --ignore-user-config --sandbox read-only` over `.codex/skills/anamnesis-smoke/SKILL.md`; Codex loaded the project skill and returned the expected sentinel. |
+| 2 | **Codex skill renderer parity** | done in branch | The Codex `skill` renderer now emits `.codex/skills/<name>/...` native skill files while keeping the existing `AGENTS.md` `codex-skill-*` fallback mandatory. Nested skill assets are mirrored like Claude Code skills. |
+| 3 | **Executable-adapter safety for Codex skills** | done in branch | Generated `.codex/skills/**` files are treated as agent-behavior surfaces gated by `--allow-exec-adapters`. `init`, `update`, `status`, `doctor`, and applier tests cover native files, blocked writes, and missing-surface diagnostics. |
+| 4 | **Adapter parity docs and tests** | done in branch | `README.md`, `docs/ADAPTER-PARITY.md`, `docs/AGENT-SWITCHING-GUIDE.md`, `docs/MONOREPO.md`, `docs/DESIGN.md`, and relevant tests now describe Claude Code native skills, Codex native+fallback skills, and Cursor rule fallbacks accurately. |
 
 Exit criteria:
 

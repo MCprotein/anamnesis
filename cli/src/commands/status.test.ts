@@ -548,6 +548,23 @@ describe("status — continuity readiness", () => {
     expect(adapter?.targets).toEqual([".cursor/rules/load-context.mdc"]);
   });
 
+  it("reports a missing Codex native skill surface", () => {
+    const { project, library } = setupContinuityProject();
+    fs.unlinkSync(path.join(project, ".codex/skills/load-context/SKILL.md"));
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+    const adapter = r.continuity.checks.find(
+      (c) => c.id === "adapter-surfaces",
+    );
+
+    expect(r.continuity.ready).toBe(false);
+    expect(adapter?.status).toBe("fail");
+    expect(adapter?.detail).toContain(".codex/skills/load-context/SKILL.md");
+    expect(adapter?.targets).toEqual([
+      ".codex/skills/load-context/SKILL.md",
+    ]);
+  });
+
   it("reports active handoff entries that reference missing archives", () => {
     const { project, library } = setupContinuityProject();
     writeActiveHandoff(project, ".anamnesis/handoff/missing.md");

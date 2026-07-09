@@ -51,7 +51,7 @@ and `npm run release:verify -- --version <version>`.
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@18 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@19 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -63,7 +63,7 @@ and `npm run release:verify -- --version <version>`.
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
 - 라이브러리 갱신 반영: `anamnesis update --dry-run` 으로 변경 검토 → 문제 없으면 `--apply`.
-- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
+- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
 ### 자주 쓰는 커맨드
 
@@ -228,10 +228,10 @@ Capture the current task state in a structured handoff file. The next agent — 
 If the session is too short or trivial for a useful handoff (e.g., just a one-line fix already committed), say so plainly and skip writing — empty handoffs pollute future sessions.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-load-context fragment=base@14 -->
+<!-- anamnesis:region id=codex-skill-load-context fragment=base@19 -->
 ### Skill: `load-context`
 
-When the user asks for "load-context" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+When the user asks for "load-context" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/load-context/SKILL.md` when available; this region is the compatibility fallback.
 
 **Declared side effects:** `read-only`.
 
@@ -267,10 +267,10 @@ If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists:
 Without it, every fresh session starts from zero project context. The agent re-derives the structure from filenames, package.json, etc. — slow, error-prone, and inconsistent across sessions. The ontology files are the single source of truth; this skill ensures the agent reads them first.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-ontology-enrich fragment=base@14 -->
+<!-- anamnesis:region id=codex-skill-ontology-enrich fragment=base@19 -->
 ### Skill: `ontology-enrich`
 
-When the user asks for "ontology-enrich" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+When the user asks for "ontology-enrich" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/ontology-enrich/SKILL.md` when available; this region is the compatibility fallback.
 
 **Declared side effects:** `local-write`.
 
@@ -1047,10 +1047,10 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-anamnesis-init fragment=base@14 -->
+<!-- anamnesis:region id=codex-skill-anamnesis-init fragment=base@19 -->
 ### Skill: `anamnesis-init`
 
-When the user asks for "anamnesis-init" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+When the user asks for "anamnesis-init" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/anamnesis-init/SKILL.md` when available; this region is the compatibility fallback.
 
 **Declared side effects:** `local-write`.
 
@@ -1121,10 +1121,10 @@ existing-doc enhancement.
   `anamnesis update --dry-run` instead.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-doc-freshness-review fragment=base@18 -->
+<!-- anamnesis:region id=codex-skill-doc-freshness-review fragment=base@19 -->
 ### Skill: `doc-freshness-review`
 
-When the user asks for "doc-freshness-review" or the situation matches this procedure, follow the steps below. (CC users invoke this as a native skill; Codex agents read it from this region.)
+When the user asks for "doc-freshness-review" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/doc-freshness-review/SKILL.md` when available; this region is the compatibility fallback.
 
 **Declared side effects:** `read-only`.
 

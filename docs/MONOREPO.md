@@ -33,7 +33,7 @@ project:
 | `project_memory` (AGENTS.md region + Claude entrypoint) | Scope-local: writes to `<scope>/AGENTS.md`; Claude Code also gets `<scope>/CLAUDE.md` pointing at that scope memory |
 | `ontology` (slice file) | Scope-local: writes to `<scope>/.anamnesis/ontology/<id>.yaml`; bootstrap facts write beside the static slice as `<id>.bootstrap.yaml` |
 | `executable_hook` | **Project-root only** for native/bridge files — Claude Code's `settings.json` and git hooks are root concerns |
-| `skill` | Native/fallback files such as `.claude/skills/` and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |
+| `skill` | Native/fallback files such as `.claude/skills/`, `.codex/skills/`, and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |
 | `slash_command` | Native/fallback files such as `.claude/commands/` and `.cursor/rules/` are project-root; Codex AGENTS fallback can be scope-local |
 | `task_harness` | Project-root retrieval target: writes `.anamnesis/task-harnesses/<name>.yaml`; scope-specific applicability belongs in the harness body until scoped matching exists |
 
@@ -157,6 +157,7 @@ What gets created:
 | `.claude/hooks/*` | repo-wide (root only, regardless of scope) |
 | `.claude/commands/load-context.md` | repo-wide |
 | `.codex/hooks.json` + `.anamnesis/codex-native-hooks/*.mjs` | repo-wide Codex native lifecycle hooks |
+| `.codex/skills/*/SKILL.md` | repo-wide Codex native project skills |
 
 When you actually `cd apps/api` and start a Claude Code session,
 CC reads BOTH `AGENTS.md` (root) AND `apps/api/AGENTS.md` —

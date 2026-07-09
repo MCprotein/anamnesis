@@ -1,5 +1,5 @@
 id: base
-version: 18
+version: 19
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
@@ -93,3 +93,7 @@ owns:
   - file: .claude/skills/ontology-enrich/SKILL.md
   - file: .claude/skills/anamnesis-init/SKILL.md
   - file: .claude/skills/doc-freshness-review/SKILL.md
+  - file: .codex/skills/load-context/SKILL.md
+  - file: .codex/skills/ontology-enrich/SKILL.md
+  - file: .codex/skills/anamnesis-init/SKILL.md
+  - file: .codex/skills/doc-freshness-review/SKILL.md

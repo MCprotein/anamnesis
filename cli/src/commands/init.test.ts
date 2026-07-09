@@ -164,6 +164,22 @@ describe("init", () => {
     expect(
       fs.readFileSync(path.join(project, ".codex/hooks.json"), "utf8"),
     ).toContain(".anamnesis/codex-native-hooks/session-start.mjs");
+    expect(
+      fs.existsSync(path.join(project, ".codex/skills/load-context/SKILL.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(project, ".codex/skills/ontology-enrich/SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(project, ".codex/skills/anamnesis-init/SKILL.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(project, ".codex/skills/doc-freshness-review/SKILL.md"),
+      ),
+    ).toBe(true);
 
     const agentsMd = fs.readFileSync(path.join(project, "AGENTS.md"), "utf8");
     expect(agentsMd).toContain("codex-cmd-handoff-prepare");

@@ -29,6 +29,9 @@ The install creates or updates:
 - `CLAUDE.md` as the Claude Code entrypoint back to `AGENTS.md`.
 - `.claude/hooks`, `.claude/commands`, and `.claude/skills` when executable
   adapters are allowed.
+- `.codex/skills/*`, `.codex/hooks.json`, and
+  `.anamnesis/codex-native-hooks/*` for Codex native project skills and
+  lifecycle hooks when executable adapters are allowed.
 - `.cursor/rules/*` for Cursor fallback rules.
 - `.anamnesis/ontology/*.yaml` static ontology slices.
 - `.anamnesis/ontology/*.bootstrap.yaml` when deterministic Layer A
@@ -148,11 +151,11 @@ What to look for:
 
 - Claude Code has the richest native surface today. Hooks, commands, skills,
   and SessionStart injection are first-class there.
-- Codex now has native SessionStart continuity and native wrappers for
-  supported lifecycle shell hooks when executable adapters are allowed,
-  including `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`,
-  `PostToolUse`, and `Stop`. It still relies on explicit fallback
-  instructions for commands, skills, and unsupported hook surfaces. Cursor
+- Codex now has native SessionStart continuity, native project skills, and
+  native wrappers for supported lifecycle shell hooks when executable adapters
+  are allowed, including `UserPromptSubmit`, `PreToolUse`,
+  `PermissionRequest`, `PostToolUse`, and `Stop`. It still relies on explicit
+  fallback instructions for commands and unsupported hook surfaces. Cursor
   relies on fallback rules and startup instructions.
 - Real external agent sessions can still fail if the target agent ignores
   installed startup instructions. `status`, `doctor`, switching fixtures, and
@@ -161,8 +164,9 @@ What to look for:
 - Layer A introspection is deliberately shallow and deterministic. Project
   intent belongs in Layer B enriched ontology, not in a framework-specific
   knowledge engine inside the CLI.
-- `--allow-exec-adapters` is required before anamnesis writes executable
-  Claude Code hooks, commands, and skills.
+- `--allow-exec-adapters` is required before anamnesis writes native
+  agent-behavior surfaces such as Claude Code hooks/commands/skills, Codex
+  skills/hooks, and Cursor rules.
 
 ## Related References
 

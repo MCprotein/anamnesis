@@ -7,6 +7,15 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added native Codex project skill rendering. Codex `skill` capabilities now
+  install `.codex/skills/<name>/...` files while keeping the existing
+  `AGENTS.md` `codex-skill-*` fallback regions for compatibility.
+- Added `.codex/skills/**` to the executable-adapter safety gate and continuity
+  checks so `init`, `update`, `status`, and `doctor` treat Codex skills like
+  other agent-behavior surfaces.
+
 ## [1.13.0] — 2026-07-08
 
 ### Added

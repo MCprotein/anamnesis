@@ -37,7 +37,8 @@ export const EXEC_ADAPTER_PREFIXES = [
   // Cursor adapter — .mdc files modify agent behavior the same way
   // CC commands/skills do. Treat as exec-gated for supply-chain consistency.
   ".cursor/rules/",
-  // Codex adapter — git hook bridge plus executable hook copies.
+  // Codex adapter — project skills, git hook bridge, and executable hook copies.
+  ".codex/skills/",
   ".git/hooks/",
   ".anamnesis/codex-hooks/",
   ".anamnesis/codex-native-hooks/",

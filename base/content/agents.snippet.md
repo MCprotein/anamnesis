@@ -9,7 +9,7 @@
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
 - 라이브러리 갱신 반영: `anamnesis update --dry-run` 으로 변경 검토 → 문제 없으면 `--apply`.
-- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
+- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
 ### 자주 쓰는 커맨드
 

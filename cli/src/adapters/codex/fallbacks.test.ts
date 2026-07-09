@@ -740,7 +740,7 @@ describe("codex executable_hook fallback", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("codex skill fallback", () => {
+describe("codex skill native surface and fallback", () => {
   let fragmentDir: string;
 
   beforeEach(() => {
@@ -748,11 +748,18 @@ describe("codex skill fallback", () => {
     fs.mkdirSync(path.join(fragmentDir, "skills/myskill"), { recursive: true });
   });
 
-  it("strips frontmatter and emits region with body only", () => {
+  it("emits native Codex skill files and strips frontmatter in fallback region", () => {
     const skillBody = "## Steps\n\n1. step one\n2. step two\n";
+    fs.mkdirSync(path.join(fragmentDir, "skills/myskill/references"), {
+      recursive: true,
+    });
     fs.writeFileSync(
       path.join(fragmentDir, "skills/myskill/SKILL.md"),
       `---\nname: myskill\ndescription: a test skill\n---\n\n${skillBody}`,
+    );
+    fs.writeFileSync(
+      path.join(fragmentDir, "skills/myskill/references/guide.md"),
+      "supporting reference\n",
     );
     const fragment: FragmentDefinition = {
       id: "f",
@@ -771,16 +778,41 @@ describe("codex skill fallback", () => {
       },
       makeContext(fragmentDir, fragment),
     );
-    expect(actions).toHaveLength(1);
-    if (actions[0]!.kind === "region") {
-      expect(actions[0]!.regionId).toBe("codex-skill-myskill");
-      expect(actions[0]!.sideEffects).toEqual(["local-write"]);
-      expect(actions[0]!.content).toContain(
+    expect(actions).toHaveLength(3);
+
+    const skillFile = actions.find(
+      (a) => a.kind === "file" && a.path === ".codex/skills/myskill/SKILL.md",
+    );
+    expect(skillFile?.kind).toBe("file");
+    if (skillFile?.kind === "file") {
+      expect(skillFile.sideEffects).toEqual(["local-write"]);
+      expect(skillFile.content).toContain("description: a test skill");
+      expect(skillFile.content).toContain("step one");
+    }
+
+    const referenceFile = actions.find(
+      (a) =>
+        a.kind === "file" &&
+        a.path === ".codex/skills/myskill/references/guide.md",
+    );
+    expect(referenceFile?.kind).toBe("file");
+    if (referenceFile?.kind === "file") {
+      expect(referenceFile.content).toBe("supporting reference\n");
+    }
+
+    const fallback = actions.find(
+      (a) => a.kind === "region" && a.regionId === "codex-skill-myskill",
+    );
+    expect(fallback?.kind).toBe("region");
+    if (fallback?.kind === "region") {
+      expect(fallback.sideEffects).toEqual(["local-write"]);
+      expect(fallback.content).toContain(".codex/skills/myskill/SKILL.md");
+      expect(fallback.content).toContain(
         "**Declared side effects:** `local-write`.",
       );
       // Body present, frontmatter not.
-      expect(actions[0]!.content).toContain("step one");
-      expect(actions[0]!.content).not.toContain("description: a test skill");
+      expect(fallback.content).toContain("step one");
+      expect(fallback.content).not.toContain("description: a test skill");
     }
   });
 

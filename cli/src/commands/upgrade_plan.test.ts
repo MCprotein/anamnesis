@@ -113,7 +113,7 @@ describe("upgrade plan", () => {
         }),
         expect.objectContaining({
           kind: "executable-adapter-gate",
-          next: expect.stringContaining("Codex wrappers"),
+          next: expect.stringContaining("Codex skills/wrappers"),
         }),
       ]),
     );

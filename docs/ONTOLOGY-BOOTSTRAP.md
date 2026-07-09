@@ -255,9 +255,10 @@ agent:
 6. Stop. Show diff. User reviews and commits.
 ```
 
-Tool-agnostic — same content rendered via SKILL.md (CC), AGENTS.md
-region (Codex), `.cursor/rules/*.mdc` (Cursor). Existing skill
-rendering pipeline handles this for free.
+Tool-agnostic — same content rendered via SKILL.md (CC), native
+`.codex/skills/*/SKILL.md` plus AGENTS.md fallback (Codex), and
+`.cursor/rules/*.mdc` (Cursor). Existing skill rendering pipeline handles
+this for free.
 
 ### Layer B re-run policy
 

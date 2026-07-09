@@ -55,6 +55,10 @@ describe("isExecAdapterPath", () => {
     expect(isExecAdapterPath(".claude/skills/x/SKILL.md")).toBe(true);
   });
 
+  it("matches .codex/skills/*", () => {
+    expect(isExecAdapterPath(".codex/skills/x/SKILL.md")).toBe(true);
+  });
+
   it("matches Codex git hook bridge paths", () => {
     expect(isExecAdapterPath(".git/hooks/pre-commit")).toBe(true);
     expect(isExecAdapterPath(".anamnesis/codex-hooks/prisma.sh")).toBe(true);
@@ -357,6 +361,17 @@ describe("planChanges — exec-adapter gate", () => {
       allowExecAdapters: true,
     });
     expect(changes[0]!.status).toBe("create");
+  });
+
+  it("blocks create of .codex/skills without allowExecAdapters", () => {
+    const act = fileAction({ path: ".codex/skills/x/SKILL.md" });
+    const { changes } = planChanges([act], {
+      projectRoot: root,
+      manifest: emptyManifest(),
+      allowExecAdapters: false,
+    });
+    expect(changes[0]!.status).toBe("blocked");
+    expect(changes[0]!.reason).toContain("exec-adapters");
   });
 
   it("blocks update of .claude/commands without flag", () => {

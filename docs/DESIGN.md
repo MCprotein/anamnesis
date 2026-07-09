@@ -108,7 +108,7 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 
 - **content**: 자유 형식. AGENTS.md 섹션 등 사람이 읽는 마크다운·YAML. 도구 무관.
 - **capabilities**: 중간 IR. `project_memory`·`ontology`·`executable_hook`·`skill`·`slash_command`·`task_harness` 같은 **의미 단위**. 각 capability 는 어떤 도구가 어떻게 렌더링하는지 계약을 가진다.
-- **adapters**: capability → 도구별 파일 변환. 예: `executable_hook` → CC 는 `.claude/hooks/*.sh` + `settings.json` 등록, Codex 는 native lifecycle wrapper + AGENTS.md 지시문 + git hook fallback.
+- **adapters**: capability → 도구별 파일 변환. 예: `executable_hook` → CC 는 `.claude/hooks/*.sh` + `settings.json` 등록, Codex 는 native lifecycle wrapper + AGENTS.md 지시문 + git hook fallback. `skill` → Codex 는 `.codex/skills/<name>/SKILL.md` 와 AGENTS.md fallback 을 같이 렌더링한다.
 
 이 구조가 Codex 가 지적한 "중간 IR 필요" 를 해결한다.
 
@@ -119,7 +119,7 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 | 1 | `project_memory` | 항상 로드되는 자유 형식 맥락 | `AGENTS.md` + `CLAUDE.md` entrypoint + optional `.claude/` surfaces | `AGENTS.md` | `AGENTS.md` |
 | 2 | `ontology` | 구조화된 레퍼런스 (불변 관계) | SessionStart 훅 주입 | native SessionStart wrapper + AGENTS.md fallback | rules 지시문 |
 | 3 | `executable_hook` | 이벤트 기반 자동 실행 | `.claude/hooks/` + `settings.json` | native wrappers for Codex-supported events; git hook + LLM 지시문 fallback | git hook + LLM 지시문 |
-| 4 | `skill` | 재사용 가능한 작업 절차 | `.claude/skills/<name>/SKILL.md` | AGENTS.md 섹션으로 fallback | rules 로 fallback |
+| 4 | `skill` | 재사용 가능한 작업 절차 | `.claude/skills/<name>/SKILL.md` | `.codex/skills/<name>/SKILL.md` + AGENTS.md fallback | rules 로 fallback |
 | 5 | `slash_command` | 사용자 호출 커맨드 | `.claude/commands/*.md` | AGENTS.md 섹션으로 fallback | rules 로 fallback |
 | 6 | `task_harness` | 목표·범위·증거·테스트·rubric 작업 계약 | `.anamnesis/task-harnesses/*.yaml` 검색 대상 | `.anamnesis/task-harnesses/*.yaml` 검색 대상 | `.anamnesis/task-harnesses/*.yaml` 검색 대상 |
 
@@ -458,7 +458,7 @@ or keep all backups when set to `0`.
 
 ## 7. 보안 모델
 
-`.claude/hooks/`·`.claude/commands/`·`.claude/skills/` 는 실행 가능한 자동화 표면이다. 라이브러리 update 로 이걸 덮는 것은 **supply-chain 리스크**.
+`.claude/hooks/`·`.claude/commands/`·`.claude/skills/`·`.codex/skills/`·`.codex/hooks.json`·`.cursor/rules/` 는 에이전트 동작을 바꾸는 표면이다. 라이브러리 update 로 이걸 덮는 것은 **supply-chain 리스크**.
 
 ### 7.1 실행 어댑터 분리
 
@@ -555,6 +555,9 @@ anamnesis/
 │   ├── commands/
 │   └── settings.json
 ├── .cursor/rules/             # Cursor 어댑터 산출물
+├── .codex/                    # Codex native config + skills
+│   ├── hooks.json
+│   └── skills/
 ├── .anamnesis/codex-hooks/    # Codex git-hook bridge
 ├── CLAUDE.md                  # Claude Code entrypoint redirecting to AGENTS.md
 ├── system_graph.yaml          # legacy / optional user-managed ontology
@@ -574,7 +577,7 @@ summary.
 | project_memory | ✅ AGENTS.md + CLAUDE.md entrypoint + optional CC surfaces | ✅ AGENTS.md 자동 로드 | ✅ AGENTS.md 자동 로드 |
 | ontology | ✅ SessionStart 훅 주입 | ✅ native SessionStart wrapper + AGENTS fallback | 🟡 rules 지시문 |
 | executable_hook | ✅ 네이티브 훅 | 🟡 native Codex lifecycle wrappers + AGENTS fallback + optional git pre-commit bridge | 🟡 `.cursor/rules` 지시 |
-| skill | ✅ `.claude/skills/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
+| skill | ✅ `.claude/skills/` | ✅ `.codex/skills/` + AGENTS fallback | 🟡 rules |
 | slash_command | ✅ `.claude/commands/` | 🟡 AGENTS.md 섹션 | 🟡 rules |
 | task_harness | 🟡 `.anamnesis/task-harnesses/*.yaml` retrieval | 🟡 `.anamnesis/task-harnesses/*.yaml` retrieval | 🟡 `.anamnesis/task-harnesses/*.yaml` retrieval |
 

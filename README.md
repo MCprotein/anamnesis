@@ -149,6 +149,7 @@ your-project/
 │   └── skills/load-context/SKILL.md
 ├── .cursor/rules/                               # Cursor adapter output when enabled
 ├── .codex/{config.toml,hooks.json}              # Codex native hooks when enabled
+├── .codex/skills/load-context/SKILL.md          # Codex native skills when enabled
 ├── .anamnesis/codex-native-hooks/               # Codex native hook wrappers
 └── .anamnesis/codex-hooks/                      # Codex git-hook bridge when enabled
 ```
@@ -280,7 +281,7 @@ Each fragment declares one or more **capabilities** in `fragment.yaml`. Capabili
 | `project_memory` | Always-loaded context | `AGENTS.md` region + `CLAUDE.md` entrypoint | `AGENTS.md` region | `AGENTS.md` region read by Cursor |
 | `ontology` | Structured reference | SessionStart hook injection | Codex native SessionStart wrapper + AGENTS fallback | rules instruction |
 | `executable_hook` | Event-driven automation | `.claude/hooks/*.sh` | native wrappers for Codex-supported lifecycle events; AGENTS fallback + optional git hook bridge | rules fallback |
-| `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | AGENTS.md section (fallback) | rules (fallback) |
+| `skill` | Reusable procedure | `.claude/skills/<n>/SKILL.md` | `.codex/skills/<n>/SKILL.md` + AGENTS fallback | rules (fallback) |
 | `slash_command` | User-invoked command | `.claude/commands/<n>.md` | AGENTS.md section (fallback) | rules (fallback) |
 | `task_harness` | Retrieval-only task contract | `.anamnesis/task-harnesses/*.yaml` | `.anamnesis/task-harnesses/*.yaml` | `.anamnesis/task-harnesses/*.yaml` |
 
@@ -364,7 +365,7 @@ used for deterministic README score claims.
 
 ## Safety
 
-- **`--allow-exec-adapters`** flag is *required* for installs into `.claude/{hooks,commands,skills}/`. Default is content-only (AGENTS.md regions, ontology slices). This blocks remote-fragment supply-chain risk.
+- **`--allow-exec-adapters`** flag is *required* for installs into native agent-behavior surfaces such as `.claude/{hooks,commands,skills}/`, `.codex/skills/`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks/`, and `.cursor/rules/`. Default is content-only (AGENTS.md regions, ontology slices). This blocks remote-fragment supply-chain risk.
 - **Files on disk that aren't in the manifest** are classified as `user-modified` and never overwritten. This catches both pre-existing files (from before anamnesis adoption) and post-install user edits.
 - **`update` is dry-run by default**. Pass `--apply` to actually write.
 - **Backups** are taken automatically before `update --apply` modifies any file.
@@ -394,6 +395,11 @@ used for deterministic README score claims.
 | **v1.7** | Retrieval-only task harnesses, lifecycle cleanup, handoff retention, and release parity | shipped 2026-07-02; latest patch 1.7.1 |
 | **v1.8** | Configurable bounded handoff retention policy | shipped 2026-07-02 |
 | **v1.9** | Upgrade compatibility and project-update planning | shipped 2026-07-03; latest patch 1.9.6 |
+| **v1.10** | Guided upgrade decisions, release gate alignment, and prompt-gate UX | shipped 2026-07-07 |
+| **v1.11** | Safe upgrade choice execution and upgrade benchmark choice metrics | shipped 2026-07-07 |
+| **v1.12** | Compact SessionStart budget diagnostics | shipped 2026-07-07 |
+| **v1.13** | First-run UX and stale-doc/path diagnostics | shipped 2026-07-08 |
+| **v1.14** | Codex native skill parity and adapter surface evidence | in progress |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

@@ -361,7 +361,7 @@ function projectGates(input: {
       kind: "executable-adapter-gate",
       message:
         `${input.updateSummary.blocked} executable adapter write(s) require explicit permission.`,
-      next: "Re-run preview/apply with `--allow-exec-adapters` only after reviewing hooks, commands, skills, Cursor rules, and Codex wrappers.",
+      next: "Re-run preview/apply with `--allow-exec-adapters` only after reviewing hooks, commands, skills, Cursor rules, and Codex skills/wrappers.",
     });
   }
 
@@ -615,7 +615,7 @@ function projectChoices(input: {
       effect: "read-only",
       command: "anamnesis update --dry-run --allow-exec-adapters",
       outcome:
-        "Includes hooks, commands, skills, Cursor rules, and Codex wrappers in the preview without writing them.",
+        "Includes hooks, commands, skills, Cursor rules, and Codex skills/wrappers in the preview without writing them.",
       recommended: input.updateSummary.blocked > 0,
     });
   }

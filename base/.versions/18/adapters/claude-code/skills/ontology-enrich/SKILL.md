@@ -1,0 +1,121 @@
+---
+name: ontology-enrich
+description: |
+  Add the semantic layer (relationships, flows, operational rules) on top of
+  the deterministic facts produced by `anamnesis ontology bootstrap`. Run
+  after a fresh bootstrap or whenever project intent has shifted in ways
+  parsers can't detect. Layer B of the hybrid ontology bootstrap.
+---
+
+# ontology-enrich
+
+`anamnesis ontology bootstrap` extracts factual structure (namespaces, services, models, routes) from project files via deterministic parsers. That is **Layer A**. It cannot infer intent — why this NodePort, what flow connects these services, which invariants must hold.
+
+This skill is **Layer B**: agent-driven semantic enrichment. You read the bootstrap output plus surrounding context, then write the *meaning* into a sibling `enriched.yaml` file.
+
+Layer B is re-runnable. Existing semantic entries are user-reviewed project memory, so every re-run must merge carefully instead of replacing the file wholesale.
+
+## Steps
+
+1. **Discover ontology files**:
+   ```bash
+   find . -path '*/.anamnesis/ontology/*.yaml' -type f \
+     -not -path '*/node_modules/*' -not -path '*/.git/*'
+   ```
+   Read every `<id>.yaml` (static), every `<id>.bootstrap.yaml` (Layer A), and every `<id>.enriched.yaml` if it already exists.
+
+2. **Read project entry points** to understand intent:
+   - `CLAUDE.md` / `AGENTS.md` (project conventions, deployment rules)
+   - `system_graph.yaml` if present (user-curated top-level ontology)
+   - `README.md` for high-level service descriptions
+   - Any `docs/architecture*.md` or similar
+
+3. **Identify what parsers couldn't infer** for each fragment with a `<id>.bootstrap.yaml`:
+   - **Relationships** — cross-namespace dependencies, service-to-service call paths, "X depends on Y" statements not visible in YAML
+   - **Flows** — request paths (e.g., "client → traefik → service → pod"), data pipelines, deploy paths (e.g., "Runner → zot → kubelet certs.d → workload pod")
+   - **Operational notes** — invariants ("skip_verify unsupported on containerd v2"), gotchas ("ClusterIP changes require microk8s restart"), why-this-design decisions
+   - **Intent** — purpose of specific resources (e.g., "this NodePort exposes the Steam query endpoint", "this Ingress fronts the OCI registry")
+
+4. **Write or update `<id>.enriched.yaml`** for each fragment, using schema version `anamnesis.enriched.v1` and these top-level keys:
+   ```yaml
+   schema_version: "anamnesis.enriched.v1"
+
+   relationships:
+     - id: "zot-service-ingress"
+       from: { namespace: zot, kind: Service, name: zot }
+       to:   { namespace: traefik, kind: Ingress, name: zot }
+       reason: "external TLS termination + cert delivery via DNS-01"
+       evidence:
+         - "k8s.bootstrap.yaml: Service/zot and Ingress/zot"
+       confidence: "high"
+
+   flows:
+     - id: "image-push"
+       name: "image push"
+       path: "developer → github actions runner → zot.zot.svc.cluster.local:5000"
+       evidence:
+         - "docs/architecture.md: image publishing"
+       confidence: "medium"
+     - id: "image-pull-kubelet"
+       name: "image pull (kubelet)"
+       path: "kubelet → registry.<host>:8443 → certs.d → ClusterIP redirect"
+
+   operational_notes:
+     - id: "containerd-v2-skip-verify"
+       rule: "MicroK8s containerd v2 does not support `skip_verify`; setting it crashes the runtime"
+       severity: "must"
+       evidence:
+         - "AGENTS.md: deployment invariant"
+
+   open_questions:
+     - id: "registry-retention-owner"
+       question: "Which component owns registry retention policy?"
+       evidence:
+         - "No retention configuration found in bootstrap output"
+   ```
+   Use whichever subset of keys applies. Omit empty sections rather than emitting `relationships: []`. Prefer stable `id` fields for every entry so future re-runs can merge by identity.
+
+   Stable conventions:
+   - `schema_version` is required and must be `anamnesis.enriched.v1`.
+   - `id` is required for every relationship, flow, operational note, and open question.
+   - `confidence` should be `high`, `medium`, or `low` when present.
+   - `severity` for operational notes should be `must`, `should`, or `note`.
+   - `evidence` should cite concrete files, bootstrap facts, docs, or observed behavior.
+   - `supersedes` points to the stable `id` of a replaced entry.
+
+5. **Never modify `<id>.bootstrap.yaml`** — it's auto-regenerable; your edits would be lost on the next bootstrap. Always write to `<id>.enriched.yaml`.
+
+6. **Apply the re-run merge policy**:
+   - Preserve existing entries, ordering, wording, and IDs unless the underlying fact is clearly wrong or the user asked for cleanup.
+   - If an existing entry still holds, leave it unchanged.
+   - If you discover a new semantic fact, append a new entry with a stable `id`, `evidence`, and `confidence`.
+   - If a previous entry is superseded by a new design, append the replacement with `supersedes: "<old-id>"` instead of deleting the old entry.
+   - If a previous entry is wrong and keeping it would mislead future agents, make the smallest direct correction and explain it in the final diff summary.
+   - If evidence is weak or the relationship is inferred, put it under `open_questions` rather than pretending it is a fact.
+   - Do not reorder existing arrays just to make the file prettier. Append-only is the default.
+
+7. **Show the diff** to the user. State what you added, what you preserved, what you superseded or corrected, and what remains uncertain. Stop. Let the user review and commit.
+
+## Re-running this skill
+
+If `<id>.enriched.yaml` already exists, treat it as the source of truth for semantic content the user has already approved. Merge by stable `id` where possible:
+
+- **Same id, same meaning**: leave unchanged.
+- **New id, new fact**: append.
+- **Old id, changed design**: append a replacement with `supersedes`.
+- **Old id, invalid fact**: make the smallest correction only when preserving the old text would harm the next agent.
+- **Uncertain fact**: write an `open_questions` entry.
+
+When in doubt, append rather than rewrite.
+
+## When to invoke
+
+- Right after `anamnesis init` and `anamnesis ontology bootstrap` on a new project
+- After a significant architectural change (new service, namespace split, deploy path migration)
+- When `/load-context` reveals the ontology summary feels thin or generic
+
+## When NOT to invoke
+
+- The bootstrap files don't exist yet — run `anamnesis ontology bootstrap` first
+- The user is asking for a code change. This skill produces ontology, not code.
+- The project has no agent-discernible intent beyond what the static fragments already say (e.g., a tiny single-service repo)

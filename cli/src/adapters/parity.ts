@@ -111,9 +111,14 @@ export const ADAPTER_PARITY_MATRIX = [
         evidence: ["continuity acceptance", "skill renderer tests"],
       },
       codex: {
-        level: "fallback",
-        surface: "`AGENTS.md` skill region",
-        evidence: ["continuity acceptance", "codex fallback tests"],
+        level: "native",
+        surface:
+          "`.codex/skills/<name>/SKILL.md` plus `AGENTS.md` fallback region",
+        evidence: [
+          "continuity acceptance",
+          "codex fallback tests",
+          "real Codex CLI project-skill smoke",
+        ],
       },
       cursor: {
         level: "fallback",

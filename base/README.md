@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 13 capabilities (covers all 6 types; v18+)
+├── fragment.yaml                # 13 capabilities (covers all 6 types; v19+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -73,5 +73,9 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 | `adapters/claude-code/skills/ontology-enrich/SKILL.md` | `.claude/skills/ontology-enrich/SKILL.md` |
 | `adapters/claude-code/skills/anamnesis-init/SKILL.md` | `.claude/skills/anamnesis-init/SKILL.md` |
 | `adapters/claude-code/skills/doc-freshness-review/SKILL.md` | `.claude/skills/doc-freshness-review/SKILL.md` |
+| `adapters/claude-code/skills/load-context/SKILL.md` | `.codex/skills/load-context/SKILL.md` + `AGENTS.md` fallback region |
+| `adapters/claude-code/skills/ontology-enrich/SKILL.md` | `.codex/skills/ontology-enrich/SKILL.md` + `AGENTS.md` fallback region |
+| `adapters/claude-code/skills/anamnesis-init/SKILL.md` | `.codex/skills/anamnesis-init/SKILL.md` + `AGENTS.md` fallback region |
+| `adapters/claude-code/skills/doc-freshness-review/SKILL.md` | `.codex/skills/doc-freshness-review/SKILL.md` + `AGENTS.md` fallback region |
 
-Without `--allow-exec-adapters`, the AGENTS.md region and ontology file install but native/executable adapter files such as Claude Code hooks/commands/skills, Cursor rules, and Codex native hook wrappers are reported as `blocked` (supply-chain protection).
+Without `--allow-exec-adapters`, the AGENTS.md region and ontology file install but native/executable adapter files such as Claude Code hooks/commands/skills, Codex native skills/hooks, and Cursor rules are reported as `blocked` (supply-chain protection).
