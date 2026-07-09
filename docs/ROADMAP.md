@@ -1697,7 +1697,7 @@ Exit criteria:
 
 ---
 
-## v1.17 — *planned*
+## v1.17 — *in progress on release/v1.17*
 
 > **Theme: ontology source management and document graph diagnostics**
 
@@ -1715,6 +1715,9 @@ Product boundary:
   not a second source of truth.
 - Context indexes are regenerable source-pointer maps, not authoritative
   knowledge stores.
+- Document indexing is a routing aid for agents. It should tell the agent
+  which file/heading/source pointer to read next; it should not replace the
+  agent's judgment or preload more startup context.
 - Generated benchmark reports and visualizations stay under
   `docs/benchmark-evidence/<suite>/`; README should link to concise evidence
   summaries instead of embedding chart galleries.
@@ -1722,23 +1725,46 @@ Product boundary:
   ontology facts until an agent/user promotes them through the enrichment path.
 - No SQLite, embedding store, daemon, remote sync service, or wiki UI.
 
-Suggested command surface stays under existing namespaces:
+Current baseline on `release/v1.17`:
+
+- `context docs` scans Markdown roots and reports pages, headings, links,
+  backlinks, canonical docs, and ontology source refs.
+- `context diagnose`, `status`, and `doctor` surface broken Markdown links,
+  missing heading anchors, and stale ontology source refs.
+- Dogfood state for this repo is clean: `context docs` currently reports
+  `broken=0` and `ontology refs missing=0`.
+
+Why this still helps when the agent controls the work:
+
+- The CLI should not decide project truth for the agent. It should provide a
+  deterministic map of likely source files and headings so the agent can read
+  exact evidence before editing ontology or docs.
+- The main benefit is lower retrieval friction: fewer blind greps, fewer missed
+  specs, and fewer stale document references entering future context.
+- Success should be measured by source-pointer retrieval quality and diagnostic
+  cleanliness, not by how much prose gets indexed or injected.
+
+Suggested command surface stays under existing namespaces. Remaining work
+should be ordered by retrieval value, not by every record type that could be
+indexed:
 
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Document graph scanner** | baseline implemented on `release/v1.17` | Add a deterministic reader for Markdown/document roots that records pages, headings, repo-relative links, backlinks, canonical docs, and detected ontology references. Start with README, `docs/**/*.md`, `specs/**/*.md`, and catalog-configured roots while excluding deprecated/generated evidence paths. |
 | 2 | **Reviewable document catalog** | baseline implemented on `release/v1.17` | Add an optional template catalog path at `.anamnesis/docs/catalog.yaml` with roots, canonical documents, excludes, and allowed ontology-reference prefixes. Missing catalog is informational unless the workspace is clearly document-heavy. Baseline supports roots, excludes, and canonical docs; allowed ontology-reference prefixes remain planned. |
-| 3 | **Context index integration** | planned | Extend the existing context index with document-oriented records such as `doc-page`, `doc-heading`, `doc-link`, `doc-backlink`, and `doc-ontology-ref`, keeping ordering deterministic and outputs safe to delete/regenerate. |
+| 3 | **Minimal context query integration** | next | Extend the existing context index only with high-signal document records first: `doc-page`, `doc-heading`, and `doc-ontology-ref`. The goal is for `context query` to return exact document/ontology source pointers for an agent to read, without increasing SessionStart payload. Defer `doc-link` and `doc-backlink` indexing unless diagnostics or benchmarks show they improve retrieval beyond `context docs`. |
 | 4 | **`context docs` summary** | baseline implemented on `release/v1.17` | Add `anamnesis context docs` as a read-only summary for document roots, page counts, broken links, orphaned important docs, ontology-linked pages, and candidate issues. Baseline provides human and `--json` output; optional write path for regenerable summaries remains planned. |
 | 5 | **Diagnostics and repair hints** | partial on `release/v1.17` | Extend `context diagnose`, `status`, and `doctor` with broken internal doc links, missing canonical docs, invalid ontology references, and doc-heavy workspace guidance. Current slice surfaces broken Markdown links, missing heading anchors, and stale ontology source refs; missing canonical docs and doc-heavy workspace guidance remain planned. Keep semantic stale-claim judgment in the existing `doc-freshness-review` skill. |
-| 6 | **Ontology candidate bridge** | planned | Surface unaccepted `ontology-candidate` / `open-question` pointers from document evidence so `/ontology-enrich` can read the right sources and promote only reviewed relationships, flows, invariants, or open questions into `.enriched.yaml`. |
+| 6 | **Ontology candidate bridge** | after minimal query integration | Surface unaccepted `ontology-candidate` / `open-question` pointers from document evidence so `/ontology-enrich` can read the right sources and promote only reviewed relationships, flows, invariants, or open questions into `.enriched.yaml`. Do this after `context query` can reliably retrieve the relevant doc headings and ontology refs. |
 | 7 | **Apply/init integration without command sprawl** | planned | Keep first-run and maintenance UX under `init --dry-run`, `apply --dry-run`, `status`, `doctor`, and `context`. `apply` should not silently crawl all docs into ontology; it may create or refresh reviewed managed catalog/context surfaces only when the plan is accepted. |
-| 8 | **Benchmark and fixture coverage** | planned | Add public-safe doc-heavy fixtures with valid links, broken links, ontology refs, excluded deprecated docs, and retrieval checks proving agents can find needed source pointers without increasing SessionStart payload. Store generated JSON/Markdown/SVG artifacts under `docs/benchmark-evidence/<suite>/`; README should retain only links and headline explanations. |
+| 8 | **Benchmark and fixture coverage** | planned | Add public-safe doc-heavy fixtures with valid links, broken links, ontology refs, excluded deprecated docs, and retrieval checks proving agents can find needed source pointers without increasing SessionStart payload. The first useful metric is retrieval hit quality for `doc-page`, `doc-heading`, and `doc-ontology-ref`; link/backlink graph search can wait. Store generated JSON/Markdown/SVG artifacts under `docs/benchmark-evidence/<suite>/`; README should retain only links and headline explanations. |
 
 Implementation notes:
 
 - Reuse the existing context-index style: repo-local JSON/JSONL, stable refs,
   source hashes, snippets, and deterministic sorting.
+- Keep indexed snippets short and pointer-oriented. The index should answer
+  "where should the agent read next?", not "what is the whole project memory?".
 - Keep the document graph separate from Layer A framework introspectors.
   Layer A remains deterministic project facts; document graph records source
   structure and candidate pointers.
@@ -1748,6 +1774,9 @@ Implementation notes:
 - `doc-freshness-review` remains the semantic second pass for claims the CLI
   cannot prove. Deterministic diagnostics should flag evidence and pointers,
   not pretend to know product intent.
+- Do not implement `doc-link` / `doc-backlink` search records just because the
+  scanner can compute them. Keep them diagnostic-first until repeated usage
+  shows they reduce retrieval misses.
 
 Exit criteria:
 
@@ -1758,8 +1787,9 @@ Exit criteria:
 - `status` summarizes document graph health without dumping large file lists.
 - `doctor` gives actionable repair guidance without making document-heavy repos
   look broken by default.
-- `context index/query` can retrieve document source pointers relevant to an
-  ontology enrichment task.
+- `context index/query` can retrieve high-signal document source pointers
+  relevant to an ontology enrichment task, starting with pages, headings, and
+  ontology refs.
 - `/ontology-enrich` guidance can use the document source pointers while still
   writing semantic facts only to `.enriched.yaml` or user-managed ontology.
 - Default SessionStart context does not grow; only compact summaries and source
