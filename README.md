@@ -422,6 +422,7 @@ used for deterministic README score claims.
 | **v1.13** | First-run UX and stale-doc/path diagnostics | shipped 2026-07-08 |
 | **v1.14** | Codex native skill parity and adapter surface evidence | shipped 2026-07-09 |
 | **v1.15** | Subagent context contract and injection-success evidence | shipped 2026-07-09 |
+| **v1.16** | Command UX consolidation, grouped help, and terminal UI polish | planned |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
@@ -437,6 +438,8 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   v1 Agentfile freeze decisions, reserved fields, and strict parser policy
 - [`docs/AGENTFILE-MIGRATIONS.md`](docs/AGENTFILE-MIGRATIONS.md) —
   `anamnesis migrate agentfile` command contract
+- [`docs/COMMAND-UX-PLAN.md`](docs/COMMAND-UX-PLAN.md) —
+  command consolidation, grouped help, adaptive detection, and terminal UI plan
 - [`docs/API.md`](docs/API.md) — v1.0 TypeScript API stability contract
 - [`docs/REPAIR.md`](docs/REPAIR.md) — repair playbook for existing managed projects
 - [`docs/FRAGMENT-AUTHORING.md`](docs/FRAGMENT-AUTHORING.md) —
