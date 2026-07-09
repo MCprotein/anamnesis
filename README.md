@@ -421,7 +421,7 @@ used for deterministic README score claims.
 | **v1.12** | Compact SessionStart budget diagnostics | shipped 2026-07-07 |
 | **v1.13** | First-run UX and stale-doc/path diagnostics | shipped 2026-07-08 |
 | **v1.14** | Codex native skill parity and adapter surface evidence | shipped 2026-07-09 |
-| **v1.15** | Subagent context contract and injection-success evidence | in progress |
+| **v1.15** | Subagent context contract and injection-success evidence | shipped 2026-07-09 |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

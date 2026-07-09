@@ -1608,7 +1608,7 @@ Exit criteria:
 
 ---
 
-## v1.15 — *in progress*
+## v1.15 — *shipped 2026-07-09*
 
 > **Theme: subagent context contract and injection-success evidence**
 
@@ -1621,11 +1621,11 @@ boundary explicit and adds repeated-run evidence.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Subagent context contract** | done in branch | Define the leader-to-subagent contract for work that depends on project memory: the leader must either pass a compact anamnesis context preamble or require the subagent to read and report the exact source pointers it used (`AGENTS.md`, `.anamnesis/handoff/active.md`, startup-active warm archives, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, and relevant `.codex/skills/*`). |
-| 2 | **Separate-process hydration path** | done in branch | `anamnesis context subagent-preamble` now prints a launcher-wrapper payload for externally started subagents and worker processes. It includes agent control pointers, compact startup source pointers, the resume bundle, and a required `anamnesis_context_sources` response contract, so launchers can prepend it before the task prompt. |
-| 3 | **Same-session native subagent guardrails** | done in branch | Treat same-session native subagents as prompt-contract enforced until the runtime exposes a subagent hook or equivalent startup interception point. The leader should reject subagent reports that omit required context evidence for tasks that need project state. |
-| 4 | **Injection success benchmark** | done in branch | `anamnesis benchmark subagent-injection --attempts <n>` now reports raw attempts, injected count, missed count, injection rate, prompt-contract accepted/rejected counts, JSON/Markdown evidence, runtime evidence, and SVG graphs. The separate-process lane validates the generated launcher-wrapper preamble; current dogfood run: separate-process startup `20/20` injected; same-session prompt-contract `20/20` accepted. |
-| 5 | **Status/doctor surfacing** | done in branch | `status` reads appended `subagent-injection-benchmark` runtime evidence through the shared evidence summary. `doctor` reports missing subagent benchmark evidence as info for multi-tool/Codex projects, and stale or failed subagent benchmark evidence as warnings. |
+| 1 | **Subagent context contract** | shipped | Define the leader-to-subagent contract for work that depends on project memory: the leader must either pass a compact anamnesis context preamble or require the subagent to read and report the exact source pointers it used (`AGENTS.md`, `.anamnesis/handoff/active.md`, startup-active warm archives, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, and relevant `.codex/skills/*`). |
+| 2 | **Separate-process hydration path** | shipped | `anamnesis context subagent-preamble` now prints a launcher-wrapper payload for externally started subagents and worker processes. It includes agent control pointers, compact startup source pointers, the resume bundle, and a required `anamnesis_context_sources` response contract, so launchers can prepend it before the task prompt. |
+| 3 | **Same-session native subagent guardrails** | shipped | Treat same-session native subagents as prompt-contract enforced until the runtime exposes a subagent hook or equivalent startup interception point. The leader should reject subagent reports that omit required context evidence for tasks that need project state. |
+| 4 | **Injection success benchmark** | shipped | `anamnesis benchmark subagent-injection --attempts <n>` now reports raw attempts, injected count, missed count, injection rate, prompt-contract accepted/rejected counts, JSON/Markdown evidence, runtime evidence, and SVG graphs. The separate-process lane validates the generated launcher-wrapper preamble; current dogfood run: separate-process startup `20/20` injected; same-session prompt-contract `20/20` accepted. |
+| 5 | **Status/doctor surfacing** | shipped | `status` reads appended `subagent-injection-benchmark` runtime evidence through the shared evidence summary. `doctor` reports missing subagent benchmark evidence as info for multi-tool/Codex projects, and stale or failed subagent benchmark evidence as warnings. |
 
 Benchmark design:
 
