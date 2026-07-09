@@ -224,14 +224,19 @@ semantic generation:
 
 CLI commands print this boundary so users can tell whether the current
 project state is CLI-generated, agent-enriched, or still missing semantic
-handoff/ontology context. `status` also reports ontology gaps across static
-slices, missing or stale deterministic bootstrap facts, semantic enrichment,
-and fragments that do not yet have a Layer A introspector; `doctor` turns
-actionable gaps into repair warnings. When Layer A facts are missing or
-stale, the guidance continues into `/ontology-enrich` so the active agent can
-draft the semantic `.enriched.yaml` layer instead of leaving users to write it
-by hand. When prose docs may be semantically stale, `doc-freshness-review`
-keeps that agent judgment separate from deterministic CLI diagnostics.
+handoff/ontology context. `apply` refreshes managed context, static ontology
+slices, adapter surfaces, and project guidance; it does not crawl every source
+or prose file into ontology. First-time `init` runs the conservative project
+context bootstrap and supported Layer A introspectors by default, and existing
+projects can refresh deterministic facts with `anamnesis ontology bootstrap`.
+`status` also reports ontology gaps across static slices, missing or stale
+deterministic bootstrap facts, semantic enrichment, and fragments that do not
+yet have a Layer A introspector; `doctor` turns actionable gaps into repair
+warnings. When Layer A facts are missing or stale, the guidance continues into
+`/ontology-enrich` so the active agent can draft the semantic
+`.enriched.yaml` layer instead of leaving users to write it by hand. When
+prose docs may be semantically stale, `doc-freshness-review` keeps that agent
+judgment separate from deterministic CLI diagnostics.
 
 Layer A is intentionally a baseline, not a promise to model every framework
 in depth. The CLI extracts facts it can prove from files; Layer B uses the
@@ -307,15 +312,16 @@ anamnesis is dogfooded on itself. Public claims are limited to sanitized
 fixtures and self-check evidence; private-project validation is kept out of
 README, packaged docs, and public benchmark artifacts.
 
+Generated benchmark datasets, reports, and SVG visualizations live under
+[`docs/benchmark-evidence/`](docs/benchmark-evidence/). This README keeps only
+the current headline numbers and links to the evidence index instead of
+embedding generated chart galleries.
+
 ### Session context benchmark
 
 v1.5 changed SessionStart from full file-body injection to compact source
 pointers plus invariant digests. The deterministic benchmark compares both
 modes across public-safe fixtures.
-
-![Session context tokens by mode](docs/benchmark-evidence/session-context/token-by-mode.svg)
-
-![Session context cap and success summary](docs/benchmark-evidence/session-context/cap-success-summary.svg)
 
 Current run:
 
@@ -329,7 +335,8 @@ Current run:
   compact SessionStart budget so oversized startup context is visible during
   normal maintenance, not only in benchmark artifacts.
 
-Full generated evidence is in
+Evidence and chart links are in
+[`docs/benchmark-evidence/`](docs/benchmark-evidence/) and
 [`docs/benchmark-evidence/session-context/`](docs/benchmark-evidence/session-context/).
 
 ### Subagent context benchmark
@@ -338,17 +345,14 @@ v1.15 adds a deterministic repeated-run benchmark for subagent context
 enforcement. It keeps startup-hook or launcher-wrapper injection separate from
 same-session native subagent prompt-contract evidence.
 
-![Subagent injection counts](docs/benchmark-evidence/subagent-injection/subagent-injection-counts.svg)
-
-![Subagent injection rates](docs/benchmark-evidence/subagent-injection/subagent-injection-rates.svg)
-
 Current run:
 
 - Separate-process startup lane: `20/20` injected, `0` missed.
 - Same-session native subagent lane: `20/20` prompt-contract accepted, `0`
   rejected. This is not claimed as automatic SessionStart injection.
 
-Full generated evidence is in
+Evidence and chart links are in
+[`docs/benchmark-evidence/`](docs/benchmark-evidence/) and
 [`docs/benchmark-evidence/subagent-injection/`](docs/benchmark-evidence/subagent-injection/).
 
 ### Upgrade benchmark
@@ -357,10 +361,6 @@ The deterministic upgrade benchmark covers public-safe existing-project
 fixtures. It repeatedly runs sanitized old-project states through
 `init`/`apply`/`status`/`doctor` and the guided `upgrade apply-choice` path,
 keeping pass/fail dimensions separate from summary convenience numbers.
-
-![Upgrade benchmark pass rate](docs/benchmark-evidence/upgrade/upgrade-pass-rate.svg)
-
-![Upgrade benchmark average duration](docs/benchmark-evidence/upgrade/upgrade-duration.svg)
 
 Current run:
 
@@ -373,7 +373,8 @@ Current run:
 - Choice executions: `6`; preview-required guardrails: `3`; unsupported
   choices: `0`.
 
-Full generated evidence is in
+Evidence and chart links are in
+[`docs/benchmark-evidence/`](docs/benchmark-evidence/) and
 [`docs/benchmark-evidence/upgrade/`](docs/benchmark-evidence/upgrade/).
 
 Current self-check records live in [`docs/DOGFOOD.md`](docs/DOGFOOD.md).
@@ -425,7 +426,8 @@ used for deterministic README score claims.
 | **v1.13** | First-run UX and stale-doc/path diagnostics | shipped 2026-07-08 |
 | **v1.14** | Codex native skill parity and adapter surface evidence | shipped 2026-07-09 |
 | **v1.15** | Subagent context contract and injection-success evidence | shipped 2026-07-09 |
-| **v1.16** | Command UX consolidation, grouped help, and terminal UI polish | planned |
+| **v1.16** | Command UX consolidation, grouped help, and terminal UI polish | shipped 2026-07-09 |
+| **v1.17** | Ontology source management and document graph diagnostics | planned |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

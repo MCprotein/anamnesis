@@ -1,6 +1,6 @@
 # Command UX Consolidation Plan
 
-Status: planned for v1.16.
+Status: shipped in v1.16.0 on 2026-07-09.
 
 ## Problem
 
@@ -130,7 +130,7 @@ Next
 | `upgrade plan`, `upgrade choose`, `upgrade apply-choice <id>` | `upgrade` by default, with guided choices when interactive | Keep subcommands for scripts and tests. |
 | `update` / `update --apply` | `apply --dry-run` / `apply` | Keep update as deprecated compatibility; print a warning with the preferred command. |
 | `context index/query/diagnose/resume/subagent-preamble` | `context` namespace summary plus subcommand help | Default `context` should explain the retrieval model and next commands. |
-| `ontology bootstrap` | `init` / `apply` automatic bootstrap plus `doctor` repair hint | Advanced direct command remains for scoped repair. |
+| `ontology bootstrap` | `init` default bootstrap plus `status` / `doctor` / `apply --dry-run` repair guidance | `apply` refreshes managed surfaces; direct bootstrap remains the scoped deterministic fact refresh. |
 | `gc --dry-run` | `doctor` reports cleanup pressure, then points to `gc --dry-run` / `gc --apply` | Avoid accidental deletion from generic commands. |
 | `hooks summary`, `dogfood check`, `benchmark ...` | Maintainer/development surfaces | Keep out of first-run and basic help. |
 | Future `discover` / `fragment draft` ideas | Fold into `init` and `apply --dry-run` | Do not add standalone discovery commands unless dogfood proves they are needed. |

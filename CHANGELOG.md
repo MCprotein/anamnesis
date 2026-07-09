@@ -7,6 +7,15 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Documented the v1.17 ontology source-management direction: keep ontology as
+  the durable memory layer while adding document graph diagnostics and source
+  pointers as review-only support for ontology enrichment.
+- Moved benchmark visualization discovery into `docs/benchmark-evidence/` so
+  README keeps concise evidence summaries and links instead of embedded chart
+  galleries.
+
 ## [1.16.0] — 2026-07-09
 
 ### Added

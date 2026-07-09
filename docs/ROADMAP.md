@@ -1657,14 +1657,14 @@ Exit criteria:
 
 ---
 
-## v1.16 — *planned*
+## v1.16 — *shipped 2026-07-09*
 
 > **Theme: command UX consolidation and terminal UI polish**
 
-v1.15 made the subagent boundary explicit, but the CLI surface is now too
+v1.15 made the subagent boundary explicit, but the CLI surface had become too
 crowded. Core project tasks, maintainer release commands, benchmark harnesses,
 handoff lifecycle commands, and context retrieval tools are all visible in one
-plain-text help dump. v1.16 should make the default path readable without
+plain-text help dump. v1.16 made the default path readable without
 breaking existing scripts.
 
 Design: [`docs/COMMAND-UX-PLAN.md`](COMMAND-UX-PLAN.md)
@@ -1694,6 +1694,81 @@ Exit criteria:
   message.
 - Non-code or unknown-tool project signals are handled through `init` and
   `apply --dry-run` planning, not by adding more top-level commands.
+
+---
+
+## v1.17 — *planned*
+
+> **Theme: ontology source management and document graph diagnostics**
+
+v1.16 made document-heavy and artifact-heavy workspaces visible in dry-run
+output, but those signals are still advisory. The next gap is not a full wiki,
+RAG database, or automatic prose-to-ontology importer. The gap is a bounded
+source-management layer that helps agents find the right documents, detect
+stale links or ontology references, and promote reviewed evidence into
+`system_graph.yaml` or `.anamnesis/ontology/*.enriched.yaml`.
+
+Product boundary:
+
+- Ontology remains the durable memory layer.
+- Documents, specs, README files, and non-code artifacts are evidence sources,
+  not a second source of truth.
+- Context indexes are regenerable source-pointer maps, not authoritative
+  knowledge stores.
+- Generated benchmark reports and visualizations stay under
+  `docs/benchmark-evidence/<suite>/`; README should link to concise evidence
+  summaries instead of embedding chart galleries.
+- Extracted candidates are review prompts. They must not become accepted
+  ontology facts until an agent/user promotes them through the enrichment path.
+- No SQLite, embedding store, daemon, remote sync service, or wiki UI.
+
+Suggested command surface stays under existing namespaces:
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Document graph scanner** | planned | Add a deterministic reader for Markdown/document roots that records pages, headings, repo-relative links, backlinks, canonical docs, and detected ontology references. Start with README, `docs/**/*.md`, `specs/**/*.md`, and catalog-configured roots while excluding deprecated/generated evidence paths. |
+| 2 | **Reviewable document catalog** | planned | Add an optional template catalog path at `.anamnesis/docs/catalog.yaml` with roots, canonical documents, excludes, and allowed ontology-reference prefixes. Missing catalog is informational unless the workspace is clearly document-heavy. |
+| 3 | **Context index integration** | planned | Extend the existing context index with document-oriented records such as `doc-page`, `doc-heading`, `doc-link`, `doc-backlink`, and `doc-ontology-ref`, keeping ordering deterministic and outputs safe to delete/regenerate. |
+| 4 | **`context docs` summary** | planned | Add `anamnesis context docs` as a read-only summary for document roots, page counts, broken links, orphaned important docs, ontology-linked pages, and candidate issues. Provide `--json` for tests/CI and an optional write path only for regenerable summaries. |
+| 5 | **Diagnostics and repair hints** | planned | Extend `context diagnose`, `status`, and `doctor` with broken internal doc links, missing canonical docs, invalid ontology references, and doc-heavy workspace guidance. Keep semantic stale-claim judgment in the existing `doc-freshness-review` skill. |
+| 6 | **Ontology candidate bridge** | planned | Surface unaccepted `ontology-candidate` / `open-question` pointers from document evidence so `/ontology-enrich` can read the right sources and promote only reviewed relationships, flows, invariants, or open questions into `.enriched.yaml`. |
+| 7 | **Apply/init integration without command sprawl** | planned | Keep first-run and maintenance UX under `init --dry-run`, `apply --dry-run`, `status`, `doctor`, and `context`. `apply` should not silently crawl all docs into ontology; it may create or refresh reviewed managed catalog/context surfaces only when the plan is accepted. |
+| 8 | **Benchmark and fixture coverage** | planned | Add public-safe doc-heavy fixtures with valid links, broken links, ontology refs, excluded deprecated docs, and retrieval checks proving agents can find needed source pointers without increasing SessionStart payload. Store generated JSON/Markdown/SVG artifacts under `docs/benchmark-evidence/<suite>/`; README should retain only links and headline explanations. |
+
+Implementation notes:
+
+- Reuse the existing context-index style: repo-local JSON/JSONL, stable refs,
+  source hashes, snippets, and deterministic sorting.
+- Keep the document graph separate from Layer A framework introspectors.
+  Layer A remains deterministic project facts; document graph records source
+  structure and candidate pointers.
+- `apply` currently refreshes managed surfaces and static ontology slices, while
+  `init` runs default ontology bootstrap. Any v1.17 copy must keep that
+  distinction clear unless the implementation explicitly changes it.
+- `doc-freshness-review` remains the semantic second pass for claims the CLI
+  cannot prove. Deterministic diagnostics should flag evidence and pointers,
+  not pretend to know product intent.
+
+Exit criteria:
+
+- Existing `init`, `apply`, `status`, `doctor`, `context`, and
+  `ontology bootstrap` behavior remains backward compatible.
+- Document graph diagnostics catch broken internal links and invalid ontology
+  refs in public-safe fixtures.
+- `status` summarizes document graph health without dumping large file lists.
+- `doctor` gives actionable repair guidance without making document-heavy repos
+  look broken by default.
+- `context index/query` can retrieve document source pointers relevant to an
+  ontology enrichment task.
+- `/ontology-enrich` guidance can use the document source pointers while still
+  writing semantic facts only to `.enriched.yaml` or user-managed ontology.
+- Default SessionStart context does not grow; only compact summaries and source
+  pointers are eligible for startup injection.
+- Benchmarks record numeric evidence for doc graph readiness and retrieval
+  usefulness before public claims are added.
+- New benchmark visualizations are discoverable from
+  `docs/benchmark-evidence/README.md` without turning the top-level README into
+  an artifact gallery.
 
 ---
 
