@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.14.0] — 2026-07-09
+
 ### Added
 
 - Added native Codex project skill rendering. Codex `skill` capabilities now
