@@ -126,7 +126,26 @@ when the active task needs detail.
 The ordered 3x3 source/target matrix is documented in
 [`SWITCHING-SCENARIOS.md`](SWITCHING-SCENARIOS.md).
 
-## 5. Verify Continuity
+## 5. Delegate To Subagents
+
+Subagents do not all receive context through the same mechanism:
+
+- A separately launched Claude Code, Codex, or OMX worker process can receive
+  the normal startup context when it starts in the managed repository and the
+  relevant executable adapters are installed.
+- A same-session native subagent may not trigger a fresh SessionStart hook.
+  For those subagents, the leader must pass a compact anamnesis context
+  preamble or require the subagent to read and report the exact source
+  pointers it used before doing context-sensitive work.
+
+For tasks that depend on project memory, accept a subagent report only when it
+names the sources it used, such as `AGENTS.md`,
+`.anamnesis/handoff/active.md`, startup-active warm handoff archives,
+`system_graph.yaml`, `.anamnesis/ontology/*.yaml`, or relevant
+`.codex/skills/*`. This makes the boundary auditable until native subagent
+startup injection is proven by repeated-run benchmark evidence.
+
+## 6. Verify Continuity
 
 Use these checks after setup, after upgrades, and before publishing claims:
 
@@ -146,6 +165,8 @@ What to look for:
 - Adapter surfaces exist for the tools you expect to use.
 - Benchmark reports show whether static, bootstrap, enriched, continuity, and
   adapter-surface evidence improved.
+- Subagent context evidence distinguishes startup-hook enforced,
+  launcher-wrapper enforced, and prompt-contract enforced paths.
 
 ## Known Limits
 

@@ -5,8 +5,9 @@
 //     and ontology slice files natively)
 //   - executable_hook: native wrappers for Codex-supported lifecycle events,
 //     AGENTS.md fallback regions for all hooks, optional Git pre-commit bridge
-//   - skill / slash_command: AGENTS.md region fallback
-//     that documents the intent so the agent can honor it manually
+//   - skill: native `.codex/skills/<name>/SKILL.md` plus AGENTS.md fallback
+//   - slash_command: AGENTS.md region fallback that documents the intent so
+//     the agent can honor it manually
 //   - task_harness: shared `.anamnesis/task-harnesses/*.yaml` files that
 //     stay out of startup prompt injection until explicitly retrieved
 //

@@ -1580,7 +1580,7 @@ Exit criteria:
 
 ---
 
-## v1.14 — *in progress*
+## v1.14 — *shipped 2026-07-09*
 
 > **Theme: Codex native skill parity and adapter surface evidence**
 
@@ -1591,10 +1591,10 @@ without removing the fallback path or weakening supply-chain gates.
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Codex native skill surface research** | done | Verified the real Codex project-local skill discovery contract with `codex exec -C <tmp-project> --ignore-user-config --sandbox read-only` over `.codex/skills/anamnesis-smoke/SKILL.md`; Codex loaded the project skill and returned the expected sentinel. |
-| 2 | **Codex skill renderer parity** | done in branch | The Codex `skill` renderer now emits `.codex/skills/<name>/...` native skill files while keeping the existing `AGENTS.md` `codex-skill-*` fallback mandatory. Nested skill assets are mirrored like Claude Code skills. |
-| 3 | **Executable-adapter safety for Codex skills** | done in branch | Generated `.codex/skills/**` files are treated as agent-behavior surfaces gated by `--allow-exec-adapters`. `init`, `update`, `status`, `doctor`, and applier tests cover native files, blocked writes, and missing-surface diagnostics. |
-| 4 | **Adapter parity docs and tests** | done in branch | `README.md`, `docs/ADAPTER-PARITY.md`, `docs/AGENT-SWITCHING-GUIDE.md`, `docs/MONOREPO.md`, `docs/DESIGN.md`, and relevant tests now describe Claude Code native skills, Codex native+fallback skills, and Cursor rule fallbacks accurately. |
+| 1 | **Codex native skill surface research** | shipped | Verified the real Codex project-local skill discovery contract with `codex exec -C <tmp-project> --ignore-user-config --sandbox read-only` over `.codex/skills/anamnesis-smoke/SKILL.md`; Codex loaded the project skill and returned the expected sentinel. |
+| 2 | **Codex skill renderer parity** | shipped | The Codex `skill` renderer now emits `.codex/skills/<name>/...` native skill files while keeping the existing `AGENTS.md` `codex-skill-*` fallback mandatory. Nested skill assets are mirrored like Claude Code skills. |
+| 3 | **Executable-adapter safety for Codex skills** | shipped | Generated `.codex/skills/**` files are treated as agent-behavior surfaces gated by `--allow-exec-adapters`. `init`, `update`, `status`, `doctor`, and applier tests cover native files, blocked writes, and missing-surface diagnostics. |
+| 4 | **Adapter parity docs and tests** | shipped | `README.md`, `docs/ADAPTER-PARITY.md`, `docs/AGENT-SWITCHING-GUIDE.md`, `docs/MONOREPO.md`, `docs/DESIGN.md`, and relevant tests now describe Claude Code native skills, Codex native+fallback skills, and Cursor rule fallbacks accurately. |
 
 Exit criteria:
 
@@ -1605,6 +1605,55 @@ Exit criteria:
   gate and do not silently bypass `--allow-exec-adapters`.
 - `status` / `doctor` continuity targets include any new Codex native skill
   files only after the native path is proven.
+
+---
+
+## v1.15 — *planned*
+
+> **Theme: subagent context contract and injection-success evidence**
+
+v1.14 gives Codex native project skills, but subagents are a different
+problem. A separately launched Claude/Codex/OMX worker process can receive the
+normal startup context through the installed surfaces. A same-session native
+subagent may not trigger a fresh SessionStart hook, so anamnesis should not
+claim hidden automatic injection there until it is measured. v1.15 makes this
+boundary explicit and adds repeated-run evidence.
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Subagent context contract** | planned | Define the leader-to-subagent contract for work that depends on project memory: the leader must either pass a compact anamnesis context preamble or require the subagent to read and report the exact source pointers it used (`AGENTS.md`, `.anamnesis/handoff/active.md`, startup-active warm archives, `system_graph.yaml`, `.anamnesis/ontology/*.yaml`, and relevant `.codex/skills/*`). |
+| 2 | **Separate-process hydration path** | planned | Add or validate a launch-wrapper path for externally started subagents and worker processes so they can receive the same compact startup context as a fresh top-level agent session. This path can be treated as enforceable because it controls process startup. |
+| 3 | **Same-session native subagent guardrails** | planned | Treat same-session native subagents as prompt-contract enforced until the runtime exposes a subagent hook or equivalent startup interception point. The leader should reject subagent reports that omit required context evidence for tasks that need project state. |
+| 4 | **Injection success benchmark** | planned | Add a repeated-run benchmark that reports raw attempts, injected count, missed count, injection rate, and evidence quality. The intended report shape is `attempts=N`, `injected=K`, `missed=N-K`, `injection_rate=K/N`, plus JSON/Markdown evidence and SVG graphs. |
+| 5 | **Status/doctor surfacing** | planned | Surface whether subagent context enforcement is available for the configured tools, whether the last benchmark has acceptable evidence, and whether any lane is only prompt-contract enforced rather than startup-hook enforced. |
+
+Benchmark design:
+
+- **Separate-process lane**: run a fresh worker/session command repeatedly
+  from a fixture project and assert that the expected anamnesis sentinel,
+  source pointers, or resume bundle appears in the agent-visible startup
+  context. This lane should be suitable for a pass/fail threshold such as
+  `19/20` or better once the runner is stable.
+- **Same-session native subagent lane**: measure whether the delegated
+  subagent returns the required context-evidence fields. This is not the same
+  as proving SessionStart injection, so the report must label it as
+  prompt-contract evidence.
+- **Graph output**: generate count and rate graphs so regressions are visible
+  without reading raw JSON. Counts matter more than percentages: `18/20`
+  is clearer than `90%` alone.
+- **No overclaiming**: documentation must distinguish "startup-hook enforced",
+  "launcher-wrapper enforced", and "prompt-contract enforced" subagent lanes.
+
+Exit criteria:
+
+- A deterministic or fixture-backed benchmark can run repeated attempts and
+  produce raw counts plus machine-readable evidence.
+- Public docs explain which subagent paths can be forced today and which paths
+  are only contract-enforced.
+- `status` or `doctor` points users to the benchmark when the configured
+  subagent path has no recent evidence.
+- No README or roadmap claim says same-session native subagents receive
+  automatic SessionStart injection unless the benchmark proves it.
 
 ---
 

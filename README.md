@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-607%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![tests](https://img.shields.io/badge/tests-693%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Main-branch docs may describe unreleased work. The npm badge is the source of
 truth for the latest version currently published to npmjs.org.
@@ -399,7 +399,8 @@ used for deterministic README score claims.
 | **v1.11** | Safe upgrade choice execution and upgrade benchmark choice metrics | shipped 2026-07-07 |
 | **v1.12** | Compact SessionStart budget diagnostics | shipped 2026-07-07 |
 | **v1.13** | First-run UX and stale-doc/path diagnostics | shipped 2026-07-08 |
-| **v1.14** | Codex native skill parity and adapter surface evidence | in progress |
+| **v1.14** | Codex native skill parity and adapter surface evidence | shipped 2026-07-09 |
+| **v1.15** | Subagent context contract and injection-success evidence | planned |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
