@@ -54,6 +54,7 @@ Default visible commands should be grouped by user intent:
 | Start | `anamnesis` | Guided first-run / next-action screen |
 | Start | `anamnesis init` | First project adoption, detection, and reviewed install |
 | Maintain | `anamnesis update` | Reconcile library/project state, dry-run by default |
+| Maintain | `anamnesis apply` or `anamnesis update --apply` | Apply reviewed project writes |
 | Maintain | `anamnesis status` | Current installed state and drift summary |
 | Maintain | `anamnesis doctor` | Problems, repair guidance, optional append evidence |
 | Maintain | `anamnesis upgrade` | Package upgrade plus project update guidance |
@@ -83,11 +84,49 @@ Compatibility policy:
 - `--help --all` or an equivalent advanced help mode can expose the full
   command catalog for maintainers.
 
+## Naming Model
+
+The product should use different verbs for the two operations users confuse
+most:
+
+| User intent | Preferred wording | Existing command compatibility |
+|---|---|---|
+| Install a newer anamnesis package/CLI | CLI upgrade | `anamnesis upgrade` |
+| Preview changes to the current project | Project update plan | `anamnesis update` / `anamnesis update --dry-run` |
+| Write the reviewed project changes | Project apply | `anamnesis update --apply`, with a possible `anamnesis apply` convenience alias |
+
+Rationale:
+
+- `upgrade` and `update` are too visually and semantically close for a tool
+  whose normal workflow uses both.
+- `apply` is clearer for the side-effecting project write step because it
+  matches what the command actually does: apply the reviewed plan to local
+  project files.
+- `update` still has value as the read-only planning verb because it means
+  "compare this project with the current library state."
+- The compatibility command `anamnesis update --apply` should keep working.
+  If `anamnesis apply` is added, it must be an alias or guided wrapper over
+  the same safety rules, not a new behavior path.
+
+Target output vocabulary:
+
+```text
+Anamnesis Upgrade
+  CLI package     1.15.0 -> 1.16.0
+  Project state   update plan available
+
+Next
+  1. anamnesis upgrade --apply
+  2. anamnesis update --dry-run --allow-exec-adapters
+  3. anamnesis apply --allow-exec-adapters
+```
+
 ## Consolidation Map
 
 | Current flow | Preferred user-facing flow | Notes |
 |---|---|---|
 | `upgrade plan`, `upgrade choose`, `upgrade apply-choice <id>` | `upgrade` by default, with guided choices when interactive | Keep subcommands for scripts and tests. |
+| `update --apply` | `apply` wording in human output; optional `anamnesis apply` alias | Keep `update --apply` as the compatibility and script-safe form. |
 | `context index/query/diagnose/resume/subagent-preamble` | `context` namespace summary plus subcommand help | Default `context` should explain the retrieval model and next commands. |
 | `ontology bootstrap` | `init` / `update` automatic bootstrap plus `doctor` repair hint | Advanced direct command remains for scoped repair. |
 | `gc --dry-run` | `doctor` reports cleanup pressure, then points to `gc --dry-run` / `gc --apply` | Avoid accidental deletion from generic commands. |
@@ -149,6 +188,9 @@ Output principles:
 
 - One command header, one verdict, then grouped details.
 - First screen answers "is this okay?" and "what should I do next?".
+- The layout should be closer to modern agent CLIs: strong section headers,
+  dim secondary text, cyan commands/paths, green ok states, yellow warnings,
+  red failures, and aligned columns instead of long undifferentiated prose.
 - Details are grouped and capped; use `--verbose` for long lists.
 - Paths are dimmed, commands are highlighted, warnings/errors stand out.
 - `--json` stays machine-readable and never receives ANSI styling.
@@ -170,6 +212,24 @@ Checks
 Next
   1. anamnesis benchmark subagent-injection --attempts 20 --write --append
   2. anamnesis status
+```
+
+Example project update/apply shape:
+
+```text
+Anamnesis Project Update
+Project: anamnesis
+Mode: preview
+Verdict: [warn] 3 project writes available
+
+Plan
+  [update] AGENTS.md                    base@17 -> base@18
+  [update] .codex/skills/load-context   stale generated surface
+  [skip]   .claude/hooks                requires --allow-exec-adapters
+
+Next
+  1. review the diff above
+  2. anamnesis apply --allow-exec-adapters
 ```
 
 The actual terminal can color `[ok]` green, `[warn]` yellow, `[fail]` red,
@@ -201,6 +261,9 @@ without escape codes.
   - `anamnesis context`
   - `anamnesis handoff`
   - `anamnesis benchmark`
+- Decide whether to add `anamnesis apply` as a compatibility alias for
+  `anamnesis update --apply`. Even if the alias is deferred, human output
+  should use "Project apply" for side-effecting project writes.
 - Make `upgrade` the preferred interactive/default path while preserving
   `upgrade plan`, `upgrade choose`, and `upgrade apply-choice`.
 - Move maintainer commands out of first-run docs unless they are part of a
@@ -221,6 +284,8 @@ without escape codes.
 - `anamnesis --help` shows grouped user-facing commands first and no longer
   dumps every advanced flag by default.
 - `anamnesis --help --all` or equivalent still exposes the full catalog.
+- Help and command output distinguish CLI upgrade, project update plan, and
+  project apply.
 - `doctor`, `status`, `init`, `update`, and `upgrade` have consistent headers,
   verdicts, status labels, next steps, and color/plain parity.
 - `--json` outputs are byte-for-byte unaffected except for intentional schema

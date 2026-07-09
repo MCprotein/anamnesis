@@ -1673,8 +1673,8 @@ Design: [`docs/COMMAND-UX-PLAN.md`](COMMAND-UX-PLAN.md)
 |---|---|---|---|
 | 1 | **Command surface taxonomy** | planned | Classify commands as core, namespace, advanced, maintainer, or compatibility alias. Default help should highlight `init`, `update`, `status`, `doctor`, `upgrade`, `context`, and `handoff`; advanced commands remain callable through namespace help or full help. |
 | 2 | **Grouped help and no-command guide** | planned | Replace the monolithic `--help` screen with grouped output and a separate advanced/full catalog mode. Bare `anamnesis` remains concise and action-oriented for first-run and already-managed projects. |
-| 3 | **Guided command consolidation** | planned | Prefer guided defaults over new verbs: `upgrade` becomes the primary upgrade flow while `upgrade plan`, `upgrade choose`, and `upgrade apply-choice` remain compatible; future discovery/local-fragment work is folded into `init` and `update` instead of new top-level commands. |
-| 4 | **Shared terminal UI renderer** | planned | Add a small CLI UI layer for semantic colors, verdict headers, grouped checks, next-step blocks, width-aware wrapping, and color/plain parity. `--json` must stay machine-readable and unstyled. |
+| 3 | **Guided command consolidation** | planned | Prefer guided defaults over low-level verbs: `upgrade` becomes the primary CLI package upgrade flow, project planning remains `update`, and side-effecting project writes should be labeled as project apply. `update --apply` stays compatible; an `anamnesis apply` alias can ship only if it reuses the same safety rules. Future discovery/local-fragment work is folded into `init` and `update` instead of new top-level commands. |
+| 4 | **Shared terminal UI renderer** | planned | Add a small CLI UI layer for semantic colors, verdict headers, grouped checks, next-step blocks, width-aware wrapping, and color/plain parity. Human output should visually distinguish CLI upgrade, project update plan, and project apply; `--json` must stay machine-readable and unstyled. |
 | 5 | **High-impact reporter migration** | planned | Migrate `doctor`, `status`, `init`, `update`, and `upgrade` reports first because they are the common user path and currently carry the most dense output. Keep benchmark/release outputs stable until core UX is proven. |
 | 6 | **Adaptive workspace profile design hook** | planned | Add the command UX boundary for generic project detection: `init`/`update` should report known stacks, unknown tools, artifact-heavy workspaces, agent surfaces, and verification signals without adding standalone `discover` or `fragment draft` commands. Project-local fragment generation remains review-only. |
 | 7 | **Snapshot and accessibility tests** | planned | Add plain/color snapshot tests, no-color and forced-color coverage, non-TTY behavior checks, long-path wrapping tests, and compatibility assertions for legacy subcommands. |
@@ -1686,6 +1686,8 @@ Exit criteria:
 - `anamnesis --help` shows grouped core commands first and does not dump every
   advanced benchmark/release flag by default.
 - A full catalog remains available for maintainers and scripts.
+- CLI upgrade, project update planning, and project apply are distinct in
+  command labels, help text, and next-step output.
 - Common commands share a recognizable terminal layout with color enabled,
   color disabled, and JSON output all tested.
 - Existing public commands still work or print a clear compatibility alias
