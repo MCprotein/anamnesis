@@ -790,6 +790,32 @@ fragments:
     );
   });
 
+  it("surfaces document graph diagnostics as doctor issues", () => {
+    const { project, library } = installProject();
+    fs.mkdirSync(path.join(project, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(project, "docs", "current.md"), "# Current\n");
+    fs.writeFileSync(
+      path.join(project, "README.md"),
+      "# Fixture\n\n[bad anchor](docs/current.md#missing-heading)\n",
+      "utf8",
+    );
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.ok).toBe(true);
+    expect(result.summary.warnings).toBeGreaterThanOrEqual(1);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "doc-link-anchor-missing",
+          target: expect.stringContaining("README.md"),
+          repair: expect.stringContaining("heading anchor"),
+        }),
+      ]),
+    );
+  });
+
   it("reports advisory Codex hook ownership warnings", () => {
     const { project, library } = installContinuityProject();
     const hooksPath = path.join(project, ".codex", "hooks.json");

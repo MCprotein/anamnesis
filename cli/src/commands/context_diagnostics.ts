@@ -17,6 +17,11 @@ import {
   isCompletedHandoffTaskLine,
   newestHandoffArchive,
 } from "../core/handoff_active_text.js";
+import {
+  contextDocs,
+  type DocumentGraphLink,
+  type DocumentGraphOntologyRef,
+} from "./context_docs.js";
 
 export const CONTEXT_DIAGNOSTICS_SCHEMA_VERSION =
   "anamnesis.context_diagnostics.v1";
@@ -25,6 +30,9 @@ export type ContextDiagnosticSeverity = "warning" | "info";
 
 export type ContextDiagnosticCode =
   | "doc-file-reference-missing"
+  | "doc-link-anchor-missing"
+  | "doc-link-target-missing"
+  | "doc-ontology-ref-missing"
   | "docs-bootstrap-conflict"
   | "handoff-active-archive-inactive"
   | "handoff-active-completed-entry"
@@ -108,6 +116,9 @@ interface HandoffFrontmatter {
 
 const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
   "doc-file-reference-missing",
+  "doc-link-anchor-missing",
+  "doc-link-target-missing",
+  "doc-ontology-ref-missing",
   "docs-bootstrap-conflict",
   "handoff-active-archive-inactive",
   "handoff-active-completed-entry",
@@ -141,6 +152,7 @@ export function contextDiagnostics(
   const issues = [
     ...handoffIssues(projectRoot, now, handoffThresholds),
     ...ontologyIssues(projectRoot),
+    ...docGraphIssues(projectRoot),
     ...docFileReferenceIssues(projectRoot),
     ...docsBootstrapIssues(projectRoot),
     ...evidenceIssues(projectRoot),
@@ -393,6 +405,76 @@ function docFileReferenceIssues(projectRoot: string): ContextDiagnosticIssue[] {
   }
 
   return issues;
+}
+
+function docGraphIssues(projectRoot: string): ContextDiagnosticIssue[] {
+  const graph = contextDocs({ projectRoot });
+  const issues: ContextDiagnosticIssue[] = [];
+
+  for (const link of graph.links) {
+    if (link.status === "missing" && !isOntologySourceLink(link)) {
+      issues.push(docLinkTargetMissingIssue(link));
+    } else if (link.status === "missing-anchor") {
+      issues.push(docLinkAnchorMissingIssue(link));
+    }
+  }
+
+  for (const ref of graph.ontology_refs) {
+    if (ref.status === "missing") {
+      issues.push(docOntologyRefMissingIssue(ref));
+    }
+  }
+
+  return issues;
+}
+
+function docLinkTargetMissingIssue(link: DocumentGraphLink): ContextDiagnosticIssue {
+  return {
+    severity: "warning",
+    code: "doc-link-target-missing",
+    message: `document link points to missing target ${link.target}`,
+    source_path: link.source_path,
+    stable_ref: link.stable_ref,
+    related: [link.target],
+    repair:
+      "Update the Markdown link target, restore the referenced document, or move the obsolete document under docs/deprecated/ if it should be ignored.",
+  };
+}
+
+function docLinkAnchorMissingIssue(link: DocumentGraphLink): ContextDiagnosticIssue {
+  const related = [link.target];
+  if (link.resolved_path) related.push(link.resolved_path);
+  if (link.resolved_ref) related.push(link.resolved_ref);
+  return {
+    severity: "warning",
+    code: "doc-link-anchor-missing",
+    message: `document link points to missing heading anchor ${link.target}`,
+    source_path: link.source_path,
+    stable_ref: link.stable_ref,
+    related: uniqueStrings(related),
+    repair:
+      "Update the Markdown heading anchor, rename the target heading, or remove the stale anchor from the link.",
+  };
+}
+
+function docOntologyRefMissingIssue(
+  ref: DocumentGraphOntologyRef,
+): ContextDiagnosticIssue {
+  return {
+    severity: "warning",
+    code: "doc-ontology-ref-missing",
+    message: `document references missing ontology source ${ref.target}`,
+    source_path: ref.source_path,
+    stable_ref: ref.stable_ref,
+    related: [ref.target],
+    repair:
+      "Update the ontology source pointer, regenerate the missing ontology file, or remove the stale ontology reference.",
+  };
+}
+
+function isOntologySourceLink(link: DocumentGraphLink): boolean {
+  const target = link.resolved_path ?? link.target;
+  return target === "system_graph.yaml" || target.includes(".anamnesis/ontology/");
 }
 
 function duplicateEntityIssues(

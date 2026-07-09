@@ -581,6 +581,22 @@ describe("status — continuity readiness", () => {
     expect(r.summary.contextDiagnosticWarnings).toBe(1);
   });
 
+  it("includes document graph diagnostics in the context summary", () => {
+    const { project, library } = setupFreshlyInstalled();
+    fs.mkdirSync(path.join(project, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(project, "docs", "current.md"), "# Current\n");
+    fs.writeFileSync(
+      path.join(project, "README.md"),
+      "# Fixture\n\n[bad anchor](docs/current.md#missing-heading)\n",
+    );
+
+    const r = status({ projectRoot: project, libraryRoot: library });
+
+    expect(r.contextDiagnostics.ok).toBe(false);
+    expect(r.contextDiagnostics.summary.byCode["doc-link-anchor-missing"]).toBe(1);
+    expect(r.summary.contextDiagnosticWarnings).toBe(1);
+  });
+
   it("reports active handoff entries that do not point at the newest archive", () => {
     const { project, library } = setupContinuityProject();
     const oldArchive = writeHandoffArchive(

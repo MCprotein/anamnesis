@@ -13,6 +13,9 @@ could include breaking changes.
   that reports scanned pages, headings, internal/external/broken links,
   backlinks, canonical docs, and ontology source references with JSON output
   for tests and CI.
+- Extended `context diagnose`, `status`, and `doctor` to surface document graph
+  problems, including broken Markdown links, missing heading anchors, and stale
+  ontology source references.
 
 ### Changed
 

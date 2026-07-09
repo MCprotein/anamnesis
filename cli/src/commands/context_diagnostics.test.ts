@@ -454,6 +454,54 @@ describe("context diagnostics", () => {
     );
   });
 
+  it("reports document graph link and ontology source issues", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-doc-graph-");
+    writeFile(project, "docs/current.md", "# Current\n");
+    writeFile(
+      project,
+      "README.md",
+      [
+        "# Fixture",
+        "",
+        "- missing doc: [old](docs/old.md)",
+        "- missing anchor: [anchor](docs/current.md#missing-heading)",
+        "- missing ontology: [ontology](.anamnesis/ontology/missing.yaml)",
+        "",
+      ].join("\n"),
+    );
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.ok).toBe(false);
+    expect(result.summary.byCode["doc-link-target-missing"]).toBe(1);
+    expect(result.summary.byCode["doc-link-anchor-missing"]).toBe(1);
+    expect(result.summary.byCode["doc-ontology-ref-missing"]).toBe(1);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "doc-link-target-missing",
+          source_path: "README.md",
+          related: ["docs/old.md"],
+          repair: expect.stringContaining("Markdown link target"),
+        }),
+        expect.objectContaining({
+          code: "doc-link-anchor-missing",
+          source_path: "README.md",
+          related: expect.arrayContaining([
+            "docs/current.md#missing-heading",
+            "docs/current.md",
+            "heading:missing-heading",
+          ]),
+        }),
+        expect.objectContaining({
+          code: "doc-ontology-ref-missing",
+          source_path: "README.md",
+          related: [".anamnesis/ontology/missing.yaml"],
+        }),
+      ]),
+    );
+  });
+
   it("does not treat bootstrap generator metadata as ontology entities", () => {
     const project = tmpDir("anamnesis-context-diagnostics-bootstrap-metadata-");
     writeFile(
