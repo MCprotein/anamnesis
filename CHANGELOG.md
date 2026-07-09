@@ -7,6 +7,22 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-07-09
+
+### Added
+
+- Added `anamnesis context subagent-preamble`, a compact launcher-wrapper
+  payload for externally started subagents and worker processes. It includes
+  agent control pointers, startup source pointers, a resume bundle, and the
+  required `anamnesis_context_sources` response contract.
+- Added `anamnesis benchmark subagent-injection`, which records repeated-run
+  evidence for separate-process startup injection and same-session prompt
+  contract acceptance, then writes JSON, Markdown, runtime evidence, and SVG
+  graphs.
+- Added `doctor` surfacing for subagent injection evidence: missing evidence is
+  reported as info for Codex or multi-tool projects, and stale or failed
+  evidence is reported as a warning.
+
 ## [1.14.0] — 2026-07-09
 
 ### Added
