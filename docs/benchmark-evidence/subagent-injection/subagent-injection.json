@@ -1,7 +1,7 @@
 {
   "schemaVersion": "anamnesis.subagent_injection_benchmark.v1",
   "projectRoot": ".",
-  "generatedAt": "2026-07-09T01:59:00.154Z",
+  "generatedAt": "2026-07-09T02:14:52.327Z",
   "requestedAttempts": 20,
   "ok": true,
   "summary": {
@@ -65,10 +65,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -130,10 +136,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -195,10 +207,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -260,10 +278,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -325,10 +349,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -390,10 +420,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -455,10 +491,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -520,10 +562,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -585,10 +633,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -650,10 +704,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -715,10 +775,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -780,10 +846,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -845,10 +917,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -910,10 +988,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -975,10 +1059,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -1040,10 +1130,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -1105,10 +1201,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -1170,10 +1272,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -1235,10 +1343,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -1300,10 +1414,16 @@
           "detail": "2 startup-active source pointer(s)"
         },
         {
-          "id": "required-rules",
-          "label": "Retrieval rules",
+          "id": "launcher-wrapper-preamble",
+          "label": "Launcher wrapper preamble",
           "status": "pass",
-          "detail": "2/2 compact startup retrieval rule(s) present"
+          "detail": "external subagent hydration preamble labels the enforceable lane"
+        },
+        {
+          "id": "required-response-contract",
+          "label": "Required response contract",
+          "status": "pass",
+          "detail": "preamble requires subagents to report exact context sources"
         }
       ]
     },
@@ -1353,5 +1473,5 @@
     "countsSvg": "docs/benchmark-evidence/subagent-injection/subagent-injection-counts.svg",
     "ratesSvg": "docs/benchmark-evidence/subagent-injection/subagent-injection-rates.svg"
   },
-  "markdown": "# Subagent Injection Benchmark — 2026-07-09T01:59:00.154Z\n\nDeterministic benchmark for subagent context enforcement. Startup-hook or launcher-wrapper lanes count actual injection eligibility; same-session native subagents are reported as prompt-contract evidence, not as automatic SessionStart injection.\n\nRequested attempts per lane: 20\nInjection eligible attempts: 20/20 injected\nMissed injections: 0\nPrompt-contract accepted: 20/20\n\n| Lane | Enforcement | Attempts | Injected | Missed | Accepted | Rejected | Rate |\n|---|---|---:|---:|---:|---:|---:|---:|\n| Separate process startup | startup-hook-or-wrapper | 20 | 20 | 0 | 0 | 0 | 100% |\n| Same-session prompt contract | prompt-contract | 20 | 0 | 0 | 20 | 0 | 100% |\n\n## Charts\n\n![Subagent injection counts](subagent-injection-counts.svg)\n![Subagent injection rates](subagent-injection-rates.svg)"
+  "markdown": "# Subagent Injection Benchmark — 2026-07-09T02:14:52.327Z\n\nDeterministic benchmark for subagent context enforcement. Startup-hook or launcher-wrapper lanes count actual injection eligibility; same-session native subagents are reported as prompt-contract evidence, not as automatic SessionStart injection.\n\nRequested attempts per lane: 20\nInjection eligible attempts: 20/20 injected\nMissed injections: 0\nPrompt-contract accepted: 20/20\n\n| Lane | Enforcement | Attempts | Injected | Missed | Accepted | Rejected | Rate |\n|---|---|---:|---:|---:|---:|---:|---:|\n| Separate process startup | startup-hook-or-wrapper | 20 | 20 | 0 | 0 | 0 | 100% |\n| Same-session prompt contract | prompt-contract | 20 | 0 | 0 | 20 | 0 | 100% |\n\n## Charts\n\n![Subagent injection counts](subagent-injection-counts.svg)\n![Subagent injection rates](subagent-injection-rates.svg)"
 }

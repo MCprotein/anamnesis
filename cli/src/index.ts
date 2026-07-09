@@ -125,6 +125,8 @@ import {
 } from "./commands/context_diagnostics.js";
 import {
   contextResume,
+  contextSubagentPreamble,
+  type ContextSubagentPreambleResult,
   type ContextResumeResult,
 } from "./commands/context_resume.js";
 import {
@@ -413,6 +415,8 @@ Commands:
                                   conflicts, and missing evidence artifacts
   context resume                Print a compact resume bundle for current
                                   handoff, touched files, evidence, warnings
+  context subagent-preamble     Print launcher-wrapper preamble for external
+                                  subagent hydration
   handoff draft                 Draft a handoff from git status, evidence,
                                   and existing handoff pointers
   handoff close                 Close a finalized handoff archive and remove
@@ -567,6 +571,12 @@ Flags (context resume):
   --json                        Print structured JSON
   --write                       Write .anamnesis/context/resume.md
   --output <path>               Override resume bundle output path
+
+Flags (context subagent-preamble):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write .anamnesis/context/subagent-preamble.md
+  --output <path>               Override preamble output path
 
 Flags (handoff draft):
   --project-root <path>         Target directory (default: cwd)
@@ -1356,6 +1366,22 @@ function reportContextResume(result: ContextResumeResult): void {
   console.log("");
   console.log(
     `summary: ${result.summary.lines} lines, ${result.summary.chars} chars, ~${result.summary.estimatedTokens} tokens`,
+  );
+  if (result.writtenPath) {
+    console.log(`written: ${result.writtenPath}`);
+  }
+}
+
+function reportContextSubagentPreamble(
+  result: ContextSubagentPreambleResult,
+): void {
+  console.log(result.preamble);
+  console.log("");
+  console.log(
+    `summary: ${result.summary.lines} lines, ${result.summary.chars} chars, ` +
+      `~${result.summary.estimatedTokens} tokens, ` +
+      `${result.summary.startupSourcePointers} startup pointer(s), ` +
+      `${result.summary.agentControlSources} control source(s)`,
   );
   if (result.writtenPath) {
     console.log(`written: ${result.writtenPath}`);
@@ -2394,7 +2420,8 @@ async function main(argv: string[]): Promise<number> {
         sub !== "index" &&
         sub !== "query" &&
         sub !== "diagnose" &&
-        sub !== "resume"
+        sub !== "resume" &&
+        sub !== "subagent-preamble"
       ) {
         console.error(
           `error: unknown 'context' subcommand: ${sub ?? "(none)"}`,
@@ -2410,6 +2437,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis context resume [--json] [--write] [--output=<path>]`,
+        );
+        console.error(
+          `       anamnesis context subagent-preamble [--json] [--write] [--output=<path>]`,
         );
         return 1;
       }
@@ -2453,6 +2483,21 @@ async function main(argv: string[]): Promise<number> {
             console.log(JSON.stringify(result, null, 2));
           } else {
             reportContextResume(result);
+          }
+          return 0;
+        }
+
+        if (sub === "subagent-preamble") {
+          const result = contextSubagentPreamble({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            write: flags["write"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportContextSubagentPreamble(result);
           }
           return 0;
         }

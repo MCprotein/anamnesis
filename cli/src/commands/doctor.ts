@@ -95,6 +95,9 @@ export type DoctorIssueCode =
   | "continuity-adapter-surface-missing"
   | "continuity-drift-detected"
   | "session-context-budget-exceeded"
+  | "subagent-injection-evidence-missing"
+  | "subagent-injection-evidence-stale"
+  | "subagent-injection-benchmark-failed"
   | "declined-rule-stale"
   | "ontology-static-missing"
   | "ontology-bootstrap-missing"
@@ -205,6 +208,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
       issues,
     );
     addSessionContextBudgetIssues(st.sessionContextBudget, issues);
+    addSubagentInjectionEvidenceIssues(st, issues);
   }
 
   const library = libraryFragmentMap(libraryRoot);
@@ -500,6 +504,66 @@ function addSessionContextBudgetIssues(
     repair:
       "Run `anamnesis status` to inspect SessionStart budget details, then close/deprecate stale handoffs or split oversized ontology notes into source files that agents retrieve on demand.",
   });
+}
+
+function addSubagentInjectionEvidenceIssues(
+  st: StatusResult,
+  issues: DoctorIssue[],
+): void {
+  if (!subagentEvidenceRequired(st)) return;
+
+  const evidence = st.evidence.byKind.find(
+    (kind) => kind.kind === "subagent-injection-benchmark",
+  );
+  if (!evidence) {
+    issues.push({
+      severity: "info",
+      code: "subagent-injection-evidence-missing",
+      target: ".anamnesis/evidence/events.jsonl",
+      message:
+        "no subagent injection benchmark evidence has been recorded for this Codex or multi-tool project",
+      repair:
+        "Run `anamnesis benchmark subagent-injection --attempts 20 --write --append` after installing the agent surfaces you intend to use.",
+    });
+    return;
+  }
+
+  if (evidence.stale) {
+    issues.push({
+      severity: "warning",
+      code: "subagent-injection-evidence-stale",
+      target: ".anamnesis/evidence/events.jsonl",
+      message:
+        `latest subagent injection benchmark evidence is stale: ` +
+        `${evidence.latest.generated_at}`,
+      repair:
+        "Re-run `anamnesis benchmark subagent-injection --attempts 20 --write --append` before relying on subagent context continuity claims.",
+    });
+  }
+
+  const missed = numberSummary(evidence.latest.summary.missed);
+  const rejected = numberSummary(evidence.latest.summary.contract_rejected);
+  const ok = evidence.latest.summary.ok;
+  if (ok === false || missed > 0 || rejected > 0) {
+    issues.push({
+      severity: "warning",
+      code: "subagent-injection-benchmark-failed",
+      target: ".anamnesis/evidence/events.jsonl",
+      message:
+        `latest subagent injection benchmark recorded ${missed} missed ` +
+        `startup injection(s) and ${rejected} rejected prompt-contract run(s)`,
+      repair:
+        "Inspect `docs/benchmark-evidence/subagent-injection/`, repair the missing startup or prompt-contract path, then re-run the benchmark.",
+    });
+  }
+}
+
+function subagentEvidenceRequired(st: StatusResult): boolean {
+  return st.agentfile.tools.length > 1 || st.agentfile.tools.includes("codex");
+}
+
+function numberSummary(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 function ontologyGapIssueCode(

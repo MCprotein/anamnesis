@@ -211,6 +211,71 @@ describe("doctor — installation integrity", () => {
     );
   });
 
+  it("points multi-tool projects to subagent injection benchmark evidence", () => {
+    const { project, library } = installContinuityProject();
+
+    const result = doctor({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-07-09T00:00:00.000Z"),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "info",
+          code: "subagent-injection-evidence-missing",
+          repair: expect.stringContaining("benchmark subagent-injection"),
+        }),
+      ]),
+    );
+  });
+
+  it("warns when subagent injection benchmark evidence is stale or failed", () => {
+    const { project, library } = installContinuityProject();
+    fs.mkdirSync(path.join(project, ".anamnesis", "evidence"), {
+      recursive: true,
+    });
+    fs.appendFileSync(
+      path.join(project, ".anamnesis", "evidence", "events.jsonl"),
+      `${JSON.stringify({
+        schema_version: "anamnesis.evidence.v1",
+        kind: "subagent-injection-benchmark",
+        generated_at: "2026-07-01T00:00:00.000Z",
+        command: ["anamnesis", "benchmark", "subagent-injection"],
+        project: { name: "fixture" },
+        summary: {
+          ok: false,
+          missed: 1,
+          contract_rejected: 2,
+        },
+      })}\n`,
+      "utf8",
+    );
+
+    const result = doctor({
+      projectRoot: project,
+      libraryRoot: library,
+      now: () => new Date("2026-07-09T00:00:00.000Z"),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "subagent-injection-evidence-stale",
+        }),
+        expect.objectContaining({
+          severity: "warning",
+          code: "subagent-injection-benchmark-failed",
+          message: expect.stringContaining("1 missed"),
+        }),
+      ]),
+    );
+  });
+
   it("appends doctor markdown and runtime evidence", () => {
     const { project, library } = installProject();
 

@@ -132,7 +132,9 @@ Subagents do not all receive context through the same mechanism:
 
 - A separately launched Claude Code, Codex, or OMX worker process can receive
   the normal startup context when it starts in the managed repository and the
-  relevant executable adapters are installed.
+  relevant executable adapters are installed. Launch wrappers can also prepend
+  `anamnesis context subagent-preamble` to force a compact source-pointer and
+  resume bundle into the worker's startup prompt.
 - A same-session native subagent may not trigger a fresh SessionStart hook.
   For those subagents, the leader must pass a compact anamnesis context
   preamble or require the subagent to read and report the exact source
@@ -154,6 +156,7 @@ anamnesis status --json
 anamnesis doctor
 anamnesis dogfood check --append
 anamnesis benchmark report --append
+anamnesis context subagent-preamble
 anamnesis benchmark subagent-injection --attempts 20 --write --append
 ```
 

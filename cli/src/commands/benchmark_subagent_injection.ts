@@ -10,9 +10,12 @@ import {
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
 import {
-  sessionContextBudget,
   type SessionContextBudgetSource,
 } from "./session_context_budget.js";
+import {
+  contextSubagentPreamble,
+  type ContextSubagentPreambleResult,
+} from "./context_resume.js";
 
 export const SUBAGENT_INJECTION_BENCHMARK_SCHEMA_VERSION =
   "anamnesis.subagent_injection_benchmark.v1";
@@ -142,13 +145,13 @@ export function subagentInjectionBenchmark(
   const attempts: SubagentInjectionBenchmarkAttempt[] = [];
 
   for (let iteration = 1; iteration <= requestedAttempts; iteration += 1) {
-    const budget = sessionContextBudget({ projectRoot, now: stableNow });
-    const startupSources = budget.sources.map((source) => ({
-      ...source,
-    }));
-    attempts.push(startupAttempt({ budget, startupSources, iteration }));
+    const preamble = contextSubagentPreamble({ projectRoot, now: stableNow });
+    attempts.push(startupAttempt({ preamble, iteration }));
 
-    const contractSources = collectContractSources(projectRoot, startupSources);
+    const contractSources = collectContractSources(
+      projectRoot,
+      preamble.startupSources,
+    );
     attempts.push(contractAttempt({ contractSources, iteration }));
   }
 
@@ -203,30 +206,35 @@ export function subagentInjectionBenchmark(
 }
 
 function startupAttempt(input: {
-  budget: ReturnType<typeof sessionContextBudget>;
-  startupSources: SubagentInjectionBenchmarkSource[];
+  preamble: ContextSubagentPreambleResult;
   iteration: number;
 }): SubagentInjectionBenchmarkAttempt {
+  const startupSources = input.preamble.startupSources;
   const checks: SubagentInjectionBenchmarkCheck[] = [
     {
       id: "startup-sources",
       label: "Startup source pointers",
-      status: input.startupSources.length > 0 ? "pass" : "fail",
+      status: startupSources.length > 0 ? "pass" : "fail",
       detail:
-        input.startupSources.length > 0
-          ? `${input.startupSources.length} startup-active source pointer(s)`
+        startupSources.length > 0
+          ? `${startupSources.length} startup-active source pointer(s)`
           : "no startup-active anamnesis sources found",
     },
     {
-      id: "required-rules",
-      label: "Retrieval rules",
-      status:
-        input.budget.requiredRulesPresent === input.budget.requiredRulesTotal
-          ? "pass"
-          : "fail",
-      detail:
-        `${input.budget.requiredRulesPresent}/${input.budget.requiredRulesTotal} ` +
-        "compact startup retrieval rule(s) present",
+      id: "launcher-wrapper-preamble",
+      label: "Launcher wrapper preamble",
+      status: input.preamble.preamble.includes("enforcement: launcher-wrapper")
+        ? "pass"
+        : "fail",
+      detail: "external subagent hydration preamble labels the enforceable lane",
+    },
+    {
+      id: "required-response-contract",
+      label: "Required response contract",
+      status: input.preamble.preamble.includes("anamnesis_context_sources")
+        ? "pass"
+        : "fail",
+      detail: "preamble requires subagents to report exact context sources",
     },
   ];
   const pass = checks.every((check) => check.status === "pass");
@@ -237,8 +245,8 @@ function startupAttempt(input: {
     iteration: input.iteration,
     injectionEligible: true,
     status: pass ? "injected" : "missed",
-    sourcePointers: input.budget.sourcePointers,
-    evidenceSources: input.startupSources.map((source) => source.path),
+    sourcePointers: startupSources.length,
+    evidenceSources: startupSources.map((source) => source.path),
     checks,
   };
 }

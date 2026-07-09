@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { contextResume } from "./context_resume.js";
+import {
+  contextResume,
+  contextSubagentPreamble,
+} from "./context_resume.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -126,5 +129,66 @@ describe("context resume", () => {
 
     expect(result.latestArchive).toBeUndefined();
     expect(result.bundle).toContain("latest_archive: (none)");
+  });
+
+  it("builds a launcher-wrapper subagent preamble from resume and startup pointers", () => {
+    const project = tmpDir("anamnesis-context-subagent-preamble-");
+    initGit(project);
+    writeFile(project, "AGENTS.md", "# Agent rules\n");
+    writeFile(project, "CLAUDE.md", "# Claude entrypoint\n");
+    writeFile(
+      project,
+      ".anamnesis/ontology/base.yaml",
+      "managed_by: anamnesis\nrule: always read pointers\n",
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/active.md",
+      [
+        "# Active handoff index",
+        "",
+        "## Current focus",
+        "- subagent preamble - archive: `.anamnesis/handoff/warm.md`",
+      ].join("\n"),
+    );
+    writeFile(project, ".anamnesis/handoff/warm.md", "# Handoff\n");
+
+    const result = contextSubagentPreamble({
+      projectRoot: project,
+      now: () => new Date("2026-07-09T00:00:00.000Z"),
+    });
+
+    expect(result.schema_version).toBe("anamnesis.context_subagent_preamble.v1");
+    expect(result.agentControlSources).toEqual(["AGENTS.md", "CLAUDE.md"]);
+    expect(result.startupSources.map((source) => source.path)).toEqual(
+      expect.arrayContaining([
+        ".anamnesis/ontology/base.yaml",
+        ".anamnesis/handoff/active.md",
+      ]),
+    );
+    expect(result.preamble).toContain("enforcement: launcher-wrapper");
+    expect(result.preamble).toContain("## startup_source_pointers");
+    expect(result.preamble).toContain(".anamnesis/ontology/base.yaml");
+    expect(result.preamble).toContain("## resume_bundle");
+    expect(result.preamble).toContain("anamnesis_context_sources");
+    expect(result.summary.startupSourcePointers).toBeGreaterThanOrEqual(2);
+  });
+
+  it("writes the subagent preamble when requested", () => {
+    const project = tmpDir("anamnesis-context-subagent-preamble-write-");
+
+    const result = contextSubagentPreamble({
+      projectRoot: project,
+      write: true,
+      now: () => new Date("2026-07-09T00:00:00.000Z"),
+    });
+
+    expect(result.writtenPath).toBe(".anamnesis/context/subagent-preamble.md");
+    expect(
+      fs.readFileSync(
+        path.join(project, ".anamnesis/context/subagent-preamble.md"),
+        "utf8",
+      ),
+    ).toContain("# anamnesis subagent preamble");
   });
 });

@@ -3,7 +3,7 @@
 > **AI coding agent config lifecycle manager.**
 > Keep your AI coding agents from forgetting what your project is.
 
-[![tests](https://img.shields.io/badge/tests-697%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![tests](https://img.shields.io/badge/tests-701%20passing-success)]() [![npm](https://img.shields.io/npm/v/@mcprotein/anamnesis?registry_uri=https%3A%2F%2Fregistry.npmjs.org)](https://www.npmjs.com/package/@mcprotein/anamnesis) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Main-branch docs may describe unreleased work. The npm badge is the source of
 truth for the latest version currently published to npmjs.org.
@@ -185,6 +185,7 @@ anamnesis context index --write  # build a local source-pointer index
 anamnesis context query "managed region"  # retrieve exact context pointers
 anamnesis context diagnose  # report handoff, ontology, prose-doc path drift, docs/bootstrap, and evidence issues
 anamnesis context resume  # print a compact resume bundle with size metrics
+anamnesis context subagent-preamble  # print launcher-wrapper context for external subagents
 anamnesis gc --dry-run  # preview task-harness retention and disk-budget cleanup candidates
 anamnesis benchmark report --append  # record deterministic context-quality scorecard evidence
 anamnesis benchmark compare --baseline before.json --after after.json --append  # record before/after deltas

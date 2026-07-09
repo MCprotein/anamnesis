@@ -14,9 +14,17 @@ import {
   contextDiagnostics,
   type ContextDiagnosticIssue,
 } from "./context_diagnostics.js";
+import {
+  sessionContextBudget,
+  type SessionContextBudgetSource,
+} from "./session_context_budget.js";
 
 export const CONTEXT_RESUME_SCHEMA_VERSION = "anamnesis.context_resume.v1";
 export const CONTEXT_RESUME_PATH = ".anamnesis/context/resume.md";
+export const CONTEXT_SUBAGENT_PREAMBLE_SCHEMA_VERSION =
+  "anamnesis.context_subagent_preamble.v1";
+export const CONTEXT_SUBAGENT_PREAMBLE_PATH =
+  ".anamnesis/context/subagent-preamble.md";
 
 export interface ContextResumeTouchedFile {
   status: string;
@@ -63,6 +71,33 @@ export interface ContextResumeOptions {
   maxTasks?: number;
   maxTouchedFiles?: number;
   maxDiagnostics?: number;
+}
+
+export interface ContextSubagentPreambleResult {
+  schema_version: typeof CONTEXT_SUBAGENT_PREAMBLE_SCHEMA_VERSION;
+  projectRoot: string;
+  generatedAt: string;
+  outputPath: string;
+  preamble: string;
+  startupSources: SessionContextBudgetSource[];
+  agentControlSources: string[];
+  resume: ContextResumeResult;
+  summary: {
+    lines: number;
+    chars: number;
+    estimatedTokens: number;
+    startupSourcePointers: number;
+    agentControlSources: number;
+    resumeTokens: number;
+  };
+  writtenPath?: string;
+}
+
+export interface ContextSubagentPreambleOptions {
+  projectRoot: string;
+  write?: boolean;
+  outputPath?: string;
+  now?: () => Date;
 }
 
 export function contextResume(opts: ContextResumeOptions): ContextResumeResult {
@@ -152,6 +187,57 @@ export function contextResume(opts: ContextResumeOptions): ContextResumeResult {
   };
 }
 
+export function contextSubagentPreamble(
+  opts: ContextSubagentPreambleOptions,
+): ContextSubagentPreambleResult {
+  const projectRoot = path.resolve(opts.projectRoot);
+  const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
+  const stableNow = () => new Date(generatedAt);
+  const outputPath = opts.outputPath ?? CONTEXT_SUBAGENT_PREAMBLE_PATH;
+  const resume = contextResume({
+    projectRoot,
+    now: stableNow,
+  });
+  const budget = sessionContextBudget({
+    projectRoot,
+    now: stableNow,
+  });
+  const agentControlSources = agentControlSourcePaths(projectRoot);
+  const preamble = renderSubagentPreamble({
+    generatedAt,
+    agentControlSources,
+    startupSources: budget.sources,
+    resume,
+  });
+  const summary = summarizePreamble({
+    preamble,
+    startupSources: budget.sources,
+    agentControlSources,
+    resume,
+  });
+
+  let writtenPath: string | undefined;
+  if (opts.write === true) {
+    const absOutput = path.resolve(projectRoot, outputPath);
+    fs.mkdirSync(path.dirname(absOutput), { recursive: true });
+    fs.writeFileSync(absOutput, `${preamble}\n`, "utf8");
+    writtenPath = displayPathFromProject(projectRoot, absOutput);
+  }
+
+  return {
+    schema_version: CONTEXT_SUBAGENT_PREAMBLE_SCHEMA_VERSION,
+    projectRoot: ".",
+    generatedAt,
+    outputPath,
+    preamble,
+    startupSources: budget.sources,
+    agentControlSources,
+    resume,
+    summary,
+    writtenPath,
+  };
+}
+
 function renderResumeBundle(input: {
   generatedAt: string;
   activeHandoff?: string;
@@ -202,8 +288,70 @@ function renderResumeBundle(input: {
   return lines.join("\n");
 }
 
+function renderSubagentPreamble(input: {
+  generatedAt: string;
+  agentControlSources: string[];
+  startupSources: SessionContextBudgetSource[];
+  resume: ContextResumeResult;
+}): string {
+  const lines = [
+    "# anamnesis subagent preamble",
+    `generated: ${input.generatedAt}`,
+    "lane: separate-process-startup",
+    "enforcement: launcher-wrapper",
+    "",
+    "## purpose",
+    "- This preamble is intended to be prepended by a launcher or worker wrapper before the subagent task prompt.",
+    "- It makes external subagent hydration enforceable by controlling process startup input.",
+    "- Same-session native subagents still need prompt-contract evidence; do not claim SessionStart injection for them from this preamble alone.",
+    "",
+    "## required_agent_control_sources",
+    ...listOrNone(input.agentControlSources),
+    "",
+    "## startup_source_pointers",
+    ...listOrNone(input.startupSources.map(sourcePointerLine)),
+    "",
+    "## resume_bundle",
+    input.resume.bundle,
+    "",
+    "## required_subagent_response",
+    "- Before context-sensitive work, read the exact source files needed from the pointers above.",
+    "- Report `anamnesis_context_sources` with the exact paths read.",
+    "- If no listed source is relevant, explicitly say why before proceeding.",
+  ];
+  return lines.join("\n");
+}
+
 function listOrNone(items: readonly string[]): string[] {
   return items.length > 0 ? items.map((item) => `- ${item}`) : ["- (none)"];
+}
+
+function summarizePreamble(input: {
+  preamble: string;
+  startupSources: readonly SessionContextBudgetSource[];
+  agentControlSources: readonly string[];
+  resume: ContextResumeResult;
+}): ContextSubagentPreambleResult["summary"] {
+  const lines = input.preamble.split(/\r?\n/).length;
+  const chars = input.preamble.length;
+  return {
+    lines,
+    chars,
+    estimatedTokens: Math.ceil(chars / 4),
+    startupSourcePointers: input.startupSources.length,
+    agentControlSources: input.agentControlSources.length,
+    resumeTokens: input.resume.summary.estimatedTokens,
+  };
+}
+
+function sourcePointerLine(source: SessionContextBudgetSource): string {
+  return `${source.path} (${source.kind}; ${source.bytes} bytes, ${source.lines} lines)`;
+}
+
+function agentControlSourcePaths(projectRoot: string): string[] {
+  return ["AGENTS.md", "CLAUDE.md", ".codex/skills"].filter((rel) =>
+    fs.existsSync(path.join(projectRoot, rel)),
+  );
 }
 
 function summarizeBundle(input: {

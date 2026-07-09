@@ -1,4 +1,4 @@
-# Subagent Injection Benchmark — 2026-07-09T01:59:00.154Z
+# Subagent Injection Benchmark — 2026-07-09T02:14:52.327Z
 
 Deterministic benchmark for subagent context enforcement. Startup-hook or launcher-wrapper lanes count actual injection eligibility; same-session native subagents are reported as prompt-contract evidence, not as automatic SessionStart injection.
 
