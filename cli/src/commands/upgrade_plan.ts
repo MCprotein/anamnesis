@@ -702,7 +702,7 @@ function projectChoices(input: {
       label: "Add wanted suggested fragments",
       effect: "manual",
       outcome:
-        "Edit Agentfile to add the useful rulebook suggestions, then run update dry-run/apply.",
+        "Edit Agentfile to add the useful rulebook suggestions, then run apply --dry-run/apply.",
       recommended: false,
     });
     choices.push({

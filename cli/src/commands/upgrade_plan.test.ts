@@ -77,7 +77,7 @@ const addBackupRetentionMigration: AgentfileMigration = {
 };
 
 describe("upgrade plan", () => {
-  it("combines package, project status, update dry-run, and doctor summaries", () => {
+  it("combines package, project status, apply preview, and doctor summaries", () => {
     const v1Library = makeLibrary({ version: 1 });
     const project = installProject(v1Library);
     const v2Library = makeLibrary({ version: 2, hook: true });

@@ -28,14 +28,14 @@ Observed v1.15 state:
 ## Goals
 
 1. Make the common path obvious:
-   `init`, `update`, `status`, `doctor`, `upgrade`, and `context`.
+   `init`, `apply`, `status`, `doctor`, `upgrade`, and `context`.
 2. Keep advanced and maintainer commands available without crowding default
    help.
 3. Consolidate related command flows through guided defaults and aliases
    instead of adding more top-level verbs.
 4. Add a shared terminal UI layer with color, grouped sections, readable
    status labels, stable plain output, and unchanged JSON output.
-5. Let `init` and `update` detect project-local tools and artifact types, then
+5. Let `init` and `apply --dry-run` detect project-local tools and artifact types, then
    propose reviewed local context/fragments from those signals.
 
 Non-goals:
@@ -133,12 +133,12 @@ Next
 | `ontology bootstrap` | `init` / `apply` automatic bootstrap plus `doctor` repair hint | Advanced direct command remains for scoped repair. |
 | `gc --dry-run` | `doctor` reports cleanup pressure, then points to `gc --dry-run` / `gc --apply` | Avoid accidental deletion from generic commands. |
 | `hooks summary`, `dogfood check`, `benchmark ...` | Maintainer/development surfaces | Keep out of first-run and basic help. |
-| Future `discover` / `fragment draft` ideas | Fold into `init` and `update` | Do not add standalone discovery commands unless dogfood proves they are needed. |
+| Future `discover` / `fragment draft` ideas | Fold into `init` and `apply --dry-run` | Do not add standalone discovery commands unless dogfood proves they are needed. |
 
 ## Adaptive Project Detection
 
 The next detection layer should be generic before it is framework-specific.
-`init` and `update` should scan the project and classify signals into a
+`init` and `apply --dry-run` should scan the project and classify signals into a
 workspace profile:
 
 | Signal class | Examples | Output |
@@ -270,12 +270,14 @@ without escape codes.
 - Move maintainer commands out of first-run docs unless they are part of a
   release guide.
 
-### Phase 4 - v1.17 adaptive workspace profiles
+### Phase 4 - v1.16 adaptive workspace profile display
 
-- Add generic workspace signal scanning to `init` and `update`.
+- Add generic workspace signal scanning to `init` and `apply --dry-run`.
 - Report code, document, artifact, agent-surface, and verification signals.
-- Draft reviewed local context/fragments from unknown-but-important signals.
-- Teach `status` and `doctor` to report stale local workspace profiles.
+- Keep reviewed local context/fragment drafting out of the top-level command
+  surface until repeated evidence shows it is worth the additional workflow.
+- Teach `status` and `doctor` to report stale local workspace profiles later
+  if profile persistence is added.
 - Add fixtures for doc-only, design-asset, notebook/data, and unknown-tool
   projects.
 

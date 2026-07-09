@@ -11,6 +11,22 @@ could include breaking changes.
 
 - Added `anamnesis apply` as the preferred project-managed change command.
   It writes by default and supports `--dry-run` for previews.
+- Added a dependency-free terminal UI helper with plain/color parity,
+  semantic headers, key/value rows, command rows, and wrapping tests.
+- Added grouped core help for `anamnesis --help`; the full command and flag
+  catalog remains available through `anamnesis --help --all`.
+- Added bare namespace help for `anamnesis context`, `anamnesis handoff`, and
+  `anamnesis benchmark`.
+- Added workspace profile summaries to dry-run project flows so `init` and
+  `apply --dry-run` can surface supported stacks, unsupported tool signals,
+  artifact-heavy workspaces, agent surfaces, and verification commands without
+  adding a new top-level command.
+
+### Changed
+
+- Migrated the common `init`, `apply`, `update`, `status`, `doctor`, and
+  `upgrade` human reporters toward the shared terminal layout while leaving
+  JSON output unchanged.
 
 ### Deprecated
 

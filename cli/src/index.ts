@@ -168,9 +168,18 @@ import {
   formatBootstrapGenerationBoundaryLines,
   formatGenerationBoundaryLines,
 } from "./core/generation-boundary.js";
-import { formatGettingStartedGuide } from "./core/cli_guide.js";
+import {
+  formatCompactHelp,
+  formatGettingStartedGuide,
+  formatNamespaceHelp,
+} from "./core/cli_guide.js";
 import { formatInitNextStepLines } from "./core/init_next_steps.js";
+import { createTui, type TuiTone } from "./core/tui.js";
 import { PACKAGE_VERSION } from "./core/version.js";
+import {
+  detectWorkspaceProfile,
+  formatWorkspaceProfileLines,
+} from "./core/workspace_profile.js";
 import type { ToolName } from "./core/agentfile.js";
 
 const VERSION = PACKAGE_VERSION;
@@ -386,7 +395,11 @@ function resolveLibraryRoot(): string {
 // Help / version
 // ---------------------------------------------------------------------------
 
-function printHelp(): void {
+function printHelp(full = false): void {
+  if (!full) {
+    console.log(formatCompactHelp(VERSION));
+    return;
+  }
   console.log(
     `anamnesis ${VERSION} — AI coding agent config lifecycle manager
 
@@ -747,21 +760,64 @@ function printGettingStartedGuide(): void {
   console.log(formatGettingStartedGuide(VERSION));
 }
 
+function printLines(lines: string[]): void {
+  for (const line of lines) console.log(line);
+}
+
+function countTone(count: number): TuiTone {
+  return count > 0 ? "warning" : "success";
+}
+
+function verdictTone(ok: boolean): TuiTone {
+  return ok ? "success" : "warning";
+}
+
+function changeSummaryLine(s: {
+  create: number;
+  update: number;
+  noop: number;
+  blocked: number;
+  userModified: number;
+}): string {
+  return `create=${s.create} update=${s.update} noop=${s.noop} blocked=${s.blocked} user-modified=${s.userModified}`;
+}
+
+function reportWorkspaceProfile(projectRoot: string): void {
+  const ui = createTui();
+  const profile = detectWorkspaceProfile(projectRoot);
+  printLines(ui.section("Workspace Profile"));
+  for (const line of formatWorkspaceProfileLines(profile)) {
+    console.log(line);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Reporters
 // ---------------------------------------------------------------------------
 
-function reportInit(result: InitResult): void {
+function reportInit(result: InitResult, projectRoot: string): void {
+  const ui = createTui();
   const s = summarizeChanges(result.changes);
   const fragIds = result.selectedFragments.map((f) => f.id).join(", ") || "(none)";
-  console.log(`anamnesis init — ${result.agentfile.project.name}`);
-  console.log(`  tools: ${result.agentfile.tools.join(", ")}`);
-  console.log(`  fragments (root): ${fragIds}`);
+  printLines([
+    ...ui.title("anamnesis init", result.agentfile.project.name),
+    ...ui.keyValues([
+      {
+        key: "mode",
+        value: result.writtenToDisk ? "applied" : "preview",
+        tone: result.writtenToDisk ? "success" : "accent",
+      },
+      { key: "tools", value: result.agentfile.tools.join(", ") },
+      { key: "fragments (root)", value: fragIds },
+      { key: "changes", value: changeSummaryLine(s), tone: countTone(s.blocked) },
+    ]),
+  ]);
   if (result.monorepoDetection?.isMonorepo) {
     const det = result.monorepoDetection;
-    console.log(
-      `  monorepo: detected via ${det.declaredVia} — ${det.scopes.length} scope(s)`,
-    );
+    printLines([
+      ...ui.section("Workspace Profile"),
+      ui.note(`monorepo detected via ${det.declaredVia}: ${det.scopes.length} scope(s)`),
+    ]);
     for (const scope of det.scopes) {
       const ids = scope.matchedRules.map((r) => r.suggest).join(", ") || "(none)";
       console.log(`    ${scope.path.padEnd(20)} ${ids}`);
@@ -772,15 +828,16 @@ function reportInit(result: InitResult): void {
       );
     }
   }
-  console.log(
-    `  changes: create=${s.create} update=${s.update} noop=${s.noop} blocked=${s.blocked} user-modified=${s.userModified}`,
-  );
   if (!result.writtenToDisk) {
-    console.log("  (dry-run — no files written)");
+    console.log(ui.note("dry-run: no files written"));
+    reportWorkspaceProfile(projectRoot);
   }
   if (s.blocked > 0) {
     console.log(
-      "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
+      ui.note(
+        "some writes blocked; re-run with --allow-exec-adapters to include hooks/commands/skills",
+        "warning",
+      ),
     );
   }
   if (result.bootstrapError) {
@@ -847,14 +904,34 @@ function reportInit(result: InitResult): void {
 }
 
 function reportStatus(result: StatusResult, projectRoot: string): void {
+  const ui = createTui();
   const { agentfile, scopes, suggested, declined, summary } = result;
-  console.log(`anamnesis status — ${agentfile.project.name}`);
-  console.log(`  tools: ${agentfile.tools.join(", ")}`);
+  const clean = result.entries.every((e) => e.drift === "clean");
+  const ok =
+    clean &&
+    result.continuity.ready &&
+    !result.sessionContextBudget.capExceeded &&
+    result.contextDiagnostics.ok &&
+    result.executableSecurity.ok &&
+    result.agentConfigDamage.ok &&
+    result.dependencies.ready;
+  printLines([
+    ...ui.title("anamnesis status", agentfile.project.name),
+    ...ui.keyValues([
+      { key: "verdict", value: ok ? "ready" : "attention needed", tone: verdictTone(ok) },
+      { key: "tools", value: agentfile.tools.join(", ") },
+      {
+        key: "managed entries",
+        value: `${summary.entriesClean} clean / ${result.entries.length} total`,
+        tone: clean ? "success" : "warning",
+      },
+    ]),
+  ]);
 
   const isMonorepo = scopes.length > 1;
 
   if (isMonorepo) {
-    console.log(`  scopes (${scopes.length}):`);
+    printLines(ui.section(`Scopes (${scopes.length})`));
     for (const scope of scopes) {
       const driftCount = scope.entries.filter(
         (e) => e.drift !== "clean",
@@ -881,7 +958,7 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
     }
   } else {
     // Single-scope: flat list (back-compat with v0.2 format).
-    console.log(`  fragments (${summary.fragmentTotal}):`);
+    printLines(ui.section(`Fragments (${summary.fragmentTotal})`));
     for (const f of result.fragments) {
       console.log(`    ${formatFragmentLine(f)}`);
     }
@@ -901,14 +978,14 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   }
 
   if (suggested.length > 0) {
-    console.log(`  suggested (rulebook matches not yet installed):`);
+    printLines(ui.section("Suggested"));
     for (const s of suggested) {
       console.log(`    ${s.suggest.padEnd(20)} ${s.reason}`);
     }
   }
 
   if (declined.length > 0) {
-    console.log(`  declined:`);
+    printLines(ui.section("Declined"));
     for (const d of declined) {
       const when = d.declinedAt ? ` (${d.declinedAt})` : "";
       const why = d.reason ? `: ${d.reason}` : "";
@@ -918,7 +995,7 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   }
 
   if (result.partialAdoptions.length > 0) {
-    console.log(`  partial upgrades: ${result.partialAdoptions.length}`);
+    printLines(ui.section(`Partial Upgrades (${result.partialAdoptions.length})`));
     for (const partial of result.partialAdoptions) {
       const reasons = partial.reasons.join(", ");
       console.log(
@@ -1081,13 +1158,21 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
 }
 
 function reportDoctor(result: DoctorResult): void {
+  const ui = createTui();
   const verdict = result.ok ? "ok" : "issues found";
-  console.log(`anamnesis doctor — ${verdict}`);
-  console.log(
-    `  issues: ${result.summary.errors} error(s), ${result.summary.warnings} warning(s), ${result.summary.info} info`,
-  );
+  printLines([
+    ...ui.title("anamnesis doctor", path.basename(result.projectRoot)),
+    ...ui.keyValues([
+      { key: "verdict", value: verdict, tone: verdictTone(result.ok) },
+      {
+        key: "issues",
+        value: `${result.summary.errors} error(s), ${result.summary.warnings} warning(s), ${result.summary.info} info`,
+        tone: result.summary.errors > 0 || result.summary.warnings > 0 ? "warning" : "success",
+      },
+    ]),
+  ]);
   if (result.issues.length === 0) {
-    console.log("  installation integrity checks passed");
+    console.log(ui.note("installation integrity checks passed", "success"));
     for (const line of formatGenerationBoundaryLines(
       collectGenerationBoundaryStatus(result.projectRoot),
     )) {
@@ -1096,6 +1181,7 @@ function reportDoctor(result: DoctorResult): void {
     reportAppendEvidence(result.appendedPath, result.evidencePath);
     return;
   }
+  printLines(ui.section("Issues"));
   for (const issue of result.issues) {
     const scope = issue.scopePath ? ` [${issue.scopePath}]` : "";
     const target = issue.target ? ` ${issue.target}` : "";
@@ -1127,7 +1213,7 @@ function reportReleaseCheck(result: ReleaseCheckResult): void {
     `  status: fragments updates=${result.statusSummary.fragmentUpdatesAvailable}, partial=${result.statusSummary.partialAdoptions}; drift modified=${result.statusSummary.entriesUserModified}, missing=${result.statusSummary.entriesMissing}`,
   );
   console.log(
-    `  update dry-run: create=${result.updateSummary.create} update=${result.updateSummary.update} blocked=${result.updateSummary.blocked} user-modified=${result.updateSummary.userModified}`,
+    `  apply preview: create=${result.updateSummary.create} update=${result.updateSummary.update} blocked=${result.updateSummary.blocked} user-modified=${result.updateSummary.userModified}`,
   );
   console.log(
     `  doctor: errors=${result.doctorSummary.errors} warnings=${result.doctorSummary.warnings} info=${result.doctorSummary.info}`,
@@ -1944,29 +2030,48 @@ function printUpdateDeprecationWarning(): void {
 
 function reportUpdate(
   result: UpdateResult,
-  opts: { commandName?: "apply" | "update" } = {},
+  opts: { commandName?: "apply" | "update"; projectRoot?: string } = {},
 ): void {
+  const ui = createTui();
   const commandName = opts.commandName ?? "update";
   const s = summarizeChanges(result.changes);
   const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
-  console.log(`anamnesis ${commandName} — ${result.agentfile.project.name}`);
-  console.log(`  fragments: ${fragIds}`);
-  console.log(
-    `  changes: create=${s.create} update=${s.update} noop=${s.noop} blocked=${s.blocked} user-modified=${s.userModified}`,
-  );
+  const pending = s.create + s.update + s.blocked + s.userModified;
+  const mode = result.writtenToDisk
+    ? "applied"
+    : pending > 0
+      ? "preview"
+      : "no changes";
+  printLines([
+    ...ui.title(`anamnesis ${commandName}`, result.agentfile.project.name),
+    ...ui.keyValues([
+      { key: "mode", value: mode, tone: result.writtenToDisk ? "success" : "accent" },
+      { key: "fragments", value: fragIds },
+      { key: "changes", value: changeSummaryLine(s), tone: countTone(s.blocked) },
+    ]),
+  ]);
   if (result.suggested.length > 0) {
     const ids = result.suggested.map((r) => r.suggest).join(", ");
-    console.log(`  suggested (not installed): ${ids}`);
-    console.log(`    → add to Agentfile.fragments[] and re-run, or list under 'declined' to silence.`);
+    printLines([
+      ...ui.section("Suggested"),
+      ui.note(ids),
+      ui.note("add to Agentfile.fragments[] and re-run, or list under 'declined' to silence"),
+    ]);
   }
   if (s.userModified > 0) {
     console.log(
-      `  (${s.userModified} user-modified — your edits are preserved; library updates skipped for those.)`,
+      ui.note(
+        `${s.userModified} user-modified: your edits are preserved; library updates skipped for those`,
+        "warning",
+      ),
     );
   }
   if (s.blocked > 0) {
     console.log(
-      "  (some writes blocked — re-run with --allow-exec-adapters to include hooks/commands/skills)",
+      ui.note(
+        "some writes blocked; re-run with --allow-exec-adapters to include hooks/commands/skills",
+        "warning",
+      ),
     );
   }
   for (const conflict of result.surfaceConflicts) {
@@ -1989,32 +2094,46 @@ function reportUpdate(
       console.log(`  evidence: ${result.evidencePath}`);
     }
   } else {
+    if (opts.projectRoot) {
+      reportWorkspaceProfile(opts.projectRoot);
+    }
     if (commandName === "apply") {
-      console.log("  (dry-run — re-run without --dry-run to actually write)");
+      console.log(ui.note("dry-run: re-run without --dry-run to actually write"));
     } else {
       console.log(
-        "  (dry-run — use `anamnesis apply` to write; `update --apply` remains available for compatibility)",
+        ui.note(
+          "dry-run: use `anamnesis apply` to write; `update --apply` remains available for compatibility",
+        ),
       );
     }
   }
 }
 
 function reportUpgrade(result: UpgradeResult, projectRoot: string = process.cwd()): void {
-  console.log(`anamnesis upgrade — ${result.packageName}`);
-  console.log(`  registry: ${result.registry}`);
-  console.log(`  version: ${result.currentVersion} -> ${result.latestVersion}`);
-  console.log(`  status: ${result.status}`);
+  const ui = createTui();
+  printLines([
+    ...ui.title("anamnesis upgrade", result.packageName),
+    ...ui.keyValues([
+      { key: "registry", value: result.registry },
+      { key: "version", value: `${result.currentVersion} -> ${result.latestVersion}` },
+      {
+        key: "status",
+        value: result.status,
+        tone: result.updateAvailable ? "warning" : "success",
+      },
+    ]),
+  ]);
   if (result.updateAvailable) {
     console.log(`  command: ${result.installCommand.join(" ")}`);
     if (!result.applied) {
-      console.log("  (dry-run — re-run with --apply to install)");
+      console.log(ui.note("dry-run: re-run with --apply to install"));
     }
   } else if (result.status === "local-ahead") {
-    console.log("  local package.json is ahead of the registry; no downgrade run");
+    console.log(ui.note("local package.json is ahead of the registry; no downgrade run"));
   } else if (result.status === "up-to-date") {
-    console.log("  already up to date");
+    console.log(ui.note("already up to date", "success"));
   } else {
-    console.log("  could not compare versions; inspect the registry result before applying");
+    console.log(ui.note("could not compare versions; inspect the registry result before applying", "warning"));
   }
   for (const line of formatUpgradeProjectGuidance(
     result,
@@ -2025,18 +2144,28 @@ function reportUpgrade(result: UpgradeResult, projectRoot: string = process.cwd(
 }
 
 function reportUpgradePlan(result: UpgradePlanResult): void {
-  console.log(`anamnesis upgrade plan — ${result.package.packageName}`);
-  console.log(`  generated: ${result.generatedAt}`);
-  console.log(`  registry: ${result.package.registry}`);
-  console.log(
-    `  package: ${result.package.currentVersion} -> ${result.package.latestVersion} [${result.package.status}]`,
-  );
+  const ui = createTui();
+  printLines([
+    ...ui.title("anamnesis upgrade plan", result.package.packageName),
+    ...ui.keyValues([
+      { key: "generated", value: result.generatedAt },
+      { key: "registry", value: result.package.registry },
+      {
+        key: "package",
+        value: `${result.package.currentVersion} -> ${result.package.latestVersion} [${result.package.status}]`,
+        tone: result.package.updateAvailable ? "warning" : "success",
+      },
+    ]),
+  ]);
   if (result.package.updateAvailable) {
     console.log(`    command: ${result.package.installCommand.join(" ")}`);
   }
 
   const project = result.project;
-  console.log(`  project: ${project.kind}`);
+  printLines([
+    ...ui.section("Project"),
+    ...ui.keyValues([{ key: "kind", value: project.kind }]),
+  ]);
   if (project.agentfilePath) {
     console.log(`    Agentfile: ${project.agentfilePath}`);
   }
@@ -2069,7 +2198,7 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
   }
   if (project.updateSummary) {
     console.log(
-      `    update dry-run (safe mode, executable adapters blocked unless allowed): create=${project.updateSummary.create} update=${project.updateSummary.update} blocked=${project.updateSummary.blocked} user-modified=${project.updateSummary.userModified}`,
+      `    apply preview (safe mode, executable adapters blocked unless allowed): create=${project.updateSummary.create} update=${project.updateSummary.update} blocked=${project.updateSummary.blocked} user-modified=${project.updateSummary.userModified}`,
     );
   }
   if (project.doctorSummary) {
@@ -2082,17 +2211,17 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
   }
 
   if (project.gates.length > 0) {
-    console.log("  gates:");
+    printLines(ui.section("Gates"));
     for (const gate of project.gates) {
       console.log(`    ${gate.severity.padEnd(7)} ${gate.kind}: ${gate.message}`);
       console.log(`      next: ${gate.next}`);
     }
   } else {
-    console.log("  gates: none");
+    printLines([...ui.section("Gates"), ui.note("none", "success")]);
   }
 
   if (project.choices.length > 0) {
-    console.log("  choices:");
+    printLines(ui.section("Choices"));
     for (const choice of project.choices) {
       const recommended = choice.recommended ? " recommended" : "";
       console.log(
@@ -2104,21 +2233,30 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
       console.log(`      outcome: ${choice.outcome}`);
     }
   } else {
-    console.log("  choices: none");
+    printLines([...ui.section("Choices"), ui.note("none")]);
   }
 
-  console.log("  next commands:");
+  printLines(ui.section("Next Commands"));
   for (const command of project.commands) {
     console.log(`    ${command}`);
   }
 }
 
 function reportUpgradeApplyChoice(result: UpgradeApplyChoiceResult): void {
-  console.log(`anamnesis upgrade apply-choice — ${result.choiceId}`);
-  console.log(`  status: ${result.status}`);
-  console.log(`  effect: ${result.choice.effect}`);
-  console.log(`  operation: ${result.operation}`);
-  console.log(`  label: ${result.choice.label}`);
+  const ui = createTui();
+  printLines([
+    ...ui.title("anamnesis upgrade apply-choice", result.choiceId),
+    ...ui.keyValues([
+      {
+        key: "status",
+        value: result.status,
+        tone: result.status === "applied" ? "success" : "accent",
+      },
+      { key: "effect", value: result.choice.effect },
+      { key: "operation", value: result.operation },
+      { key: "label", value: result.choice.label },
+    ]),
+  ]);
   if (result.command) {
     console.log(`  command: ${result.command}`);
   }
@@ -2127,7 +2265,7 @@ function reportUpgradeApplyChoice(result: UpgradeApplyChoiceResult): void {
   }
   console.log(`  message: ${result.message}`);
   if (result.summary.length > 0) {
-    console.log("  summary:");
+    printLines(ui.section("Summary"));
     for (const line of result.summary) {
       console.log(`    ${line}`);
     }
@@ -2150,7 +2288,7 @@ async function main(argv: string[]): Promise<number> {
   const { command, positional, flags } = parseArgs(argv);
 
   if (flags.help || flags.h) {
-    printHelp();
+    printHelp(flags.all === true);
     return 0;
   }
   if (flags.version || flags.v) {
@@ -2166,8 +2304,10 @@ async function main(argv: string[]): Promise<number> {
   switch (command) {
     case "init":
       try {
+        const projectRoot =
+          (flags["project-root"] as string | undefined) ?? process.cwd();
         const result = init({
-          projectRoot: (flags["project-root"] as string | undefined) ?? process.cwd(),
+          projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           dryRun: flags["dry-run"] === true,
@@ -2180,7 +2320,7 @@ async function main(argv: string[]): Promise<number> {
           scaffoldDocs: flags["scaffold-docs"] === true,
           enhanceDocs: flags["enhance-docs"] === true,
         });
-        reportInit(result);
+        reportInit(result, projectRoot);
         return 0;
       } catch (e) {
         if (e instanceof InitError) {
@@ -2192,20 +2332,22 @@ async function main(argv: string[]): Promise<number> {
 
     case "apply":
       try {
+        const projectRoot =
+          (flags["project-root"] as string | undefined) ?? process.cwd();
         if (flags["dry-run"] === true && flags["apply"] === true) {
           throw new UpdateError(
             "`anamnesis apply` cannot combine --dry-run and --apply",
           );
         }
         const result = update({
-          projectRoot: (flags["project-root"] as string | undefined) ?? process.cwd(),
+          projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           apply: flags["dry-run"] !== true,
           bumpPinned: flags["bump-pinned"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
         });
-        reportUpdate(result, { commandName: "apply" });
+        reportUpdate(result, { commandName: "apply", projectRoot });
         return 0;
       } catch (e) {
         if (e instanceof UpdateError) {
@@ -2217,16 +2359,18 @@ async function main(argv: string[]): Promise<number> {
 
     case "update":
       try {
+        const projectRoot =
+          (flags["project-root"] as string | undefined) ?? process.cwd();
         printUpdateDeprecationWarning();
         const result = update({
-          projectRoot: (flags["project-root"] as string | undefined) ?? process.cwd(),
+          projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           apply: flags["apply"] === true,
           bumpPinned: flags["bump-pinned"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
         });
-        reportUpdate(result, { commandName: "update" });
+        reportUpdate(result, { commandName: "update", projectRoot });
         return 0;
       } catch (e) {
         if (e instanceof UpdateError) {
@@ -2463,6 +2607,10 @@ async function main(argv: string[]): Promise<number> {
 
     case "context": {
       const sub = positional[0];
+      if (sub === undefined) {
+        console.log(formatNamespaceHelp("context"));
+        return 0;
+      }
       if (
         sub !== "index" &&
         sub !== "query" &&
@@ -2581,6 +2729,10 @@ async function main(argv: string[]): Promise<number> {
 
     case "handoff": {
       const sub = positional[0];
+      if (sub === undefined) {
+        console.log(formatNamespaceHelp("handoff"));
+        return 0;
+      }
       if (sub !== "draft" && sub !== "close" && sub !== "deprecate") {
         console.error(
           `error: unknown 'handoff' subcommand: ${sub ?? "(none)"}`,
@@ -2689,6 +2841,10 @@ async function main(argv: string[]): Promise<number> {
 
     case "benchmark": {
       const sub = positional[0];
+      if (sub === undefined) {
+        console.log(formatNamespaceHelp("benchmark"));
+        return 0;
+      }
       if (
         sub !== "report" &&
         sub !== "compare" &&

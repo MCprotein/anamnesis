@@ -68,7 +68,8 @@ npx @mcprotein/anamnesis init --dry-run
 
 Either way, the CLI is invoked as `anamnesis`.
 Running `anamnesis` with no command prints a concise first-run guide; use
-`anamnesis --help` for the full command reference.
+`anamnesis --help` for grouped core help or `anamnesis --help --all` for the
+full command reference.
 
 Check whether the installed CLI is behind npmjs.org:
 

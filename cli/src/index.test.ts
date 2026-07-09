@@ -35,13 +35,13 @@ describe("CLI entrypoint", () => {
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout).toContain("Get started:");
+    expect(result.stdout).toContain("Start");
     expect(result.stdout).toContain("anamnesis init --dry-run");
     expect(result.stdout).toContain("anamnesis --help");
     expect(result.stdout).not.toContain("benchmark task-series");
   });
 
-  it("keeps the full command reference behind --help", () => {
+  it("keeps compact command help behind --help", () => {
     const result = spawnSync(
       process.execPath,
       ["--import", "tsx", indexPath, "--help"],
@@ -54,10 +54,47 @@ describe("CLI entrypoint", () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("Usage:");
-    expect(result.stdout).toContain("Commands:");
+    expect(result.stdout).toContain("Core Commands");
+    expect(result.stdout).toContain("Workflow Namespaces");
     expect(result.stdout).toContain("apply");
     expect(result.stdout).toContain("Deprecated compatibility command for apply");
+    expect(result.stdout).not.toContain("benchmark task-series");
+  });
+
+  it("keeps the full command reference behind --help --all", () => {
+    const result = spawnSync(
+      process.execPath,
+      ["--import", "tsx", indexPath, "--help", "--all"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Usage:");
+    expect(result.stdout).toContain("Commands:");
     expect(result.stdout).toContain("benchmark task-series");
+  });
+
+  it("prints namespace help for bare advanced namespaces", () => {
+    for (const namespace of ["context", "handoff", "benchmark"]) {
+      const result = spawnSync(
+        process.execPath,
+        ["--import", "tsx", indexPath, namespace],
+        {
+          cwd: repoRoot,
+          encoding: "utf8",
+        },
+      );
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain(`anamnesis ${namespace}`);
+      expect(result.stdout).toContain("Subcommands");
+      expect(result.stdout).not.toContain("unknown");
+    }
   });
 
   it("prints first-install next steps after init reports", () => {
@@ -117,7 +154,10 @@ describe("CLI entrypoint", () => {
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout).toContain("anamnesis apply — fixture");
+    expect(result.stdout).toContain("anamnesis apply");
+    expect(result.stdout).toContain("fixture");
+    expect(result.stdout).toContain("mode");
+    expect(result.stdout).toContain("preview");
     expect(result.stdout).toContain("dry-run");
     expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(false);
   });
@@ -146,7 +186,9 @@ describe("CLI entrypoint", () => {
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout).toContain("anamnesis apply — fixture");
+    expect(result.stdout).toContain("anamnesis apply");
+    expect(result.stdout).toContain("fixture");
+    expect(result.stdout).toContain("applied");
     expect(result.stdout).toContain("evidence:");
     expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(true);
   });
@@ -175,7 +217,9 @@ describe("CLI entrypoint", () => {
 
     expect(result.status).toBe(0);
     expect(result.stderr).toContain("`anamnesis update` is deprecated");
-    expect(result.stdout).toContain("anamnesis update — fixture");
+    expect(result.stdout).toContain("anamnesis update");
+    expect(result.stdout).toContain("fixture");
+    expect(result.stdout).toContain("preview");
     expect(result.stdout).toContain("use `anamnesis apply` to write");
     expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(false);
   });

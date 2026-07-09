@@ -1671,13 +1671,13 @@ Design: [`docs/COMMAND-UX-PLAN.md`](COMMAND-UX-PLAN.md)
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Command surface taxonomy** | planned | Classify commands as core, namespace, advanced, maintainer, or compatibility alias. Default help should highlight `init`, `update`, `status`, `doctor`, `upgrade`, `context`, and `handoff`; advanced commands remain callable through namespace help or full help. |
-| 2 | **Grouped help and no-command guide** | planned | Replace the monolithic `--help` screen with grouped output and a separate advanced/full catalog mode. Bare `anamnesis` remains concise and action-oriented for first-run and already-managed projects. |
-| 3 | **Guided command consolidation** | in progress on release/v1.16 | Prefer guided defaults over low-level verbs: `upgrade` remains the CLI package upgrade flow, `apply --dry-run` previews project-managed changes, and `apply` writes reviewed project-managed changes. `update` / `update --apply` stay available only as deprecated compatibility commands that point to `apply`. Future discovery/local-fragment work is folded into `init` and `apply --dry-run` instead of new top-level commands. |
-| 4 | **Shared terminal UI renderer** | planned | Add a small CLI UI layer for semantic colors, verdict headers, grouped checks, next-step blocks, width-aware wrapping, and color/plain parity. Human output should visually distinguish CLI upgrade, project apply preview, and project apply; `--json` must stay machine-readable and unstyled. |
-| 5 | **High-impact reporter migration** | planned | Migrate `doctor`, `status`, `init`, `apply`, and `upgrade` reports first because they are the common user path and currently carry the most dense output. Keep benchmark/release outputs stable until core UX is proven. |
-| 6 | **Adaptive workspace profile design hook** | planned | Add the command UX boundary for generic project detection: `init`/`apply --dry-run` should report known stacks, unknown tools, artifact-heavy workspaces, agent surfaces, and verification signals without adding standalone `discover` or `fragment draft` commands. Project-local fragment generation remains review-only. |
-| 7 | **Snapshot and accessibility tests** | planned | Add plain/color snapshot tests, no-color and forced-color coverage, non-TTY behavior checks, long-path wrapping tests, and compatibility assertions for legacy subcommands. |
+| 1 | **Command surface taxonomy** | done on release/v1.16 | Commands are grouped as core commands, workflow namespaces, compatibility paths, and maintainer/full-catalog entries. Default help highlights `init`, `apply`, `status`, `doctor`, `upgrade`, and the major namespaces; `update` remains visible only as compatibility. |
+| 2 | **Grouped help and no-command guide** | done on release/v1.16 | `anamnesis` remains a concise action guide. `anamnesis --help` now shows grouped core help instead of the monolithic catalog, and `anamnesis --help --all` preserves the full command/flag reference for maintainers and scripts. |
+| 3 | **Guided command consolidation** | done on release/v1.16 | `upgrade` remains the CLI package upgrade flow, `apply --dry-run` previews project-managed changes, and `apply` writes reviewed project-managed changes. `update` / `update --apply` stay available only as deprecated compatibility commands that point to `apply`. Future discovery/local-fragment work is folded into `init` and `apply --dry-run` instead of new top-level commands. |
+| 4 | **Shared terminal UI renderer** | done on release/v1.16 | Added a dependency-free CLI UI layer for semantic colors, verdict headers, grouped checks, command rows, width-aware wrapping, and color/plain parity. Human output now distinguishes CLI upgrade, project apply preview, and project apply; `--json` remains machine-readable and unstyled. |
+| 5 | **High-impact reporter migration** | done on release/v1.16 | Migrated common `doctor`, `status`, `init`, `apply`, `update`, `upgrade`, and `upgrade plan/apply-choice` human output to the shared layout while keeping benchmark/release outputs stable. |
+| 6 | **Adaptive workspace profile design hook** | done on release/v1.16 | `init --dry-run` and `apply --dry-run` report supported stacks, unsupported tool signals, artifact-heavy workspaces, agent surfaces, and verification signals without adding standalone `discover` or `fragment draft` commands. Project-local fragment generation remains review-only and deferred. |
+| 7 | **Snapshot and accessibility tests** | done on release/v1.16 | Added plain/color tests, no-color and forced-color coverage, compact help snapshot coverage, long-description wrapping tests, and compatibility assertions for the deprecated `update` path. |
 
 Exit criteria:
 
@@ -1693,7 +1693,7 @@ Exit criteria:
 - Existing public commands still work or print a clear compatibility alias
   message.
 - Non-code or unknown-tool project signals are handled through `init` and
-  `update` planning, not by adding more top-level commands.
+  `apply --dry-run` planning, not by adding more top-level commands.
 
 ---
 
