@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-07-09
+
 ### Added
 
 - Added `anamnesis apply` as the preferred project-managed change command.
