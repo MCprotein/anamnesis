@@ -7,6 +7,12 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed release-branch cleanup to delete the remote branch before the local
+  branch, avoiding Git's upstream-merge refusal after the release branch has
+  already been fast-forwarded into `main`.
+
 ## [1.17.0] — 2026-07-10
 
 ### Added

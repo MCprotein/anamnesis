@@ -229,12 +229,12 @@ function publish(args) {
     if (cleanupBranch && originalBranch !== "main") {
       console.log(`  ${dryRun ? "would delete" : "delete"} merged branch ${originalBranch}`);
       if (!dryRun) {
-        run("git", ["branch", "-d", originalBranch]);
         if (commandOk("git", ["ls-remote", "--exit-code", "origin", `refs/heads/${originalBranch}`])) {
           run("git", ["push", "origin", "--delete", originalBranch]);
         } else {
-          console.log(`  remote branch ${originalBranch} not found; local cleanup complete`);
+          console.log(`  remote branch ${originalBranch} not found; deleting local branch only`);
         }
+        run("git", ["branch", "-d", originalBranch]);
       }
     }
   } else {
