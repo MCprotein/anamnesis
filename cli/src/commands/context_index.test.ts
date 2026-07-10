@@ -333,6 +333,21 @@ describe("context index", () => {
           match.entry.stable_ref === "file",
       ),
     ).toBe(true);
+
+    const explicitPage = contextQuery({
+      projectRoot: project,
+      query: "Roadmap ontology source management document page",
+      limit: 3,
+    });
+    expect(explicitPage.matches.slice(0, 3).map((match) => match.entry)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "doc-page",
+          source_path: "docs/ROADMAP.md",
+          stable_ref: "file",
+        }),
+      ]),
+    );
   });
 
   it("marks active handoff entries stale when referenced archives are missing", () => {

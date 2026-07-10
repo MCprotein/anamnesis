@@ -21,25 +21,41 @@ describe("retrievalBenchmark", () => {
       now: () => new Date("2026-07-10T00:00:00.000Z"),
     });
 
-    expect(result.schema_version).toBe("anamnesis.retrieval_benchmark.v1");
+    expect(result.schema_version).toBe("anamnesis.retrieval_benchmark.v2");
     expect(result.summary).toMatchObject({
-      cases: 6,
+      cases: 18,
+      unfilteredCases: 18,
       top1HitRate: 1,
       top3HitRate: 1,
       mrr: 1,
       compactSessionStartCapExceeded: false,
-      requiredSourceReadContract: true,
-      hallucinatedProjectFacts: 0,
-      bootstrapEditAttempts: 0,
+      safetyChecks: 2,
+      safetyPasses: 2,
+      staleHandoffTop3Leakage: 0,
+      missingOntologyRefTop3Leakage: 0,
+      behavioralValidation: "not-measured",
       ok: true,
     });
-    expect(result.cases.map((item) => item.kind)).toEqual([
-      "doc-page",
-      "doc-page",
-      "doc-heading",
-      "doc-heading",
-      "doc-ontology-ref",
-      "doc-ontology-ref",
+    expect(result.cases).toHaveLength(18);
+    expect(new Set(result.cases.map((item) => item.stratum))).toEqual(
+      new Set([
+        "agent-rules",
+        "diagnostics",
+        "documents",
+        "handoff",
+        "ontology",
+        "task-harness",
+      ]),
+    );
+    expect(result.cases.every((item) => item.top1Hit)).toBe(true);
+    expect(result.safetyChecks.every((item) => item.passed)).toBe(true);
+    expect(result.provenance.packageVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(result.provenance.fixtureHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(result.provenance.rankerHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(result.provenance.rankerInputs).toEqual([
+      "src/commands/context_index.ts",
+      "src/commands/context_docs.ts",
+      "src/core/handoff_active_text.ts",
     ]);
     expect(result.artifacts.json).toBe(
       "docs/benchmark-evidence/retrieval-source-pointers/retrieval-source-pointers.json",
@@ -53,6 +69,9 @@ describe("retrievalBenchmark", () => {
     expect(
       fs.readFileSync(path.join(project, result.artifacts.hitRatesSvg!), "utf8"),
     ).toContain("Retrieval Hit Rates");
+    expect(
+      fs.readFileSync(path.join(project, result.artifacts.strataSvg!), "utf8"),
+    ).toContain("Top-3 Retrieval By Context Stratum");
     expect(
       fs.readFileSync(
         path.join(project, ".anamnesis/evidence/events.jsonl"),

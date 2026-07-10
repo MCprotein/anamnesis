@@ -1,6 +1,8 @@
+import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   appendEvidenceRecord,
   EVIDENCE_SCHEMA_VERSION,
@@ -14,7 +16,7 @@ import {
 import { sessionContextBudget } from "./session_context_budget.js";
 
 export const RETRIEVAL_BENCHMARK_SCHEMA_VERSION =
-  "anamnesis.retrieval_benchmark.v1";
+  "anamnesis.retrieval_benchmark.v2";
 
 const DEFAULT_OUTPUT_DIR = path.join(
   "docs",
@@ -44,10 +46,18 @@ export interface RetrievalBenchmarkExpectedPointer {
 export interface RetrievalBenchmarkCase {
   id: string;
   label: string;
-  kind: ContextIndexKind;
+  stratum: RetrievalBenchmarkStratum;
   query: string;
   expected: RetrievalBenchmarkExpectedPointer;
 }
+
+export type RetrievalBenchmarkStratum =
+  | "agent-rules"
+  | "diagnostics"
+  | "documents"
+  | "handoff"
+  | "ontology"
+  | "task-harness";
 
 export interface RetrievalBenchmarkReturnedPointer {
   rank: number;
@@ -61,6 +71,7 @@ export interface RetrievalBenchmarkReturnedPointer {
 export interface RetrievalBenchmarkCaseResult {
   id: string;
   label: string;
+  stratum: RetrievalBenchmarkStratum;
   kind: ContextIndexKind;
   query: string;
   expected: RetrievalBenchmarkExpectedPointer;
@@ -72,12 +83,30 @@ export interface RetrievalBenchmarkCaseResult {
   warnings: string[];
 }
 
+export interface RetrievalBenchmarkSafetyCheck {
+  id: string;
+  label: string;
+  query: string;
+  passed: boolean;
+  violatingPointers: RetrievalBenchmarkReturnedPointer[];
+}
+
+export interface RetrievalBenchmarkStratumSummary {
+  cases: number;
+  top1Hits: number;
+  top3Hits: number;
+  top1HitRate: number;
+  top3HitRate: number;
+  mrr: number;
+}
+
 export interface RetrievalBenchmarkArtifacts {
   outputDir?: string;
   json?: string;
   markdown?: string;
   hitRatesSvg?: string;
   ranksSvg?: string;
+  strataSvg?: string;
 }
 
 export interface RetrievalBenchmarkResult {
@@ -87,9 +116,17 @@ export interface RetrievalBenchmarkResult {
     id: string;
     description: string;
   };
+  provenance: {
+    packageVersion: string;
+    fixtureHash: string;
+    rankerHash: string;
+    rankerInputs: string[];
+  };
   cases: RetrievalBenchmarkCaseResult[];
+  safetyChecks: RetrievalBenchmarkSafetyCheck[];
   summary: {
     cases: number;
+    unfilteredCases: number;
     top1Hits: number;
     top3Hits: number;
     top1HitRate: number;
@@ -98,9 +135,12 @@ export interface RetrievalBenchmarkResult {
     compactSessionStartTokens: number;
     compactSessionStartCap: number;
     compactSessionStartCapExceeded: boolean;
-    requiredSourceReadContract: boolean;
-    hallucinatedProjectFacts: number;
-    bootstrapEditAttempts: number;
+    byStratum: Record<RetrievalBenchmarkStratum, RetrievalBenchmarkStratumSummary>;
+    safetyChecks: number;
+    safetyPasses: number;
+    staleHandoffTop3Leakage: number;
+    missingOntologyRefTop3Leakage: number;
+    behavioralValidation: "not-measured";
     ok: boolean;
   };
   artifacts: RetrievalBenchmarkArtifacts;
@@ -126,9 +166,11 @@ export function retrievalBenchmark(
 
   try {
     writeRetrievalFixture(fixtureRoot);
+    const provenance = retrievalBenchmarkProvenance(fixtureRoot);
     const cases = retrievalBenchmarkCases().map((item) =>
       runRetrievalCase(fixtureRoot, item),
     );
+    const safetyChecks = runRetrievalSafetyChecks(fixtureRoot);
     const compactBudget = sessionContextBudget({
       projectRoot: fixtureRoot,
       maxTokens: COMPACT_SESSION_START_TOKEN_CAP,
@@ -139,12 +181,18 @@ export function retrievalBenchmark(
       schema_version: RETRIEVAL_BENCHMARK_SCHEMA_VERSION,
       generatedAt,
       fixture: {
-        id: "public-doc-ontology-retrieval",
+        id: "public-mixed-context-retrieval",
         description:
-          "Synthetic public-safe project with README, docs, ontology refs, and compact SessionStart source pointers.",
+          "Synthetic public-safe project with mixed document, ontology, handoff, task-harness, agent-rule, and diagnostic pointers.",
       },
+      provenance,
       cases,
-      summary: summarizeRetrievalBenchmark(cases, compactBudget.estimatedTokens),
+      safetyChecks,
+      summary: summarizeRetrievalBenchmark(
+        cases,
+        safetyChecks,
+        compactBudget.estimatedTokens,
+      ),
       artifacts,
       markdown: "",
     };
@@ -187,6 +235,19 @@ function writeRetrievalFixture(projectRoot: string): void {
   );
   writeFile(
     projectRoot,
+    "AGENTS.md",
+    [
+      "# Agent Rules",
+      "",
+      "## Evidence Retrieval Contract",
+      "",
+      "Before claiming a project invariant, use context query and open the returned source pointer.",
+      "Do not treat snippets as authority.",
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    projectRoot,
     "system_graph.yaml",
     [
       'schema_version: "anamnesis.system_graph.v1"',
@@ -194,8 +255,17 @@ function writeRetrievalFixture(projectRoot: string): void {
       "  - id: checkout-service",
       "    kind: service",
       "    name: checkout-service",
-      "invariants:",
-      "  - rule: checkout intent flow must read payment ontology before edits",
+      "  - id: ledger-gateway",
+      "    kind: service",
+      "    name: ledger-gateway",
+      "relationships:",
+      "  - id: checkout-ledger-route",
+      "    from: checkout-service",
+      "    to: ledger-gateway",
+      "    reason: ledger gateway owns final settlement routing",
+      "operational_notes:",
+      "  - id: settlement-source-read",
+      "    rule: settlement routing changes must read payment ontology before edits",
       "",
     ].join("\n"),
   );
@@ -209,11 +279,13 @@ function writeRetrievalFixture(projectRoot: string): void {
       "    kind: worker",
       "    name: payment-worker",
       "relationships:",
-      "  - from: checkout-service",
+      "  - id: checkout-payment-dispatch",
+      "    from: checkout-service",
       "    to: payment-worker",
       "    type: dispatches",
-      "invariants:",
-      "  - rule: payment worker owns idempotency key verification",
+      "operational_notes:",
+      "  - id: payment-idempotency-owner",
+      "    rule: payment worker owns cobalt idempotency key verification",
       "",
     ].join("\n"),
   );
@@ -278,6 +350,88 @@ function writeRetrievalFixture(projectRoot: string): void {
       "",
     ].join("\n"),
   );
+  writeFile(
+    projectRoot,
+    "docs/runbook.md",
+    [
+      "# Runbook",
+      "",
+      "## Orchid Failover Procedure",
+      "",
+      "During an Orchid incident, fail over the ledger gateway before replaying checkout intents.",
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    projectRoot,
+    "docs/diagnostics.md",
+    [
+      "# Diagnostics",
+      "",
+      "## Missing Ontology Source",
+      "",
+      "The removed worker source still points to [missing evidence](../.anamnesis/ontology/missing.yaml).",
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    projectRoot,
+    ".anamnesis/handoff/active.md",
+    [
+      "# Active handoff index",
+      "",
+      "## Current focus",
+      "- Aurora billing cutover - archive: `.anamnesis/handoff/current.md`",
+      "",
+      "## Recently completed",
+      "- legacy invoice transport - archive: `.anamnesis/handoff/closed.md`",
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    projectRoot,
+    ".anamnesis/handoff/current.md",
+    [
+      "---",
+      "handoff_status: open",
+      "retention_tier: warm",
+      "---",
+      "# Aurora billing cutover",
+      "",
+      "## Next steps",
+      "Validate the cobalt queue before the Aurora billing cutover.",
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    projectRoot,
+    ".anamnesis/handoff/closed.md",
+    [
+      "---",
+      "handoff_status: closed",
+      "retention_tier: cold",
+      "---",
+      "# Legacy invoice transport decision",
+      "",
+      "## Decisions",
+      "The historical invoice pipeline used the retired comet transport.",
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    projectRoot,
+    ".anamnesis/task-harnesses/release-safety.yaml",
+    [
+      'schema_version: "anamnesis.task_harness.v1"',
+      'id: "release-safety"',
+      'title: "Release safety verification"',
+      "goal: verify package publication and generated surface drift",
+      "stop_condition: npm and GitHub release evidence agree",
+      "required_evidence:",
+      "  - release runner output",
+      "",
+    ].join("\n"),
+  );
 }
 
 function retrievalBenchmarkCases(): RetrievalBenchmarkCase[] {
@@ -285,8 +439,8 @@ function retrievalBenchmarkCases(): RetrievalBenchmarkCase[] {
     {
       id: "doc-page-readme",
       label: "README doc page",
-      kind: "doc-page",
-      query: "Retrieval Fixture README canonical",
+      stratum: "documents",
+      query: "Retrieval Fixture README canonical document page",
       expected: {
         kind: "doc-page",
         source_path: "README.md",
@@ -294,21 +448,10 @@ function retrievalBenchmarkCases(): RetrievalBenchmarkCase[] {
       },
     },
     {
-      id: "doc-page-architecture",
-      label: "Architecture doc page",
-      kind: "doc-page",
-      query: "checkout flow architecture payment worker",
-      expected: {
-        kind: "doc-page",
-        source_path: "docs/architecture.md",
-        stable_ref: "file",
-      },
-    },
-    {
       id: "doc-heading-checkout-flow",
       label: "Checkout intent heading",
-      kind: "doc-heading",
-      query: "checkout intent flow payment authorization",
+      stratum: "documents",
+      query: "checkout intent flow payment authorization worker",
       expected: {
         kind: "doc-heading",
         source_path: "docs/architecture.md",
@@ -318,7 +461,7 @@ function retrievalBenchmarkCases(): RetrievalBenchmarkCase[] {
     {
       id: "doc-heading-release-checklist",
       label: "Release automation heading",
-      kind: "doc-heading",
+      stratum: "documents",
       query: "release automation checklist npm github generated drift",
       expected: {
         kind: "doc-heading",
@@ -327,9 +470,31 @@ function retrievalBenchmarkCases(): RetrievalBenchmarkCase[] {
       },
     },
     {
+      id: "doc-heading-handoff-retention",
+      label: "Handoff retention heading",
+      stratum: "documents",
+      query: "hot handoff archive cold source pointer retention policy",
+      expected: {
+        kind: "doc-heading",
+        source_path: "docs/operations.md",
+        stable_ref: "heading:handoff-retention-policy",
+      },
+    },
+    {
+      id: "doc-heading-orchid-failover",
+      label: "Orchid failover heading",
+      stratum: "documents",
+      query: "Orchid incident ledger gateway failover checkout replay",
+      expected: {
+        kind: "doc-heading",
+        source_path: "docs/runbook.md",
+        stable_ref: "heading:orchid-failover-procedure",
+      },
+    },
+    {
       id: "doc-ontology-payments",
       label: "Payments ontology ref",
-      kind: "doc-ontology-ref",
+      stratum: "documents",
       query: "reviewed semantic flow recorded payments ontology edits",
       expected: {
         kind: "doc-ontology-ref",
@@ -340,12 +505,133 @@ function retrievalBenchmarkCases(): RetrievalBenchmarkCase[] {
     {
       id: "doc-ontology-system-graph",
       label: "System graph ontology ref",
-      kind: "doc-ontology-ref",
+      stratum: "documents",
       query: "canonical top-level graph system graph",
       expected: {
         kind: "doc-ontology-ref",
         source_path: "README.md",
         title: "Ontology ref system_graph.yaml",
+      },
+    },
+    {
+      id: "ontology-checkout-service",
+      label: "Checkout service entity",
+      stratum: "ontology",
+      query: "checkout-service service entity top-level graph",
+      expected: {
+        kind: "ontology-entity",
+        source_path: "system_graph.yaml",
+        title: "checkout-service",
+      },
+    },
+    {
+      id: "ontology-ledger-gateway",
+      label: "Ledger gateway entity",
+      stratum: "ontology",
+      query: "ledger-gateway settlement service entity",
+      expected: {
+        kind: "ontology-entity",
+        source_path: "system_graph.yaml",
+        title: "ledger-gateway",
+      },
+    },
+    {
+      id: "ontology-payment-worker",
+      label: "Payment worker entity",
+      stratum: "ontology",
+      query: "payment-worker worker cobalt idempotency",
+      expected: {
+        kind: "ontology-entity",
+        source_path: ".anamnesis/ontology/payments.yaml",
+        title: "payment-worker",
+      },
+    },
+    {
+      id: "ontology-checkout-payment-dispatch",
+      label: "Checkout payment relationship",
+      stratum: "ontology",
+      query: "checkout payment dispatches worker relationship",
+      expected: {
+        kind: "ontology-relationship",
+        source_path: ".anamnesis/ontology/payments.yaml",
+        title: "checkout-payment-dispatch",
+      },
+    },
+    {
+      id: "ontology-payment-idempotency",
+      label: "Payment idempotency rule",
+      stratum: "ontology",
+      query: "cobalt idempotency key verification owner rule",
+      expected: {
+        kind: "ontology-rule",
+        source_path: ".anamnesis/ontology/payments.yaml",
+        title: "payment-idempotency-owner",
+      },
+    },
+    {
+      id: "ontology-settlement-source-read",
+      label: "Settlement source-read rule",
+      stratum: "ontology",
+      query: "settlement routing changes payment ontology source read rule",
+      expected: {
+        kind: "ontology-rule",
+        source_path: "system_graph.yaml",
+        title: "settlement-source-read",
+      },
+    },
+    {
+      id: "diagnostic-missing-ontology",
+      label: "Missing ontology diagnostic pointer",
+      stratum: "diagnostics",
+      query: "missing removed worker ontology evidence diagnostic",
+      expected: {
+        kind: "doc-ontology-ref",
+        source_path: "docs/diagnostics.md",
+        title: "Ontology ref .anamnesis/ontology/missing.yaml",
+      },
+    },
+    {
+      id: "handoff-current-aurora",
+      label: "Current Aurora handoff",
+      stratum: "handoff",
+      query: "Aurora billing cutover cobalt queue next steps",
+      expected: {
+        kind: "handoff-task",
+        source_path: ".anamnesis/handoff/current.md",
+        title: "Aurora billing cutover",
+      },
+    },
+    {
+      id: "handoff-historical-comet",
+      label: "Historical comet handoff",
+      stratum: "handoff",
+      query: "historical closed cold legacy invoice comet transport decision",
+      expected: {
+        kind: "handoff-task",
+        source_path: ".anamnesis/handoff/closed.md",
+        title: "Legacy invoice transport decision",
+      },
+    },
+    {
+      id: "task-harness-release-safety",
+      label: "Release safety task harness",
+      stratum: "task-harness",
+      query: "release safety package publication generated surface drift evidence",
+      expected: {
+        kind: "task-harness",
+        source_path: ".anamnesis/task-harnesses/release-safety.yaml",
+        title: "Release safety verification",
+      },
+    },
+    {
+      id: "agent-rule-evidence-retrieval",
+      label: "Agent evidence retrieval rule",
+      stratum: "agent-rules",
+      query: "agent evidence retrieval contract source pointer snippets authority",
+      expected: {
+        kind: "agent-rule",
+        source_path: "AGENTS.md",
+        title: "Evidence Retrieval Contract",
       },
     },
   ];
@@ -358,7 +644,6 @@ function runRetrievalCase(
   const query = contextQuery({
     projectRoot,
     query: item.query,
-    kind: item.kind,
     limit: 8,
   });
   const rankIndex = query.matches.findIndex((match) =>
@@ -367,12 +652,61 @@ function runRetrievalCase(
   const rank = rankIndex >= 0 ? rankIndex + 1 : undefined;
   return {
     ...item,
+    kind: item.expected.kind,
     ...(rank !== undefined ? { rank } : {}),
     top1Hit: rank === 1,
     top3Hit: rank !== undefined && rank <= 3,
     reciprocalRank: rank === undefined ? 0 : 1 / rank,
     returned: query.matches.map(returnedPointer),
     warnings: query.warnings,
+  };
+}
+
+function runRetrievalSafetyChecks(
+  projectRoot: string,
+): RetrievalBenchmarkSafetyCheck[] {
+  return [
+    runRetrievalSafetyCheck({
+      projectRoot,
+      id: "ordinary-query-excludes-stale-handoff",
+      label: "Ordinary queries exclude stale handoff history",
+      query: "legacy invoice comet transport decision",
+      violates: (match) =>
+        match.entry.kind === "handoff-task" && match.entry.freshness === "stale",
+    }),
+    runRetrievalSafetyCheck({
+      projectRoot,
+      id: "ordinary-query-demotes-missing-ontology",
+      label: "Ordinary queries exclude missing ontology refs from top-3",
+      query: "removed worker ontology evidence source",
+      violates: (match) =>
+        match.entry.kind === "doc-ontology-ref" &&
+        match.entry.tags.includes("missing"),
+    }),
+  ];
+}
+
+function runRetrievalSafetyCheck(input: {
+  projectRoot: string;
+  id: string;
+  label: string;
+  query: string;
+  violates: (match: ContextQueryMatch) => boolean;
+}): RetrievalBenchmarkSafetyCheck {
+  const query = contextQuery({
+    projectRoot: input.projectRoot,
+    query: input.query,
+    limit: 3,
+  });
+  const violatingPointers = query.matches
+    .filter(input.violates)
+    .map(returnedPointer);
+  return {
+    id: input.id,
+    label: input.label,
+    query: input.query,
+    passed: violatingPointers.length === 0,
+    violatingPointers,
   };
 }
 
@@ -405,6 +739,7 @@ function returnedPointer(
 
 function summarizeRetrievalBenchmark(
   cases: readonly RetrievalBenchmarkCaseResult[],
+  safetyChecks: readonly RetrievalBenchmarkSafetyCheck[],
   compactSessionStartTokens: number,
 ): RetrievalBenchmarkResult["summary"] {
   const total = cases.length;
@@ -418,8 +753,19 @@ function summarizeRetrievalBenchmark(
   );
   const compactSessionStartCapExceeded =
     compactSessionStartTokens > COMPACT_SESSION_START_TOKEN_CAP;
+  const byStratum = summarizeRetrievalStrata(cases);
+  const safetyPasses = safetyChecks.filter((item) => item.passed).length;
+  const staleHandoffTop3Leakage = safetyViolationCount(
+    safetyChecks,
+    "ordinary-query-excludes-stale-handoff",
+  );
+  const missingOntologyRefTop3Leakage = safetyViolationCount(
+    safetyChecks,
+    "ordinary-query-demotes-missing-ontology",
+  );
   return {
     cases: total,
+    unfilteredCases: total,
     top1Hits,
     top3Hits,
     top1HitRate,
@@ -428,15 +774,64 @@ function summarizeRetrievalBenchmark(
     compactSessionStartTokens,
     compactSessionStartCap: COMPACT_SESSION_START_TOKEN_CAP,
     compactSessionStartCapExceeded,
-    requiredSourceReadContract: true,
-    hallucinatedProjectFacts: 0,
-    bootstrapEditAttempts: 0,
+    byStratum,
+    safetyChecks: safetyChecks.length,
+    safetyPasses,
+    staleHandoffTop3Leakage,
+    missingOntologyRefTop3Leakage,
+    behavioralValidation: "not-measured",
     ok:
       top1HitRate >= TOP1_THRESHOLD &&
       top3HitRate >= TOP3_THRESHOLD &&
       mrr >= MRR_THRESHOLD &&
-      !compactSessionStartCapExceeded,
+      !compactSessionStartCapExceeded &&
+      Object.values(byStratum).every(
+        (stratum) =>
+          stratum.cases === 0 || stratum.top3HitRate >= TOP3_THRESHOLD,
+      ) &&
+      safetyPasses === safetyChecks.length,
   };
+}
+
+function summarizeRetrievalStrata(
+  cases: readonly RetrievalBenchmarkCaseResult[],
+): Record<RetrievalBenchmarkStratum, RetrievalBenchmarkStratumSummary> {
+  const strata: RetrievalBenchmarkStratum[] = [
+    "agent-rules",
+    "diagnostics",
+    "documents",
+    "handoff",
+    "ontology",
+    "task-harness",
+  ];
+  return Object.fromEntries(
+    strata.map((stratum) => {
+      const selected = cases.filter((item) => item.stratum === stratum);
+      const top1Hits = selected.filter((item) => item.top1Hit).length;
+      const top3Hits = selected.filter((item) => item.top3Hit).length;
+      return [
+        stratum,
+        {
+          cases: selected.length,
+          top1Hits,
+          top3Hits,
+          top1HitRate: rate(top1Hits, selected.length),
+          top3HitRate: rate(top3Hits, selected.length),
+          mrr: roundRate(
+            selected.reduce((sum, item) => sum + item.reciprocalRank, 0) /
+              Math.max(1, selected.length),
+          ),
+        },
+      ];
+    }),
+  ) as Record<RetrievalBenchmarkStratum, RetrievalBenchmarkStratumSummary>;
+}
+
+function safetyViolationCount(
+  checks: readonly RetrievalBenchmarkSafetyCheck[],
+  id: string,
+): number {
+  return checks.find((item) => item.id === id)?.violatingPointers.length ?? 0;
 }
 
 function writeRetrievalBenchmarkArtifacts(input: {
@@ -470,6 +865,10 @@ function writeRetrievalBenchmarkArtifacts(input: {
     input.projectRoot,
     path.join(outputDir, "retrieval-ranks.svg"),
   );
+  input.result.artifacts.strataSvg = displayPathFromProject(
+    input.projectRoot,
+    path.join(outputDir, "retrieval-strata.svg"),
+  );
   input.result.markdown = renderRetrievalBenchmarkMarkdown(input.result);
 
   fs.writeFileSync(
@@ -492,6 +891,11 @@ function writeRetrievalBenchmarkArtifacts(input: {
     renderRanksSvg(input.result),
     "utf8",
   );
+  fs.writeFileSync(
+    path.join(outputDir, "retrieval-strata.svg"),
+    renderStrataSvg(input.result),
+    "utf8",
+  );
 }
 
 function renderRetrievalBenchmarkMarkdown(
@@ -500,23 +904,40 @@ function renderRetrievalBenchmarkMarkdown(
   const lines = [
     `# Retrieval Source-Pointer Benchmark — ${input.generatedAt}`,
     "",
-    "Deterministic benchmark for `context query` source-pointer ranking over public-safe docs and ontology references.",
+    "Deterministic unfiltered benchmark for `context query` source-pointer ranking over public-safe mixed context sources.",
     "",
+    `Package: ${input.provenance.packageVersion}`,
+    `Fixture hash: ${input.provenance.fixtureHash}`,
+    `Ranker hash: ${input.provenance.rankerHash}`,
+    `Ranker inputs: ${input.provenance.rankerInputs.join(", ")}`,
     `Cases: ${input.summary.cases}`,
     `Top-1 hit rate: ${formatRate(input.summary.top1HitRate)} (${input.summary.top1Hits}/${input.summary.cases})`,
     `Top-3 hit rate: ${formatRate(input.summary.top3HitRate)} (${input.summary.top3Hits}/${input.summary.cases})`,
     `MRR: ${input.summary.mrr.toFixed(3)}`,
     `Compact SessionStart: ${input.summary.compactSessionStartTokens}/${input.summary.compactSessionStartCap} estimated tokens`,
+    `Safety checks: ${input.summary.safetyPasses}/${input.summary.safetyChecks} passed`,
+    `Behavioral validation: ${input.summary.behavioralValidation} (use model-dependent task benchmarks)`,
     `Gate: ${input.summary.ok ? "pass" : "fail"}`,
     "",
-    "| Case | Kind | Query | Expected pointer | Rank | Top-1 | Top-3 |",
-    "|---|---|---|---|---:|---|---|",
+    "| Case | Stratum | Kind | Query | Expected pointer | Rank | Top-1 | Top-3 |",
+    "|---|---|---|---|---|---:|---|---|",
   ];
   for (const item of input.cases) {
     lines.push(
-      `| ${escapeCell(item.label)} | ${item.kind} | ${escapeCell(item.query)} | ${escapeCell(formatExpectedPointer(item.expected))} | ${item.rank ?? "miss"} | ${item.top1Hit ? "yes" : "no"} | ${item.top3Hit ? "yes" : "no"} |`,
+      `| ${escapeCell(item.label)} | ${item.stratum} | ${item.kind} | ${escapeCell(item.query)} | ${escapeCell(formatExpectedPointer(item.expected))} | ${item.rank ?? "miss"} | ${item.top1Hit ? "yes" : "no"} | ${item.top3Hit ? "yes" : "no"} |`,
     );
   }
+  lines.push(
+    "",
+    "## Safety checks",
+    "",
+    "| Check | Result | Violations |",
+    "|---|---|---:|",
+    ...input.safetyChecks.map(
+      (item) =>
+        `| ${escapeCell(item.label)} | ${item.passed ? "pass" : "fail"} | ${item.violatingPointers.length} |`,
+    ),
+  );
   if (input.artifacts.hitRatesSvg) {
     lines.push(
       "",
@@ -524,6 +945,7 @@ function renderRetrievalBenchmarkMarkdown(
       "",
       `![Retrieval hit rates](${path.basename(input.artifacts.hitRatesSvg)})`,
       `![Retrieval ranks](${path.basename(input.artifacts.ranksSvg ?? "")})`,
+      `![Retrieval strata](${path.basename(input.artifacts.strataSvg ?? "")})`,
     );
   }
   return lines.join("\n");
@@ -598,6 +1020,39 @@ function renderRanksSvg(input: RetrievalBenchmarkResult): string {
   return parts.join("\n");
 }
 
+function renderStrataSvg(input: RetrievalBenchmarkResult): string {
+  const width = 980;
+  const height = 390;
+  const chartX = 90;
+  const chartY = 54;
+  const chartW = 820;
+  const chartH = 230;
+  const strata = Object.entries(input.summary.byStratum) as [
+    RetrievalBenchmarkStratum,
+    RetrievalBenchmarkStratumSummary,
+  ][];
+  const parts = svgFrame(width, height, "Top-3 Retrieval By Context Stratum");
+  parts.push(axis(width, height, chartX, chartY, chartW, chartH));
+  strata.forEach(([stratum, summary], index) => {
+    const groupW = chartW / strata.length;
+    const barW = Math.max(30, groupW * 0.45);
+    const x = chartX + index * groupW + groupW / 2 - barW / 2;
+    const h = summary.top3HitRate * chartH;
+    const y = chartY + chartH - h;
+    const color = summary.top3HitRate >= TOP3_THRESHOLD ? "#059669" : "#dc2626";
+    parts.push(
+      `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${color}"><title>${escapeXml(stratum)} ${formatRate(summary.top3HitRate)} (${summary.top3Hits}/${summary.cases})</title></rect>`,
+      `<text x="${(x + barW / 2).toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="middle" font-size="12" fill="#111827">${formatRate(summary.top3HitRate)}</text>`,
+      `<text x="${(x + barW / 2).toFixed(1)}" y="${height - 72}" text-anchor="end" transform="rotate(-30 ${(x + barW / 2).toFixed(1)} ${height - 72})" font-size="11" fill="#374151">${escapeXml(stratum)}</text>`,
+    );
+  });
+  parts.push(
+    `<text x="${width / 2}" y="${height - 22}" text-anchor="middle" font-size="12" fill="#4b5563">all cases run without a kind filter; each stratum must reach 100% top-3</text>`,
+    "</svg>\n",
+  );
+  return parts.join("\n");
+}
+
 function retrievalBenchmarkEvidenceRecord(
   result: RetrievalBenchmarkResult,
 ): RuntimeEvidenceRecord {
@@ -615,12 +1070,15 @@ function retrievalBenchmarkEvidenceRecord(
     details: {
       cases: result.cases.map((item) => ({
         id: item.id,
+        stratum: item.stratum,
         kind: item.kind,
         rank: item.rank ?? null,
         top1Hit: item.top1Hit,
         top3Hit: item.top3Hit,
         expected: item.expected,
       })),
+      safety_checks: result.safetyChecks,
+      provenance: result.provenance,
     },
     artifacts: retrievalBenchmarkArtifactRecord(result.artifacts),
   };
@@ -634,6 +1092,105 @@ function retrievalBenchmarkArtifactRecord(
       (entry): entry is [string, string] => typeof entry[1] === "string",
     ),
   );
+}
+
+function retrievalBenchmarkProvenance(fixtureRoot: string): {
+  packageVersion: string;
+  fixtureHash: string;
+  rankerHash: string;
+  rankerInputs: string[];
+} {
+  const ranker = hashRetrievalModules();
+  return {
+    packageVersion: benchmarkPackageVersion(),
+    fixtureHash: hashFixture(fixtureRoot),
+    rankerHash: ranker.hash,
+    rankerInputs: ranker.inputs,
+  };
+}
+
+function benchmarkPackageVersion(): string {
+  let current = path.dirname(fileURLToPath(import.meta.url));
+  for (let depth = 0; depth < 6; depth++) {
+    const candidate = path.join(current, "package.json");
+    if (fs.existsSync(candidate)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(candidate, "utf8")) as {
+          name?: string;
+          version?: string;
+        };
+        if (
+          parsed.name === "@mcprotein/anamnesis" &&
+          typeof parsed.version === "string"
+        ) {
+          return parsed.version;
+        }
+      } catch {
+        // Keep walking in case this package.json belongs to a nested tool.
+      }
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return "unknown";
+}
+
+function hashRetrievalModules(): { hash: string; inputs: string[] } {
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const extension = fs.existsSync(path.join(moduleDir, "context_index.ts"))
+    ? ".ts"
+    : ".js";
+  const modules = [
+    path.join(moduleDir, `context_index${extension}`),
+    path.join(moduleDir, `context_docs${extension}`),
+    path.join(moduleDir, "..", "core", `handoff_active_text${extension}`),
+  ];
+  const existing = modules.filter((candidate) => fs.existsSync(candidate));
+  if (existing.length === modules.length) {
+    const hash = crypto.createHash("sha256");
+    const inputs: string[] = [];
+    for (const candidate of existing) {
+      const label = path.relative(path.join(moduleDir, "..", ".."), candidate).replace(/\\/g, "/");
+      inputs.push(label);
+      hash.update(label);
+      hash.update("\0");
+      hash.update(fs.readFileSync(candidate));
+      hash.update("\0");
+    }
+    return { hash: `sha256:${hash.digest("hex")}`, inputs };
+  }
+  return {
+    hash: sha256(Buffer.from(`package:${benchmarkPackageVersion()}`, "utf8")),
+    inputs: [`package:${benchmarkPackageVersion()}`],
+  };
+}
+
+function hashFixture(projectRoot: string): string {
+  const files: string[] = [];
+  const stack = [projectRoot];
+  while (stack.length > 0) {
+    const dir = stack.pop()!;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const absPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) stack.push(absPath);
+      else if (entry.isFile()) files.push(absPath);
+    }
+  }
+  files.sort((a, b) => a.localeCompare(b));
+  const hash = crypto.createHash("sha256");
+  for (const absPath of files) {
+    const relPath = displayPathFromProject(projectRoot, absPath);
+    hash.update(relPath);
+    hash.update("\0");
+    hash.update(fs.readFileSync(absPath));
+    hash.update("\0");
+  }
+  return `sha256:${hash.digest("hex")}`;
+}
+
+function sha256(value: Buffer): string {
+  return `sha256:${crypto.createHash("sha256").update(value).digest("hex")}`;
 }
 
 function writeFile(projectRoot: string, relPath: string, content: string): void {

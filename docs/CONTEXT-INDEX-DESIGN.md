@@ -27,8 +27,9 @@ Index these public/local project sources first:
 - `AGENTS.md` and adapter entrypoint files for operating rules.
 - `system_graph.yaml` for user-managed project ontology.
 - `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, and `.enriched.yaml`.
-- `.anamnesis/handoff/active.md` plus referenced archive files and lifecycle
-  tier metadata.
+- `.anamnesis/handoff/active.md` plus all non-draft archive files and lifecycle
+  tier metadata. Closed/cold history remains indexed but is eligible only for
+  explicitly historical queries.
 - `.anamnesis/task-harnesses/*.yaml` for bounded task contracts.
 - `.anamnesis/manifest.json` for installed fragment/render state.
 - `.anamnesis/evidence/events.jsonl` for latest runtime evidence summaries.
@@ -110,16 +111,20 @@ Prototype behavior:
   A custom `--index` path remains explicit: missing custom indexes fail, and
   stale custom indexes are reported instead of silently replaced.
 - Ranking combines lexical term hits with phrase matches, kind/source priority,
-  and freshness penalties so active ontology, handoff, task, and document
-  pointers beat stale context when the lexical match is comparable.
+  freshness, lifecycle, diagnostic, and explicit document-page intent. Ordinary
+  queries exclude stale handoff history; historical queries can retrieve it.
+  Missing ontology references are demoted unless the query has diagnostic
+  intent.
 - `--kind <kind>` filters query results to one entry kind.
 - Document graph records are indexed as `doc-page`, `doc-heading`, and
   `doc-ontology-ref`. They point agents to the exact file, heading, or ontology
   reference to read next; they do not make document prose authoritative project
   memory.
-- `anamnesis benchmark retrieval --write` measures public-safe source-pointer
-  ranking for those document graph kinds and writes JSON/Markdown/SVG evidence
-  under `docs/benchmark-evidence/retrieval-source-pointers/`.
+- `anamnesis benchmark retrieval --write` runs mixed-kind queries without a
+  kind filter across documents, ontology, handoffs, task harnesses, agent rules,
+  and diagnostics. It writes JSON/Markdown/SVG evidence under
+  `docs/benchmark-evidence/retrieval-source-pointers/` and marks model behavior
+  as unmeasured.
 - `anamnesis context resume` prints a compact bundle with active handoff
   pointer, latest archive pointer, touched git files, latest runtime evidence,
   diagnostic warnings, retrieval rules, and line/char/token estimates.
@@ -173,6 +178,12 @@ Prototype behavior:
   `anamnesis-fact: facts... = ...` markers. It does not infer contradictions
   from free-form prose.
 - It reports malformed evidence JSONL lines and missing local artifact paths.
+- It treats plain prose mentions of ontology paths as navigation text. Only
+  missing Markdown links or explicit `anamnesis-ontology-ref:` declarations are
+  warnings; an absent optional `system_graph.yaml` mention is not a failure.
+- It reports stale generated context indexes, including content changes that
+  preserve file mtimes, with a repair command. Query still rebuilds the default
+  index in memory before searching.
 - `status` exposes only the path-free context diagnostic summary. `doctor`
   recomputes diagnostics and prints detailed advisory issues with source
   pointers and repair hints.

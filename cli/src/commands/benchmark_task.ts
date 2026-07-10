@@ -42,6 +42,9 @@ export interface AgentTaskBenchmarkInput {
     handoff_recovered: boolean;
     elapsed_ms: number;
     task_success?: boolean;
+    context_query_invoked?: boolean;
+    query_before_claim?: boolean;
+    returned_pointer_followed?: boolean;
     required_source_reads?: number;
     expected_source_reads?: number;
     source_citations?: number;
@@ -75,6 +78,9 @@ export interface AgentTaskBenchmarkScore {
     required_source_read_rate?: number;
     source_citation_rate?: number;
     task_success?: number;
+    context_query_invoked?: number;
+    query_before_claim?: number;
+    returned_pointer_followed?: number;
     missed_invariant_count?: number;
     hallucinated_fact_count?: number;
     unnecessary_context_reads?: number;
@@ -125,6 +131,9 @@ export interface AgentTaskBenchmarkCompareSummary {
   failures: number;
   compact_task_success_within_tolerance?: boolean;
   compact_task_success_delta?: number;
+  context_query_invoked_delta?: number;
+  query_before_claim_delta?: number;
+  returned_pointer_followed_delta?: number;
   required_source_read_rate_delta?: number;
   source_citation_rate_delta?: number;
   missed_invariant_delta?: number;
@@ -220,6 +229,9 @@ export function agentTaskBenchmarkTemplate(now = new Date()): AgentTaskBenchmark
       handoff_recovered: true,
       elapsed_ms: 60000,
       task_success: true,
+      context_query_invoked: true,
+      query_before_claim: true,
+      returned_pointer_followed: true,
       required_source_reads: 2,
       expected_source_reads: 2,
       source_citations: 2,
@@ -465,6 +477,15 @@ function parseAgentTaskBenchmarkInput(
     filePath,
   );
   const taskSuccess = optionalBooleanField(metrics, "task_success");
+  const contextQueryInvoked = optionalBooleanField(
+    metrics,
+    "context_query_invoked",
+  );
+  const queryBeforeClaim = optionalBooleanField(metrics, "query_before_claim");
+  const returnedPointerFollowed = optionalBooleanField(
+    metrics,
+    "returned_pointer_followed",
+  );
   const handoffRefreshRequired = optionalBooleanField(
     metrics,
     "handoff_refresh_required",
@@ -509,6 +530,15 @@ function parseAgentTaskBenchmarkInput(
       handoff_recovered: booleanField(metrics, "handoff_recovered", filePath),
       elapsed_ms: nonNegativeNumberField(metrics, "elapsed_ms", filePath),
       ...(taskSuccess !== undefined ? { task_success: taskSuccess } : {}),
+      ...(contextQueryInvoked !== undefined
+        ? { context_query_invoked: contextQueryInvoked }
+        : {}),
+      ...(queryBeforeClaim !== undefined
+        ? { query_before_claim: queryBeforeClaim }
+        : {}),
+      ...(returnedPointerFollowed !== undefined
+        ? { returned_pointer_followed: returnedPointerFollowed }
+        : {}),
       ...optionalNonNegativeMetric(metrics, "required_source_reads", filePath),
       ...optionalNonNegativeMetric(metrics, "expected_source_reads", filePath),
       ...optionalNonNegativeMetric(metrics, "source_citations", filePath),
@@ -590,6 +620,9 @@ function retrievalScore(
   const metrics = input.metrics;
   const hasRetrievalMetric =
     metrics.task_success !== undefined ||
+    metrics.context_query_invoked !== undefined ||
+    metrics.query_before_claim !== undefined ||
+    metrics.returned_pointer_followed !== undefined ||
     metrics.required_source_reads !== undefined ||
     metrics.expected_source_reads !== undefined ||
     metrics.source_citations !== undefined ||
@@ -636,6 +669,15 @@ function retrievalScore(
       : {}),
     ...(metrics.task_success !== undefined
       ? { task_success: metrics.task_success ? 1 : 0 }
+      : {}),
+    ...(metrics.context_query_invoked !== undefined
+      ? { context_query_invoked: metrics.context_query_invoked ? 1 : 0 }
+      : {}),
+    ...(metrics.query_before_claim !== undefined
+      ? { query_before_claim: metrics.query_before_claim ? 1 : 0 }
+      : {}),
+    ...(metrics.returned_pointer_followed !== undefined
+      ? { returned_pointer_followed: metrics.returned_pointer_followed ? 1 : 0 }
       : {}),
     ...(metrics.missed_invariant_count !== undefined
       ? { missed_invariant_count: metrics.missed_invariant_count }
@@ -818,6 +860,27 @@ function compareAgentTaskBenchmarkDeltas(input: {
       compact: input.compactScore.retrieval?.required_source_read_rate,
     }),
     compareDelta({
+      id: "context-query-invoked",
+      label: "Context query invoked",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.context_query_invoked,
+      compact: input.compactScore.retrieval?.context_query_invoked,
+    }),
+    compareDelta({
+      id: "query-before-claim",
+      label: "Query before claim",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.query_before_claim,
+      compact: input.compactScore.retrieval?.query_before_claim,
+    }),
+    compareDelta({
+      id: "returned-pointer-followed",
+      label: "Returned pointer followed",
+      direction: "higher-is-better",
+      full: input.fullScore.retrieval?.returned_pointer_followed,
+      compact: input.compactScore.retrieval?.returned_pointer_followed,
+    }),
+    compareDelta({
       id: "source-citation-rate",
       label: "Source citation rate",
       direction: "higher-is-better",
@@ -911,6 +974,18 @@ function summarizeAgentTaskBenchmarkCompare(input: {
     input.deltas,
     "required-source-read-rate",
   )?.delta;
+  const contextQueryInvokedDelta = deltaById(
+    input.deltas,
+    "context-query-invoked",
+  )?.delta;
+  const queryBeforeClaimDelta = deltaById(
+    input.deltas,
+    "query-before-claim",
+  )?.delta;
+  const returnedPointerFollowedDelta = deltaById(
+    input.deltas,
+    "returned-pointer-followed",
+  )?.delta;
   const sourceCitationRateDelta = deltaById(
     input.deltas,
     "source-citation-rate",
@@ -967,7 +1042,10 @@ function summarizeAgentTaskBenchmarkCompare(input: {
     (input.compact.metrics.handoff_refresh_required === true &&
     input.compact.metrics.handoff_refreshed === false
       ? 1
-      : 0);
+      : 0) +
+    (input.compact.metrics.context_query_invoked === false ? 1 : 0) +
+    (input.compact.metrics.query_before_claim === false ? 1 : 0) +
+    (input.compact.metrics.returned_pointer_followed === false ? 1 : 0);
 
   return {
     regressions,
@@ -980,6 +1058,15 @@ function summarizeAgentTaskBenchmarkCompare(input: {
       : {}),
     ...(requiredSourceReadRateDelta !== undefined
       ? { required_source_read_rate_delta: requiredSourceReadRateDelta }
+      : {}),
+    ...(contextQueryInvokedDelta !== undefined
+      ? { context_query_invoked_delta: contextQueryInvokedDelta }
+      : {}),
+    ...(queryBeforeClaimDelta !== undefined
+      ? { query_before_claim_delta: queryBeforeClaimDelta }
+      : {}),
+    ...(returnedPointerFollowedDelta !== undefined
+      ? { returned_pointer_followed_delta: returnedPointerFollowedDelta }
       : {}),
     ...(sourceCitationRateDelta !== undefined
       ? { source_citation_rate_delta: sourceCitationRateDelta }
@@ -1162,6 +1249,9 @@ function retrievalMetricRows(
 ): string[] {
   if (
     input.metrics.task_success === undefined &&
+    input.metrics.context_query_invoked === undefined &&
+    input.metrics.query_before_claim === undefined &&
+    input.metrics.returned_pointer_followed === undefined &&
     input.metrics.required_source_reads === undefined &&
     input.metrics.expected_source_reads === undefined &&
     input.metrics.source_citations === undefined &&
@@ -1187,6 +1277,9 @@ function retrievalMetricRows(
   const citationRate = retrieval?.source_citation_rate;
   return [
     `| Task success | ${input.metrics.task_success === undefined ? "(unspecified)" : input.metrics.task_success ? "yes" : "no"} | ${score.retrieval?.task_success ?? "-"} |`,
+    `| Context query invoked | ${formatMaybeMetricBoolean(input.metrics.context_query_invoked)} | ${retrieval?.context_query_invoked ?? "-"} |`,
+    `| Query before claim | ${formatMaybeMetricBoolean(input.metrics.query_before_claim)} | ${retrieval?.query_before_claim ?? "-"} |`,
+    `| Returned pointer followed | ${formatMaybeMetricBoolean(input.metrics.returned_pointer_followed)} | ${retrieval?.returned_pointer_followed ?? "-"} |`,
     `| Required source reads | ${formatMaybeNumber(input.metrics.required_source_reads)}/${formatMaybeNumber(input.metrics.expected_source_reads)} | ${rate === undefined ? "-" : `${Math.round(rate * 100)}%`} |`,
     `| Source citations | ${formatMaybeNumber(input.metrics.source_citations)}/${formatMaybeNumber(input.metrics.expected_source_citations)} | ${citationRate === undefined ? "-" : `${Math.round(citationRate * 100)}%`} |`,
     `| Missed invariants | ${formatMaybeNumber(input.metrics.missed_invariant_count)} | - |`,

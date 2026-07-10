@@ -415,6 +415,9 @@ describe("benchmarkReport", () => {
       handoff_recovered: true,
       elapsed_ms: 45000,
       task_success: true,
+      context_query_invoked: true,
+      query_before_claim: true,
+      returned_pointer_followed: true,
       required_source_reads: 2,
       expected_source_reads: 2,
       source_citations: 2,
@@ -449,6 +452,9 @@ describe("benchmarkReport", () => {
         required_source_read_rate: 1,
         source_citation_rate: 1,
         task_success: 1,
+        context_query_invoked: 1,
+        query_before_claim: 1,
+        returned_pointer_followed: 1,
         missed_invariant_count: 0,
         hallucinated_fact_count: 0,
         unnecessary_context_reads: 0,
@@ -466,6 +472,9 @@ describe("benchmarkReport", () => {
     expect(result.markdown).toContain("Session context mode: compact");
     expect(result.markdown).toContain("| Required source reads | 2/2 | 100% |");
     expect(result.markdown).toContain("| Source citations | 2/2 | 100% |");
+    expect(result.markdown).toContain("| Context query invoked | yes | 1 |");
+    expect(result.markdown).toContain("| Query before claim | yes | 1 |");
+    expect(result.markdown).toContain("| Returned pointer followed | yes | 1 |");
     expect(result.markdown).toContain("| Handoff refresh | required / refreshed | 1 |");
     expect(result.markdown).toContain("Model-dependent result");
 
@@ -527,6 +536,9 @@ describe("benchmarkReport", () => {
       handoff_recovered: true,
       elapsed_ms: 60000,
       task_success: true,
+      context_query_invoked: false,
+      query_before_claim: false,
+      returned_pointer_followed: false,
       required_source_reads: 1,
       expected_source_reads: 3,
       source_citations: 1,
@@ -547,6 +559,9 @@ describe("benchmarkReport", () => {
     compact.run.id = "compact-retrieval-compact-001";
     compact.run.session_context_mode = "compact";
     compact.metrics.required_source_reads = 3;
+    compact.metrics.context_query_invoked = true;
+    compact.metrics.query_before_claim = true;
+    compact.metrics.returned_pointer_followed = true;
     compact.metrics.source_citations = 2;
     compact.metrics.unnecessary_context_reads = 1;
     compact.metrics.elapsed_ms = 50000;
@@ -569,6 +584,9 @@ describe("benchmarkReport", () => {
       regressions: 1,
       failures: 0,
       compact_task_success_within_tolerance: true,
+      context_query_invoked_delta: 1,
+      query_before_claim_delta: 1,
+      returned_pointer_followed_delta: 1,
       source_citation_rate_delta: 0.5,
       compact_token_reduction_pct: 50,
     });
@@ -580,6 +598,9 @@ describe("benchmarkReport", () => {
       delta: 0.5,
       verdict: "compact-better",
     });
+    expect(
+      compare.deltas.find((delta) => delta.id === "context-query-invoked"),
+    ).toMatchObject({ delta: 1, verdict: "compact-better" });
     expect(compare.markdown).toContain("Agent Task Benchmark Compare");
     expect(compare.markdown).toContain("| Total tokens | 20000 tokens | 10000 tokens | -10000 tokens | compact-better |");
     expect(compare.appendedPath).toBe("docs/AGENT-TASK-BENCHMARKS.md");

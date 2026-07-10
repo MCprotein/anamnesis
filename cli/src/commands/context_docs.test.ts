@@ -273,6 +273,9 @@ describe("context docs", () => {
       result.links.find((link) => link.target.endsWith("#setup-1"))?.status,
     ).toBe("ok");
     expect(
+      result.links.find((link) => link.target.endsWith("#setup-1"))?.resolved_ref,
+    ).toBe("heading:setup:2");
+    expect(
       result.links.find((link) => link.target.endsWith("#setup-2"))?.status,
     ).toBe("missing-anchor");
     expect(
@@ -320,6 +323,28 @@ describe("context docs", () => {
     expect(escaped.catalog.path).toBeUndefined();
     expect(escaped.warnings).toEqual([
       "ignored unsafe document catalog path '../outside.yaml'",
+    ]);
+
+    const nestedEscape = contextDocs({
+      projectRoot: project,
+      catalogPath: "nested/../../outside.yaml",
+    });
+    expect(nestedEscape.catalog.path).toBeUndefined();
+    expect(nestedEscape.warnings).toEqual([
+      "ignored unsafe document catalog path 'nested/../../outside.yaml'",
+    ]);
+
+    const outside = tmpDir("anamnesis-context-docs-outside-catalog-");
+    writeFile(outside, "catalog.yaml", "roots:\n  - README.md\n");
+    const symlinkPath = path.join(project, "catalog-link.yaml");
+    fs.symlinkSync(path.join(outside, "catalog.yaml"), symlinkPath);
+    const symlinkEscape = contextDocs({
+      projectRoot: project,
+      catalogPath: "catalog-link.yaml",
+    });
+    expect(symlinkEscape.catalog.path).toBeUndefined();
+    expect(symlinkEscape.warnings).toEqual([
+      "ignored unsafe document catalog path 'catalog-link.yaml'",
     ]);
   });
 });

@@ -402,6 +402,7 @@ function docFileReferenceIssues(projectRoot: string): ContextDiagnosticIssue[] {
   const seen = new Set<string>();
 
   for (const ref of docPathReferences(projectRoot)) {
+    if (ref.target === ".anamnesis/docs/catalog.yaml") continue;
     if (safeProjectFileExists(projectRoot, ref.target)) continue;
     const key = `${ref.sourcePath}:${ref.lineNumber}:${ref.target}`;
     if (seen.has(key)) continue;

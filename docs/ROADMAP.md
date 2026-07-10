@@ -1697,7 +1697,7 @@ Exit criteria:
 
 ---
 
-## v1.17 — *in progress on release/v1.17*
+## v1.17 — *release cut 2026-07-10*
 
 > **Theme: ontology source management, retrieval reminders, and document pointer diagnostics**
 
@@ -1761,9 +1761,11 @@ Current baseline on `release/v1.17`:
   `apply`, deterministic `ontology bootstrap`, or reviewed `/ontology-enrich`.
 - Dogfood state for this repo is clean: `context docs` currently reports
   `broken=0` and `ontology refs missing=0`.
-- Claude Code and Codex can receive native hook reminders when executable
-  adapters are allowed. Cursor has no native SessionStart/UserPromptSubmit
-  hook, so it must use managed rules and AGENTS.md fallback instructions.
+- Claude Code, Codex, and Cursor receive the same compact retrieval rule through
+  managed project guidance, skills, commands, SessionStart pointers where
+  supported, and subagent preambles. Prompt-time `UserPromptSubmit` injection
+  is not enabled by default because the prompt gate still reports
+  `collect-more-evidence` and duplicate-context risk.
 - Separate-process subagents can receive `context subagent-preamble`;
   same-session native subagents still rely on leader-supplied prompt-contract
   evidence rather than guaranteed SessionStart hook execution.
@@ -1789,16 +1791,16 @@ indexed:
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Document graph scanner** | baseline implemented on `release/v1.17` | Add a deterministic reader for Markdown/document roots that records pages, headings, repo-relative links, backlinks, canonical docs, and detected ontology references. Start with README, `docs/**/*.md`, `specs/**/*.md`, and catalog-configured roots while excluding deprecated/generated evidence paths. |
-| 2 | **Reviewable document catalog** | baseline implemented on `release/v1.17` | Add an optional template catalog path at `.anamnesis/docs/catalog.yaml` with roots, canonical documents, excludes, and allowed ontology-reference prefixes. Missing catalog is informational unless the workspace is clearly document-heavy. Baseline supports roots, excludes, and canonical docs; allowed ontology-reference prefixes remain planned. |
-| 3 | **Minimal context query integration** | baseline implemented on `release/v1.17` | Extend the existing context index only with high-signal document records first: `doc-page`, `doc-heading`, and `doc-ontology-ref`. The goal is for `context query` to return exact document/ontology source pointers for an agent to read, without increasing SessionStart payload. Defer `doc-link` and `doc-backlink` indexing unless diagnostics or benchmarks show they improve retrieval beyond `context docs`. |
-| 4 | **Query freshness and ranking hardening** | partial on `release/v1.17` | Prevent `context query` from silently searching a stale `.anamnesis/context/index.jsonl`. Baseline behavior now rebuilds missing/stale default indexes in memory without writing, reports freshness counts, and uses phrase boosts, kind/source priors, and freshness penalties. Remaining work is benchmark-guided ranking tuning and lifecycle-aware handoff weighting. The product metric is fewer wrong or stale source pointers, not a larger index. |
-| 5 | **Cross-agent retrieval reminder contract** | baseline implemented on `release/v1.17` | Base v20 installs the same pointer-first retrieval rule across AGENTS.md, CLAUDE.md, Claude Code skills/commands/hooks, Codex native skill/fallback/hook surfaces, Cursor rules, and `context subagent-preamble`: when the task depends on project facts, ontology, prior decisions, roadmap, or document evidence, run `anamnesis context query "<terms>"`, then read the returned `source_path` / `stable_ref` before making claims. Remaining work is optional native `UserPromptSubmit` advisory reminders for Claude Code/Codex if dogfood shows agents still forget to retrieve. |
-| 6 | **`context docs` summary** | baseline implemented on `release/v1.17` | Keep `anamnesis context docs` read-only: summarize document roots, page counts, broken links, ontology-linked pages, and candidate issues. Baseline provides human and `--json` output. Defer any regenerable write path until a concrete consumer exists and it is clearly cache-like rather than user-facing doc generation. |
-| 7 | **Diagnostics and repair hints** | partial on `release/v1.17` | Keep deterministic hard facts in `context diagnose`, `status`, and `doctor`: broken internal doc links, missing heading anchors, stale ontology source refs, stale handoff/context index state, and missing local artifact paths. Missing canonical docs and doc-heavy workspace guidance must stay `info` at most unless a configured catalog makes the expectation explicit. Keep semantic stale-claim judgment in the existing `doc-freshness-review` skill. |
-| 8 | **Benchmark and fixture coverage** | baseline implemented on `release/v1.17` | Added `anamnesis benchmark retrieval`, a deterministic public-safe fixture suite for `doc-page`, `doc-heading`, and `doc-ontology-ref` source-pointer ranking. Current generated evidence records top-1 `6/6`, top-3 `6/6`, MRR `1.000`, compact SessionStart `133/800` estimated tokens, hallucinated project facts `0`, and `.bootstrap.yaml` edit attempts `0`, with JSON/Markdown/SVG artifacts under `docs/benchmark-evidence/retrieval-source-pointers/`. This proves pointer ranking quality; required source-read behavior on context-critical tasks remains covered by model-dependent task benchmarks. |
-| 9 | **Ontology refresh pipeline without new commands** | baseline implemented on `release/v1.17` | Make ontology freshness feel automatic while preserving the existing command surface. `status` / `doctor` detect stale Layer A bootstrap facts and missing Layer B enrichment through ontology gaps; document/context diagnostics cover invalid ontology source refs and stale context indexes. `apply`, `status`, and `doctor` now print one shared next recommended ontology action, while semantic writes stay review-led through `ontology bootstrap` plus `/ontology-enrich`. No `ontology refresh`, `ontology sync`, or wiki command was added. |
-| 10 | **Progressive command disclosure hardening** | baseline implemented on `release/v1.17` | Keep ordinary users on the short path: `init`, `apply`, `status`, `doctor`, and `upgrade`. Advanced namespaces (`context`, `handoff`, `benchmark`, `release`, `migrate`, `promote`, `ontology`) remain available for agents, maintainers, and scripts, but compact `--help` now exposes only the guided workflow path plus a pointer to diagnostics and `--help --all`. |
+| 1 | **Document graph scanner** | complete on `release/v1.17` | Deterministically records Markdown pages, GitHub-compatible heading anchors, repo-relative links, backlinks, canonical docs, and ontology references across default and catalog-configured roots while excluding deprecated/generated evidence paths. |
+| 2 | **Reviewable document catalog** | complete on `release/v1.17` | `.anamnesis/docs/catalog.yaml` supports project-contained roots, canonical documents, excludes, `ontology_reference_prefixes`, and the compatibility alias `allowed_ontology_reference_prefixes`. Invalid types and traversal paths produce typed warnings; a missing catalog stays informational for document-heavy workspaces. |
+| 3 | **Minimal context query integration** | complete on `release/v1.17` | `doc-page`, `doc-heading`, and `doc-ontology-ref` records return exact source pointers without increasing SessionStart payload. `doc-link` and `doc-backlink` query records remain deferred because current retrieval evidence does not justify them. |
+| 4 | **Query freshness and ranking hardening** | complete on `release/v1.17` | Missing/stale default indexes rebuild in memory without writes. Freshness compares content signatures as well as source presence, so preserved-mtime edits are detected. Ranking handles document-page and diagnostic intent, excludes stale handoffs from ordinary queries, and recovers closed/cold history only for explicit historical queries. |
+| 5 | **Cross-agent retrieval reminder contract** | complete with prompt-time hook deferred | Base v20 installs the same pointer-first rule across AGENTS.md, CLAUDE.md, Claude Code, Codex, Cursor, and `context subagent-preamble`. The rule requires `context query` plus an exact source read. Native prompt-time injection remains deferred until repeated model runs satisfy the existing prompt gate; no unconditional reminder hook ships in v1.17. |
+| 6 | **`context docs` summary** | complete on `release/v1.17` | `anamnesis context docs` remains read-only and provides concise human plus structured JSON summaries. No user-facing generated wiki or document rewrite path was added. |
+| 7 | **Diagnostics and repair hints** | complete on `release/v1.17` | `context diagnose`, `status`, and `doctor` cover broken links/anchors, explicit missing ontology refs, stale handoff/context-index state, catalog problems, and missing artifact paths. Plain prose mentions and optional absent `system_graph.yaml` references do not create false warnings. Semantic stale-claim judgment stays in `doc-freshness-review`. |
+| 8 | **Benchmark and fixture coverage** | complete on `release/v1.17` | `benchmark retrieval` v2 runs 18 mixed-kind cases without a kind filter: top-1 `18/18`, top-3 `18/18`, MRR `1.000`, compact SessionStart `206/800`, and safety checks `2/2` with zero stale-handoff or missing-ref top-3 leakage. Artifacts include per-stratum SVG, fixture hash, and a retrieval-module input hash; release preparation regenerates them after the version bump and publish rejects stale package provenance. Model behavior is explicitly unmeasured here; `benchmark task` now records actual query invocation, query-before-claim, and returned-pointer-followed observations. |
+| 9 | **Ontology refresh pipeline without new commands** | complete on `release/v1.17` | `status` / `doctor` detect Layer A/Layer B gaps and invalid source refs, while `apply`, `status`, and `doctor` share one next-action recommendation. Deterministic refresh stays under `ontology bootstrap`; semantic writes stay reviewed through `/ontology-enrich`. |
+| 10 | **Progressive command disclosure hardening** | complete on `release/v1.17` | Ordinary help stays on `init`, `apply`, `status`, `doctor`, and `upgrade`; advanced namespaces remain available through namespace help and `--help --all`. No new top-level command was added. |
 
 Implementation notes:
 
@@ -1865,11 +1867,13 @@ Exit criteria:
 - `context query` detects or avoids stale generated indexes and ranks active
   ontology/handoff/task/doc pointers ahead of cold or deprecated history unless
   the user explicitly searches historical context.
-- Claude Code and Codex receive native advisory retrieval reminders where hooks
-  are installed; Cursor receives equivalent rules/fallback text; subagent
-  preambles include the same retrieval contract.
-- Retrieval reminder benchmarks report whether agents actually call
-  `context query` and read required sources before making project claims.
+- Claude Code, Codex, and Cursor receive equivalent managed retrieval rules;
+  SessionStart pointers and subagent preambles carry the same contract where
+  supported. Prompt-time hook injection remains gated and is not a v1.17
+  default.
+- Deterministic retrieval evidence reports ranking and leakage only. Model-run
+  task benchmarks can now record whether agents call `context query`, query
+  before claiming, and follow returned source pointers.
 - `/ontology-enrich` guidance can use the document source pointers while still
   writing semantic facts only to `.enriched.yaml` or user-managed ontology.
 - Ontology refresh feels automatic from the user's perspective: stale facts are

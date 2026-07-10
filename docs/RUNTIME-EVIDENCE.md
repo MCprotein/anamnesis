@@ -89,11 +89,12 @@ trace records by phase/status, sum numeric metrics, append markdown to
 separate from deterministic context-quality scorecards.
 
 Retrieval benchmark records use kind `retrieval-benchmark` and summary schema
-`anamnesis.retrieval_benchmark.v1`. They capture deterministic `context query`
-source-pointer ranking for public-safe `doc-page`, `doc-heading`, and
-`doc-ontology-ref` fixtures, including top-1/top-3 hit rates, MRR, compact
-SessionStart token budget, and fixture safety counters. They do not claim that
-a model actually read the returned files.
+`anamnesis.retrieval_benchmark.v2`. They capture deterministic, unfiltered
+`context query` ranking across mixed document, ontology, handoff, task-harness,
+agent-rule, and diagnostic pointers. Evidence includes top-1/top-3 hit rates,
+MRR, per-stratum metrics, lifecycle leakage checks, compact SessionStart token
+budget, and fixture/ranker hashes. They do not claim that a model actually ran
+the query or read the returned files.
 
 Agent task benchmark records use kind `agent-task-benchmark` and summary
 schema `anamnesis.agent_task_benchmark.v1`. These records are explicitly

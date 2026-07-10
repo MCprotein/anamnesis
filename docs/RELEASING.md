@@ -116,7 +116,9 @@ tag, npm publish, or GitHub Release steps unless the recovery section applies.
 
    This updates `package.json`, `package-lock.json`, `CHANGELOG.md`, and the
    README patch marker when applicable. It also records the dogfood self-check,
-   refreshes the benchmark gallery, and runs `npm run release:check`.
+   regenerates retrieval evidence with the prepared package version, verifies
+   that provenance, refreshes the benchmark gallery, and runs
+   `npm run release:check`.
    The release check includes the Biome lint gate, dogfood, doctor,
    benchmark-gallery validation, prompt-gate decision report, and build.
 

@@ -1,21 +1,32 @@
 {
-  "schema_version": "anamnesis.retrieval_benchmark.v1",
-  "generatedAt": "2026-07-10T04:53:56.837Z",
+  "schema_version": "anamnesis.retrieval_benchmark.v2",
+  "generatedAt": "2026-07-10T08:19:52.802Z",
   "fixture": {
-    "id": "public-doc-ontology-retrieval",
-    "description": "Synthetic public-safe project with README, docs, ontology refs, and compact SessionStart source pointers."
+    "id": "public-mixed-context-retrieval",
+    "description": "Synthetic public-safe project with mixed document, ontology, handoff, task-harness, agent-rule, and diagnostic pointers."
+  },
+  "provenance": {
+    "packageVersion": "1.16.0",
+    "fixtureHash": "sha256:dc0edb75114705edb47d6b36dbeb44868bf02f12f6f02a4df90b3993ea6fe796",
+    "rankerHash": "sha256:d87003348476ec16e399ba932ef63a0f2dde9e1ba2cbd8be90a783e3cd4984a3",
+    "rankerInputs": [
+      "src/commands/context_index.ts",
+      "src/commands/context_docs.ts",
+      "src/core/handoff_active_text.ts"
+    ]
   },
   "cases": [
     {
       "id": "doc-page-readme",
       "label": "README doc page",
-      "kind": "doc-page",
-      "query": "Retrieval Fixture README canonical",
+      "stratum": "documents",
+      "query": "Retrieval Fixture README canonical document page",
       "expected": {
         "kind": "doc-page",
         "source_path": "README.md",
         "stable_ref": "file"
       },
+      "kind": "doc-page",
       "rank": 1,
       "top1Hit": true,
       "top3Hit": true,
@@ -23,7 +34,7 @@
       "returned": [
         {
           "rank": 1,
-          "score": 30,
+          "score": 48,
           "kind": "doc-page",
           "source_path": "README.md",
           "stable_ref": "file",
@@ -31,39 +42,59 @@
         },
         {
           "rank": 2,
-          "score": 11,
-          "kind": "doc-page",
-          "source_path": "docs/architecture.md",
-          "stable_ref": "file",
-          "title": "Architecture"
-        }
-      ],
-      "warnings": [
-        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
-      ]
-    },
-    {
-      "id": "doc-page-architecture",
-      "label": "Architecture doc page",
-      "kind": "doc-page",
-      "query": "checkout flow architecture payment worker",
-      "expected": {
-        "kind": "doc-page",
-        "source_path": "docs/architecture.md",
-        "stable_ref": "file"
-      },
-      "rank": 1,
-      "top1Hit": true,
-      "top3Hit": true,
-      "reciprocalRank": 1,
-      "returned": [
+          "score": 47,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:retrieval-fixture",
+          "title": "Retrieval Fixture"
+        },
         {
-          "rank": 1,
-          "score": 16,
+          "rank": 3,
+          "score": 39,
+          "kind": "doc-section",
+          "source_path": "README.md",
+          "stable_ref": "heading:retrieval-fixture",
+          "title": "Retrieval Fixture"
+        },
+        {
+          "rank": 4,
+          "score": 29,
           "kind": "doc-page",
           "source_path": "docs/architecture.md",
           "stable_ref": "file",
           "title": "Architecture"
+        },
+        {
+          "rank": 5,
+          "score": 22,
+          "kind": "doc-page",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "file",
+          "title": "Diagnostics"
+        },
+        {
+          "rank": 6,
+          "score": 22,
+          "kind": "doc-page",
+          "source_path": "docs/operations.md",
+          "stable_ref": "file",
+          "title": "Operations"
+        },
+        {
+          "rank": 7,
+          "score": 22,
+          "kind": "doc-page",
+          "source_path": "docs/runbook.md",
+          "stable_ref": "file",
+          "title": "Runbook"
+        },
+        {
+          "rank": 8,
+          "score": 17,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:agent-continuity-contract",
+          "title": "Agent Continuity Contract"
         }
       ],
       "warnings": [
@@ -73,13 +104,14 @@
     {
       "id": "doc-heading-checkout-flow",
       "label": "Checkout intent heading",
-      "kind": "doc-heading",
-      "query": "checkout intent flow payment authorization",
+      "stratum": "documents",
+      "query": "checkout intent flow payment authorization worker",
       "expected": {
         "kind": "doc-heading",
         "source_path": "docs/architecture.md",
         "stable_ref": "heading:checkout-intent-flow"
       },
+      "kind": "doc-heading",
       "rank": 1,
       "top1Hit": true,
       "top3Hit": true,
@@ -87,7 +119,7 @@
       "returned": [
         {
           "rank": 1,
-          "score": 55,
+          "score": 58,
           "kind": "doc-heading",
           "source_path": "docs/architecture.md",
           "stable_ref": "heading:checkout-intent-flow",
@@ -95,35 +127,59 @@
         },
         {
           "rank": 2,
-          "score": 22,
+          "score": 43,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 3,
+          "score": 40,
+          "kind": "ontology-entity",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "entities[payment-worker]",
+          "title": "payment-worker"
+        },
+        {
+          "rank": 4,
+          "score": 28,
+          "kind": "ontology-rule",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "operational_notes[payment-idempotency-owner]",
+          "title": "payment-idempotency-owner"
+        },
+        {
+          "rank": 5,
+          "score": 26,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[checkout-service]",
+          "title": "checkout-service"
+        },
+        {
+          "rank": 6,
+          "score": 25,
           "kind": "doc-heading",
           "source_path": "docs/architecture.md",
           "stable_ref": "heading:architecture",
           "title": "Architecture"
         },
         {
-          "rank": 3,
-          "score": 14,
-          "kind": "doc-heading",
-          "source_path": "README.md",
-          "stable_ref": "heading:agent-continuity-contract",
-          "title": "Agent Continuity Contract"
+          "rank": 7,
+          "score": 23,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
         },
         {
-          "rank": 4,
-          "score": 10,
-          "kind": "doc-heading",
-          "source_path": "docs/operations.md",
-          "stable_ref": "heading:handoff-retention-policy",
-          "title": "Handoff Retention Policy"
-        },
-        {
-          "rank": 5,
-          "score": 10,
-          "kind": "doc-heading",
-          "source_path": "docs/operations.md",
-          "stable_ref": "heading:operations",
-          "title": "Operations"
+          "rank": 8,
+          "score": 23,
+          "kind": "ontology-relationship",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "relationships[checkout-ledger-route]",
+          "title": "checkout-ledger-route"
         }
       ],
       "warnings": [
@@ -133,13 +189,14 @@
     {
       "id": "doc-heading-release-checklist",
       "label": "Release automation heading",
-      "kind": "doc-heading",
+      "stratum": "documents",
       "query": "release automation checklist npm github generated drift",
       "expected": {
         "kind": "doc-heading",
         "source_path": "docs/architecture.md",
         "stable_ref": "heading:release-automation-checklist"
       },
+      "kind": "doc-heading",
       "rank": 1,
       "top1Hit": true,
       "top3Hit": true,
@@ -155,6 +212,14 @@
         },
         {
           "rank": 2,
+          "score": 35,
+          "kind": "task-harness",
+          "source_path": ".anamnesis/task-harnesses/release-safety.yaml",
+          "stable_ref": "harness:release-safety",
+          "title": "Release safety verification"
+        },
+        {
+          "rank": 3,
           "score": 16,
           "kind": "doc-heading",
           "source_path": "docs/architecture.md",
@@ -162,12 +227,1029 @@
           "title": "Checkout Intent Flow"
         },
         {
-          "rank": 3,
+          "rank": 4,
           "score": 10,
           "kind": "doc-heading",
           "source_path": "docs/architecture.md",
           "stable_ref": "heading:architecture",
           "title": "Architecture"
+        },
+        {
+          "rank": 5,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/operations.md",
+          "stable_ref": "heading:handoff-retention-policy",
+          "title": "Handoff Retention Policy"
+        },
+        {
+          "rank": 6,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/operations.md",
+          "stable_ref": "heading:operations",
+          "title": "Operations"
+        },
+        {
+          "rank": 7,
+          "score": 10,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/operations.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "doc-heading-handoff-retention",
+      "label": "Handoff retention heading",
+      "stratum": "documents",
+      "query": "hot handoff archive cold source pointer retention policy",
+      "expected": {
+        "kind": "doc-heading",
+        "source_path": "docs/operations.md",
+        "stable_ref": "heading:handoff-retention-policy"
+      },
+      "kind": "doc-heading",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 64,
+          "kind": "doc-heading",
+          "source_path": "docs/operations.md",
+          "stable_ref": "heading:handoff-retention-policy",
+          "title": "Handoff Retention Policy"
+        },
+        {
+          "rank": 2,
+          "score": 31,
+          "kind": "doc-heading",
+          "source_path": "docs/operations.md",
+          "stable_ref": "heading:operations",
+          "title": "Operations"
+        },
+        {
+          "rank": 3,
+          "score": 25,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/active.md",
+          "stable_ref": "heading:active-handoff-index",
+          "title": "Active handoff index"
+        },
+        {
+          "rank": 4,
+          "score": 23,
+          "kind": "ontology-rule",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "operational_notes[settlement-source-read]",
+          "title": "settlement-source-read"
+        },
+        {
+          "rank": 5,
+          "score": 22,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/active.md",
+          "stable_ref": "heading:current-focus",
+          "title": "Current focus"
+        },
+        {
+          "rank": 6,
+          "score": 22,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/active.md",
+          "stable_ref": "heading:recently-completed",
+          "title": "Recently completed"
+        },
+        {
+          "rank": 7,
+          "score": 22,
+          "kind": "doc-heading",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "heading:missing-ontology-source",
+          "title": "Missing Ontology Source"
+        },
+        {
+          "rank": 8,
+          "score": 16,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/closed.md",
+          "stable_ref": "heading:decisions",
+          "title": "Decisions"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "doc-heading-orchid-failover",
+      "label": "Orchid failover heading",
+      "stratum": "documents",
+      "query": "Orchid incident ledger gateway failover checkout replay",
+      "expected": {
+        "kind": "doc-heading",
+        "source_path": "docs/runbook.md",
+        "stable_ref": "heading:orchid-failover-procedure"
+      },
+      "kind": "doc-heading",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 49,
+          "kind": "doc-heading",
+          "source_path": "docs/runbook.md",
+          "stable_ref": "heading:orchid-failover-procedure",
+          "title": "Orchid Failover Procedure"
+        },
+        {
+          "rank": 2,
+          "score": 41,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[ledger-gateway]",
+          "title": "ledger-gateway"
+        },
+        {
+          "rank": 3,
+          "score": 41,
+          "kind": "ontology-relationship",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "relationships[checkout-ledger-route]",
+          "title": "checkout-ledger-route"
+        },
+        {
+          "rank": 4,
+          "score": 28,
+          "kind": "doc-heading",
+          "source_path": "docs/runbook.md",
+          "stable_ref": "heading:runbook",
+          "title": "Runbook"
+        },
+        {
+          "rank": 5,
+          "score": 26,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[checkout-service]",
+          "title": "checkout-service"
+        },
+        {
+          "rank": 6,
+          "score": 25,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 7,
+          "score": 22,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:checkout-intent-flow",
+          "title": "Checkout Intent Flow"
+        },
+        {
+          "rank": 8,
+          "score": 11,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:agent-continuity-contract",
+          "title": "Agent Continuity Contract"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "doc-ontology-payments",
+      "label": "Payments ontology ref",
+      "stratum": "documents",
+      "query": "reviewed semantic flow recorded payments ontology edits",
+      "expected": {
+        "kind": "doc-ontology-ref",
+        "source_path": "docs/architecture.md",
+        "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+      },
+      "kind": "doc-ontology-ref",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 50,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        },
+        {
+          "rank": 2,
+          "score": 40,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:checkout-intent-flow",
+          "title": "Checkout Intent Flow"
+        },
+        {
+          "rank": 3,
+          "score": 35,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/operations.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        },
+        {
+          "rank": 4,
+          "score": 28,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:architecture",
+          "title": "Architecture"
+        },
+        {
+          "rank": 5,
+          "score": 23,
+          "kind": "doc-ontology-ref",
+          "source_path": "README.md",
+          "stable_ref": "line:8:ontology:90dd1e937af1",
+          "title": "Ontology ref system_graph.yaml"
+        },
+        {
+          "rank": 6,
+          "score": 22,
+          "kind": "ontology-entity",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "entities[payment-worker]",
+          "title": "payment-worker"
+        },
+        {
+          "rank": 7,
+          "score": 22,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 8,
+          "score": 22,
+          "kind": "ontology-rule",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "operational_notes[payment-idempotency-owner]",
+          "title": "payment-idempotency-owner"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "doc-ontology-system-graph",
+      "label": "System graph ontology ref",
+      "stratum": "documents",
+      "query": "canonical top-level graph system graph",
+      "expected": {
+        "kind": "doc-ontology-ref",
+        "source_path": "README.md",
+        "title": "Ontology ref system_graph.yaml"
+      },
+      "kind": "doc-ontology-ref",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 40,
+          "kind": "doc-ontology-ref",
+          "source_path": "README.md",
+          "stable_ref": "line:8:ontology:90dd1e937af1",
+          "title": "Ontology ref system_graph.yaml"
+        },
+        {
+          "rank": 2,
+          "score": 23,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[checkout-service]",
+          "title": "checkout-service"
+        },
+        {
+          "rank": 3,
+          "score": 23,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[ledger-gateway]",
+          "title": "ledger-gateway"
+        },
+        {
+          "rank": 4,
+          "score": 23,
+          "kind": "ontology-relationship",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "relationships[checkout-ledger-route]",
+          "title": "checkout-ledger-route"
+        },
+        {
+          "rank": 5,
+          "score": 23,
+          "kind": "ontology-rule",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "operational_notes[settlement-source-read]",
+          "title": "settlement-source-read"
+        },
+        {
+          "rank": 6,
+          "score": 20,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:agent-continuity-contract",
+          "title": "Agent Continuity Contract"
+        },
+        {
+          "rank": 7,
+          "score": 20,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:retrieval-fixture",
+          "title": "Retrieval Fixture"
+        },
+        {
+          "rank": 8,
+          "score": 15,
+          "kind": "doc-section",
+          "source_path": "README.md",
+          "stable_ref": "heading:agent-continuity-contract",
+          "title": "Agent Continuity Contract"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "ontology-checkout-service",
+      "label": "Checkout service entity",
+      "stratum": "ontology",
+      "query": "checkout-service service entity top-level graph",
+      "expected": {
+        "kind": "ontology-entity",
+        "source_path": "system_graph.yaml",
+        "title": "checkout-service"
+      },
+      "kind": "ontology-entity",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 47,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[checkout-service]",
+          "title": "checkout-service"
+        },
+        {
+          "rank": 2,
+          "score": 24,
+          "kind": "doc-ontology-ref",
+          "source_path": "README.md",
+          "stable_ref": "line:8:ontology:90dd1e937af1",
+          "title": "Ontology ref system_graph.yaml"
+        },
+        {
+          "rank": 3,
+          "score": 20,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[ledger-gateway]",
+          "title": "ledger-gateway"
+        },
+        {
+          "rank": 4,
+          "score": 17,
+          "kind": "ontology-relationship",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "relationships[checkout-ledger-route]",
+          "title": "checkout-ledger-route"
+        },
+        {
+          "rank": 5,
+          "score": 17,
+          "kind": "ontology-rule",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "operational_notes[settlement-source-read]",
+          "title": "settlement-source-read"
+        },
+        {
+          "rank": 6,
+          "score": 16,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 7,
+          "score": 14,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:agent-continuity-contract",
+          "title": "Agent Continuity Contract"
+        },
+        {
+          "rank": 8,
+          "score": 14,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:retrieval-fixture",
+          "title": "Retrieval Fixture"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "ontology-ledger-gateway",
+      "label": "Ledger gateway entity",
+      "stratum": "ontology",
+      "query": "ledger-gateway settlement service entity",
+      "expected": {
+        "kind": "ontology-entity",
+        "source_path": "system_graph.yaml",
+        "title": "ledger-gateway"
+      },
+      "kind": "ontology-entity",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 29,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[ledger-gateway]",
+          "title": "ledger-gateway"
+        },
+        {
+          "rank": 2,
+          "score": 26,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[checkout-service]",
+          "title": "checkout-service"
+        },
+        {
+          "rank": 3,
+          "score": 26,
+          "kind": "ontology-rule",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "operational_notes[settlement-source-read]",
+          "title": "settlement-source-read"
+        },
+        {
+          "rank": 4,
+          "score": 14,
+          "kind": "ontology-relationship",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "relationships[checkout-ledger-route]",
+          "title": "checkout-ledger-route"
+        },
+        {
+          "rank": 5,
+          "score": 13,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 6,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:architecture",
+          "title": "Architecture"
+        },
+        {
+          "rank": 7,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:checkout-intent-flow",
+          "title": "Checkout Intent Flow"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "ontology-payment-worker",
+      "label": "Payment worker entity",
+      "stratum": "ontology",
+      "query": "payment-worker worker cobalt idempotency",
+      "expected": {
+        "kind": "ontology-entity",
+        "source_path": ".anamnesis/ontology/payments.yaml",
+        "title": "payment-worker"
+      },
+      "kind": "ontology-entity",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 40,
+          "kind": "ontology-entity",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "entities[payment-worker]",
+          "title": "payment-worker"
+        },
+        {
+          "rank": 2,
+          "score": 31,
+          "kind": "ontology-rule",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "operational_notes[payment-idempotency-owner]",
+          "title": "payment-idempotency-owner"
+        },
+        {
+          "rank": 3,
+          "score": 16,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 4,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:architecture",
+          "title": "Architecture"
+        },
+        {
+          "rank": 5,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:checkout-intent-flow",
+          "title": "Checkout Intent Flow"
+        },
+        {
+          "rank": 6,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "heading:diagnostics",
+          "title": "Diagnostics"
+        },
+        {
+          "rank": 7,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "heading:missing-ontology-source",
+          "title": "Missing Ontology Source"
+        },
+        {
+          "rank": 8,
+          "score": 9,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/current.md",
+          "stable_ref": "heading:next-steps",
+          "title": "Next steps"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "ontology-checkout-payment-dispatch",
+      "label": "Checkout payment relationship",
+      "stratum": "ontology",
+      "query": "checkout payment dispatches worker relationship",
+      "expected": {
+        "kind": "ontology-relationship",
+        "source_path": ".anamnesis/ontology/payments.yaml",
+        "title": "checkout-payment-dispatch"
+      },
+      "kind": "ontology-relationship",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 52,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 2,
+          "score": 40,
+          "kind": "ontology-entity",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "entities[payment-worker]",
+          "title": "payment-worker"
+        },
+        {
+          "rank": 3,
+          "score": 31,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:checkout-intent-flow",
+          "title": "Checkout Intent Flow"
+        },
+        {
+          "rank": 4,
+          "score": 29,
+          "kind": "ontology-relationship",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "relationships[checkout-ledger-route]",
+          "title": "checkout-ledger-route"
+        },
+        {
+          "rank": 5,
+          "score": 28,
+          "kind": "ontology-rule",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "operational_notes[payment-idempotency-owner]",
+          "title": "payment-idempotency-owner"
+        },
+        {
+          "rank": 6,
+          "score": 26,
+          "kind": "ontology-entity",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "entities[checkout-service]",
+          "title": "checkout-service"
+        },
+        {
+          "rank": 7,
+          "score": 20,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        },
+        {
+          "rank": 8,
+          "score": 20,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/operations.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "ontology-payment-idempotency",
+      "label": "Payment idempotency rule",
+      "stratum": "ontology",
+      "query": "cobalt idempotency key verification owner rule",
+      "expected": {
+        "kind": "ontology-rule",
+        "source_path": ".anamnesis/ontology/payments.yaml",
+        "title": "payment-idempotency-owner"
+      },
+      "kind": "ontology-rule",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 46,
+          "kind": "ontology-rule",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "operational_notes[payment-idempotency-owner]",
+          "title": "payment-idempotency-owner"
+        },
+        {
+          "rank": 2,
+          "score": 18,
+          "kind": "agent-rule",
+          "source_path": "AGENTS.md",
+          "stable_ref": "heading:agent-rules",
+          "title": "Agent Rules"
+        },
+        {
+          "rank": 3,
+          "score": 14,
+          "kind": "task-harness",
+          "source_path": ".anamnesis/task-harnesses/release-safety.yaml",
+          "stable_ref": "harness:release-safety",
+          "title": "Release safety verification"
+        },
+        {
+          "rank": 4,
+          "score": 9,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/current.md",
+          "stable_ref": "heading:next-steps",
+          "title": "Next steps"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "ontology-settlement-source-read",
+      "label": "Settlement source-read rule",
+      "stratum": "ontology",
+      "query": "settlement routing changes payment ontology source read rule",
+      "expected": {
+        "kind": "ontology-rule",
+        "source_path": "system_graph.yaml",
+        "title": "settlement-source-read"
+      },
+      "kind": "ontology-rule",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 65,
+          "kind": "ontology-rule",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "operational_notes[settlement-source-read]",
+          "title": "settlement-source-read"
+        },
+        {
+          "rank": 2,
+          "score": 38,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        },
+        {
+          "rank": 3,
+          "score": 38,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/operations.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        },
+        {
+          "rank": 4,
+          "score": 37,
+          "kind": "doc-heading",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "heading:missing-ontology-source",
+          "title": "Missing Ontology Source"
+        },
+        {
+          "rank": 5,
+          "score": 31,
+          "kind": "ontology-entity",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "entities[payment-worker]",
+          "title": "payment-worker"
+        },
+        {
+          "rank": 6,
+          "score": 31,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        },
+        {
+          "rank": 7,
+          "score": 31,
+          "kind": "ontology-rule",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "operational_notes[payment-idempotency-owner]",
+          "title": "payment-idempotency-owner"
+        },
+        {
+          "rank": 8,
+          "score": 26,
+          "kind": "doc-ontology-ref",
+          "source_path": "README.md",
+          "stable_ref": "line:8:ontology:90dd1e937af1",
+          "title": "Ontology ref system_graph.yaml"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "diagnostic-missing-ontology",
+      "label": "Missing ontology diagnostic pointer",
+      "stratum": "diagnostics",
+      "query": "missing removed worker ontology evidence diagnostic",
+      "expected": {
+        "kind": "doc-ontology-ref",
+        "source_path": "docs/diagnostics.md",
+        "title": "Ontology ref .anamnesis/ontology/missing.yaml"
+      },
+      "kind": "doc-ontology-ref",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 55,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "line:5:ontology:87a023dfdcc5",
+          "title": "Ontology ref .anamnesis/ontology/missing.yaml"
+        },
+        {
+          "rank": 2,
+          "score": 52,
+          "kind": "doc-heading",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "heading:missing-ontology-source",
+          "title": "Missing Ontology Source"
+        },
+        {
+          "rank": 3,
+          "score": 34,
+          "kind": "doc-heading",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "heading:diagnostics",
+          "title": "Diagnostics"
+        },
+        {
+          "rank": 4,
+          "score": 31,
+          "kind": "ontology-entity",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "entities[payment-worker]",
+          "title": "payment-worker"
+        },
+        {
+          "rank": 5,
+          "score": 25,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/operations.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        },
+        {
+          "rank": 6,
+          "score": 22,
+          "kind": "doc-ontology-ref",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "line:6:ontology:b472b7f5a08e",
+          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        },
+        {
+          "rank": 7,
+          "score": 20,
+          "kind": "doc-ontology-ref",
+          "source_path": "README.md",
+          "stable_ref": "line:8:ontology:90dd1e937af1",
+          "title": "Ontology ref system_graph.yaml"
+        },
+        {
+          "rank": 8,
+          "score": 19,
+          "kind": "ontology-relationship",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "relationships[checkout-payment-dispatch]",
+          "title": "checkout-payment-dispatch"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "handoff-current-aurora",
+      "label": "Current Aurora handoff",
+      "stratum": "handoff",
+      "query": "Aurora billing cutover cobalt queue next steps",
+      "expected": {
+        "kind": "handoff-task",
+        "source_path": ".anamnesis/handoff/current.md",
+        "title": "Aurora billing cutover"
+      },
+      "kind": "handoff-task",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 51,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/current.md",
+          "stable_ref": "heading:aurora-billing-cutover",
+          "title": "Aurora billing cutover"
+        },
+        {
+          "rank": 2,
+          "score": 45,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/current.md",
+          "stable_ref": "heading:next-steps",
+          "title": "Next steps"
+        },
+        {
+          "rank": 3,
+          "score": 19,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/active.md",
+          "stable_ref": "heading:current-focus",
+          "title": "Current focus"
+        },
+        {
+          "rank": 4,
+          "score": 13,
+          "kind": "ontology-rule",
+          "source_path": ".anamnesis/ontology/payments.yaml",
+          "stable_ref": "operational_notes[payment-idempotency-owner]",
+          "title": "payment-idempotency-owner"
+        }
+      ],
+      "warnings": [
+        ".anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing"
+      ]
+    },
+    {
+      "id": "handoff-historical-comet",
+      "label": "Historical comet handoff",
+      "stratum": "handoff",
+      "query": "historical closed cold legacy invoice comet transport decision",
+      "expected": {
+        "kind": "handoff-task",
+        "source_path": ".anamnesis/handoff/closed.md",
+        "title": "Legacy invoice transport decision"
+      },
+      "kind": "handoff-task",
+      "rank": 1,
+      "top1Hit": true,
+      "top3Hit": true,
+      "reciprocalRank": 1,
+      "returned": [
+        {
+          "rank": 1,
+          "score": 76,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/closed.md",
+          "stable_ref": "heading:legacy-invoice-transport-decision",
+          "title": "Legacy invoice transport decision"
+        },
+        {
+          "rank": 2,
+          "score": 40,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/closed.md",
+          "stable_ref": "heading:decisions",
+          "title": "Decisions"
+        },
+        {
+          "rank": 3,
+          "score": 22,
+          "kind": "handoff-task",
+          "source_path": ".anamnesis/handoff/active.md",
+          "stable_ref": "heading:recently-completed",
+          "title": "Recently completed"
         },
         {
           "rank": 4,
@@ -191,15 +1273,16 @@
       ]
     },
     {
-      "id": "doc-ontology-payments",
-      "label": "Payments ontology ref",
-      "kind": "doc-ontology-ref",
-      "query": "reviewed semantic flow recorded payments ontology edits",
+      "id": "task-harness-release-safety",
+      "label": "Release safety task harness",
+      "stratum": "task-harness",
+      "query": "release safety package publication generated surface drift evidence",
       "expected": {
-        "kind": "doc-ontology-ref",
-        "source_path": "docs/architecture.md",
-        "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+        "kind": "task-harness",
+        "source_path": ".anamnesis/task-harnesses/release-safety.yaml",
+        "title": "Release safety verification"
       },
+      "kind": "task-harness",
       "rank": 1,
       "top1Hit": true,
       "top3Hit": true,
@@ -207,27 +1290,67 @@
       "returned": [
         {
           "rank": 1,
-          "score": 50,
-          "kind": "doc-ontology-ref",
-          "source_path": "docs/architecture.md",
-          "stable_ref": "line:6:ontology:b472b7f5a08e",
-          "title": "Ontology ref .anamnesis/ontology/payments.yaml"
+          "score": 53,
+          "kind": "task-harness",
+          "source_path": ".anamnesis/task-harnesses/release-safety.yaml",
+          "stable_ref": "harness:release-safety",
+          "title": "Release safety verification"
         },
         {
           "rank": 2,
-          "score": 35,
+          "score": 34,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:release-automation-checklist",
+          "title": "Release Automation Checklist"
+        },
+        {
+          "rank": 3,
+          "score": 15,
+          "kind": "agent-rule",
+          "source_path": "AGENTS.md",
+          "stable_ref": "heading:evidence-retrieval-contract",
+          "title": "Evidence Retrieval Contract"
+        },
+        {
+          "rank": 4,
+          "score": 13,
+          "kind": "doc-heading",
+          "source_path": "docs/operations.md",
+          "stable_ref": "heading:handoff-retention-policy",
+          "title": "Handoff Retention Policy"
+        },
+        {
+          "rank": 5,
+          "score": 13,
+          "kind": "doc-heading",
+          "source_path": "docs/operations.md",
+          "stable_ref": "heading:operations",
+          "title": "Operations"
+        },
+        {
+          "rank": 6,
+          "score": 13,
           "kind": "doc-ontology-ref",
           "source_path": "docs/operations.md",
           "stable_ref": "line:6:ontology:b472b7f5a08e",
           "title": "Ontology ref .anamnesis/ontology/payments.yaml"
         },
         {
-          "rank": 3,
-          "score": 23,
-          "kind": "doc-ontology-ref",
-          "source_path": "README.md",
-          "stable_ref": "line:8:ontology:90dd1e937af1",
-          "title": "Ontology ref system_graph.yaml"
+          "rank": 7,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:architecture",
+          "title": "Architecture"
+        },
+        {
+          "rank": 8,
+          "score": 10,
+          "kind": "doc-heading",
+          "source_path": "docs/architecture.md",
+          "stable_ref": "heading:checkout-intent-flow",
+          "title": "Checkout Intent Flow"
         }
       ],
       "warnings": [
@@ -235,15 +1358,16 @@
       ]
     },
     {
-      "id": "doc-ontology-system-graph",
-      "label": "System graph ontology ref",
-      "kind": "doc-ontology-ref",
-      "query": "canonical top-level graph system graph",
+      "id": "agent-rule-evidence-retrieval",
+      "label": "Agent evidence retrieval rule",
+      "stratum": "agent-rules",
+      "query": "agent evidence retrieval contract source pointer snippets authority",
       "expected": {
-        "kind": "doc-ontology-ref",
-        "source_path": "README.md",
-        "title": "Ontology ref system_graph.yaml"
+        "kind": "agent-rule",
+        "source_path": "AGENTS.md",
+        "title": "Evidence Retrieval Contract"
       },
+      "kind": "agent-rule",
       "rank": 1,
       "top1Hit": true,
       "top3Hit": true,
@@ -251,11 +1375,67 @@
       "returned": [
         {
           "rank": 1,
-          "score": 40,
-          "kind": "doc-ontology-ref",
+          "score": 57,
+          "kind": "agent-rule",
+          "source_path": "AGENTS.md",
+          "stable_ref": "heading:evidence-retrieval-contract",
+          "title": "Evidence Retrieval Contract"
+        },
+        {
+          "rank": 2,
+          "score": 41,
+          "kind": "doc-heading",
           "source_path": "README.md",
-          "stable_ref": "line:8:ontology:90dd1e937af1",
-          "title": "Ontology ref system_graph.yaml"
+          "stable_ref": "heading:agent-continuity-contract",
+          "title": "Agent Continuity Contract"
+        },
+        {
+          "rank": 3,
+          "score": 36,
+          "kind": "doc-section",
+          "source_path": "README.md",
+          "stable_ref": "heading:agent-continuity-contract",
+          "title": "Agent Continuity Contract"
+        },
+        {
+          "rank": 4,
+          "score": 32,
+          "kind": "doc-heading",
+          "source_path": "README.md",
+          "stable_ref": "heading:retrieval-fixture",
+          "title": "Retrieval Fixture"
+        },
+        {
+          "rank": 5,
+          "score": 25,
+          "kind": "doc-heading",
+          "source_path": "docs/diagnostics.md",
+          "stable_ref": "heading:missing-ontology-source",
+          "title": "Missing Ontology Source"
+        },
+        {
+          "rank": 6,
+          "score": 23,
+          "kind": "ontology-rule",
+          "source_path": "system_graph.yaml",
+          "stable_ref": "operational_notes[settlement-source-read]",
+          "title": "settlement-source-read"
+        },
+        {
+          "rank": 7,
+          "score": 21,
+          "kind": "doc-section",
+          "source_path": "README.md",
+          "stable_ref": "heading:retrieval-fixture",
+          "title": "Retrieval Fixture"
+        },
+        {
+          "rank": 8,
+          "score": 18,
+          "kind": "agent-rule",
+          "source_path": "AGENTS.md",
+          "stable_ref": "heading:agent-rules",
+          "title": "Agent Rules"
         }
       ],
       "warnings": [
@@ -263,19 +1443,88 @@
       ]
     }
   ],
+  "safetyChecks": [
+    {
+      "id": "ordinary-query-excludes-stale-handoff",
+      "label": "Ordinary queries exclude stale handoff history",
+      "query": "legacy invoice comet transport decision",
+      "passed": true,
+      "violatingPointers": []
+    },
+    {
+      "id": "ordinary-query-demotes-missing-ontology",
+      "label": "Ordinary queries exclude missing ontology refs from top-3",
+      "query": "removed worker ontology evidence source",
+      "passed": true,
+      "violatingPointers": []
+    }
+  ],
   "summary": {
-    "cases": 6,
-    "top1Hits": 6,
-    "top3Hits": 6,
+    "cases": 18,
+    "unfilteredCases": 18,
+    "top1Hits": 18,
+    "top3Hits": 18,
     "top1HitRate": 1,
     "top3HitRate": 1,
     "mrr": 1,
-    "compactSessionStartTokens": 133,
+    "compactSessionStartTokens": 206,
     "compactSessionStartCap": 800,
     "compactSessionStartCapExceeded": false,
-    "requiredSourceReadContract": true,
-    "hallucinatedProjectFacts": 0,
-    "bootstrapEditAttempts": 0,
+    "byStratum": {
+      "agent-rules": {
+        "cases": 1,
+        "top1Hits": 1,
+        "top3Hits": 1,
+        "top1HitRate": 1,
+        "top3HitRate": 1,
+        "mrr": 1
+      },
+      "diagnostics": {
+        "cases": 1,
+        "top1Hits": 1,
+        "top3Hits": 1,
+        "top1HitRate": 1,
+        "top3HitRate": 1,
+        "mrr": 1
+      },
+      "documents": {
+        "cases": 7,
+        "top1Hits": 7,
+        "top3Hits": 7,
+        "top1HitRate": 1,
+        "top3HitRate": 1,
+        "mrr": 1
+      },
+      "handoff": {
+        "cases": 2,
+        "top1Hits": 2,
+        "top3Hits": 2,
+        "top1HitRate": 1,
+        "top3HitRate": 1,
+        "mrr": 1
+      },
+      "ontology": {
+        "cases": 6,
+        "top1Hits": 6,
+        "top3Hits": 6,
+        "top1HitRate": 1,
+        "top3HitRate": 1,
+        "mrr": 1
+      },
+      "task-harness": {
+        "cases": 1,
+        "top1Hits": 1,
+        "top3Hits": 1,
+        "top1HitRate": 1,
+        "top3HitRate": 1,
+        "mrr": 1
+      }
+    },
+    "safetyChecks": 2,
+    "safetyPasses": 2,
+    "staleHandoffTop3Leakage": 0,
+    "missingOntologyRefTop3Leakage": 0,
+    "behavioralValidation": "not-measured",
     "ok": true
   },
   "artifacts": {
@@ -283,7 +1532,8 @@
     "json": "docs/benchmark-evidence/retrieval-source-pointers/retrieval-source-pointers.json",
     "markdown": "docs/benchmark-evidence/retrieval-source-pointers/retrieval-source-pointers.md",
     "hitRatesSvg": "docs/benchmark-evidence/retrieval-source-pointers/retrieval-hit-rates.svg",
-    "ranksSvg": "docs/benchmark-evidence/retrieval-source-pointers/retrieval-ranks.svg"
+    "ranksSvg": "docs/benchmark-evidence/retrieval-source-pointers/retrieval-ranks.svg",
+    "strataSvg": "docs/benchmark-evidence/retrieval-source-pointers/retrieval-strata.svg"
   },
-  "markdown": "# Retrieval Source-Pointer Benchmark — 2026-07-10T04:53:56.837Z\n\nDeterministic benchmark for `context query` source-pointer ranking over public-safe docs and ontology references.\n\nCases: 6\nTop-1 hit rate: 100% (6/6)\nTop-3 hit rate: 100% (6/6)\nMRR: 1.000\nCompact SessionStart: 133/800 estimated tokens\nGate: pass\n\n| Case | Kind | Query | Expected pointer | Rank | Top-1 | Top-3 |\n|---|---|---|---|---:|---|---|\n| README doc page | doc-page | Retrieval Fixture README canonical | README.md file | 1 | yes | yes |\n| Architecture doc page | doc-page | checkout flow architecture payment worker | docs/architecture.md file | 1 | yes | yes |\n| Checkout intent heading | doc-heading | checkout intent flow payment authorization | docs/architecture.md heading:checkout-intent-flow | 1 | yes | yes |\n| Release automation heading | doc-heading | release automation checklist npm github generated drift | docs/architecture.md heading:release-automation-checklist | 1 | yes | yes |\n| Payments ontology ref | doc-ontology-ref | reviewed semantic flow recorded payments ontology edits | docs/architecture.md Ontology ref .anamnesis/ontology/payments.yaml | 1 | yes | yes |\n| System graph ontology ref | doc-ontology-ref | canonical top-level graph system graph | README.md Ontology ref system_graph.yaml | 1 | yes | yes |\n\n## Charts\n\n![Retrieval hit rates](retrieval-hit-rates.svg)\n![Retrieval ranks](retrieval-ranks.svg)"
+  "markdown": "# Retrieval Source-Pointer Benchmark — 2026-07-10T08:19:52.802Z\n\nDeterministic unfiltered benchmark for `context query` source-pointer ranking over public-safe mixed context sources.\n\nPackage: 1.16.0\nFixture hash: sha256:dc0edb75114705edb47d6b36dbeb44868bf02f12f6f02a4df90b3993ea6fe796\nRanker hash: sha256:d87003348476ec16e399ba932ef63a0f2dde9e1ba2cbd8be90a783e3cd4984a3\nRanker inputs: src/commands/context_index.ts, src/commands/context_docs.ts, src/core/handoff_active_text.ts\nCases: 18\nTop-1 hit rate: 100% (18/18)\nTop-3 hit rate: 100% (18/18)\nMRR: 1.000\nCompact SessionStart: 206/800 estimated tokens\nSafety checks: 2/2 passed\nBehavioral validation: not-measured (use model-dependent task benchmarks)\nGate: pass\n\n| Case | Stratum | Kind | Query | Expected pointer | Rank | Top-1 | Top-3 |\n|---|---|---|---|---|---:|---|---|\n| README doc page | documents | doc-page | Retrieval Fixture README canonical document page | README.md file | 1 | yes | yes |\n| Checkout intent heading | documents | doc-heading | checkout intent flow payment authorization worker | docs/architecture.md heading:checkout-intent-flow | 1 | yes | yes |\n| Release automation heading | documents | doc-heading | release automation checklist npm github generated drift | docs/architecture.md heading:release-automation-checklist | 1 | yes | yes |\n| Handoff retention heading | documents | doc-heading | hot handoff archive cold source pointer retention policy | docs/operations.md heading:handoff-retention-policy | 1 | yes | yes |\n| Orchid failover heading | documents | doc-heading | Orchid incident ledger gateway failover checkout replay | docs/runbook.md heading:orchid-failover-procedure | 1 | yes | yes |\n| Payments ontology ref | documents | doc-ontology-ref | reviewed semantic flow recorded payments ontology edits | docs/architecture.md Ontology ref .anamnesis/ontology/payments.yaml | 1 | yes | yes |\n| System graph ontology ref | documents | doc-ontology-ref | canonical top-level graph system graph | README.md Ontology ref system_graph.yaml | 1 | yes | yes |\n| Checkout service entity | ontology | ontology-entity | checkout-service service entity top-level graph | system_graph.yaml checkout-service | 1 | yes | yes |\n| Ledger gateway entity | ontology | ontology-entity | ledger-gateway settlement service entity | system_graph.yaml ledger-gateway | 1 | yes | yes |\n| Payment worker entity | ontology | ontology-entity | payment-worker worker cobalt idempotency | .anamnesis/ontology/payments.yaml payment-worker | 1 | yes | yes |\n| Checkout payment relationship | ontology | ontology-relationship | checkout payment dispatches worker relationship | .anamnesis/ontology/payments.yaml checkout-payment-dispatch | 1 | yes | yes |\n| Payment idempotency rule | ontology | ontology-rule | cobalt idempotency key verification owner rule | .anamnesis/ontology/payments.yaml payment-idempotency-owner | 1 | yes | yes |\n| Settlement source-read rule | ontology | ontology-rule | settlement routing changes payment ontology source read rule | system_graph.yaml settlement-source-read | 1 | yes | yes |\n| Missing ontology diagnostic pointer | diagnostics | doc-ontology-ref | missing removed worker ontology evidence diagnostic | docs/diagnostics.md Ontology ref .anamnesis/ontology/missing.yaml | 1 | yes | yes |\n| Current Aurora handoff | handoff | handoff-task | Aurora billing cutover cobalt queue next steps | .anamnesis/handoff/current.md Aurora billing cutover | 1 | yes | yes |\n| Historical comet handoff | handoff | handoff-task | historical closed cold legacy invoice comet transport decision | .anamnesis/handoff/closed.md Legacy invoice transport decision | 1 | yes | yes |\n| Release safety task harness | task-harness | task-harness | release safety package publication generated surface drift evidence | .anamnesis/task-harnesses/release-safety.yaml Release safety verification | 1 | yes | yes |\n| Agent evidence retrieval rule | agent-rules | agent-rule | agent evidence retrieval contract source pointer snippets authority | AGENTS.md Evidence Retrieval Contract | 1 | yes | yes |\n\n## Safety checks\n\n| Check | Result | Violations |\n|---|---|---:|\n| Ordinary queries exclude stale handoff history | pass | 0 |\n| Ordinary queries exclude missing ontology refs from top-3 | pass | 0 |\n\n## Charts\n\n![Retrieval hit rates](retrieval-hit-rates.svg)\n![Retrieval ranks](retrieval-ranks.svg)\n![Retrieval strata](retrieval-strata.svg)"
 }

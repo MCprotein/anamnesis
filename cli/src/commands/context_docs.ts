@@ -107,7 +107,7 @@ interface MarkdownSource {
 interface PageParseResult {
   page: Omit<DocumentGraphPage, "outbound_links" | "inbound_links" | "ontology_refs">;
   headings: DocumentGraphHeading[];
-  headingSlugs: Set<string>;
+  headingStableRefs: Map<string, string>;
   ontologyRefs: DocumentGraphOntologyRef[];
 }
 
@@ -132,12 +132,12 @@ export function contextDocs(opts: ContextDocsOptions): ContextDocsResult {
   const parsed = sources.map((source) =>
     parseMarkdownSource(projectRoot, source, catalog),
   );
-  const headingSlugsByPath = new Map(
-    parsed.map((item) => [item.page.source_path, item.headingSlugs]),
+  const headingStableRefsByPath = new Map(
+    parsed.map((item) => [item.page.source_path, item.headingStableRefs]),
   );
   const pagePaths = new Set(parsed.map((item) => item.page.source_path));
   const links = sources.flatMap((source) =>
-    markdownLinks(projectRoot, source, pagePaths, headingSlugsByPath),
+    markdownLinks(projectRoot, source, pagePaths, headingStableRefsByPath),
   );
   const ontologyRefs = dedupeOntologyRefs([
     ...parsed.flatMap((item) => item.ontologyRefs),
@@ -196,7 +196,7 @@ function loadCatalog(
     ...DEFAULT_ONTOLOGY_REFERENCE_PREFIXES,
   ];
 
-  if (!safeCatalogPath(relPath)) {
+  if (!safeCatalogFilePath(projectRoot, relPath)) {
     warnings.push(`ignored unsafe document catalog path '${catalogPath}'`);
     return {
       roots: uniqueStrings(roots),
@@ -206,7 +206,7 @@ function loadCatalog(
     };
   }
 
-  const absPath = path.join(projectRoot, relPath);
+  const absPath = path.resolve(projectRoot, relPath);
 
   if (!fs.existsSync(absPath)) {
     return {
@@ -281,7 +281,7 @@ function discoverMarkdownSources(
 
   for (const root of catalog.roots) {
     const absRoot = path.join(projectRoot, root);
-    if (!fs.existsSync(absRoot)) continue;
+    if (!safeProjectFileExists(projectRoot, root)) continue;
     const stat = fs.statSync(absRoot);
     if (stat.isFile()) {
       add(root);
@@ -300,7 +300,7 @@ function parseMarkdownSource(
 ): PageParseResult {
   const lines = source.content.split(/\r?\n/);
   const headings: DocumentGraphHeading[] = [];
-  const headingSlugs = new Set<string>();
+  const headingStableRefs = new Map<string, string>();
   const slugCounts = new Map<string, number>();
   const ontologyRefs: DocumentGraphOntologyRef[] = [];
   let inFence = false;
@@ -320,7 +320,7 @@ function parseMarkdownSource(
       const anchorSlug = occurrence === 1 ? slug : `${slug}-${occurrence - 1}`;
       const stableRef =
         occurrence === 1 ? `heading:${slug}` : `heading:${slug}:${occurrence}`;
-      headingSlugs.add(anchorSlug);
+      headingStableRefs.set(anchorSlug, stableRef);
       headings.push({
         source_path: source.relPath,
         stable_ref: stableRef,
@@ -356,7 +356,7 @@ function parseMarkdownSource(
       heading_count: headings.length,
     },
     headings,
-    headingSlugs,
+    headingStableRefs,
     ontologyRefs,
   };
 }
@@ -365,7 +365,7 @@ function markdownLinks(
   projectRoot: string,
   source: MarkdownSource,
   pagePaths: ReadonlySet<string>,
-  headingSlugsByPath: ReadonlyMap<string, ReadonlySet<string>>,
+  headingStableRefsByPath: ReadonlyMap<string, ReadonlyMap<string, string>>,
 ): DocumentGraphLink[] {
   const links: DocumentGraphLink[] = [];
   const lines = source.content.split(/\r?\n/);
@@ -387,7 +387,7 @@ function markdownLinks(
           text: target.text,
           target: target.target,
           pagePaths,
-          headingSlugsByPath,
+          headingStableRefsByPath,
         }),
       );
     }
@@ -403,7 +403,7 @@ function resolveLink(input: {
   text: string;
   target: string;
   pagePaths: ReadonlySet<string>;
-  headingSlugsByPath: ReadonlyMap<string, ReadonlySet<string>>;
+  headingStableRefsByPath: ReadonlyMap<string, ReadonlyMap<string, string>>;
 }): DocumentGraphLink {
   const target = stripMarkdownTarget(input.target);
   const stableRef = `line:${input.line}:link:${shortHash(target)}`;
@@ -423,8 +423,11 @@ function resolveLink(input: {
   const [rawPath = "", rawAnchor = ""] = target.split("#", 2);
   const anchor = normalizeAnchor(rawAnchor);
   if (rawPath === "") {
+    const resolvedHeadingRef = anchor
+      ? input.headingStableRefsByPath.get(input.sourcePath)?.get(anchor)
+      : undefined;
     const status =
-      anchor === "" || input.headingSlugsByPath.get(input.sourcePath)?.has(anchor)
+      anchor === "" || resolvedHeadingRef !== undefined
         ? "ok"
         : "missing-anchor";
     return {
@@ -436,22 +439,25 @@ function resolveLink(input: {
       kind: "anchor",
       status,
       resolved_path: input.sourcePath,
-      ...(anchor ? { resolved_ref: `heading:${anchor}` } : {}),
+      ...(anchor
+        ? { resolved_ref: resolvedHeadingRef ?? `heading:${anchor}` }
+        : {}),
     };
   }
 
   const resolvedPath = resolveLocalPath(input.sourcePath, rawPath);
   const exists = safeProjectFileExists(input.projectRoot, resolvedPath);
   const resolvedMarkdownPath = resolveMarkdownPagePath(input.projectRoot, resolvedPath);
-  const targetHeadings = resolvedMarkdownPath
-    ? input.headingSlugsByPath.get(resolvedMarkdownPath)
+  const targetHeadingRefs = resolvedMarkdownPath
+    ? input.headingStableRefsByPath.get(resolvedMarkdownPath)
     : undefined;
+  const resolvedHeadingRef = anchor ? targetHeadingRefs?.get(anchor) : undefined;
   const anchorMissing =
     exists &&
     anchor !== "" &&
     resolvedMarkdownPath !== undefined &&
-    targetHeadings !== undefined &&
-    !targetHeadings.has(anchor);
+    targetHeadingRefs !== undefined &&
+    resolvedHeadingRef === undefined;
   const status: DocumentLinkStatus = !exists
     ? "missing"
     : anchorMissing
@@ -467,7 +473,9 @@ function resolveLink(input: {
     kind: "internal",
     status,
     resolved_path: resolvedMarkdownPath ?? resolvedPath,
-    ...(anchor ? { resolved_ref: `heading:${anchor}` } : {}),
+    ...(anchor
+      ? { resolved_ref: resolvedHeadingRef ?? `heading:${anchor}` }
+      : {}),
   };
 }
 
@@ -732,7 +740,7 @@ function shouldExcludeDocumentPath(
 
 function walkFiles(projectRoot: string, relDir: string): string[] {
   const absDir = path.join(projectRoot, relDir);
-  if (!fs.existsSync(absDir)) return [];
+  if (!safeProjectFileExists(projectRoot, relDir)) return [];
   const result: string[] = [];
   const stack = [absDir];
   while (stack.length > 0) {
@@ -754,10 +762,20 @@ function walkFiles(projectRoot: string, relDir: string): string[] {
 function safeProjectFileExists(projectRoot: string, relPath: string): boolean {
   const resolved = path.resolve(projectRoot, relPath);
   const root = path.resolve(projectRoot);
-  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+  if (!pathIsInside(root, resolved) || !fs.existsSync(resolved)) return false;
+
+  try {
+    const realRoot = fs.realpathSync.native(root);
+    const realResolved = fs.realpathSync.native(resolved);
+    return pathIsInside(realRoot, realResolved);
+  } catch {
     return false;
   }
-  return fs.existsSync(resolved);
+}
+
+function pathIsInside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function isExternalTarget(target: string): boolean {
@@ -825,6 +843,16 @@ function catalogStringArrayField(
     warnings.push(`${catalogPath}: '${key}' ignored non-string entries`);
   }
   return strings;
+}
+
+function safeCatalogFilePath(projectRoot: string, value: string): boolean {
+  const normalized = value.replace(/\\/g, "/");
+  if (normalized === "" || path.posix.isAbsolute(normalized)) return false;
+
+  const root = path.resolve(projectRoot);
+  const resolved = path.resolve(root, normalized);
+  if (!pathIsInside(root, resolved)) return false;
+  return !fs.existsSync(resolved) || safeProjectFileExists(root, normalized);
 }
 
 function safeCatalogPath(value: string): boolean {

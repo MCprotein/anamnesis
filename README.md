@@ -343,17 +343,19 @@ Evidence and chart links are in
 
 ### Retrieval source-pointer benchmark
 
-v1.17 adds a deterministic public-safe retrieval benchmark for the document
-graph path. It measures whether `anamnesis context query` returns exact source
-pointers for `doc-page`, `doc-heading`, and `doc-ontology-ref` cases without
-expanding SessionStart payloads.
+v1.17 adds a deterministic public-safe retrieval benchmark across mixed
+document, ontology, handoff, task-harness, agent-rule, and diagnostic pointers.
+Every case runs without a kind filter, while SessionStart remains compact.
 
 Current run:
 
-- Source-pointer ranking: top-1 `6/6`, top-3 `6/6`, MRR `1.000`.
-- Compact SessionStart budget: `133/800` estimated tokens.
-- Fixture safety counters: hallucinated project facts `0`; `.bootstrap.yaml`
-  edit attempts `0`.
+- Source-pointer ranking: top-1 `18/18`, top-3 `18/18`, MRR `1.000`.
+- Compact SessionStart budget: `206/800` estimated tokens.
+- Lifecycle safety: stale handoff and missing ontology-ref leakage into ordinary
+  top-3 results were both `0` across `2/2` safety checks.
+- Actual agent query/source-read behavior remains model-dependent and is
+  recorded separately through `benchmark task`; this deterministic suite does
+  not claim that a model opened the returned source.
 
 Evidence and chart links are in
 [`docs/benchmark-evidence/`](docs/benchmark-evidence/) and
@@ -447,7 +449,7 @@ used for deterministic README score claims.
 | **v1.14** | Codex native skill parity and adapter surface evidence | shipped 2026-07-09 |
 | **v1.15** | Subagent context contract and injection-success evidence | shipped 2026-07-09 |
 | **v1.16** | Command UX consolidation, grouped help, and terminal UI polish | shipped 2026-07-09 |
-| **v1.17** | Ontology source management and document graph diagnostics | in progress on `release/v1.17` |
+| **v1.17** | Ontology source management and document graph diagnostics | shipped 2026-07-10 |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

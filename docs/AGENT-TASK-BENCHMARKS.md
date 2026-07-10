@@ -86,6 +86,19 @@ Optional v1.7 behavior metrics:
 - `nonmatched_harness_reads`: task harnesses read despite not matching the
   current task
 
+Optional v1.17 retrieval-loop metrics:
+
+- `context_query_invoked`: whether the agent actually invoked
+  `anamnesis context query` when the fixed task required project evidence
+- `query_before_claim`: whether retrieval happened before the first
+  project-specific claim or edit
+- `returned_pointer_followed`: whether the agent opened the returned
+  `source_path` / `stable_ref` source instead of relying on the snippet
+
+These are observed model-run fields, not values inferred from the deterministic
+source-pointer benchmark. Paired full/compact runs report their deltas and count
+an explicitly false compact result as a retrieval failure.
+
 ## Scoring
 
 The harness reports a 5-point convenience score:

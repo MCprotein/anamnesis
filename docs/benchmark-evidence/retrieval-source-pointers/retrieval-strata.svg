@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="390" viewBox="0 0 980 390" role="img" aria-label="Top-3 Retrieval By Context Stratum">
+<rect width="980" height="390" fill="#ffffff" />
+<text x="24" y="28" font-size="18" font-weight="700" fill="#111827">Top-3 Retrieval By Context Stratum</text>
+<line x1="90" y1="284" x2="910" y2="284" stroke="#d1d5db" />
+<line x1="90" y1="54" x2="90" y2="284" stroke="#d1d5db" />
+<text x="80" y="58" text-anchor="end" font-size="11" fill="#6b7280">high</text>
+<text x="956" y="380" text-anchor="end" font-size="10" fill="#9ca3af">anamnesis deterministic fixture</text>
+<rect x="127.6" y="54.0" width="61.5" height="230.0" fill="#059669"><title>agent-rules 100% (1/1)</title></rect>
+<text x="158.3" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<text x="158.3" y="318" text-anchor="end" transform="rotate(-30 158.3 318)" font-size="11" fill="#374151">agent-rules</text>
+<rect x="264.3" y="54.0" width="61.5" height="230.0" fill="#059669"><title>diagnostics 100% (1/1)</title></rect>
+<text x="295.0" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<text x="295.0" y="318" text-anchor="end" transform="rotate(-30 295.0 318)" font-size="11" fill="#374151">diagnostics</text>
+<rect x="400.9" y="54.0" width="61.5" height="230.0" fill="#059669"><title>documents 100% (7/7)</title></rect>
+<text x="431.7" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<text x="431.7" y="318" text-anchor="end" transform="rotate(-30 431.7 318)" font-size="11" fill="#374151">documents</text>
+<rect x="537.6" y="54.0" width="61.5" height="230.0" fill="#059669"><title>handoff 100% (2/2)</title></rect>
+<text x="568.3" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<text x="568.3" y="318" text-anchor="end" transform="rotate(-30 568.3 318)" font-size="11" fill="#374151">handoff</text>
+<rect x="674.3" y="54.0" width="61.5" height="230.0" fill="#059669"><title>ontology 100% (6/6)</title></rect>
+<text x="705.0" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<text x="705.0" y="318" text-anchor="end" transform="rotate(-30 705.0 318)" font-size="11" fill="#374151">ontology</text>
+<rect x="810.9" y="54.0" width="61.5" height="230.0" fill="#059669"><title>task-harness 100% (1/1)</title></rect>
+<text x="841.7" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<text x="841.7" y="318" text-anchor="end" transform="rotate(-30 841.7 318)" font-size="11" fill="#374151">task-harness</text>
+<text x="490" y="368" text-anchor="middle" font-size="12" fill="#4b5563">all cases run without a kind filter; each stratum must reach 100% top-3</text>
+</svg>

@@ -582,6 +582,31 @@ describe("context diagnostics", () => {
     );
   });
 
+  it("keeps the absent default document catalog informational", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-optional-catalog-");
+    writeFile(
+      project,
+      "README.md",
+      "# Fixture\n\nOptional catalog: `.anamnesis/docs/catalog.yaml`.\n",
+    );
+    for (let index = 0; index < 20; index++) {
+      writeFile(project, `docs/page-${index}.md`, `# Page ${index}\n`);
+    }
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.summary.byCode["doc-file-reference-missing"]).toBe(0);
+    expect(result.summary.byCode["doc-catalog-missing"]).toBe(1);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "doc-catalog-missing",
+          severity: "info",
+        }),
+      ]),
+    );
+  });
+
   it("reports catalog configuration and stale context index state", () => {
     const project = tmpDir("anamnesis-context-diagnostics-catalog-index-");
     writeFile(project, "README.md", "# Fixture\n");

@@ -27,9 +27,13 @@ could include breaking changes.
   `anamnesis context query` to find source pointers and then read the returned
   `source_path` / `stable_ref` before making context-sensitive claims.
 - Added `anamnesis benchmark retrieval`, a deterministic public-safe
-  source-pointer benchmark for `doc-page`, `doc-heading`, and
-  `doc-ontology-ref` ranking with JSON, Markdown, SVG, and prompt-gate
-  evidence integration.
+  unfiltered source-pointer benchmark across mixed document, ontology, handoff,
+  task-harness, agent-rule, and diagnostic records, with per-stratum metrics,
+  lifecycle safety checks, provenance hashes, JSON/Markdown/SVG artifacts, and
+  prompt-gate evidence integration.
+- Added model-run retrieval-loop metrics to `benchmark task` for whether an
+  agent invoked `context query`, queried before claiming, and followed the
+  returned source pointer.
 - Added a shared ontology lifecycle recommendation to `status`, `doctor`, and
   `apply` so existing commands point to the next managed `apply`,
   deterministic `ontology bootstrap`, or reviewed `/ontology-enrich` step
@@ -44,14 +48,22 @@ could include breaking changes.
   README keeps concise evidence summaries and links instead of embedded chart
   galleries.
 - Hardened `context query` ranking with phrase matches, kind/source priorities,
-  and stale-source penalties so active ontology, handoff, task, and document
-  pointers rank ahead of colder context when lexical matches are comparable.
+  lifecycle filtering, diagnostic intent, explicit document-page intent, and
+  content-hash freshness checks. Ordinary queries exclude stale handoff history,
+  while explicit historical queries can recover closed/cold archives.
+- Hardened document catalogs and diagnostics with project-contained paths,
+  typed warnings, configurable ontology-reference prefixes, GitHub-compatible
+  duplicate heading anchors, and explicit-reference-only missing ontology
+  warnings.
 - Updated `load-context`, `ontology-enrich`, `doc-freshness-review`, and
   `context subagent-preamble` guidance to treat query snippets as pointers,
   not authority, preserving the ontology as the durable memory layer.
 - Narrowed compact `anamnesis --help` to the ordinary short path plus guided
   upgrade planning; advanced namespaces remain available through diagnostics,
   namespace help, and `--help --all`.
+- Hardened the release runner so `release:prepare` regenerates retrieval
+  benchmark evidence after the package version bump and `release:publish`
+  rejects evidence whose recorded package version does not match the release.
 
 ## [1.16.0] — 2026-07-09
 

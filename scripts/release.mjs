@@ -9,6 +9,8 @@ import * as process from "node:process";
 const REPO = "MCprotein/anamnesis";
 const NPMJS_REGISTRY = "https://registry.npmjs.org";
 const GITHUB_PACKAGES_REGISTRY = "https://npm.pkg.github.com";
+const RETRIEVAL_BENCHMARK_PATH =
+  "docs/benchmark-evidence/retrieval-source-pointers/retrieval-source-pointers.json";
 const RELEASE_DIRTY_ALLOWLIST = [
   "package.json",
   "package-lock.json",
@@ -118,6 +120,8 @@ function prepare(args) {
     }
     if (!skipChecks) {
       run("npm", ["run", "dogfood"]);
+      run("npm", ["run", "benchmark:retrieval"]);
+      assertRetrievalBenchmarkVersion(version);
       run("npm", ["run", "benchmark:gallery"]);
       run("npm", ["run", "release:check"]);
     }
@@ -144,6 +148,7 @@ function publish(args) {
 
   assertRepoRoot();
   assertPreparedVersion(version);
+  assertRetrievalBenchmarkVersion(version);
 
   if (!skipChecks && !dryRun) {
     run("npm", ["run", "release:check"]);
@@ -470,6 +475,21 @@ function assertNoNonReleaseDirtyForPrepare() {
   }
   if (dirty.length > 0) {
     console.log(`release prepare will preserve existing release-file edits: ${dirty.join(", ")}`);
+  }
+}
+
+function assertRetrievalBenchmarkVersion(version) {
+  if (!fs.existsSync(RETRIEVAL_BENCHMARK_PATH)) {
+    throw new Error(
+      `missing retrieval benchmark evidence: ${RETRIEVAL_BENCHMARK_PATH}`,
+    );
+  }
+  const evidence = readJson(RETRIEVAL_BENCHMARK_PATH);
+  const actual = evidence?.provenance?.packageVersion;
+  if (actual !== version) {
+    throw new Error(
+      `retrieval benchmark package version is ${actual ?? "missing"}, expected ${version}; run npm run benchmark:retrieval`,
+    );
   }
 }
 

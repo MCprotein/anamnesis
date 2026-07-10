@@ -5,23 +5,59 @@
 <line x1="80" y1="42" x2="80" y2="262" stroke="#d1d5db" />
 <text x="70" y="46" text-anchor="end" font-size="11" fill="#6b7280">high</text>
 <text x="956" y="350" text-anchor="end" font-size="10" fill="#9ca3af">anamnesis deterministic fixture</text>
-<rect x="120.6" y="188.7" width="58.8" height="73.3" fill="#059669"><title>README doc page rank 1</title></rect>
+<rect x="92.3" y="188.7" width="22.0" height="73.3" fill="#059669"><title>README doc page rank 1</title></rect>
+<text x="103.3" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="103.3" y="290" text-anchor="end" transform="rotate(-35 103.3 290)" font-size="11" fill="#374151">doc-page-readme</text>
+<rect x="139.0" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Checkout intent heading rank 1</title></rect>
 <text x="150.0" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
-<text x="150.0" y="290" text-anchor="end" transform="rotate(-35 150.0 290)" font-size="11" fill="#374151">doc-page-readme</text>
-<rect x="260.6" y="188.7" width="58.8" height="73.3" fill="#059669"><title>Architecture doc page rank 1</title></rect>
+<text x="150.0" y="290" text-anchor="end" transform="rotate(-35 150.0 290)" font-size="11" fill="#374151">doc-heading-checkout-flow</text>
+<rect x="185.7" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Release automation heading rank 1</title></rect>
+<text x="196.7" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="196.7" y="290" text-anchor="end" transform="rotate(-35 196.7 290)" font-size="11" fill="#374151">doc-heading-release-checklist</text>
+<rect x="232.3" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Handoff retention heading rank 1</title></rect>
+<text x="243.3" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="243.3" y="290" text-anchor="end" transform="rotate(-35 243.3 290)" font-size="11" fill="#374151">doc-heading-handoff-retention</text>
+<rect x="279.0" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Orchid failover heading rank 1</title></rect>
 <text x="290.0" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
-<text x="290.0" y="290" text-anchor="end" transform="rotate(-35 290.0 290)" font-size="11" fill="#374151">doc-page-architecture</text>
-<rect x="400.6" y="188.7" width="58.8" height="73.3" fill="#059669"><title>Checkout intent heading rank 1</title></rect>
+<text x="290.0" y="290" text-anchor="end" transform="rotate(-35 290.0 290)" font-size="11" fill="#374151">doc-heading-orchid-failover</text>
+<rect x="325.7" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Payments ontology ref rank 1</title></rect>
+<text x="336.7" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="336.7" y="290" text-anchor="end" transform="rotate(-35 336.7 290)" font-size="11" fill="#374151">doc-ontology-payments</text>
+<rect x="372.3" y="188.7" width="22.0" height="73.3" fill="#059669"><title>System graph ontology ref rank 1</title></rect>
+<text x="383.3" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="383.3" y="290" text-anchor="end" transform="rotate(-35 383.3 290)" font-size="11" fill="#374151">doc-ontology-system-graph</text>
+<rect x="419.0" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Checkout service entity rank 1</title></rect>
 <text x="430.0" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
-<text x="430.0" y="290" text-anchor="end" transform="rotate(-35 430.0 290)" font-size="11" fill="#374151">doc-heading-checkout-flow</text>
-<rect x="540.6" y="188.7" width="58.8" height="73.3" fill="#059669"><title>Release automation heading rank 1</title></rect>
+<text x="430.0" y="290" text-anchor="end" transform="rotate(-35 430.0 290)" font-size="11" fill="#374151">ontology-checkout-service</text>
+<rect x="465.7" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Ledger gateway entity rank 1</title></rect>
+<text x="476.7" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="476.7" y="290" text-anchor="end" transform="rotate(-35 476.7 290)" font-size="11" fill="#374151">ontology-ledger-gateway</text>
+<rect x="512.3" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Payment worker entity rank 1</title></rect>
+<text x="523.3" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="523.3" y="290" text-anchor="end" transform="rotate(-35 523.3 290)" font-size="11" fill="#374151">ontology-payment-worker</text>
+<rect x="559.0" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Checkout payment relationship rank 1</title></rect>
 <text x="570.0" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
-<text x="570.0" y="290" text-anchor="end" transform="rotate(-35 570.0 290)" font-size="11" fill="#374151">doc-heading-release-checklist</text>
-<rect x="680.6" y="188.7" width="58.8" height="73.3" fill="#059669"><title>Payments ontology ref rank 1</title></rect>
+<text x="570.0" y="290" text-anchor="end" transform="rotate(-35 570.0 290)" font-size="11" fill="#374151">ontology-checkout-payment-dispatch</text>
+<rect x="605.7" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Payment idempotency rule rank 1</title></rect>
+<text x="616.7" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="616.7" y="290" text-anchor="end" transform="rotate(-35 616.7 290)" font-size="11" fill="#374151">ontology-payment-idempotency</text>
+<rect x="652.3" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Settlement source-read rule rank 1</title></rect>
+<text x="663.3" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="663.3" y="290" text-anchor="end" transform="rotate(-35 663.3 290)" font-size="11" fill="#374151">ontology-settlement-source-read</text>
+<rect x="699.0" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Missing ontology diagnostic pointer rank 1</title></rect>
 <text x="710.0" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
-<text x="710.0" y="290" text-anchor="end" transform="rotate(-35 710.0 290)" font-size="11" fill="#374151">doc-ontology-payments</text>
-<rect x="820.6" y="188.7" width="58.8" height="73.3" fill="#059669"><title>System graph ontology ref rank 1</title></rect>
+<text x="710.0" y="290" text-anchor="end" transform="rotate(-35 710.0 290)" font-size="11" fill="#374151">diagnostic-missing-ontology</text>
+<rect x="745.7" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Current Aurora handoff rank 1</title></rect>
+<text x="756.7" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="756.7" y="290" text-anchor="end" transform="rotate(-35 756.7 290)" font-size="11" fill="#374151">handoff-current-aurora</text>
+<rect x="792.3" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Historical comet handoff rank 1</title></rect>
+<text x="803.3" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="803.3" y="290" text-anchor="end" transform="rotate(-35 803.3 290)" font-size="11" fill="#374151">handoff-historical-comet</text>
+<rect x="839.0" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Release safety task harness rank 1</title></rect>
 <text x="850.0" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
-<text x="850.0" y="290" text-anchor="end" transform="rotate(-35 850.0 290)" font-size="11" fill="#374151">doc-ontology-system-graph</text>
+<text x="850.0" y="290" text-anchor="end" transform="rotate(-35 850.0 290)" font-size="11" fill="#374151">task-harness-release-safety</text>
+<rect x="885.7" y="188.7" width="22.0" height="73.3" fill="#059669"><title>Agent evidence retrieval rule rank 1</title></rect>
+<text x="896.7" y="180.7" text-anchor="middle" font-size="12" fill="#111827">1</text>
+<text x="896.7" y="290" text-anchor="end" transform="rotate(-35 896.7 290)" font-size="11" fill="#374151">agent-rule-evidence-retrieval</text>
 <text x="490" y="336" text-anchor="middle" font-size="12" fill="#4b5563">lower rank is better; green is rank 1, amber is rank 2-3</text>
 </svg>

@@ -245,6 +245,7 @@ export function contextQuery(opts: ContextQueryOptions): ContextQueryResult {
   const normalizedQuery = searchable(query).trim();
   const historicalIntent = isHistoricalQuery(terms);
   const diagnosticIntent = isDiagnosticQuery(terms);
+  const documentPageIntent = isDocumentPageQuery(terms);
   const entries = queryEntries.entries.filter((entry) => {
     if (kind && entry.kind !== kind) return false;
     if (
@@ -265,6 +266,7 @@ export function contextQuery(opts: ContextQueryOptions): ContextQueryResult {
         normalizedQuery,
         historicalIntent,
         diagnosticIntent,
+        documentPageIntent,
       ),
     }))
     .filter((match) => match.score > 0)
@@ -1122,6 +1124,7 @@ function scoreEntry(
   normalizedQuery: string,
   historicalIntent: boolean,
   diagnosticIntent: boolean,
+  documentPageIntent: boolean,
 ): number {
   const title = searchable(entry.title);
   const tags = searchable(entry.tags.join(" "));
@@ -1148,7 +1151,8 @@ function scoreEntry(
       kindPriority(entry.kind) +
       sourcePriority(entry.source_path) +
       freshnessPriority(entry, historicalIntent) +
-      diagnosticPriority(entry, diagnosticIntent),
+      diagnosticPriority(entry, diagnosticIntent) +
+      documentPagePriority(entry, documentPageIntent),
   );
 }
 
@@ -1231,6 +1235,11 @@ function isDiagnosticQuery(terms: readonly string[]): boolean {
   return terms.some((term) => signals.has(term));
 }
 
+function isDocumentPageQuery(terms: readonly string[]): boolean {
+  const signals = new Set(["document", "page", "문서", "페이지"]);
+  return terms.some((term) => signals.has(term));
+}
+
 function diagnosticPriority(
   entry: ContextIndexEntry,
   diagnosticIntent: boolean,
@@ -1238,7 +1247,14 @@ function diagnosticPriority(
   if (entry.kind !== "doc-ontology-ref" || !entry.tags.includes("missing")) {
     return 0;
   }
-  return diagnosticIntent ? 2 : -15;
+  return diagnosticIntent ? 5 : -15;
+}
+
+function documentPagePriority(
+  entry: ContextIndexEntry,
+  documentPageIntent: boolean,
+): number {
+  return documentPageIntent && entry.kind === "doc-page" ? 14 : 0;
 }
 
 function normalizeKind(kind: string | undefined): ContextIndexKind | undefined {
