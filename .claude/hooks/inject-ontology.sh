@@ -110,6 +110,7 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
     fi
     echo
     echo "Retrieval rule: read the exact source file before relying on an invariant, relationship, entity, path, or operational rule."
+    echo "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run \`anamnesis context query \"<terms>\"\` and read returned source_path/stable_ref before claiming or editing."
   fi
   exit 0
 fi

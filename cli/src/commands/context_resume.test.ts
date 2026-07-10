@@ -83,6 +83,8 @@ describe("context resume", () => {
     });
     expect(result.diagnostics.warnings).toBe(1);
     expect(result.bundle).toContain("## retrieval_rule");
+    expect(result.bundle).toContain("anamnesis context query");
+    expect(result.bundle).toContain("source_path");
     expect(result.summary.estimatedTokens).toBeLessThan(300);
   });
 

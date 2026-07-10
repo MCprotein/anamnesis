@@ -372,6 +372,7 @@ function buildOntologySection(projectRoot, budget, mode = sessionContextMode()) 
     sections.push(
       "",
       "Retrieval rule: read the exact source file before relying on an invariant, relationship, entity, path, or operational rule.",
+      "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run `anamnesis context query \"<terms>\"` and read returned source_path/stable_ref before claiming or editing.",
     );
     return sections.join("\n");
   }
@@ -424,7 +425,12 @@ function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
         ? "Retrieval rule: read active.md and the referenced warm archive before continuing non-trivial in-flight work."
         : "Retrieval rule: read active.md before continuing non-trivial in-flight work; no warm archive is startup-active."
       : "Retrieval rule: read the referenced warm archive before continuing non-trivial in-flight work.";
-    sections.push("", retrieval, "--- end of handoff ---");
+    sections.push(
+      "",
+      retrieval,
+      "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run `anamnesis context query \"<terms>\"` and read returned source_path/stable_ref before claiming or editing.",
+      "--- end of handoff ---",
+    );
     return sections.join("\n");
   }
   pushFileSection(sections, projectRoot, `Source: ${relative(projectRoot, active).split(sep).join("/")}`, active, budget);

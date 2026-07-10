@@ -490,6 +490,8 @@ describe("codex executable_hook fallback", () => {
     expect(context).toContain("- .anamnesis/handoff/middle.md");
     expect(context).not.toContain("- .anamnesis/handoff/old.md");
     expect(context).toContain("Retrieval rule: read the referenced warm archive");
+    expect(context).toContain("anamnesis context query");
+    expect(context).toContain("source_path/stable_ref");
   });
 
   it("registers Stop hooks natively without a matcher", () => {

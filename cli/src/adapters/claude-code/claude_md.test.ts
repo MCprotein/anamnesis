@@ -22,6 +22,8 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     expect(action.regionId).toBe(CLAUDE_MD_REGION_ID);
     expect(action.content).toContain("Claude Code entrypoint");
     expect(action.content).toContain("`AGENTS.md` is the canonical");
+    expect(action.content).toContain("anamnesis context query");
+    expect(action.content).toContain("source_path");
     expect(action.content).toContain("/ontology-enrich");
     expect(action.content).toContain("/handoff-prepare");
   });

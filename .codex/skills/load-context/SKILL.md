@@ -19,11 +19,12 @@ When invoked, do the following — and only the following.
    ```
 2. Read each found file. These are anamnesis-managed slices written by installed fragments.
 3. If `system_graph.yaml` exists at the project root, read it. This is user-managed and represents the authoritative top-level ontology.
-4. Summarize what you read, grouping by scope when nested ontology dirs are present:
+4. If the user's orientation question depends on project docs, roadmap entries, prior decisions, or evidence not present in the ontology files, run `anamnesis context query "<terms>"` and read the returned `source_path` / `stable_ref`. Treat query snippets as source pointers, not authority.
+5. Summarize what you read, grouping by scope when nested ontology dirs are present:
    - **Entities**: namespaces, services, hosts, identifiers, paths
    - **Relationships**: dependencies, call paths, ownership
    - **Invariants & rules**: anything stated as "must" / "never" / "always"
-5. Stop. Do not run other tools, edit files, or take action. The user invoked this skill to orient — not to do work.
+6. Stop. Do not edit files or take action. The user invoked this skill to orient — not to do work.
 
 ## When the project has no ontology
 

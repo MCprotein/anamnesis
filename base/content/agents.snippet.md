@@ -8,6 +8,7 @@
 - `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
+- 프로젝트 사실, 문서, 로드맵, 이전 결정, 온톨로지 근거가 필요한 작업은 `anamnesis context query "<검색어>"` 로 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. query snippet 은 근거가 아니라 위치 힌트임.
 - 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.
 - `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
@@ -18,6 +19,7 @@
   결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.
 - `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.
+- `anamnesis context query "<terms>"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.
 

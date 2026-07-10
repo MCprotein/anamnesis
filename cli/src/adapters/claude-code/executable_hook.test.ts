@@ -352,6 +352,8 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(compact.stdout).toContain(
       "Retrieval rule: read the referenced warm archive",
     );
+    expect(compact.stdout).toContain("anamnesis context query");
+    expect(compact.stdout).toContain("source_path/stable_ref");
   });
 
   it("dedupes handoff reminders for the same dirty git fingerprint", () => {

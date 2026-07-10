@@ -1,11 +1,12 @@
 id: base
-version: 19
+version: 20
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
   the ontology-enrich lifecycle/schema contract, the agent-guided
   anamnesis-init workflow, the doc-freshness-review semantic review workflow,
-  the context-continuity task harness, and the AGENTS.md baseline region.
+  the context-continuity task harness, cross-agent context retrieval reminders,
+  and the AGENTS.md baseline region.
   anamnesis init auto-includes this fragment regardless of rulebook matches.
 capabilities:
   - type: project_memory

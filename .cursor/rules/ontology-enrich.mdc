@@ -28,13 +28,19 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
    - `README.md` for high-level service descriptions
    - Any `docs/architecture*.md` or similar
 
-3. **Identify what parsers couldn't infer** for each fragment with a `<id>.bootstrap.yaml`:
+3. **Retrieve exact source evidence** before adding semantic facts:
+   - Run `anamnesis context query "<terms>"` for the relationship, flow, rule, roadmap item, or prior decision you intend to record.
+   - Read the returned `source_path` / `stable_ref` before relying on it.
+   - Treat query snippets as source pointers, not authority.
+   - Cite the exact source path, heading, bootstrap fact, or observed behavior in `evidence`.
+
+4. **Identify what parsers couldn't infer** for each fragment with a `<id>.bootstrap.yaml`:
    - **Relationships** — cross-namespace dependencies, service-to-service call paths, "X depends on Y" statements not visible in YAML
    - **Flows** — request paths (e.g., "client → traefik → service → pod"), data pipelines, deploy paths (e.g., "Runner → zot → kubelet certs.d → workload pod")
    - **Operational notes** — invariants ("skip_verify unsupported on containerd v2"), gotchas ("ClusterIP changes require microk8s restart"), why-this-design decisions
    - **Intent** — purpose of specific resources (e.g., "this NodePort exposes the Steam query endpoint", "this Ingress fronts the OCI registry")
 
-4. **Write or update `<id>.enriched.yaml`** for each fragment, using schema version `anamnesis.enriched.v1` and these top-level keys:
+5. **Write or update `<id>.enriched.yaml`** for each fragment, using schema version `anamnesis.enriched.v1` and these top-level keys:
    ```yaml
    schema_version: "anamnesis.enriched.v1"
 
@@ -81,9 +87,9 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
    - `evidence` should cite concrete files, bootstrap facts, docs, or observed behavior.
    - `supersedes` points to the stable `id` of a replaced entry.
 
-5. **Never modify `<id>.bootstrap.yaml`** — it's auto-regenerable; your edits would be lost on the next bootstrap. Always write to `<id>.enriched.yaml`.
+6. **Never modify `<id>.bootstrap.yaml`** — it's auto-regenerable; your edits would be lost on the next bootstrap. Always write to `<id>.enriched.yaml`.
 
-6. **Apply the re-run merge policy**:
+7. **Apply the re-run merge policy**:
    - Preserve existing entries, ordering, wording, and IDs unless the underlying fact is clearly wrong or the user asked for cleanup.
    - If an existing entry still holds, leave it unchanged.
    - If you discover a new semantic fact, append a new entry with a stable `id`, `evidence`, and `confidence`.
@@ -92,7 +98,7 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
    - If evidence is weak or the relationship is inferred, put it under `open_questions` rather than pretending it is a fact.
    - Do not reorder existing arrays just to make the file prettier. Append-only is the default.
 
-7. **Show the diff** to the user. State what you added, what you preserved, what you superseded or corrected, and what remains uncertain. Stop. Let the user review and commit.
+8. **Show the diff** to the user. State what you added, what you preserved, what you superseded or corrected, and what remains uncertain. Stop. Let the user review and commit.
 
 ## Re-running this skill
 

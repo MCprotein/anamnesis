@@ -91,6 +91,12 @@ Query output must cite `source_path` and `stable_ref`. Agents should then read
 the exact source before relying on an invariant, relationship, entity, path, or
 operational rule.
 
+Managed agent surfaces repeat this as a pointer-first retrieval contract:
+when project facts, ontology, prior decisions, roadmap items, or document
+evidence are not already loaded, agents run `anamnesis context query "<terms>"`
+and then read the returned `source_path` / `stable_ref`. Query snippets are
+navigation hints, not authoritative memory.
+
 Prototype behavior:
 
 - `anamnesis context index` builds the index in memory and reports source,

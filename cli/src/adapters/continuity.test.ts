@@ -136,7 +136,7 @@ describe("cross-agent context continuity acceptance", () => {
 
     expectContainsAll(
       fileByPath(actions, ".claude/commands/load-context.md").content,
-      [".anamnesis/ontology/", "system_graph.yaml"],
+      [".anamnesis/ontology/", "system_graph.yaml", "anamnesis context query"],
     );
     expectContainsAll(
       fileByPath(actions, ".claude/commands/handoff-prepare.md").content,
@@ -144,7 +144,11 @@ describe("cross-agent context continuity acceptance", () => {
     );
     expectContainsAll(
       fileByPath(actions, ".claude/skills/load-context/SKILL.md").content,
-      ["every fresh session starts from zero project context"],
+      [
+        "every fresh session starts from zero project context",
+        "anamnesis context query",
+        "source_path",
+      ],
     );
     expectContainsAll(
       fileByPath(actions, ".claude/skills/ontology-enrich/SKILL.md").content,
@@ -155,6 +159,7 @@ describe("cross-agent context continuity acceptance", () => {
         "anamnesis.enriched.v1",
         "supersedes",
         "open_questions",
+        "source_path",
       ],
     );
     expectContainsAll(
@@ -171,6 +176,7 @@ describe("cross-agent context continuity acceptance", () => {
       [
         "semantic freshness",
         "anamnesis context diagnose",
+        "anamnesis context query",
         "stale-current-claim",
         "needs-human-confirmation",
       ],
@@ -197,6 +203,7 @@ describe("cross-agent context continuity acceptance", () => {
       ".anamnesis",
       "ontology",
       "handoff",
+      "anamnesis context query",
     ]);
 
     const dirtyReminder = fileByPath(
@@ -228,6 +235,7 @@ describe("cross-agent context continuity acceptance", () => {
       "/load-context",
       ".anamnesis/ontology/",
       "system_graph.yaml",
+      "anamnesis context query",
     ]);
     expectContainsAll(
       regionById(actions, "codex-cmd-handoff-prepare").content,
@@ -237,10 +245,15 @@ describe("cross-agent context continuity acceptance", () => {
       "Skill: `load-context`",
       ".codex/skills/load-context/SKILL.md",
       "every fresh session starts from zero project context",
+      "anamnesis context query",
     ]);
     expectContainsAll(
       fileByPath(actions, ".codex/skills/load-context/SKILL.md").content,
-      ["name: load-context", "every fresh session starts from zero project context"],
+      [
+        "name: load-context",
+        "every fresh session starts from zero project context",
+        "source_path",
+      ],
     );
     expectContainsAll(
       regionById(actions, "codex-skill-ontology-enrich").content,
@@ -251,11 +264,17 @@ describe("cross-agent context continuity acceptance", () => {
         "enriched.yaml",
         "anamnesis.enriched.v1",
         "supersedes",
+        "source_path",
       ],
     );
     expectContainsAll(
       fileByPath(actions, ".codex/skills/ontology-enrich/SKILL.md").content,
-      ["name: ontology-enrich", "Layer B", "anamnesis.enriched.v1"],
+      [
+        "name: ontology-enrich",
+        "Layer B",
+        "anamnesis.enriched.v1",
+        "anamnesis context query",
+      ],
     );
     expectContainsAll(regionById(actions, "codex-skill-anamnesis-init").content, [
       "Skill: `anamnesis-init`",
@@ -275,13 +294,14 @@ describe("cross-agent context continuity acceptance", () => {
         ".codex/skills/doc-freshness-review/SKILL.md",
         "semantic freshness",
         "anamnesis context diagnose",
+        "anamnesis context query",
         "stale-current-claim",
       ],
     );
     expectContainsAll(
       fileByPath(actions, ".codex/skills/doc-freshness-review/SKILL.md")
         .content,
-      ["name: doc-freshness-review", "semantic freshness"],
+      ["name: doc-freshness-review", "semantic freshness", "source_path"],
     );
   });
 
@@ -290,7 +310,12 @@ describe("cross-agent context continuity acceptance", () => {
 
     expectContainsAll(
       fileByPath(actions, ".cursor/rules/load-context-cmd.mdc").content,
-      ["agentRequested: true", "/load-context", ".anamnesis/ontology/"],
+      [
+        "agentRequested: true",
+        "/load-context",
+        ".anamnesis/ontology/",
+        "anamnesis context query",
+      ],
     );
     expectContainsAll(
       fileByPath(actions, ".cursor/rules/handoff-prepare-cmd.mdc").content,
@@ -305,6 +330,7 @@ describe("cross-agent context continuity acceptance", () => {
       [
         "agentRequested: true",
         "every fresh session starts from zero project context",
+        "source_path",
       ],
     );
     expectContainsAll(
@@ -315,6 +341,7 @@ describe("cross-agent context continuity acceptance", () => {
         "enriched.yaml",
         "anamnesis.enriched.v1",
         "open_questions",
+        "anamnesis context query",
       ],
     );
     expectContainsAll(
@@ -332,6 +359,7 @@ describe("cross-agent context continuity acceptance", () => {
         "agentRequested: true",
         "semantic freshness",
         "anamnesis context diagnose",
+        "anamnesis context query",
         "needs-human-confirmation",
       ],
     );

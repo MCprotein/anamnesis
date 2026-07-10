@@ -45,6 +45,9 @@ updates after seeing the report.
    - current repo tree around the claimed path, command, config, or workflow
    - `Agentfile`, `.anamnesis/manifest.json`, and generated managed regions
      when the claim is about installed anamnesis surfaces
+   - `anamnesis context query "<terms>"` for related roadmap, handoff,
+     ontology, or document pointers; read the returned `source_path` /
+     `stable_ref` before treating it as evidence
 
 4. Review only claims that affect a future agent or user:
    - present-tense architecture or directory claims

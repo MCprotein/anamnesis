@@ -51,7 +51,7 @@ and `npm run release:verify -- --version <version>`.
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@19 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@20 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -62,6 +62,7 @@ and `npm run release:verify -- --version <version>`.
 - `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
+- 프로젝트 사실, 문서, 로드맵, 이전 결정, 온톨로지 근거가 필요한 작업은 `anamnesis context query "<검색어>"` 로 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. query snippet 은 근거가 아니라 위치 힌트임.
 - 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.
 - `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
@@ -72,6 +73,7 @@ and `npm run release:verify -- --version <version>`.
   결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.
 - `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.
 - `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.
+- `anamnesis context query "<terms>"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.
 - `anamnesis status` — 설치된 fragment·드리프트 상태.
 - `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.
 
@@ -91,7 +93,7 @@ Cursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 �
 Claude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-cmd-load-context fragment=base@14 -->
+<!-- anamnesis:region id=codex-cmd-load-context fragment=base@20 -->
 ### Command: `/load-context`
 
 When the user invokes `/load-context` or asks for "load-context", follow the steps below. (CC users get this as a native slash command; Codex agents follow it from this region.)
@@ -104,11 +106,12 @@ Steps:
 
 1. Read every `*.yaml` under any `.anamnesis/ontology/` directory in the project — including nested ones for monorepo sub-scopes (e.g. `apps/api/.anamnesis/ontology/`). Use `find . -path '*/.anamnesis/ontology/*.yaml' -type f` (or equivalent) to locate them.
 2. If `system_graph.yaml` exists at the project root, read it (user-managed; takes precedence over slices).
-3. Summarize concisely, grouping by scope when nested ontology dirs are present:
+3. If the user's orientation question depends on project docs, roadmap entries, prior decisions, or evidence not present in the ontology files, run `anamnesis context query "<terms>"` and read the returned `source_path` / `stable_ref` before summarizing. Treat query snippets as source pointers, not authority.
+4. Summarize concisely, grouping by scope when nested ontology dirs are present:
    - Main entities (services, hosts, identifiers, paths)
    - Relationships (who calls whom, who depends on what)
    - Stated invariants ("never do X", "always Y")
-4. Stop. Don't make any edits or run other tools — this is orientation only.
+5. Stop. Don't make any edits — this is orientation only.
 
 If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists, say so plainly and suggest running `anamnesis init`.
 <!-- /anamnesis:region -->
@@ -228,7 +231,7 @@ Capture the current task state in a structured handoff file. The next agent — 
 If the session is too short or trivial for a useful handoff (e.g., just a one-line fix already committed), say so plainly and skip writing — empty handoffs pollute future sessions.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-load-context fragment=base@19 -->
+<!-- anamnesis:region id=codex-skill-load-context fragment=base@20 -->
 ### Skill: `load-context`
 
 When the user asks for "load-context" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/load-context/SKILL.md` when available; this region is the compatibility fallback.
@@ -248,11 +251,12 @@ When invoked, do the following — and only the following.
    ```
 2. Read each found file. These are anamnesis-managed slices written by installed fragments.
 3. If `system_graph.yaml` exists at the project root, read it. This is user-managed and represents the authoritative top-level ontology.
-4. Summarize what you read, grouping by scope when nested ontology dirs are present:
+4. If the user's orientation question depends on project docs, roadmap entries, prior decisions, or evidence not present in the ontology files, run `anamnesis context query "<terms>"` and read the returned `source_path` / `stable_ref`. Treat query snippets as source pointers, not authority.
+5. Summarize what you read, grouping by scope when nested ontology dirs are present:
    - **Entities**: namespaces, services, hosts, identifiers, paths
    - **Relationships**: dependencies, call paths, ownership
    - **Invariants & rules**: anything stated as "must" / "never" / "always"
-5. Stop. Do not run other tools, edit files, or take action. The user invoked this skill to orient — not to do work.
+6. Stop. Do not edit files or take action. The user invoked this skill to orient — not to do work.
 
 ## When the project has no ontology
 
@@ -267,7 +271,7 @@ If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists:
 Without it, every fresh session starts from zero project context. The agent re-derives the structure from filenames, package.json, etc. — slow, error-prone, and inconsistent across sessions. The ontology files are the single source of truth; this skill ensures the agent reads them first.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-ontology-enrich fragment=base@19 -->
+<!-- anamnesis:region id=codex-skill-ontology-enrich fragment=base@20 -->
 ### Skill: `ontology-enrich`
 
 When the user asks for "ontology-enrich" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/ontology-enrich/SKILL.md` when available; this region is the compatibility fallback.
@@ -297,13 +301,19 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
    - `README.md` for high-level service descriptions
    - Any `docs/architecture*.md` or similar
 
-3. **Identify what parsers couldn't infer** for each fragment with a `<id>.bootstrap.yaml`:
+3. **Retrieve exact source evidence** before adding semantic facts:
+   - Run `anamnesis context query "<terms>"` for the relationship, flow, rule, roadmap item, or prior decision you intend to record.
+   - Read the returned `source_path` / `stable_ref` before relying on it.
+   - Treat query snippets as source pointers, not authority.
+   - Cite the exact source path, heading, bootstrap fact, or observed behavior in `evidence`.
+
+4. **Identify what parsers couldn't infer** for each fragment with a `<id>.bootstrap.yaml`:
    - **Relationships** — cross-namespace dependencies, service-to-service call paths, "X depends on Y" statements not visible in YAML
    - **Flows** — request paths (e.g., "client → traefik → service → pod"), data pipelines, deploy paths (e.g., "Runner → zot → kubelet certs.d → workload pod")
    - **Operational notes** — invariants ("skip_verify unsupported on containerd v2"), gotchas ("ClusterIP changes require microk8s restart"), why-this-design decisions
    - **Intent** — purpose of specific resources (e.g., "this NodePort exposes the Steam query endpoint", "this Ingress fronts the OCI registry")
 
-4. **Write or update `<id>.enriched.yaml`** for each fragment, using schema version `anamnesis.enriched.v1` and these top-level keys:
+5. **Write or update `<id>.enriched.yaml`** for each fragment, using schema version `anamnesis.enriched.v1` and these top-level keys:
    ```yaml
    schema_version: "anamnesis.enriched.v1"
 
@@ -350,9 +360,9 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
    - `evidence` should cite concrete files, bootstrap facts, docs, or observed behavior.
    - `supersedes` points to the stable `id` of a replaced entry.
 
-5. **Never modify `<id>.bootstrap.yaml`** — it's auto-regenerable; your edits would be lost on the next bootstrap. Always write to `<id>.enriched.yaml`.
+6. **Never modify `<id>.bootstrap.yaml`** — it's auto-regenerable; your edits would be lost on the next bootstrap. Always write to `<id>.enriched.yaml`.
 
-6. **Apply the re-run merge policy**:
+7. **Apply the re-run merge policy**:
    - Preserve existing entries, ordering, wording, and IDs unless the underlying fact is clearly wrong or the user asked for cleanup.
    - If an existing entry still holds, leave it unchanged.
    - If you discover a new semantic fact, append a new entry with a stable `id`, `evidence`, and `confidence`.
@@ -361,7 +371,7 @@ Layer B is re-runnable. Existing semantic entries are user-reviewed project memo
    - If evidence is weak or the relationship is inferred, put it under `open_questions` rather than pretending it is a fact.
    - Do not reorder existing arrays just to make the file prettier. Append-only is the default.
 
-7. **Show the diff** to the user. State what you added, what you preserved, what you superseded or corrected, and what remains uncertain. Stop. Let the user review and commit.
+8. **Show the diff** to the user. State what you added, what you preserved, what you superseded or corrected, and what remains uncertain. Stop. Let the user review and commit.
 
 ## Re-running this skill
 
@@ -388,7 +398,7 @@ When in doubt, append rather than rewrite.
 - The project has no agent-discernible intent beyond what the static fragments already say (e.g., a tiny single-service repo)
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@14 -->
+<!-- anamnesis:region id=codex-hook-inject-ontology fragment=base@20 -->
 ### base hook: `inject-ontology.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
@@ -512,6 +522,7 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
     fi
     echo
     echo "Retrieval rule: read the exact source file before relying on an invariant, relationship, entity, path, or operational rule."
+    echo "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run \`anamnesis context query \"<terms>\"\` and read returned source_path/stable_ref before claiming or editing."
   fi
   exit 0
 fi
@@ -535,7 +546,7 @@ exit 0
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@17 -->
+<!-- anamnesis:region id=codex-hook-inject-handoff fragment=base@20 -->
 ### base hook: `inject-handoff.sh`
 
 **When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
@@ -775,6 +786,7 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
   else
     echo "Retrieval rule: read the referenced warm archive before continuing non-trivial in-flight work."
   fi
+  echo "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run \`anamnesis context query \"<terms>\"\` and read returned source_path/stable_ref before claiming or editing."
   echo "--- end of handoff ---"
   exit 0
 fi
@@ -1121,7 +1133,7 @@ existing-doc enhancement.
   `anamnesis apply --dry-run` instead.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-doc-freshness-review fragment=base@19 -->
+<!-- anamnesis:region id=codex-skill-doc-freshness-review fragment=base@20 -->
 ### Skill: `doc-freshness-review`
 
 When the user asks for "doc-freshness-review" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/doc-freshness-review/SKILL.md` when available; this region is the compatibility fallback.
@@ -1168,6 +1180,9 @@ updates after seeing the report.
    - current repo tree around the claimed path, command, config, or workflow
    - `Agentfile`, `.anamnesis/manifest.json`, and generated managed regions
      when the claim is about installed anamnesis surfaces
+   - `anamnesis context query "<terms>"` for related roadmap, handoff,
+     ontology, or document pointers; read the returned `source_path` /
+     `stable_ref` before treating it as evidence
 
 4. Review only claims that affect a future agent or user:
    - present-tense architecture or directory claims

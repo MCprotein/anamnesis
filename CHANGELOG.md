@@ -22,6 +22,10 @@ could include breaking changes.
 - Added default-index freshness handling to `anamnesis context query`: missing
   or stale `.anamnesis/context/index.jsonl` files are rebuilt in memory without
   writing, and query summaries report freshness counts plus ranking status.
+- Added the base v20 cross-agent retrieval reminder contract across
+  AGENTS/CLAUDE/Codex/Cursor skill and hook surfaces so agents use
+  `anamnesis context query` to find source pointers and then read the returned
+  `source_path` / `stable_ref` before making context-sensitive claims.
 
 ### Changed
 
@@ -34,6 +38,9 @@ could include breaking changes.
 - Hardened `context query` ranking with phrase matches, kind/source priorities,
   and stale-source penalties so active ontology, handoff, task, and document
   pointers rank ahead of colder context when lexical matches are comparable.
+- Updated `load-context`, `ontology-enrich`, `doc-freshness-review`, and
+  `context subagent-preamble` guidance to treat query snippets as pointers,
+  not authority, preserving the ontology as the durable memory layer.
 
 ## [1.16.0] — 2026-07-09
 

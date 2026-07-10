@@ -283,7 +283,8 @@ function renderResumeBundle(input: {
     "",
     "## retrieval_rule",
     "- Read the exact active_handoff/latest_archive source before relying on task details.",
-    "- Use `anamnesis context query` for deeper source pointers instead of expanding startup context.",
+    "- When work depends on project facts, ontology, prior decisions, roadmap items, or document evidence, run `anamnesis context query \"<terms>\"` and read the returned `source_path` / `stable_ref` before claiming or editing.",
+    "- Treat query snippets as source pointers, not authority, and avoid expanding startup context with broad results.",
   ];
   return lines.join("\n");
 }
@@ -316,7 +317,8 @@ function renderSubagentPreamble(input: {
     "",
     "## required_subagent_response",
     "- Before context-sensitive work, read the exact source files needed from the pointers above.",
-    "- Report `anamnesis_context_sources` with the exact paths read.",
+    "- If the needed source is not listed above, run `anamnesis context query \"<terms>\"` and read the returned `source_path` / `stable_ref`.",
+    "- Report `anamnesis_context_sources` with the exact paths and stable refs read.",
     "- If no listed source is relevant, explicitly say why before proceeding.",
   ];
   return lines.join("\n");
