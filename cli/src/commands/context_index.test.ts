@@ -181,6 +181,10 @@ function setupContextProject(): string {
       "## v1.6",
       "Build a local context index prototype.",
       "",
+      "## Ontology source management",
+      "Agents should read the [base ontology](../.anamnesis/ontology/base.yaml) before updating managed regions.",
+      "The source pointer keeps document evidence separate from accepted ontology facts.",
+      "",
       "anamnesis-fact: facts.runtime.name = documented-runtime",
       "",
     ].join("\n"),
@@ -209,6 +213,9 @@ describe("context index", () => {
     expect(result.summary.byKind["manifest-entry"]).toBe(2);
     expect(result.summary.byKind["evidence-summary"]).toBe(1);
     expect(result.summary.byKind["doc-section"]).toBeGreaterThan(0);
+    expect(result.summary.byKind["doc-page"]).toBeGreaterThan(0);
+    expect(result.summary.byKind["doc-heading"]).toBeGreaterThan(0);
+    expect(result.summary.byKind["doc-ontology-ref"]).toBe(1);
     expect(result.summary.byKind["task-harness"]).toBe(1);
 
     const indexPath = path.join(project, ".anamnesis", "context", "index.jsonl");
@@ -272,6 +279,59 @@ describe("context index", () => {
       freshness: "current",
     });
     expect(result.matches[0]!.entry.snippet).toContain("startup context compact");
+  });
+
+  it("indexes document pages, headings, and ontology refs as source pointers", () => {
+    const project = setupContextProject();
+    contextIndex({ projectRoot: project, write: true });
+
+    const heading = contextQuery({
+      projectRoot: project,
+      query: "ontology source management document evidence",
+      kind: "doc-heading",
+      limit: 1,
+    });
+
+    expect(heading.matches).toHaveLength(1);
+    expect(heading.matches[0]!.entry).toMatchObject({
+      kind: "doc-heading",
+      source_path: "docs/ROADMAP.md",
+      stable_ref: "heading:ontology-source-management",
+      title: "Ontology source management",
+      freshness: "current",
+    });
+    expect(heading.matches[0]!.entry.snippet).toContain("base ontology");
+
+    const ontologyRef = contextQuery({
+      projectRoot: project,
+      query: "base ontology managed regions",
+      kind: "doc-ontology-ref",
+      limit: 1,
+    });
+
+    expect(ontologyRef.matches).toHaveLength(1);
+    expect(ontologyRef.matches[0]!.entry).toMatchObject({
+      kind: "doc-ontology-ref",
+      source_path: "docs/ROADMAP.md",
+      title: "Ontology ref .anamnesis/ontology/base.yaml",
+      freshness: "current",
+    });
+    expect(ontologyRef.matches[0]!.entry.snippet).toContain("status ok");
+
+    const page = contextQuery({
+      projectRoot: project,
+      query: "roadmap canonical ontology",
+      kind: "doc-page",
+      limit: 3,
+    });
+
+    expect(
+      page.matches.some(
+        (match) =>
+          match.entry.source_path === "docs/ROADMAP.md" &&
+          match.entry.stable_ref === "file",
+      ),
+    ).toBe(true);
   });
 
   it("marks active handoff entries stale when referenced archives are missing", () => {

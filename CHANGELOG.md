@@ -16,6 +16,9 @@ could include breaking changes.
 - Extended `context diagnose`, `status`, and `doctor` to surface document graph
   problems, including broken Markdown links, missing heading anchors, and stale
   ontology source references.
+- Extended `anamnesis context index/query` with `doc-page`, `doc-heading`, and
+  `doc-ontology-ref` records so agents can retrieve exact document and
+  ontology source pointers without increasing SessionStart context.
 
 ### Changed
 

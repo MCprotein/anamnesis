@@ -80,6 +80,8 @@ The first CLI surface should be read-only:
 anamnesis context index --write
 anamnesis context query "handoff current task"
 anamnesis context query --kind ontology-rule "managed region"
+anamnesis context query --kind doc-heading "release checklist"
+anamnesis context query --kind doc-ontology-ref "system graph"
 anamnesis context query --kind task-harness "context continuity"
 anamnesis context resume
 anamnesis context resume --write
@@ -98,6 +100,10 @@ Prototype behavior:
 - `anamnesis context query <terms>` reads the JSONL index, ranks exact local
   entries by term hits, and prints source pointers.
 - `--kind <kind>` filters query results to one entry kind.
+- Document graph records are indexed as `doc-page`, `doc-heading`, and
+  `doc-ontology-ref`. They point agents to the exact file, heading, or ontology
+  reference to read next; they do not make document prose authoritative project
+  memory.
 - `anamnesis context resume` prints a compact bundle with active handoff
   pointer, latest archive pointer, touched git files, latest runtime evidence,
   diagnostic warnings, retrieval rules, and line/char/token estimates.

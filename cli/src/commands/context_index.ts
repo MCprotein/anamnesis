@@ -2,6 +2,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import YAML from "yaml";
+import { contextDocs } from "./context_docs.js";
 
 export const CONTEXT_INDEX_SCHEMA_VERSION = "anamnesis.context_index.v1";
 export const CONTEXT_INDEX_PATH = ".anamnesis/context/index.jsonl";
@@ -15,6 +16,9 @@ export type ContextIndexKind =
   | "evidence-summary"
   | "manifest-entry"
   | "doc-section"
+  | "doc-page"
+  | "doc-heading"
+  | "doc-ontology-ref"
   | "task-harness";
 
 export type ContextIndexFreshness = "current" | "stale" | "unknown";
@@ -126,6 +130,9 @@ const CONTEXT_KINDS = new Set<ContextIndexKind>([
   "evidence-summary",
   "manifest-entry",
   "doc-section",
+  "doc-page",
+  "doc-heading",
+  "doc-ontology-ref",
   "task-harness",
 ]);
 
@@ -149,7 +156,15 @@ export function contextIndex(opts: ContextIndexOptions): ContextIndexResult {
       return [];
     }
   });
+  try {
+    entries.push(...documentGraphEntries(projectRoot, warnings));
+  } catch (e) {
+    warnings.push(`context docs: ${(e as Error).message}`);
+  }
   const sortedEntries = dedupeEntries(entries).sort(compareEntries);
+  const indexedSourceCount = uniqueStrings(
+    sortedEntries.map((entry) => entry.source_path),
+  ).length;
   const result: ContextIndexResult = {
     schema_version: CONTEXT_INDEX_SCHEMA_VERSION,
     projectRoot: ".",
@@ -159,7 +174,7 @@ export function contextIndex(opts: ContextIndexOptions): ContextIndexResult {
     warnings,
     summary: {
       entries: sortedEntries.length,
-      sources: sources.length,
+      sources: indexedSourceCount,
       byKind: countByKind(sortedEntries),
       warnings: warnings.length,
     },
@@ -317,6 +332,113 @@ function entriesForSource(
   if (source.kind === "yaml") return yamlEntries(ctx);
   if (source.kind === "json") return jsonEntries(ctx);
   return jsonlEntries(ctx);
+}
+
+function documentGraphEntries(
+  projectRoot: string,
+  warnings: string[],
+): ContextIndexEntry[] {
+  const result = contextDocs({ projectRoot });
+  warnings.push(...result.warnings.map((warning) => `context docs: ${warning}`));
+  const entries: ContextIndexEntry[] = [];
+  const ctxCache = new Map<string, SourceContext>();
+
+  const ctxForPage = (relPath: string): SourceContext | undefined => {
+    const cached = ctxCache.get(relPath);
+    if (cached) return cached;
+    const absPath = path.join(projectRoot, relPath);
+    if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) return undefined;
+    const stat = fs.statSync(absPath);
+    const ctx: SourceContext = {
+      projectRoot,
+      source: {
+        absPath,
+        relPath,
+        kind: "markdown",
+      },
+      content: fs.readFileSync(absPath, "utf8"),
+      sourceMtime: stat.mtime.toISOString(),
+    };
+    ctxCache.set(relPath, ctx);
+    return ctx;
+  };
+
+  for (const page of result.pages) {
+    const ctx = ctxForPage(page.source_path);
+    if (!ctx) continue;
+    entries.push(
+      makeEntry(ctx, {
+        kind: "doc-page",
+        stableRef: "file",
+        title: page.title,
+        snippet: [
+          `${page.heading_count} heading(s)`,
+          `${page.outbound_links} outbound link(s)`,
+          `${page.inbound_links} inbound link(s)`,
+          `${page.ontology_refs} ontology ref(s)`,
+          page.canonical ? "canonical" : undefined,
+        ]
+          .filter((part): part is string => part !== undefined)
+          .join("; "),
+        tags: [
+          ...tagsForSource(page.source_path),
+          "doc-page",
+          ...(page.canonical ? ["canonical"] : []),
+        ],
+      }),
+    );
+  }
+
+  for (const heading of result.headings) {
+    const ctx = ctxForPage(heading.source_path);
+    if (!ctx) continue;
+    const lines = ctx.content.split(/\r?\n/);
+    entries.push(
+      makeEntry(ctx, {
+        kind: "doc-heading",
+        stableRef: heading.stable_ref,
+        title: heading.title,
+        snippet: snippetAfterLine(lines, heading.line) || heading.title,
+        tags: [
+          ...tagsForSource(heading.source_path),
+          "doc-heading",
+          `h${heading.depth}`,
+          heading.slug,
+        ],
+      }),
+    );
+  }
+
+  for (const ref of result.ontology_refs) {
+    const ctx = ctxForPage(ref.source_path);
+    if (!ctx) continue;
+    const lines = ctx.content.split(/\r?\n/);
+    const lineText = lines[ref.line - 1]?.trim() ?? "";
+    entries.push(
+      makeEntry(ctx, {
+        kind: "doc-ontology-ref",
+        stableRef: ref.stable_ref,
+        title: `Ontology ref ${ref.target}`,
+        snippet: cleanText(
+          [
+            `line ${ref.line}`,
+            `target ${ref.target}`,
+            `status ${ref.status}`,
+            lineText,
+          ].join("; "),
+          240,
+        ),
+        tags: [
+          ...tagsForSource(ref.source_path),
+          "doc-ontology-ref",
+          ref.status,
+          ref.target,
+        ],
+      }),
+    );
+  }
+
+  return entries;
 }
 
 function markdownEntries(ctx: SourceContext): ContextIndexEntry[] {
@@ -780,6 +902,10 @@ function snippetFromLines(lines: readonly string[]): string {
     .slice(0, 4)
     .join(" ");
   return cleanText(clean, 240);
+}
+
+function snippetAfterLine(lines: readonly string[], oneBasedLine: number): string {
+  return snippetFromLines(lines.slice(oneBasedLine, oneBasedLine + 8));
 }
 
 function snippetFromValue(value: unknown): string {
