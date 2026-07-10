@@ -1486,6 +1486,24 @@ function reportContextQuery(result: ContextQueryResult): void {
   console.log(
     `  searched: ${result.summary.entriesSearched}, matches: ${result.summary.matches}`,
   );
+  console.log(`  index: ${result.summary.indexStatus}`);
+  if (
+    result.summary.changedSources > 0 ||
+    result.summary.missingSources > 0 ||
+    result.summary.newSources > 0 ||
+    result.summary.missingGeneratedKinds > 0
+  ) {
+    console.log(
+      `  freshness: changed=${result.summary.changedSources}, missing=${result.summary.missingSources}, ` +
+        `new=${result.summary.newSources}, missing-kinds=${result.summary.missingGeneratedKinds}`,
+    );
+  }
+  if (result.warnings.length > 0) {
+    console.log(`  warnings: ${result.warnings.length}`);
+    for (const warning of result.warnings.slice(0, 5)) {
+      console.log(`    - ${warning}`);
+    }
+  }
   for (const match of result.matches) {
     const entry = match.entry;
     console.log(

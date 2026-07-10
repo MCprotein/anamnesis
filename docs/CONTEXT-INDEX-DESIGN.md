@@ -97,8 +97,14 @@ Prototype behavior:
   entry, kind, and warning counts.
 - `anamnesis context index --write` writes
   `.anamnesis/context/index.jsonl`.
-- `anamnesis context query <terms>` reads the JSONL index, ranks exact local
-  entries by term hits, and prints source pointers.
+- `anamnesis context query <terms>` reads the default JSONL index when it is
+  current. If `.anamnesis/context/index.jsonl` is missing or stale, the command
+  rebuilds the index in memory without writing before ranking source pointers.
+  A custom `--index` path remains explicit: missing custom indexes fail, and
+  stale custom indexes are reported instead of silently replaced.
+- Ranking combines lexical term hits with phrase matches, kind/source priority,
+  and freshness penalties so active ontology, handoff, task, and document
+  pointers beat stale context when the lexical match is comparable.
 - `--kind <kind>` filters query results to one entry kind.
 - Document graph records are indexed as `doc-page`, `doc-heading`, and
   `doc-ontology-ref`. They point agents to the exact file, heading, or ontology

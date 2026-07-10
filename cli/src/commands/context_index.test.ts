@@ -243,6 +243,7 @@ describe("context index", () => {
     });
 
     expect(result.projectRoot).toBe(".");
+    expect(result.summary.indexStatus).toBe("current");
     expect(result.matches.length).toBeGreaterThan(0);
     for (const match of result.matches) {
       expect(path.isAbsolute(match.entry.source_path)).toBe(false);
@@ -374,10 +375,99 @@ describe("context index", () => {
       kind: "ontology-rule",
     });
     expect(result.projectRoot).toBe(".");
+    expect(result.summary.indexStatus).toBe("current");
     expect(result.summary.entriesSearched).toBe(
       before.filter((entry) => entry.kind === "ontology-rule").length,
     );
     expect(result.matches.length).toBeGreaterThan(0);
+  });
+
+  it("rebuilds the default query index in memory when the index file is missing", () => {
+    const project = setupContextProject();
+
+    const result = contextQuery({
+      projectRoot: project,
+      query: "managed region",
+      kind: "ontology-rule",
+    });
+
+    expect(result.summary.indexStatus).toBe("rebuilt-missing");
+    expect(result.warnings.join("\n")).toContain("was not found");
+    expect(result.matches[0]!.entry).toMatchObject({
+      kind: "ontology-rule",
+      source_path: ".anamnesis/ontology/base.yaml",
+      stable_ref: "operational_notes[managed-region]",
+    });
+    expect(
+      fs.existsSync(path.join(project, ".anamnesis", "context", "index.jsonl")),
+    ).toBe(false);
+  });
+
+  it("rebuilds the default query index in memory when sources changed", () => {
+    const project = setupContextProject();
+    contextIndex({ projectRoot: project, write: true });
+    const roadmapPath = path.join(project, "docs", "ROADMAP.md");
+    fs.appendFileSync(
+      roadmapPath,
+      [
+        "",
+        "## Fresh Query Target",
+        "This heading exists only after the stored index was written.",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const future = new Date(Date.now() + 60_000);
+    fs.utimesSync(roadmapPath, future, future);
+
+    const result = contextQuery({
+      projectRoot: project,
+      query: "fresh query target stored index",
+      kind: "doc-heading",
+      limit: 1,
+    });
+
+    expect(result.summary.indexStatus).toBe("rebuilt-stale");
+    expect(result.summary.changedSources).toBeGreaterThan(0);
+    expect(result.warnings.join("\n")).toContain("is stale");
+    expect(result.matches[0]!.entry).toMatchObject({
+      kind: "doc-heading",
+      source_path: "docs/ROADMAP.md",
+      stable_ref: "heading:fresh-query-target",
+      title: "Fresh Query Target",
+    });
+  });
+
+  it("rebuilds old default indexes that lack generated document graph kinds", () => {
+    const project = setupContextProject();
+    contextIndex({ projectRoot: project, write: true });
+    const indexPath = path.join(project, ".anamnesis", "context", "index.jsonl");
+    const legacyLines = fs
+      .readFileSync(indexPath, "utf8")
+      .split(/\r?\n/)
+      .filter((line) => {
+        if (line.trim() === "") return false;
+        const parsed = JSON.parse(line) as { kind?: string };
+        return !["doc-page", "doc-heading", "doc-ontology-ref"].includes(
+          parsed.kind ?? "",
+        );
+      });
+    fs.writeFileSync(indexPath, `${legacyLines.join("\n")}\n`, "utf8");
+
+    const result = contextQuery({
+      projectRoot: project,
+      query: "ontology source management",
+      kind: "doc-heading",
+      limit: 1,
+    });
+
+    expect(result.summary.indexStatus).toBe("rebuilt-stale");
+    expect(result.summary.missingGeneratedKinds).toBeGreaterThan(0);
+    expect(result.matches[0]!.entry).toMatchObject({
+      kind: "doc-heading",
+      source_path: "docs/ROADMAP.md",
+      stable_ref: "heading:ontology-source-management",
+    });
   });
 
   it("keeps source pointers indexed for context diagnostic follow-up reads", () => {
@@ -426,11 +516,15 @@ describe("context index", () => {
     ).toBe(true);
   });
 
-  it("requires an index file before querying", () => {
+  it("requires an explicit custom index file before querying", () => {
     const project = setupContextProject();
 
     expect(() =>
-      contextQuery({ projectRoot: project, query: "managed region" }),
+      contextQuery({
+        projectRoot: project,
+        query: "managed region",
+        indexPath: ".anamnesis/context/custom.jsonl",
+      }),
     ).toThrow(ContextIndexError);
   });
 });

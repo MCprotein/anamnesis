@@ -22,6 +22,12 @@ export type ContextIndexKind =
   | "task-harness";
 
 export type ContextIndexFreshness = "current" | "stale" | "unknown";
+export type ContextQueryIndexStatus =
+  | "current"
+  | "rebuilt-missing"
+  | "rebuilt-stale"
+  | "custom"
+  | "custom-stale";
 
 export interface ContextIndexEntry {
   schema_version: typeof CONTEXT_INDEX_SCHEMA_VERSION;
@@ -75,9 +81,15 @@ export interface ContextQueryResult {
   query: string;
   kind?: ContextIndexKind;
   matches: ContextQueryMatch[];
+  warnings: string[];
   summary: {
     entriesSearched: number;
     matches: number;
+    indexStatus: ContextQueryIndexStatus;
+    changedSources: number;
+    missingSources: number;
+    newSources: number;
+    missingGeneratedKinds: number;
   };
 }
 
@@ -87,6 +99,25 @@ export interface ContextQueryOptions {
   kind?: string;
   limit?: number;
   indexPath?: string;
+}
+
+interface ContextIndexFreshnessReport {
+  changedSources: string[];
+  missingSources: string[];
+  newSources: string[];
+  missingGeneratedKinds: ContextIndexKind[];
+}
+
+interface QueryEntries {
+  entries: ContextIndexEntry[];
+  warnings: string[];
+  indexStatus: ContextQueryIndexStatus;
+  freshness: ContextIndexFreshnessReport;
+}
+
+interface CurrentContextSourceState {
+  sourcePaths: Set<string>;
+  expectedGeneratedKinds: Set<ContextIndexKind>;
 }
 
 export class ContextIndexError extends Error {
@@ -201,12 +232,14 @@ export function contextQuery(opts: ContextQueryOptions): ContextQueryResult {
   }
   const kind = normalizeKind(opts.kind);
   const indexPath = opts.indexPath ?? CONTEXT_INDEX_PATH;
-  const entries = readContextIndex(projectRoot, indexPath).filter((entry) =>
+  const queryEntries = loadQueryEntries(projectRoot, indexPath, opts.indexPath !== undefined);
+  const entries = queryEntries.entries.filter((entry) =>
     kind ? entry.kind === kind : true,
   );
   const terms = tokenize(query);
+  const normalizedQuery = searchable(query).trim();
   const matches = entries
-    .map((entry) => ({ entry, score: scoreEntry(entry, terms) }))
+    .map((entry) => ({ entry, score: scoreEntry(entry, terms, normalizedQuery) }))
     .filter((match) => match.score > 0)
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
@@ -221,9 +254,15 @@ export function contextQuery(opts: ContextQueryOptions): ContextQueryResult {
     query,
     ...(kind ? { kind } : {}),
     matches,
+    warnings: queryEntries.warnings,
     summary: {
       entriesSearched: entries.length,
       matches: matches.length,
+      indexStatus: queryEntries.indexStatus,
+      changedSources: queryEntries.freshness.changedSources.length,
+      missingSources: queryEntries.freshness.missingSources.length,
+      newSources: queryEntries.freshness.newSources.length,
+      missingGeneratedKinds: queryEntries.freshness.missingGeneratedKinds.length,
     },
   };
 }
@@ -252,6 +291,167 @@ export function readContextIndex(
     }
   }
   return entries;
+}
+
+function loadQueryEntries(
+  projectRoot: string,
+  indexPath: string,
+  customIndex: boolean,
+): QueryEntries {
+  const emptyFreshness = emptyFreshnessReport();
+  let entries: ContextIndexEntry[];
+  try {
+    entries = readContextIndex(projectRoot, indexPath);
+  } catch (e) {
+    if (customIndex) throw e;
+    const rebuilt = contextIndex({ projectRoot, outputPath: indexPath });
+    return {
+      entries: rebuilt.entries,
+      warnings: [
+        `${indexPath} was not found; rebuilt context index in memory without writing`,
+        ...rebuilt.warnings,
+      ],
+      indexStatus: "rebuilt-missing",
+      freshness: emptyFreshness,
+    };
+  }
+
+  const freshness = contextIndexFreshness(projectRoot, entries);
+  if (!isFreshnessReportStale(freshness)) {
+    return {
+      entries,
+      warnings: [],
+      indexStatus: customIndex ? "custom" : "current",
+      freshness,
+    };
+  }
+
+  const warnings = [formatFreshnessWarning(indexPath, freshness)];
+  if (customIndex) {
+    return {
+      entries,
+      warnings,
+      indexStatus: "custom-stale",
+      freshness,
+    };
+  }
+
+  const rebuilt = contextIndex({ projectRoot, outputPath: indexPath });
+  return {
+    entries: rebuilt.entries,
+    warnings: [
+      ...warnings,
+      "rebuilt default context index in memory without writing",
+      ...rebuilt.warnings,
+    ],
+    indexStatus: "rebuilt-stale",
+    freshness,
+  };
+}
+
+function contextIndexFreshness(
+  projectRoot: string,
+  entries: readonly ContextIndexEntry[],
+): ContextIndexFreshnessReport {
+  const changedSources: string[] = [];
+  const missingSources: string[] = [];
+  const indexedSources = uniqueStrings(entries.map((entry) => entry.source_path));
+  const indexedSourceSet = new Set(indexedSources);
+  const sourceMtimes = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    let mtimes = sourceMtimes.get(entry.source_path);
+    if (!mtimes) {
+      mtimes = new Set<string>();
+      sourceMtimes.set(entry.source_path, mtimes);
+    }
+    mtimes.add(entry.source_mtime);
+  }
+
+  for (const sourcePath of indexedSources) {
+    const absPath = path.join(projectRoot, sourcePath);
+    if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
+      missingSources.push(sourcePath);
+      continue;
+    }
+    const currentMtime = fs.statSync(absPath).mtime.toISOString();
+    if (!sourceMtimes.get(sourcePath)?.has(currentMtime)) {
+      changedSources.push(sourcePath);
+    }
+  }
+
+  const currentState = currentContextSourceState(projectRoot);
+  const newSources = [...currentState.sourcePaths].filter(
+    (sourcePath) => !indexedSourceSet.has(sourcePath),
+  );
+  const indexedKinds = new Set(entries.map((entry) => entry.kind));
+  const missingGeneratedKinds: ContextIndexKind[] = [];
+  for (const kind of currentState.expectedGeneratedKinds) {
+    if (!indexedKinds.has(kind)) missingGeneratedKinds.push(kind);
+  }
+
+  return {
+    changedSources: changedSources.sort(),
+    missingSources: missingSources.sort(),
+    newSources: newSources.sort(),
+    missingGeneratedKinds,
+  };
+}
+
+function currentContextSourceState(projectRoot: string): CurrentContextSourceState {
+  const sourcePaths = new Set(
+    discoverContextSources(projectRoot).map((source) => source.relPath),
+  );
+  const expectedGeneratedKinds = new Set<ContextIndexKind>();
+  try {
+    const docs = contextDocs({ projectRoot });
+    for (const page of docs.pages) sourcePaths.add(page.source_path);
+    if (docs.summary.pages > 0) expectedGeneratedKinds.add("doc-page");
+    if (docs.summary.headings > 0) expectedGeneratedKinds.add("doc-heading");
+    if (docs.summary.ontologyRefs > 0) {
+      expectedGeneratedKinds.add("doc-ontology-ref");
+    }
+  } catch {
+    // Query freshness should not fail just because optional doc graph scanning
+    // cannot complete. The actual query path can still use the stored index.
+  }
+  return { sourcePaths, expectedGeneratedKinds };
+}
+
+function emptyFreshnessReport(): ContextIndexFreshnessReport {
+  return {
+    changedSources: [],
+    missingSources: [],
+    newSources: [],
+    missingGeneratedKinds: [],
+  };
+}
+
+function isFreshnessReportStale(report: ContextIndexFreshnessReport): boolean {
+  return (
+    report.changedSources.length > 0 ||
+    report.missingSources.length > 0 ||
+    report.newSources.length > 0 ||
+    report.missingGeneratedKinds.length > 0
+  );
+}
+
+function formatFreshnessWarning(
+  indexPath: string,
+  report: ContextIndexFreshnessReport,
+): string {
+  const parts = [
+    report.changedSources.length > 0
+      ? `changed=${report.changedSources.length}`
+      : undefined,
+    report.missingSources.length > 0
+      ? `missing=${report.missingSources.length}`
+      : undefined,
+    report.newSources.length > 0 ? `new=${report.newSources.length}` : undefined,
+    report.missingGeneratedKinds.length > 0
+      ? `missing-kinds=${report.missingGeneratedKinds.join(",")}`
+      : undefined,
+  ].filter((part): part is string => part !== undefined);
+  return `${indexPath} is stale (${parts.join(", ")})`;
 }
 
 function discoverContextSources(projectRoot: string): ContextSource[] {
@@ -858,19 +1058,74 @@ function countByKind(
   return counts;
 }
 
-function scoreEntry(entry: ContextIndexEntry, terms: readonly string[]): number {
+function scoreEntry(
+  entry: ContextIndexEntry,
+  terms: readonly string[],
+  normalizedQuery: string,
+): number {
   const title = searchable(entry.title);
   const tags = searchable(entry.tags.join(" "));
   const snippet = searchable(entry.snippet);
   const source = searchable(`${entry.source_path} ${entry.stable_ref}`);
-  let score = 0;
-  for (const term of terms) {
-    if (title.includes(term)) score += 6;
-    if (tags.includes(term)) score += 4;
-    if (snippet.includes(term)) score += 3;
-    if (source.includes(term)) score += 2;
+  let lexicalScore = 0;
+  if (normalizedQuery.length > 0) {
+    if (title === normalizedQuery) lexicalScore += 24;
+    else if (title.includes(normalizedQuery)) lexicalScore += 18;
+    if (tags.includes(normalizedQuery)) lexicalScore += 12;
+    if (snippet.includes(normalizedQuery)) lexicalScore += 8;
+    if (source.includes(normalizedQuery)) lexicalScore += 6;
   }
-  return score;
+  for (const term of terms) {
+    if (title.includes(term)) lexicalScore += 6;
+    if (tags.includes(term)) lexicalScore += 4;
+    if (snippet.includes(term)) lexicalScore += 3;
+    if (source.includes(term)) lexicalScore += 2;
+  }
+  if (lexicalScore <= 0) return 0;
+  return Math.max(
+    1,
+    lexicalScore +
+      kindPriority(entry.kind) +
+      sourcePriority(entry.source_path) +
+      freshnessPriority(entry.freshness),
+  );
+}
+
+function kindPriority(kind: ContextIndexKind): number {
+  switch (kind) {
+    case "doc-heading":
+    case "doc-ontology-ref":
+      return 5;
+    case "ontology-rule":
+    case "ontology-relationship":
+    case "ontology-entity":
+      return 4;
+    case "task-harness":
+      return 3;
+    case "doc-page":
+    case "handoff-task":
+      return 2;
+    case "agent-rule":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function sourcePriority(sourcePath: string): number {
+  if (sourcePath === ".anamnesis/handoff/active.md") return 6;
+  if (sourcePath === "system_graph.yaml") return 5;
+  if (sourcePath.startsWith(".anamnesis/ontology/")) return 4;
+  if (sourcePath.startsWith(".anamnesis/task-harnesses/")) return 3;
+  if (sourcePath.startsWith(".anamnesis/handoff/")) return 2;
+  if (sourcePath === "README.md") return 1;
+  return 0;
+}
+
+function freshnessPriority(freshness: ContextIndexFreshness): number {
+  if (freshness === "current") return 2;
+  if (freshness === "stale") return -8;
+  return 0;
 }
 
 function normalizeKind(kind: string | undefined): ContextIndexKind | undefined {

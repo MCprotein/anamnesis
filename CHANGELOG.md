@@ -19,6 +19,9 @@ could include breaking changes.
 - Extended `anamnesis context index/query` with `doc-page`, `doc-heading`, and
   `doc-ontology-ref` records so agents can retrieve exact document and
   ontology source pointers without increasing SessionStart context.
+- Added default-index freshness handling to `anamnesis context query`: missing
+  or stale `.anamnesis/context/index.jsonl` files are rebuilt in memory without
+  writing, and query summaries report freshness counts plus ranking status.
 
 ### Changed
 
@@ -28,6 +31,9 @@ could include breaking changes.
 - Moved benchmark visualization discovery into `docs/benchmark-evidence/` so
   README keeps concise evidence summaries and links instead of embedded chart
   galleries.
+- Hardened `context query` ranking with phrase matches, kind/source priorities,
+  and stale-source penalties so active ontology, handoff, task, and document
+  pointers rank ahead of colder context when lexical matches are comparable.
 
 ## [1.16.0] — 2026-07-09
 
