@@ -258,7 +258,7 @@ function handoffIssues(
       if (gitRefIssue) issues.push(gitRefIssue);
     }
 
-    const newest = newestHandoffArchive(projectRoot);
+    const newest = newestHandoffArchive(projectRoot, { eligibleOnly: true });
     if (newest && refs.length > 0 && !refs.includes(newest.rel)) {
       issues.push({
         severity: "warning",
@@ -464,7 +464,10 @@ function docGraphIssues(projectRoot: string): ContextDiagnosticIssue[] {
   }
 
   for (const link of graph.links) {
-    if (link.status === "missing" && !isOntologySourceLink(link)) {
+    if (
+      link.status === "missing" &&
+      !isOntologySourceLink(link, graph.catalog.ontology_reference_prefixes)
+    ) {
       issues.push(docLinkTargetMissingIssue(link));
     } else if (link.status === "missing-anchor") {
       issues.push(docLinkAnchorMissingIssue(link));
@@ -472,7 +475,7 @@ function docGraphIssues(projectRoot: string): ContextDiagnosticIssue[] {
   }
 
   for (const ref of graph.ontology_refs) {
-    if (ref.status === "missing") {
+    if (ref.status === "missing" && ref.reference_kind !== "mention") {
       issues.push(docOntologyRefMissingIssue(ref));
     }
   }
@@ -562,9 +565,14 @@ function docOntologyRefMissingIssue(
   };
 }
 
-function isOntologySourceLink(link: DocumentGraphLink): boolean {
+function isOntologySourceLink(
+  link: DocumentGraphLink,
+  allowedPrefixes: readonly string[],
+): boolean {
   const target = link.resolved_path ?? link.target;
-  return target === "system_graph.yaml" || target.includes(".anamnesis/ontology/");
+  return allowedPrefixes.some((prefix) =>
+    prefix.endsWith("/") ? target.startsWith(prefix) : target === prefix,
+  );
 }
 
 function duplicateEntityIssues(
@@ -827,19 +835,7 @@ function docFactClaims(projectRoot: string): DocFactClaim[] {
 }
 
 function diagnosticDocPaths(projectRoot: string): string[] {
-  const docs = new Set<string>();
-  for (const rootDoc of ["README.md", "CLAUDE.md"]) {
-    if (fs.existsSync(path.join(projectRoot, rootDoc))) {
-      docs.add(rootDoc);
-    }
-  }
-  for (const relPath of walkFiles(projectRoot, "docs")) {
-    if (!relPath.endsWith(".md")) continue;
-    if (relPath.startsWith("docs/benchmark-evidence/")) continue;
-    if (relPath.startsWith("docs/deprecated/")) continue;
-    docs.add(relPath);
-  }
-  return [...docs].sort();
+  return contextDocs({ projectRoot }).pages.map((page) => page.source_path);
 }
 
 function docPathReferences(projectRoot: string): DocPathReference[] {

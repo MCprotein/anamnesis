@@ -99,11 +99,11 @@ describe("newestHandoffArchive", () => {
     fs.rmSync(project, { recursive: true, force: true });
   });
 
-  function writeArchive(name: string, mtime: Date): void {
+  function writeArchive(name: string, mtime: Date, content = "content"): void {
     const dir = path.join(project, ".anamnesis", "handoff");
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, name);
-    fs.writeFileSync(file, "content", "utf8");
+    fs.writeFileSync(file, content, "utf8");
     fs.utimesSync(file, mtime, mtime);
   }
 
@@ -142,5 +142,25 @@ describe("newestHandoffArchive", () => {
       exclude: ["active.md", "draft.md"],
     });
     expect(newest?.rel).toBe(".anamnesis/handoff/2026-07-01T00-00-00Z.md");
+  });
+
+  it("can ignore newer closed, cold, deprecated, and superseded archives", () => {
+    const warm = new Date("2026-07-01T00:00:00.000Z");
+    const newer = new Date("2026-07-02T00:00:00.000Z");
+    writeArchive("warm.md", warm, "---\nretention_tier: warm\n---\n# Warm\n");
+    writeArchive("closed.md", newer, "---\nhandoff_status: closed\n---\n# Closed\n");
+    writeArchive("cold.md", newer, "---\nretention_tier: cold\n---\n# Cold\n");
+    writeArchive(
+      "superseded.md",
+      newer,
+      "---\nsuperseded_by: .anamnesis/handoff/warm.md\n---\n# Superseded\n",
+    );
+
+    expect(newestHandoffArchive(project)?.rel).toBe(
+      ".anamnesis/handoff/closed.md",
+    );
+    expect(
+      newestHandoffArchive(project, { eligibleOnly: true })?.rel,
+    ).toBe(".anamnesis/handoff/warm.md");
   });
 });

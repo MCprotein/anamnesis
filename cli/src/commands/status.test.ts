@@ -596,7 +596,7 @@ describe("status — continuity readiness", () => {
     expect(r.contextDiagnostics.summary.byCode["doc-link-anchor-missing"]).toBe(1);
     expect(r.summary.contextDiagnosticWarnings).toBe(1);
     expect(r.documents.summary).toMatchObject({
-      pages: 2,
+      pages: 3,
       brokenLinks: 1,
       missingOntologyRefs: 0,
     });

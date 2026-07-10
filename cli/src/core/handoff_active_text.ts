@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import YAML from "yaml";
 
 export function activeHandoffOpenTaskLines(text: string): string[] {
   const lines: string[] = [];
@@ -49,14 +50,19 @@ export interface NewestHandoffArchive {
 
 export function newestHandoffArchive(
   projectRoot: string,
-  opts?: { exclude?: readonly string[] },
+  opts?: { exclude?: readonly string[]; eligibleOnly?: boolean },
 ): NewestHandoffArchive | undefined {
-  const exclude = new Set(opts?.exclude ?? ["active.md"]);
+  const exclude = new Set(opts?.exclude ?? ["active.md", "draft.md"]);
   const handoffDir = path.join(projectRoot, ".anamnesis", "handoff");
   if (!fs.existsSync(handoffDir)) return undefined;
   return fs
     .readdirSync(handoffDir)
     .filter((name) => name.endsWith(".md") && !exclude.has(name))
+    .filter(
+      (name) =>
+        opts?.eligibleOnly !== true ||
+        handoffArchiveEligible(path.join(handoffDir, name)),
+    )
     .map((name) => {
       const rel = path.join(".anamnesis", "handoff", name);
       const abs = path.join(projectRoot, rel);
@@ -66,4 +72,33 @@ export function newestHandoffArchive(
       };
     })
     .sort((a, b) => b.mtimeMs - a.mtimeMs || a.rel.localeCompare(b.rel))[0];
+}
+
+function handoffArchiveEligible(absPath: string): boolean {
+  const text = fs.readFileSync(absPath, "utf8");
+  const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
+  if (!match) return true;
+  try {
+    const parsed = YAML.parse(match[1] ?? "") as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return true;
+    const value = parsed as Record<string, unknown>;
+    const status =
+      typeof value.handoff_status === "string"
+        ? value.handoff_status.toLowerCase()
+        : undefined;
+    const tier =
+      typeof value.retention_tier === "string"
+        ? value.retention_tier.toLowerCase()
+        : undefined;
+    return !(
+      status === "closed" ||
+      status === "deprecated" ||
+      status === "superseded" ||
+      tier === "cold" ||
+      tier === "deprecated" ||
+      typeof value.superseded_by === "string"
+    );
+  } catch {
+    return true;
+  }
 }

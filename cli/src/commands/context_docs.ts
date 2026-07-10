@@ -52,7 +52,8 @@ export interface DocumentGraphOntologyRef {
   stable_ref: string;
   line: number;
   target: string;
-  status: "ok" | "missing";
+  status: "ok" | "missing" | "optional-missing";
+  reference_kind: "mention" | "link" | "declared";
 }
 
 export interface ContextDocsCatalog {
@@ -110,7 +111,7 @@ interface PageParseResult {
   ontologyRefs: DocumentGraphOntologyRef[];
 }
 
-const DEFAULT_ROOTS = ["README.md", "docs", "specs"] as const;
+const DEFAULT_ROOTS = ["README.md", "CLAUDE.md", "docs", "specs"] as const;
 const DEFAULT_EXCLUDES = [
   "docs/deprecated",
   "docs/benchmark-evidence",
@@ -188,13 +189,24 @@ function loadCatalog(
   warnings: string[],
 ): ContextDocsCatalog {
   const relPath = normalizeRelPath(catalogPath ?? ".anamnesis/docs/catalog.yaml");
-  const absPath = path.join(projectRoot, relPath);
   const roots: string[] = [...DEFAULT_ROOTS];
   const excludes: string[] = [...DEFAULT_EXCLUDES];
   const canonical: string[] = [...DEFAULT_CANONICAL];
   const ontologyReferencePrefixes: string[] = [
     ...DEFAULT_ONTOLOGY_REFERENCE_PREFIXES,
   ];
+
+  if (!safeCatalogPath(relPath)) {
+    warnings.push(`ignored unsafe document catalog path '${catalogPath}'`);
+    return {
+      roots: uniqueStrings(roots),
+      excludes: uniqueStrings(excludes),
+      canonical: uniqueStrings(canonical),
+      ontology_reference_prefixes: uniqueStrings(ontologyReferencePrefixes),
+    };
+  }
+
+  const absPath = path.join(projectRoot, relPath);
 
   if (!fs.existsSync(absPath)) {
     return {
@@ -208,15 +220,27 @@ function loadCatalog(
   try {
     const parsed = YAML.parse(fs.readFileSync(absPath, "utf8")) as unknown;
     if (isObject(parsed)) {
-      roots.push(...stringArrayField(parsed, "roots"));
-      excludes.push(...stringArrayField(parsed, "excludes"));
+      roots.push(...catalogStringArrayField(parsed, "roots", relPath, warnings));
+      excludes.push(
+        ...catalogStringArrayField(parsed, "excludes", relPath, warnings),
+      );
       canonical.push(
-        ...stringArrayField(parsed, "canonical"),
-        ...stringArrayField(parsed, "canonical_docs"),
+        ...catalogStringArrayField(parsed, "canonical", relPath, warnings),
+        ...catalogStringArrayField(parsed, "canonical_docs", relPath, warnings),
       );
       ontologyReferencePrefixes.push(
-        ...stringArrayField(parsed, "ontology_reference_prefixes"),
-        ...stringArrayField(parsed, "allowed_ontology_reference_prefixes"),
+        ...catalogStringArrayField(
+          parsed,
+          "ontology_reference_prefixes",
+          relPath,
+          warnings,
+        ),
+        ...catalogStringArrayField(
+          parsed,
+          "allowed_ontology_reference_prefixes",
+          relPath,
+          warnings,
+        ),
       );
     }
   } catch (e) {
@@ -225,9 +249,9 @@ function loadCatalog(
 
   return {
     path: relPath,
-    roots: uniqueStrings(roots.map(normalizeRelPath)),
-    excludes: uniqueStrings(excludes.map(normalizeRelPath)),
-    canonical: uniqueStrings(canonical.map(normalizeRelPath)),
+    roots: normalizeCatalogPaths(roots, "root", relPath, warnings),
+    excludes: normalizeCatalogPaths(excludes, "exclude", relPath, warnings),
+    canonical: normalizeCatalogPaths(canonical, "canonical", relPath, warnings),
     ontology_reference_prefixes: normalizeOntologyReferencePrefixes(
       ontologyReferencePrefixes,
       relPath,
@@ -293,16 +317,17 @@ function parseMarkdownSource(
       const slug = slugify(heading.title);
       const occurrence = (slugCounts.get(slug) ?? 0) + 1;
       slugCounts.set(slug, occurrence);
+      const anchorSlug = occurrence === 1 ? slug : `${slug}-${occurrence - 1}`;
       const stableRef =
         occurrence === 1 ? `heading:${slug}` : `heading:${slug}:${occurrence}`;
-      headingSlugs.add(slug);
+      headingSlugs.add(anchorSlug);
       headings.push({
         source_path: source.relPath,
         stable_ref: stableRef,
         line: index + 1,
         depth: heading.depth,
         title: heading.title,
-        slug,
+        slug: anchorSlug,
       });
     }
 
@@ -491,7 +516,10 @@ function ontologyRefsFromLine(
       stable_ref: `line:${lineNumber}:ontology:${shortHash(target)}`,
       line: lineNumber,
       target,
-      status: safeProjectFileExists(projectRoot, target) ? "ok" : "missing",
+      status: ontologyReferenceStatus(projectRoot, target),
+      reference_kind: /anamnesis-ontology-ref\s*:/i.test(line)
+        ? "declared"
+        : "mention",
     });
   }
   return [...refs.values()];
@@ -519,7 +547,8 @@ function ontologyRefsFromLink(
       stable_ref: `line:${link.line}:ontology:${shortHash(target)}`,
       line: link.line,
       target,
-      status: safeProjectFileExists(projectRoot, target) ? "ok" : "missing",
+      status: ontologyReferenceStatus(projectRoot, target),
+      reference_kind: "link",
     },
   ];
 }
@@ -544,7 +573,9 @@ function summarize(input: {
     ).length,
     backlinks: input.backlinks.length,
     ontologyRefs: input.ontologyRefs.length,
-    missingOntologyRefs: input.ontologyRefs.filter((ref) => ref.status === "missing").length,
+    missingOntologyRefs: input.ontologyRefs.filter(
+      (ref) => ref.status === "missing" && ref.reference_kind !== "mention",
+    ).length,
     warnings: input.warnings.length,
   };
 }
@@ -659,6 +690,14 @@ function ontologyTargetAllowed(
   });
 }
 
+function ontologyReferenceStatus(
+  projectRoot: string,
+  target: string,
+): DocumentGraphOntologyRef["status"] {
+  if (safeProjectFileExists(projectRoot, target)) return "ok";
+  return target === "system_graph.yaml" ? "optional-missing" : "missing";
+}
+
 function shouldExcludeDocumentPath(
   relPath: string,
   excludes: readonly string[],
@@ -769,13 +808,51 @@ function safeDecodeURIComponent(value: string): string {
   }
 }
 
-function stringArrayField(
+function catalogStringArrayField(
   value: Record<string, unknown>,
   key: string,
+  catalogPath: string,
+  warnings: string[],
 ): string[] {
   const field = value[key];
-  if (!Array.isArray(field)) return [];
-  return field.filter((item): item is string => typeof item === "string");
+  if (field === undefined) return [];
+  if (!Array.isArray(field)) {
+    warnings.push(`${catalogPath}: '${key}' must be an array of strings`);
+    return [];
+  }
+  const strings = field.filter((item): item is string => typeof item === "string");
+  if (strings.length !== field.length) {
+    warnings.push(`${catalogPath}: '${key}' ignored non-string entries`);
+  }
+  return strings;
+}
+
+function safeCatalogPath(value: string): boolean {
+  const normalized = value.replace(/\\/g, "/");
+  return (
+    normalized !== "" &&
+    normalized !== ".." &&
+    !normalized.startsWith("../") &&
+    !path.posix.isAbsolute(normalized)
+  );
+}
+
+function normalizeCatalogPaths(
+  values: readonly string[],
+  kind: string,
+  catalogPath: string,
+  warnings: string[],
+): string[] {
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = normalizeRelPath(path.posix.normalize(value.replace(/\\/g, "/")));
+    if (!safeCatalogPath(normalized)) {
+      warnings.push(`${catalogPath}: ignored unsafe ${kind} path '${value}'`);
+      continue;
+    }
+    result.push(normalized);
+  }
+  return uniqueStrings(result);
 }
 
 function dedupeOntologyRefs(

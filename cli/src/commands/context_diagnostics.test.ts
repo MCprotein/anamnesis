@@ -503,6 +503,85 @@ describe("context diagnostics", () => {
     );
   });
 
+  it("warns only for explicit missing ontology references", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-ontology-refs-");
+    writeFile(
+      project,
+      ".anamnesis/docs/catalog.yaml",
+      [
+        "roots:",
+        "  - README.md",
+        "allowed_ontology_reference_prefixes:",
+        "  - knowledge/ontology/",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      "README.md",
+      [
+        "# Fixture",
+        "",
+        "A prose mention of `.anamnesis/ontology/missing.yaml` is not a declared dependency.",
+        "The optional system_graph.yaml is also not required merely because it is mentioned.",
+        "A custom ontology [link](knowledge/ontology/missing.yaml) is explicit.",
+        "",
+      ].join("\n"),
+    );
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.summary.byCode["doc-ontology-ref-missing"]).toBe(1);
+    expect(result.summary.byCode["doc-link-target-missing"]).toBe(0);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "doc-ontology-ref-missing",
+          related: ["knowledge/ontology/missing.yaml"],
+        }),
+      ]),
+    );
+  });
+
+  it("uses configured document roots for prose diagnostics", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-doc-roots-");
+    writeFile(project, "src/current.ts", "export {};\n");
+    writeFile(
+      project,
+      ".anamnesis/docs/catalog.yaml",
+      ["roots:", "  - handbook", "excludes:", "  - handbook/archive", ""].join(
+        "\n",
+      ),
+    );
+    writeFile(
+      project,
+      "handbook/current.md",
+      "# Current\n\nMissing source: `src/missing.ts`\n",
+    );
+    writeFile(
+      project,
+      "handbook/archive/old.md",
+      "# Old\n\nIgnored source: `src/archived.ts`\n",
+    );
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "doc-file-reference-missing",
+          source_path: "handbook/current.md",
+          related: ["src/missing.ts"],
+        }),
+      ]),
+    );
+    expect(result.issues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ related: ["src/archived.ts"] }),
+      ]),
+    );
+  });
+
   it("reports catalog configuration and stale context index state", () => {
     const project = tmpDir("anamnesis-context-diagnostics-catalog-index-");
     writeFile(project, "README.md", "# Fixture\n");

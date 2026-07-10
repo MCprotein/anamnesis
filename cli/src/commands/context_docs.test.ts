@@ -163,7 +163,11 @@ describe("context docs", () => {
 
   it("falls back to default roots when no catalog exists", () => {
     const project = tmpDir("anamnesis-context-docs-default-");
-    writeFile(project, "README.md", "# Root\n");
+    writeFile(
+      project,
+      "README.md",
+      "# Root\n\nOptional user graph: `system_graph.yaml`.\n",
+    );
     writeFile(project, "docs/guide.md", "# Guide\n");
     writeFile(project, "docs/deprecated/old.md", "# Old\n");
     writeFile(project, "docs/benchmark-evidence/README.md", "# Evidence\n");
@@ -171,7 +175,12 @@ describe("context docs", () => {
     const result = contextDocs({ projectRoot: project });
 
     expect(result.catalog.path).toBeUndefined();
-    expect(result.catalog.roots).toEqual(["README.md", "docs", "specs"]);
+    expect(result.catalog.roots).toEqual([
+      "README.md",
+      "CLAUDE.md",
+      "docs",
+      "specs",
+    ]);
     expect(result.catalog.ontology_reference_prefixes).toEqual([
       "system_graph.yaml",
       ".anamnesis/ontology/",
@@ -179,6 +188,13 @@ describe("context docs", () => {
     expect(result.pages.map((page) => page.source_path)).toEqual([
       "README.md",
       "docs/guide.md",
+    ]);
+    expect(result.summary.missingOntologyRefs).toBe(0);
+    expect(result.ontology_refs).toEqual([
+      expect.objectContaining({
+        target: "system_graph.yaml",
+        status: "optional-missing",
+      }),
     ]);
   });
 
@@ -229,6 +245,81 @@ describe("context docs", () => {
     ]);
     expect(result.warnings).toEqual([
       expect.stringContaining("ignored unsafe ontology reference prefix '../outside/'"),
+    ]);
+  });
+
+  it("resolves GitHub-style duplicate heading anchors", () => {
+    const project = tmpDir("anamnesis-context-docs-duplicate-headings-");
+    writeFile(
+      project,
+      "README.md",
+      [
+        "# Fixture",
+        "",
+        "[Second setup](docs/guide.md#setup-1)",
+        "[Missing third](docs/guide.md#setup-2)",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      "docs/guide.md",
+      ["# Guide", "", "## Setup", "", "## Setup", ""].join("\n"),
+    );
+
+    const result = contextDocs({ projectRoot: project });
+
+    expect(
+      result.links.find((link) => link.target.endsWith("#setup-1"))?.status,
+    ).toBe("ok");
+    expect(
+      result.links.find((link) => link.target.endsWith("#setup-2"))?.status,
+    ).toBe("missing-anchor");
+    expect(
+      result.headings
+        .filter((heading) => heading.title === "Setup")
+        .map((heading) => [heading.stable_ref, heading.slug]),
+    ).toEqual([
+      ["heading:setup", "setup"],
+      ["heading:setup:2", "setup-1"],
+    ]);
+  });
+
+  it("keeps catalog files and configured document paths inside the project", () => {
+    const project = tmpDir("anamnesis-context-docs-catalog-safety-");
+    writeFile(project, "README.md", "# Fixture\n");
+    writeFile(
+      project,
+      ".anamnesis/docs/catalog.yaml",
+      [
+        "roots: docs",
+        "excludes:",
+        "  - ../outside",
+        "  - 42",
+        "canonical_docs:",
+        "  - /absolute.md",
+        "",
+      ].join("\n"),
+    );
+
+    const configured = contextDocs({ projectRoot: project });
+    expect(configured.pages.map((page) => page.source_path)).toEqual(["README.md"]);
+    expect(configured.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("'roots' must be an array of strings"),
+        expect.stringContaining("'excludes' ignored non-string entries"),
+        expect.stringContaining("ignored unsafe exclude path '../outside'"),
+        expect.stringContaining("ignored unsafe canonical path '/absolute.md'"),
+      ]),
+    );
+
+    const escaped = contextDocs({
+      projectRoot: project,
+      catalogPath: "../outside.yaml",
+    });
+    expect(escaped.catalog.path).toBeUndefined();
+    expect(escaped.warnings).toEqual([
+      "ignored unsafe document catalog path '../outside.yaml'",
     ]);
   });
 });

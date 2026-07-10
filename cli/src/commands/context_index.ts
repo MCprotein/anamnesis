@@ -2,6 +2,10 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import YAML from "yaml";
+import {
+  activeHandoffOpenTaskLines,
+  extractArchiveRefs,
+} from "../core/handoff_active_text.js";
 import { contextDocs } from "./context_docs.js";
 
 export const CONTEXT_INDEX_SCHEMA_VERSION = "anamnesis.context_index.v1";
@@ -232,17 +236,36 @@ export function contextQuery(opts: ContextQueryOptions): ContextQueryResult {
   }
   const kind = normalizeKind(opts.kind);
   const indexPath = opts.indexPath ?? CONTEXT_INDEX_PATH;
-  const queryEntries = loadQueryEntries(projectRoot, indexPath, opts.indexPath !== undefined);
-  const entries = queryEntries.entries.filter((entry) =>
-    kind ? entry.kind === kind : true,
+  const queryEntries = loadQueryEntries(
+    projectRoot,
+    indexPath,
+    opts.indexPath !== undefined,
   );
   const terms = tokenize(query);
   const normalizedQuery = searchable(query).trim();
   const historicalIntent = isHistoricalQuery(terms);
+  const diagnosticIntent = isDiagnosticQuery(terms);
+  const entries = queryEntries.entries.filter((entry) => {
+    if (kind && entry.kind !== kind) return false;
+    if (
+      !historicalIntent &&
+      entry.kind === "handoff-task" &&
+      entry.freshness === "stale"
+    ) {
+      return false;
+    }
+    return true;
+  });
   const matches = entries
     .map((entry) => ({
       entry,
-      score: scoreEntry(entry, terms, normalizedQuery, historicalIntent),
+      score: scoreEntry(
+        entry,
+        terms,
+        normalizedQuery,
+        historicalIntent,
+        diagnosticIntent,
+      ),
     }))
     .filter((match) => match.score > 0)
     .sort((a, b) => {
@@ -357,7 +380,7 @@ export function contextIndexFreshness(
   projectRoot: string,
   entries: readonly ContextIndexEntry[],
 ): ContextIndexFreshnessReport {
-  const changedSources: string[] = [];
+  const changedSources = new Set<string>();
   const missingSources: string[] = [];
   const indexedSources = uniqueStrings(entries.map((entry) => entry.source_path));
   const indexedSourceSet = new Set(indexedSources);
@@ -370,6 +393,9 @@ export function contextIndexFreshness(
     }
     mtimes.add(entry.source_mtime);
   }
+  const currentEntries = contextIndex({ projectRoot }).entries;
+  const indexedSignatures = entrySignaturesBySource(entries);
+  const currentSignatures = entrySignaturesBySource(currentEntries);
 
   for (const sourcePath of indexedSources) {
     const absPath = path.join(projectRoot, sourcePath);
@@ -379,7 +405,11 @@ export function contextIndexFreshness(
     }
     const currentMtime = fs.statSync(absPath).mtime.toISOString();
     if (!sourceMtimes.get(sourcePath)?.has(currentMtime)) {
-      changedSources.push(sourcePath);
+      changedSources.add(sourcePath);
+      continue;
+    }
+    if (indexedSignatures.get(sourcePath) !== currentSignatures.get(sourcePath)) {
+      changedSources.add(sourcePath);
     }
   }
 
@@ -394,11 +424,28 @@ export function contextIndexFreshness(
   }
 
   return {
-    changedSources: changedSources.sort(),
+    changedSources: [...changedSources].sort(),
     missingSources: missingSources.sort(),
     newSources: newSources.sort(),
     missingGeneratedKinds,
   };
+}
+
+function entrySignaturesBySource(
+  entries: readonly ContextIndexEntry[],
+): Map<string, string> {
+  const bySource = new Map<string, string[]>();
+  for (const entry of entries) {
+    const signatures = bySource.get(entry.source_path) ?? [];
+    signatures.push(`${entry.id}:${entry.source_hash}`);
+    bySource.set(entry.source_path, signatures);
+  }
+  return new Map(
+    [...bySource.entries()].map(([sourcePath, signatures]) => [
+      sourcePath,
+      signatures.sort().join("\n"),
+    ]),
+  );
 }
 
 function currentContextSourceState(projectRoot: string): CurrentContextSourceState {
@@ -483,6 +530,9 @@ function discoverContextSources(projectRoot: string): ContextSource[] {
   }
   for (const relPath of walkFiles(projectRoot, ".anamnesis/task-harnesses")) {
     if (relPath.endsWith(".yaml") || relPath.endsWith(".yml")) add(relPath);
+  }
+  for (const relPath of walkFiles(projectRoot, ".anamnesis/handoff")) {
+    if (relPath.endsWith(".md")) add(relPath);
   }
 
   const activeHandoff = ".anamnesis/handoff/active.md";
@@ -1014,13 +1064,15 @@ function shouldExcludePath(relPath: string): boolean {
     parts.includes("venv") ||
     parts.includes("__pycache__") ||
     relPath.startsWith(".anamnesis/backups/") ||
-    relPath.startsWith(".anamnesis/overrides/")
+    relPath.startsWith(".anamnesis/overrides/") ||
+    relPath.startsWith(".anamnesis/handoff/drafts/")
   ) {
     return true;
   }
   const name = parts.at(-1) ?? relPath;
   return (
     name === ".env" ||
+    name === "draft.md" ||
     name.startsWith(".env.") ||
     name.endsWith(".pem") ||
     name.endsWith(".key") ||
@@ -1069,6 +1121,7 @@ function scoreEntry(
   terms: readonly string[],
   normalizedQuery: string,
   historicalIntent: boolean,
+  diagnosticIntent: boolean,
 ): number {
   const title = searchable(entry.title);
   const tags = searchable(entry.tags.join(" "));
@@ -1094,7 +1147,8 @@ function scoreEntry(
     lexicalScore +
       kindPriority(entry.kind) +
       sourcePriority(entry.source_path) +
-      freshnessPriority(entry, historicalIntent),
+      freshnessPriority(entry, historicalIntent) +
+      diagnosticPriority(entry, diagnosticIntent),
   );
 }
 
@@ -1160,6 +1214,31 @@ function isHistoricalQuery(terms: readonly string[]): boolean {
     "종료",
   ]);
   return terms.some((term) => signals.has(term));
+}
+
+function isDiagnosticQuery(terms: readonly string[]): boolean {
+  const signals = new Set([
+    "broken",
+    "invalid",
+    "missing",
+    "stale",
+    "warning",
+    "깨진",
+    "누락",
+    "없음",
+    "잘못된",
+  ]);
+  return terms.some((term) => signals.has(term));
+}
+
+function diagnosticPriority(
+  entry: ContextIndexEntry,
+  diagnosticIntent: boolean,
+): number {
+  if (entry.kind !== "doc-ontology-ref" || !entry.tags.includes("missing")) {
+    return 0;
+  }
+  return diagnosticIntent ? 2 : -15;
 }
 
 function normalizeKind(kind: string | undefined): ContextIndexKind | undefined {
@@ -1246,29 +1325,46 @@ function scopePathForSource(relPath: string): string {
 
 function freshnessForSource(ctx: SourceContext): ContextIndexFreshness {
   if (ctx.source.relPath === ".anamnesis/handoff/active.md") {
-    const missing = handoffArchiveRefs(ctx.content).filter(
+    const openText = activeHandoffOpenTaskLines(ctx.content).join("\n");
+    const missing = extractArchiveRefs(openText).filter(
       (archive) => !fs.existsSync(path.join(ctx.projectRoot, archive)),
     );
     return missing.length > 0 ? "stale" : "current";
   }
   if (ctx.source.relPath.startsWith(".anamnesis/handoff/")) {
-    return handoffLifecycleInactive(ctx.content) ? "stale" : "current";
+    const activeReferenced = activeHandoffArchiveRefs(ctx.projectRoot).has(
+      ctx.source.relPath,
+    );
+    return handoffLifecycleInactive(ctx.content, activeReferenced)
+      ? "stale"
+      : "current";
   }
   return "current";
 }
 
-function handoffLifecycleInactive(content: string): boolean {
+function handoffLifecycleInactive(
+  content: string,
+  activeReferenced: boolean,
+): boolean {
   const lifecycle = handoffLifecycleMetadata(content);
   const status = lifecycle.handoffStatus?.toLowerCase();
   const tier = lifecycle.retentionTier?.toLowerCase();
   return (
-    status === "closed" ||
     status === "deprecated" ||
     status === "superseded" ||
-    tier === "cold" ||
+    (!activeReferenced && (status === "closed" || tier === "cold")) ||
     tier === "deprecated" ||
     lifecycle.supersededBy !== undefined
   );
+}
+
+function activeHandoffArchiveRefs(projectRoot: string): Set<string> {
+  const activePath = path.join(projectRoot, ".anamnesis/handoff/active.md");
+  if (!fs.existsSync(activePath)) return new Set();
+  const openText = activeHandoffOpenTaskLines(
+    fs.readFileSync(activePath, "utf8"),
+  ).join("\n");
+  return new Set(extractArchiveRefs(openText).map(normalizeRelPath));
 }
 
 function handoffLifecycleTags(ctx: SourceContext): string[] {

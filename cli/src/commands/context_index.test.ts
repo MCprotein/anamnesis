@@ -411,8 +411,8 @@ describe("context index", () => {
     expect(
       current.matches.find(
         (match) => match.entry.source_path === ".anamnesis/handoff/closed.md",
-      )?.entry.freshness,
-    ).toBe("stale");
+      ),
+    ).toBeUndefined();
 
     const historical = contextQuery({
       projectRoot: project,
@@ -426,6 +426,112 @@ describe("context index", () => {
     });
     expect(historical.matches[0]!.entry.tags).toEqual(
       expect.arrayContaining(["closed", "cold"]),
+    );
+  });
+
+  it("retrieves unreferenced cold handoff history only when history is explicit", () => {
+    const project = setupContextProject();
+    writeFile(
+      project,
+      ".anamnesis/handoff/unreferenced-cold.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "retention_tier: cold",
+        "---",
+        "# Retired invoice queue decision",
+        "",
+        "## Decisions",
+        "The historical invoice queue used the retired comet transport.",
+        "",
+      ].join("\n"),
+    );
+
+    const ordinary = contextQuery({
+      projectRoot: project,
+      query: "invoice queue transport decision",
+      limit: 5,
+    });
+    const ordinaryCold = ordinary.matches.find(
+      (match) =>
+        match.entry.source_path ===
+        ".anamnesis/handoff/unreferenced-cold.md",
+    );
+    expect(ordinaryCold).toBeUndefined();
+    expect(ordinary.matches[0]?.entry.source_path).not.toBe(
+      ".anamnesis/handoff/unreferenced-cold.md",
+    );
+
+    const historical = contextQuery({
+      projectRoot: project,
+      query: "historical retired invoice queue comet transport decision",
+      limit: 5,
+    });
+    expect(historical.matches[0]!.entry).toMatchObject({
+      source_path: ".anamnesis/handoff/unreferenced-cold.md",
+      freshness: "stale",
+    });
+  });
+
+  it("keeps active-referenced closed handoffs current until the task is removed", () => {
+    const project = setupContextProject();
+    writeFile(
+      project,
+      ".anamnesis/handoff/2026-06-19T00-00-00Z.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "retention_tier: cold",
+        "---",
+        "# Temporarily closed active task",
+        "",
+      ].join("\n"),
+    );
+
+    const indexed = contextIndex({ projectRoot: project });
+    expect(
+      indexed.entries.find(
+        (entry) =>
+          entry.source_path ===
+          ".anamnesis/handoff/2026-06-19T00-00-00Z.md",
+      )?.freshness,
+    ).toBe("current");
+  });
+
+  it("demotes missing ontology references unless diagnostics are explicit", () => {
+    const project = setupContextProject();
+    writeFile(
+      project,
+      "docs/missing-ref.md",
+      [
+        "# Payment worker evidence",
+        "",
+        "The payment worker source is [missing](../.anamnesis/ontology/missing.yaml).",
+        "",
+      ].join("\n"),
+    );
+
+    const ordinary = contextQuery({
+      projectRoot: project,
+      query: "payment worker ontology source",
+      limit: 5,
+    });
+    expect(ordinary.matches[0]?.entry.title).not.toBe(
+      "Ontology ref .anamnesis/ontology/missing.yaml",
+    );
+
+    const diagnostic = contextQuery({
+      projectRoot: project,
+      query: "missing payment worker ontology source",
+      limit: 5,
+    });
+    expect(diagnostic.matches.slice(0, 3).map((match) => match.entry)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "doc-ontology-ref",
+          title: "Ontology ref .anamnesis/ontology/missing.yaml",
+        }),
+      ]),
     );
   });
 
@@ -512,6 +618,34 @@ describe("context index", () => {
       source_path: "docs/ROADMAP.md",
       stable_ref: "heading:fresh-query-target",
       title: "Fresh Query Target",
+    });
+  });
+
+  it("detects source content changes even when mtime is preserved", () => {
+    const project = setupContextProject();
+    contextIndex({ projectRoot: project, write: true });
+    const roadmapPath = path.join(project, "docs", "ROADMAP.md");
+    const originalStat = fs.statSync(roadmapPath);
+    const original = fs.readFileSync(roadmapPath, "utf8");
+    fs.writeFileSync(
+      roadmapPath,
+      original.replace("Ontology source management", "Preserved Mtime Target"),
+      "utf8",
+    );
+    fs.utimesSync(roadmapPath, originalStat.atime, originalStat.mtime);
+
+    const result = contextQuery({
+      projectRoot: project,
+      query: "preserved mtime target",
+      kind: "doc-heading",
+      limit: 1,
+    });
+
+    expect(result.summary.indexStatus).toBe("rebuilt-stale");
+    expect(result.summary.changedSources).toBeGreaterThan(0);
+    expect(result.matches[0]!.entry).toMatchObject({
+      source_path: "docs/ROADMAP.md",
+      stable_ref: "heading:preserved-mtime-target",
     });
   });
 

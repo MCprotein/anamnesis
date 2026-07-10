@@ -868,7 +868,7 @@ function validateActiveHandoff(projectRoot: string): ContinuityCheck {
     };
   }
 
-  const newest = newestHandoffArchive(projectRoot);
+  const newest = newestHandoffArchive(projectRoot, { eligibleOnly: true });
   if (newest !== undefined && !archiveRefs.includes(newest.rel)) {
     return {
       id: "active-handoff",
