@@ -92,6 +92,12 @@ import {
   type SurfaceConflictResolution,
 } from "../core/adoption.js";
 import {
+  collectOntologyGaps,
+  recommendOntologyLifecycleAction,
+  type OntologyLifecycleRecommendation,
+} from "../core/ontology-gaps.js";
+import { makeBuiltinIntrospectorRegistry } from "../introspectors/index.js";
+import {
   migrateAgentfile,
   MigrateError,
   type AgentfileMigration,
@@ -134,6 +140,8 @@ export interface UpdateResult {
   evidencePath?: string;
   /** Existing project-specific agent surfaces preserved before writing ours. */
   surfaceConflicts: SurfaceConflictResolution[];
+  /** Single ontology lifecycle follow-up implied by the post-apply project state. */
+  ontologyRecommendation: OntologyLifecycleRecommendation;
 }
 
 export class UpdateError extends Error {
@@ -720,6 +728,17 @@ export function update(opts: UpdateOptions): UpdateResult {
     );
   }
 
+  const ontologyLibrary = new Map(fragments);
+  if (base) ontologyLibrary.set(base.id, base);
+  const ontologyRecommendation = recommendOntologyLifecycleAction(
+    collectOntologyGaps({
+      projectRoot,
+      scopes: effectiveScopes(updatedAgentfile),
+      library: ontologyLibrary,
+      registry: makeBuiltinIntrospectorRegistry(),
+    }),
+  );
+
   return {
     agentfile: updatedAgentfile,
     changes,
@@ -733,6 +752,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     codexHookRegistrations,
     evidencePath,
     surfaceConflicts,
+    ontologyRecommendation,
   };
 }
 

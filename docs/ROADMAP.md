@@ -1756,6 +1756,9 @@ Current baseline on `release/v1.17`:
   memory without writing; custom `--index` paths remain explicit.
 - `context diagnose`, `status`, and `doctor` surface broken Markdown links,
   missing heading anchors, and stale ontology source refs.
+- `status`, `doctor`, and `apply` now share a single ontology lifecycle
+  recommendation that points users to the next existing action: managed
+  `apply`, deterministic `ontology bootstrap`, or reviewed `/ontology-enrich`.
 - Dogfood state for this repo is clean: `context docs` currently reports
   `broken=0` and `ontology refs missing=0`.
 - Claude Code and Codex can receive native hook reminders when executable
@@ -1766,8 +1769,9 @@ Current baseline on `release/v1.17`:
   evidence rather than guaranteed SessionStart hook execution.
 - v1.16 already made `anamnesis`, `anamnesis --help`, and the common command
   reporters concise. `anamnesis --help --all` remains the maintainer escape
-  hatch for the full catalog; new v1.17 workflows should improve guidance
-  inside the existing surfaces rather than create more commands.
+  hatch for the full catalog; v1.17 narrows default help further so advanced
+  namespaces stay available through diagnostics, namespace help, or
+  `--help --all` rather than the ordinary user path.
 
 Why this still helps when the agent controls the work:
 
@@ -1793,8 +1797,8 @@ indexed:
 | 6 | **`context docs` summary** | baseline implemented on `release/v1.17` | Keep `anamnesis context docs` read-only: summarize document roots, page counts, broken links, ontology-linked pages, and candidate issues. Baseline provides human and `--json` output. Defer any regenerable write path until a concrete consumer exists and it is clearly cache-like rather than user-facing doc generation. |
 | 7 | **Diagnostics and repair hints** | partial on `release/v1.17` | Keep deterministic hard facts in `context diagnose`, `status`, and `doctor`: broken internal doc links, missing heading anchors, stale ontology source refs, stale handoff/context index state, and missing local artifact paths. Missing canonical docs and doc-heavy workspace guidance must stay `info` at most unless a configured catalog makes the expectation explicit. Keep semantic stale-claim judgment in the existing `doc-freshness-review` skill. |
 | 8 | **Benchmark and fixture coverage** | baseline implemented on `release/v1.17` | Added `anamnesis benchmark retrieval`, a deterministic public-safe fixture suite for `doc-page`, `doc-heading`, and `doc-ontology-ref` source-pointer ranking. Current generated evidence records top-1 `6/6`, top-3 `6/6`, MRR `1.000`, compact SessionStart `133/800` estimated tokens, hallucinated project facts `0`, and `.bootstrap.yaml` edit attempts `0`, with JSON/Markdown/SVG artifacts under `docs/benchmark-evidence/retrieval-source-pointers/`. This proves pointer ranking quality; required source-read behavior on context-critical tasks remains covered by model-dependent task benchmarks. |
-| 9 | **Ontology refresh pipeline without new commands** | planned | Make ontology freshness feel automatic while preserving the existing command surface. `status` / `doctor` should detect stale Layer A bootstrap facts, missing or stale Layer B enrichment, invalid ontology source refs, and outdated context indexes. `apply` may print the next recommended ontology action after managed surfaces change, but semantic writes stay review-led through `ontology bootstrap` plus `/ontology-enrich`. Do not add `ontology refresh`, `ontology sync`, or a wiki command. |
-| 10 | **Progressive command disclosure hardening** | planned | Keep ordinary users on the short path: `init`, `apply`, `status`, `doctor`, and `upgrade`. Advanced namespaces (`context`, `handoff`, `benchmark`, `release`, `migrate`, `promote`, `ontology`) remain available for agents, maintainers, and scripts, but default guidance should present them only when the current diagnostic or workflow evidence calls for them. |
+| 9 | **Ontology refresh pipeline without new commands** | baseline implemented on `release/v1.17` | Make ontology freshness feel automatic while preserving the existing command surface. `status` / `doctor` detect stale Layer A bootstrap facts and missing Layer B enrichment through ontology gaps; document/context diagnostics cover invalid ontology source refs and stale context indexes. `apply`, `status`, and `doctor` now print one shared next recommended ontology action, while semantic writes stay review-led through `ontology bootstrap` plus `/ontology-enrich`. No `ontology refresh`, `ontology sync`, or wiki command was added. |
+| 10 | **Progressive command disclosure hardening** | baseline implemented on `release/v1.17` | Keep ordinary users on the short path: `init`, `apply`, `status`, `doctor`, and `upgrade`. Advanced namespaces (`context`, `handoff`, `benchmark`, `release`, `migrate`, `promote`, `ontology`) remain available for agents, maintainers, and scripts, but compact `--help` now exposes only the guided workflow path plus a pointer to diagnostics and `--help --all`. |
 
 Implementation notes:
 

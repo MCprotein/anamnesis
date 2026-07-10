@@ -30,6 +30,10 @@ could include breaking changes.
   source-pointer benchmark for `doc-page`, `doc-heading`, and
   `doc-ontology-ref` ranking with JSON, Markdown, SVG, and prompt-gate
   evidence integration.
+- Added a shared ontology lifecycle recommendation to `status`, `doctor`, and
+  `apply` so existing commands point to the next managed `apply`,
+  deterministic `ontology bootstrap`, or reviewed `/ontology-enrich` step
+  without adding another refresh command.
 
 ### Changed
 
@@ -45,6 +49,9 @@ could include breaking changes.
 - Updated `load-context`, `ontology-enrich`, `doc-freshness-review`, and
   `context subagent-preamble` guidance to treat query snippets as pointers,
   not authority, preserving the ontology as the durable memory layer.
+- Narrowed compact `anamnesis --help` to the ordinary short path plus guided
+  upgrade planning; advanced namespaces remain available through diagnostics,
+  namespace help, and `--help --all`.
 
 ## [1.16.0] — 2026-07-09
 

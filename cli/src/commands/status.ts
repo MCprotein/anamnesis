@@ -49,6 +49,8 @@ import { sha256 } from "../util/hash.js";
 import { CLAUDE_MD_REGION_ID } from "../adapters/claude-code/claude_md.js";
 import {
   collectOntologyGaps,
+  recommendOntologyLifecycleAction,
+  type OntologyLifecycleRecommendation,
   type OntologyGapStatus,
 } from "../core/ontology-gaps.js";
 import { makeBuiltinIntrospectorRegistry } from "../introspectors/index.js";
@@ -212,6 +214,8 @@ export interface StatusResult {
   codexHooks: CodexHookOwnershipReport;
   /** Ontology lifecycle gaps across static, bootstrap, and enriched layers. */
   ontology: OntologyGapStatus;
+  /** Single next action for keeping ontology lifecycle current without adding commands. */
+  ontologyRecommendation: OntologyLifecycleRecommendation;
   /** Durable runtime evidence emitted by append-style checks. */
   evidence: RuntimeEvidenceSummary;
   /** Fragment dependency graph health across effective scopes. */
@@ -519,6 +523,7 @@ export function status(opts: StatusOptions): StatusResult {
     library,
     registry: makeBuiltinIntrospectorRegistry(),
   });
+  const ontologyRecommendation = recommendOntologyLifecycleAction(ontology);
   const codexHooks = analyzeProjectCodexHookOwnership(projectRoot);
   const evidence = readEvidenceSummary(projectRoot, {
     now: (opts.now ?? (() => new Date()))(),
@@ -587,6 +592,7 @@ export function status(opts: StatusOptions): StatusResult {
     continuity,
     codexHooks,
     ontology,
+    ontologyRecommendation,
     evidence,
     dependencies,
     contextDiagnostics: contextDiagnosticStatus,

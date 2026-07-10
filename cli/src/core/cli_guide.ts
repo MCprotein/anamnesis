@@ -114,25 +114,16 @@ export function formatCompactHelp(
         description: "Check or update the installed anamnesis CLI.",
       },
     ]),
-    ...ui.section("Workflow Namespaces"),
+    ...ui.section("Guided Workflows"),
     ...ui.commandRows([
       {
         command: "upgrade plan",
         description: "Read-only package and project apply plan with choices.",
       },
-      {
-        command: "context ...",
-        description: "Index, query, diagnose, and resume project context.",
-      },
-      {
-        command: "handoff ...",
-        description: "Draft, close, or deprecate handoff archives.",
-      },
-      {
-        command: "benchmark ...",
-        description: "Run context and upgrade evidence workflows.",
-      },
     ]),
+    ui.note(
+      "Advanced namespaces such as context, handoff, benchmark, release, migrate, promote, and ontology stay available through diagnostics or `--help --all`.",
+    ),
     ...ui.section("Compatibility"),
     ...ui.commandRows([
       {

@@ -29,7 +29,11 @@ describe("formatGettingStartedGuide", () => {
     const output = formatCompactHelp("1.2.3", { color: false, width: 100 });
 
     expect(output).toContain("Core Commands");
-    expect(output).toContain("Workflow Namespaces");
+    expect(output).toContain("Guided Workflows");
+    expect(output).toContain("Advanced namespaces");
+    expect(output).not.toContain("context ...");
+    expect(output).not.toContain("handoff ...");
+    expect(output).not.toContain("benchmark ...");
     expect(output).toContain("update");
     expect(output).toContain("Deprecated compatibility command for apply");
     expect(output).toContain("anamnesis --help --all");
@@ -49,11 +53,9 @@ describe("formatGettingStartedGuide", () => {
         doctor   Diagnose install integrity and adapter wiring.
         upgrade  Check or update the installed anamnesis CLI.
 
-      Workflow Namespaces
-        upgrade plan   Read-only package and project apply plan with choices.
-        context ...    Index, query, diagnose, and resume project context.
-        handoff ...    Draft, close, or deprecate handoff archives.
-        benchmark ...  Run context and upgrade evidence workflows.
+      Guided Workflows
+        upgrade plan  Read-only package and project apply plan with choices.
+        Advanced namespaces such as context, handoff, benchmark, release, migrate, promote, and ontology stay available through diagnostics or \`--help --all\`.
 
       Compatibility
         update  Deprecated compatibility command for apply.

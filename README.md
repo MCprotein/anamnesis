@@ -447,7 +447,7 @@ used for deterministic README score claims.
 | **v1.14** | Codex native skill parity and adapter surface evidence | shipped 2026-07-09 |
 | **v1.15** | Subagent context contract and injection-success evidence | shipped 2026-07-09 |
 | **v1.16** | Command UX consolidation, grouped help, and terminal UI polish | shipped 2026-07-09 |
-| **v1.17** | Ontology source management and document graph diagnostics | planned |
+| **v1.17** | Ontology source management and document graph diagnostics | in progress on `release/v1.17` |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).

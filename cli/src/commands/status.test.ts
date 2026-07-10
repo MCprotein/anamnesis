@@ -830,6 +830,13 @@ describe("status — ontology gap report", () => {
     expect(missingGap?.next).toContain(
       ".anamnesis/ontology/prisma.enriched.yaml",
     );
+    expect(r.ontologyRecommendation).toEqual(
+      expect.objectContaining({
+        action: "bootstrap",
+        command: "anamnesis ontology bootstrap --dry-run",
+        targets: [".anamnesis/ontology/prisma.bootstrap.yaml"],
+      }),
+    );
   });
 
   it("reports missing semantic enrichment after bootstrap facts exist", () => {
@@ -858,6 +865,13 @@ describe("status — ontology gap report", () => {
       ".anamnesis/ontology/prisma.enriched.yaml",
     );
     expect(enrichmentGap?.next).toContain("open questions");
+    expect(r.ontologyRecommendation).toEqual(
+      expect.objectContaining({
+        action: "enrich",
+        command: "/ontology-enrich",
+        targets: [".anamnesis/ontology/prisma.enriched.yaml"],
+      }),
+    );
   });
 
   it("reports stale bootstrap facts when source files change", () => {
@@ -892,6 +906,13 @@ describe("status — ontology gap report", () => {
     expect(staleGap?.next).toContain("/ontology-enrich");
     expect(staleGap?.next).toContain(
       ".anamnesis/ontology/prisma.enriched.yaml",
+    );
+    expect(r.ontologyRecommendation).toEqual(
+      expect.objectContaining({
+        action: "bootstrap",
+        command: "anamnesis ontology bootstrap --dry-run",
+        targets: [".anamnesis/ontology/prisma.bootstrap.yaml"],
+      }),
     );
   });
 });

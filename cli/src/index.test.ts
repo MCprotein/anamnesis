@@ -61,7 +61,11 @@ describe("CLI entrypoint", () => {
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("Usage:");
     expect(result.stdout).toContain("Core Commands");
-    expect(result.stdout).toContain("Workflow Namespaces");
+    expect(result.stdout).toContain("Guided Workflows");
+    expect(result.stdout).toContain("Advanced namespaces");
+    expect(result.stdout).not.toContain("context ...");
+    expect(result.stdout).not.toContain("handoff ...");
+    expect(result.stdout).not.toContain("benchmark ...");
     expect(result.stdout).toContain("apply");
     expect(result.stdout).toContain("Deprecated compatibility command for apply");
     expect(result.stdout).not.toContain("benchmark task-series");
@@ -262,5 +266,52 @@ describe("CLI entrypoint", () => {
     expect(result.stdout).toContain("preview");
     expect(result.stdout).toContain("use `anamnesis apply` to write");
     expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(false);
+  });
+
+  it("prints the next ontology lifecycle action after apply writes managed surfaces", () => {
+    const project = fs.mkdtempSync(
+      path.join(os.tmpdir(), "anamnesis-cli-apply-ontology-"),
+    );
+    fs.mkdirSync(path.join(project, "prisma"), { recursive: true });
+    fs.writeFileSync(path.join(project, "prisma", "schema.prisma"), "");
+    writeFile(
+      project,
+      "Agentfile",
+      `version: 1
+project:
+  name: fixture
+tools:
+  - claude-code
+fragments:
+  - id: base
+    version: 1
+  - id: prisma
+    version: 1
+`,
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        indexPath,
+        "apply",
+        "--project-root",
+        project,
+        "--library",
+        repoRoot,
+      ],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("ontology next");
+    expect(result.stdout).toContain("anamnesis ontology bootstrap --dry-run");
+    expect(result.stdout).toContain(".anamnesis/ontology/prisma.bootstrap.yaml");
   });
 });

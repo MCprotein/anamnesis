@@ -49,6 +49,7 @@ import {
 } from "./context_diagnostics.js";
 import { status, type ContinuityCheck, type StatusResult } from "./status.js";
 import type { SessionContextBudgetResult } from "./session_context_budget.js";
+import type { OntologyLifecycleRecommendation } from "../core/ontology-gaps.js";
 import {
   analyzeExecutableSecurity,
   type ExecutableSecurityIssue,
@@ -131,6 +132,7 @@ export interface DoctorResult {
   markdown: string;
   appendedPath?: string;
   evidencePath?: string;
+  ontologyRecommendation?: OntologyLifecycleRecommendation;
 }
 
 export interface DoctorOptions {
@@ -165,6 +167,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
 
   const issues: DoctorIssue[] = [];
   const agentfile = readAgentfile(projectRoot);
+  let ontologyRecommendation: OntologyLifecycleRecommendation | undefined;
 
   let manifest: Manifest = emptyManifest();
   let manifestReadable = true;
@@ -198,6 +201,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   if (manifestReadable) {
     const stableNow = () => new Date(generatedAt);
     const st = status({ projectRoot, libraryRoot, now: stableNow });
+    ontologyRecommendation = st.ontologyRecommendation;
     addStatusIssues(st.entries, st.fragments, st.partialAdoptions, issues);
     addDependencyIssues(st.dependencies.problems, issues);
     addContinuityIssues(st.continuity.checks, issues);
@@ -281,6 +285,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
     markdown,
     appendedPath,
     evidencePath,
+    ontologyRecommendation,
   };
 }
 

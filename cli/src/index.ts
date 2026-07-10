@@ -189,6 +189,7 @@ import {
   detectWorkspaceProfile,
   formatWorkspaceProfileLines,
 } from "./core/workspace_profile.js";
+import type { OntologyLifecycleRecommendation } from "./core/ontology-gaps.js";
 import type { ToolName } from "./core/agentfile.js";
 
 const VERSION = PACKAGE_VERSION;
@@ -1104,6 +1105,10 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   console.log(
     `  ontology gaps: ${ontology.summary.warnings} warning(s), ${ontology.summary.info} info`,
   );
+  printOntologyRecommendation(ui, result.ontologyRecommendation, {
+    label: "ontology next",
+    includeOk: true,
+  });
   for (const gap of ontology.gaps.filter((g) => g.severity === "warning")) {
     const scope = gap.scopePath === "." ? "" : ` [${gap.scopePath}]`;
     const target = gap.target ? ` ${gap.target}` : "";
@@ -1184,6 +1189,33 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   }
 }
 
+function printOntologyRecommendation(
+  ui: ReturnType<typeof createTui>,
+  recommendation: OntologyLifecycleRecommendation | undefined,
+  opts: { label: string; includeOk?: boolean },
+): void {
+  if (!recommendation) return;
+  if (recommendation.action === "none") {
+    if (opts.includeOk === true) {
+      console.log(`  ${opts.label}: ok - ${recommendation.reason}`);
+    }
+    return;
+  }
+
+  const command = recommendation.command
+    ? `${ui.command(recommendation.command)} - `
+    : "";
+  console.log(`  ${opts.label}: ${command}${recommendation.reason}`);
+  for (const target of recommendation.targets.slice(0, 3)) {
+    console.log(`    ${target}`);
+  }
+  if (recommendation.targets.length > 3) {
+    console.log(
+      `    ... ${recommendation.targets.length - 3} more ontology target(s)`,
+    );
+  }
+}
+
 function reportDoctor(result: DoctorResult): void {
   const ui = createTui();
   const verdict = result.ok ? "ok" : "issues found";
@@ -1198,6 +1230,9 @@ function reportDoctor(result: DoctorResult): void {
       },
     ]),
   ]);
+  printOntologyRecommendation(ui, result.ontologyRecommendation, {
+    label: "ontology next",
+  });
   if (result.issues.length === 0) {
     console.log(ui.note("installation integrity checks passed", "success"));
     for (const line of formatGenerationBoundaryLines(
@@ -2205,6 +2240,14 @@ function reportUpdate(
     console.log(
       `  ${label}: ${conflict.path} -> ${conflict.preservedAs}`,
     );
+  }
+  const showOntologyRecommendation =
+    result.ontologyRecommendation.action !== "none" &&
+    (result.writtenToDisk || result.ontologyRecommendation.action !== "apply");
+  if (showOntologyRecommendation) {
+    printOntologyRecommendation(ui, result.ontologyRecommendation, {
+      label: result.writtenToDisk ? "ontology next" : "after apply",
+    });
   }
   if (result.writtenToDisk) {
     if (result.backedUpFiles && result.backedUpFiles.length > 0) {

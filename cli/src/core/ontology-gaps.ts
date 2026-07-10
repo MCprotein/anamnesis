@@ -49,6 +49,20 @@ export interface OntologyGapStatus {
   summary: OntologyGapSummary;
 }
 
+export type OntologyLifecycleAction =
+  | "none"
+  | "apply"
+  | "bootstrap"
+  | "enrich";
+
+export interface OntologyLifecycleRecommendation {
+  action: OntologyLifecycleAction;
+  label: string;
+  reason: string;
+  command?: string;
+  targets: string[];
+}
+
 export interface CollectOntologyGapsOptions {
   projectRoot: string;
   scopes: EffectiveScope[];
@@ -181,6 +195,55 @@ export function collectOntologyGaps(
   };
 }
 
+export function recommendOntologyLifecycleAction(
+  status: OntologyGapStatus,
+): OntologyLifecycleRecommendation {
+  const warningGaps = status.gaps.filter((gap) => gap.severity === "warning");
+  const staticGaps = warningGaps.filter((gap) => gap.kind === "static-missing");
+  if (staticGaps.length > 0) {
+    return {
+      action: "apply",
+      label: "restore managed ontology slices",
+      reason: "static ontology slices are missing",
+      command: "anamnesis apply --dry-run",
+      targets: recommendationTargets(staticGaps),
+    };
+  }
+
+  const bootstrapGaps = warningGaps.filter(
+    (gap) => gap.kind === "bootstrap-missing" || gap.kind === "bootstrap-stale",
+  );
+  if (bootstrapGaps.length > 0) {
+    return {
+      action: "bootstrap",
+      label: "refresh Layer A facts",
+      reason: "deterministic Layer A bootstrap facts are missing or stale",
+      command: "anamnesis ontology bootstrap --dry-run",
+      targets: recommendationTargets(bootstrapGaps),
+    };
+  }
+
+  const enrichmentGaps = warningGaps.filter(
+    (gap) => gap.kind === "enrichment-missing",
+  );
+  if (enrichmentGaps.length > 0) {
+    return {
+      action: "enrich",
+      label: "review Layer B enrichment",
+      reason: "semantic Layer B enrichment is missing",
+      command: "/ontology-enrich",
+      targets: recommendationTargets(enrichmentGaps),
+    };
+  }
+
+  return {
+    action: "none",
+    label: "ontology lifecycle current",
+    reason: "ontology layers are current enough for installed fragments",
+    targets: [],
+  };
+}
+
 function hasOntologyCapability(fragment: FragmentDefinition): boolean {
   return fragment.capabilities.some((cap) => cap.type === "ontology");
 }
@@ -220,6 +283,20 @@ function summarizeOntologyGaps(gaps: OntologyGap[]): OntologyGapSummary {
       (g) => g.kind === "introspector-not-applicable",
     ).length,
   };
+}
+
+function recommendationTargets(gaps: readonly OntologyGap[]): string[] {
+  const seen = new Set<string>();
+  const targets: string[] = [];
+  for (const gap of gaps) {
+    const target =
+      gap.target ??
+      `${gap.scopePath === "." ? "root" : gap.scopePath}:${gap.fragmentId}:${gap.kind}`;
+    if (seen.has(target)) continue;
+    seen.add(target);
+    targets.push(target);
+  }
+  return targets;
 }
 
 function missingBootstrapNext(enrichedRel: string): string {

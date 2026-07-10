@@ -930,6 +930,13 @@ fragments:
     expect(issue?.repair).toContain(
       ".anamnesis/ontology/prisma.enriched.yaml",
     );
+    expect(result.ontologyRecommendation).toEqual(
+      expect.objectContaining({
+        action: "bootstrap",
+        command: "anamnesis ontology bootstrap --dry-run",
+        targets: [".anamnesis/ontology/prisma.bootstrap.yaml"],
+      }),
+    );
   });
 
   it("reports stale ontology bootstrap facts as an actionable warning", () => {
@@ -973,6 +980,13 @@ fragments:
     expect(issue?.repair).toContain("/ontology-enrich");
     expect(issue?.repair).toContain(
       ".anamnesis/ontology/prisma.enriched.yaml",
+    );
+    expect(result.ontologyRecommendation).toEqual(
+      expect.objectContaining({
+        action: "bootstrap",
+        command: "anamnesis ontology bootstrap --dry-run",
+        targets: [".anamnesis/ontology/prisma.bootstrap.yaml"],
+      }),
     );
   });
 });
