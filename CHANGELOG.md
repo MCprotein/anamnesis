@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-07-10
+
 ### Added
 
 - Added `anamnesis context docs`, a read-only Markdown document graph summary
