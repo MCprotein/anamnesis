@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300" role="img" aria-label="Retrieval Hit Rates">
+<rect width="720" height="300" fill="#ffffff" />
+<text x="24" y="28" font-size="18" font-weight="700" fill="#111827">Retrieval Hit Rates</text>
+<line x1="80" y1="224" x2="640" y2="224" stroke="#d1d5db" />
+<line x1="80" y1="54" x2="80" y2="224" stroke="#d1d5db" />
+<text x="70" y="58" text-anchor="end" font-size="11" fill="#6b7280">high</text>
+<text x="696" y="290" text-anchor="end" font-size="10" fill="#9ca3af">anamnesis deterministic fixture</text>
+<rect x="141.3" y="54.0" width="64" height="170.0" fill="#059669"><title>Top-1 100% threshold 90%</title></rect>
+<line x1="127.3" y1="71.0" x2="219.3" y2="71.0" stroke="#111827" stroke-dasharray="4 3" />
+<text x="173.3" y="256" text-anchor="middle" font-size="13" fill="#374151">Top-1</text>
+<text x="173.3" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<rect x="328.0" y="54.0" width="64" height="170.0" fill="#059669"><title>Top-3 100% threshold 100%</title></rect>
+<line x1="314.0" y1="54.0" x2="406.0" y2="54.0" stroke="#111827" stroke-dasharray="4 3" />
+<text x="360.0" y="256" text-anchor="middle" font-size="13" fill="#374151">Top-3</text>
+<text x="360.0" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<rect x="514.7" y="54.0" width="64" height="170.0" fill="#059669"><title>MRR 100% threshold 85%</title></rect>
+<line x1="500.7" y1="79.5" x2="592.7" y2="79.5" stroke="#111827" stroke-dasharray="4 3" />
+<text x="546.7" y="256" text-anchor="middle" font-size="13" fill="#374151">MRR</text>
+<text x="546.7" y="46.0" text-anchor="middle" font-size="12" fill="#111827">100%</text>
+<text x="360" y="282" text-anchor="middle" font-size="12" fill="#4b5563">bars show measured value; dashed line shows gate threshold</text>
+</svg>

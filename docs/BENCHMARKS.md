@@ -78,6 +78,15 @@ markdown, and dependency-free SVG charts under
 `benchmark prompt-gate` reads the generated `session-context.json` artifact
 from this directory automatically.
 
+Use `benchmark retrieval --write` for the v1.17 document-graph retrieval
+check. It measures deterministic `context query` source-pointer ranking for
+public-safe `doc-page`, `doc-heading`, and `doc-ontology-ref` fixtures, then
+writes JSON, markdown, and dependency-free SVG charts under
+[`docs/benchmark-evidence/retrieval-source-pointers/`](benchmark-evidence/retrieval-source-pointers/).
+`benchmark prompt-gate` reads the generated `retrieval-source-pointers.json`
+artifact automatically. This benchmark proves pointer ranking quality; actual
+agent source-read behavior remains in task benchmarks.
+
 Use `context subagent-preamble` to print the compact launcher-wrapper payload
 for externally started subagents. Use
 `benchmark subagent-injection --attempts <n> --write --append` for v1.15

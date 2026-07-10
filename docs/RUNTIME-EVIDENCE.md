@@ -20,6 +20,7 @@ need machine-readable proof beyond terminal output.
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
 - `anamnesis benchmark trace --append`
+- `anamnesis benchmark retrieval --append`
 - `anamnesis benchmark task --append`
 - `anamnesis benchmark prompt-gate --append`
 
@@ -28,7 +29,7 @@ Each record includes:
 - `kind`: `dogfood-check`, `doctor-check`, `hook-log-summary`,
   `init-install`, `update-apply`, `fragment-lifecycle`, `gc-apply`,
   `benchmark-report`, `benchmark-compare`, `benchmark-trace-rollup`,
-  `agent-task-benchmark`, or `prompt-delta-gate`
+  `retrieval-benchmark`, `agent-task-benchmark`, or `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -87,6 +88,13 @@ trace records by phase/status, sum numeric metrics, append markdown to
 `docs/BENCHMARK-TRACES.md`, and keep this runtime timing/trace evidence
 separate from deterministic context-quality scorecards.
 
+Retrieval benchmark records use kind `retrieval-benchmark` and summary schema
+`anamnesis.retrieval_benchmark.v1`. They capture deterministic `context query`
+source-pointer ranking for public-safe `doc-page`, `doc-heading`, and
+`doc-ontology-ref` fixtures, including top-1/top-3 hit rates, MRR, compact
+SessionStart token budget, and fixture safety counters. They do not claim that
+a model actually read the returned files.
+
 Agent task benchmark records use kind `agent-task-benchmark` and summary
 schema `anamnesis.agent_task_benchmark.v1`. These records are explicitly
 model-dependent and stay separate from deterministic benchmark scorecards.
@@ -119,7 +127,7 @@ shapes. `anamnesis benchmark gallery --validate` exits non-zero when the
 generated region is missing or stale. The gallery intentionally ignores
 non-gallery records such as `doctor-check`, `hook-log-summary`,
 `init-install`, `update-apply`, `gc-apply`, `benchmark-trace-rollup`,
-`agent-task-benchmark`, and `prompt-delta-gate`.
+`retrieval-benchmark`, `agent-task-benchmark`, and `prompt-delta-gate`.
 
 ## Boundary
 

@@ -13,6 +13,10 @@ import {
   SESSION_CONTEXT_BENCHMARK_SCHEMA_VERSION,
   type SessionContextBenchmarkResult,
 } from "./benchmark_session_context.js";
+import {
+  RETRIEVAL_BENCHMARK_SCHEMA_VERSION,
+  type RetrievalBenchmarkResult,
+} from "./benchmark_retrieval.js";
 import { status, StatusError, type StatusResult } from "./status.js";
 
 export const PROMPT_DELTA_GATE_SCHEMA_VERSION =
@@ -66,6 +70,11 @@ export interface PromptDeltaGateEvidenceSummary {
   retrievalFailures: number;
   retrievalComparisonRegressions: number;
   retrievalComparisonFailures: number;
+  retrievalSourcePointerBenchmarks: number;
+  retrievalSourcePointerFailures: number;
+  retrievalTop1HitRate?: number;
+  retrievalTop3HitRate?: number;
+  retrievalMrr?: number;
   sessionContextBenchmarks: number;
   sessionContextCompactCapExceeded: number;
   sessionContextFullCapExceeded: number;
@@ -78,6 +87,11 @@ export interface PromptDeltaGateEvidenceSummary {
 interface PromptDeltaGateSessionContextEvidence {
   path: string;
   summary: SessionContextBenchmarkResult["summary"];
+}
+
+interface PromptDeltaGateRetrievalEvidence {
+  path: string;
+  summary: RetrievalBenchmarkResult["summary"];
 }
 
 export interface PromptDeltaGateDecision {
@@ -138,10 +152,12 @@ export function promptDeltaGate(
 
   const log = readPromptGateEvidenceRecords(projectRoot, opts.sources ?? []);
   const sessionContextEvidence = readSessionContextBenchmarkEvidence(projectRoot);
+  const retrievalEvidence = readRetrievalBenchmarkEvidence(projectRoot);
   const evidence = summarizePromptGateEvidence(
     log.records,
     log.invalid,
     sessionContextEvidence,
+    retrievalEvidence,
   );
   const contextBudget = measurePromptContextBudget({
     projectRoot,
@@ -151,7 +167,11 @@ export function promptDeltaGate(
   const signals = promptDeltaSignals({ st, evidence, contextBudget });
   const decision = decidePromptDelta({ evidence, contextBudget });
   const requiredBeforeShip = requiredPromptDeltaShipEvidence();
-  const combinedEvidencePath = evidencePath(log, sessionContextEvidence);
+  const combinedEvidencePath = evidencePath(
+    log,
+    sessionContextEvidence,
+    retrievalEvidence,
+  );
   const markdown = renderPromptDeltaGateMarkdown({
     generatedAt,
     projectName: st.agentfile.project.name,
@@ -247,6 +267,7 @@ function summarizePromptGateEvidence(
   records: readonly RuntimeEvidenceRecord[],
   invalidRecords: number,
   sessionContextEvidence?: PromptDeltaGateSessionContextEvidence,
+  retrievalEvidence?: PromptDeltaGateRetrievalEvidence,
 ): PromptDeltaGateEvidenceSummary {
   let benchmarkReports = 0;
   let benchmarkCompares = 0;
@@ -263,6 +284,12 @@ function summarizePromptGateEvidence(
   let retrievalFailures = 0;
   let retrievalComparisonRegressions = 0;
   let retrievalComparisonFailures = 0;
+  let retrievalSourcePointerBenchmarks = 0;
+  let retrievalSourcePointerFailures = 0;
+  let retrievalTop1HitRate: number | undefined;
+  let retrievalTop3HitRate: number | undefined;
+  let retrievalMrr: number | undefined;
+  let retrievalBenchmarkRecords = 0;
 
   for (const record of records) {
     if (record.kind === "benchmark-report") {
@@ -462,6 +489,46 @@ function summarizePromptGateEvidence(
         retrievalFailures++;
         retrievalComparisonFailures += Math.max(1, failures);
       }
+      continue;
+    }
+
+    if (record.kind === "retrieval-benchmark") {
+      retrievalBenchmarkRecords++;
+      retrievalBenchmarks++;
+      compactRetrievalBenchmarks++;
+      retrievalSourcePointerBenchmarks++;
+      const ok = booleanField(record.summary, "ok");
+      const top1 = numberField(record.summary, "top1HitRate");
+      const top3 = numberField(record.summary, "top3HitRate");
+      const mrr = numberField(record.summary, "mrr");
+      retrievalTop1HitRate = maxOptional(retrievalTop1HitRate, top1);
+      retrievalTop3HitRate = maxOptional(retrievalTop3HitRate, top3);
+      retrievalMrr = maxOptional(retrievalMrr, mrr);
+      if (ok === false) {
+        retrievalFriction++;
+        retrievalFailures++;
+        retrievalSourcePointerFailures++;
+      }
+    }
+  }
+
+  if (retrievalEvidence && retrievalBenchmarkRecords === 0) {
+    retrievalBenchmarks++;
+    compactRetrievalBenchmarks++;
+    retrievalSourcePointerBenchmarks++;
+    retrievalTop1HitRate = maxOptional(
+      retrievalTop1HitRate,
+      retrievalEvidence.summary.top1HitRate,
+    );
+    retrievalTop3HitRate = maxOptional(
+      retrievalTop3HitRate,
+      retrievalEvidence.summary.top3HitRate,
+    );
+    retrievalMrr = maxOptional(retrievalMrr, retrievalEvidence.summary.mrr);
+    if (!retrievalEvidence.summary.ok) {
+      retrievalFriction++;
+      retrievalFailures++;
+      retrievalSourcePointerFailures++;
     }
   }
 
@@ -483,6 +550,11 @@ function summarizePromptGateEvidence(
     retrievalFailures,
     retrievalComparisonRegressions,
     retrievalComparisonFailures,
+    retrievalSourcePointerBenchmarks,
+    retrievalSourcePointerFailures,
+    ...(retrievalTop1HitRate !== undefined ? { retrievalTop1HitRate } : {}),
+    ...(retrievalTop3HitRate !== undefined ? { retrievalTop3HitRate } : {}),
+    ...(retrievalMrr !== undefined ? { retrievalMrr } : {}),
     sessionContextBenchmarks: sessionContextEvidence ? 1 : 0,
     sessionContextCompactCapExceeded:
       sessionContextEvidence?.summary.compactCapExceeded ?? 0,
@@ -532,13 +604,47 @@ function readSessionContextBenchmarkEvidence(
   return undefined;
 }
 
+function readRetrievalBenchmarkEvidence(
+  projectRoot: string,
+): PromptDeltaGateRetrievalEvidence | undefined {
+  const rel = path.join(
+    "docs",
+    "benchmark-evidence",
+    "retrieval-source-pointers",
+    "retrieval-source-pointers.json",
+  );
+  const abs = path.join(projectRoot, rel);
+  if (!fs.existsSync(abs)) return undefined;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(abs, "utf8")) as unknown;
+    if (
+      isObject(parsed) &&
+      parsed.schema_version === RETRIEVAL_BENCHMARK_SCHEMA_VERSION &&
+      isObject(parsed.summary)
+    ) {
+      return {
+        path: rel.split(path.sep).join("/"),
+        summary: parsed.summary as RetrievalBenchmarkResult["summary"],
+      };
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 function evidencePath(
   log: RuntimeEvidenceLog,
   sessionContextEvidence?: PromptDeltaGateSessionContextEvidence,
+  retrievalEvidence?: PromptDeltaGateRetrievalEvidence,
 ): string {
-  return sessionContextEvidence
-    ? `${log.path}; ${sessionContextEvidence.path}`
-    : log.path;
+  return [
+    log.path,
+    sessionContextEvidence?.path,
+    retrievalEvidence?.path,
+  ]
+    .filter((item): item is string => item !== undefined && item.length > 0)
+    .join("; ");
 }
 
 function measurePromptContextBudget(input: {
@@ -670,6 +776,21 @@ function promptDeltaSignals(input: {
   });
 
   signals.push({
+    id: "source-pointer-retrieval",
+    label: "Source-pointer retrieval",
+    status:
+      input.evidence.retrievalSourcePointerBenchmarks === 0
+        ? "warn"
+        : input.evidence.retrievalSourcePointerFailures > 0
+          ? "fail"
+          : "pass",
+    detail:
+      input.evidence.retrievalSourcePointerBenchmarks === 0
+        ? "no retrieval benchmark evidence found"
+        : `top-1 ${formatPercent(input.evidence.retrievalTop1HitRate)}, top-3 ${formatPercent(input.evidence.retrievalTop3HitRate)}, MRR ${formatNumber(input.evidence.retrievalMrr)}`,
+  });
+
+  signals.push({
     id: "agent-task-friction",
     label: "Agent task friction",
     status:
@@ -719,6 +840,7 @@ function decidePromptDelta(input: {
 }): PromptDeltaGateDecision {
   const hasEvidence =
     input.evidence.benchmarkReports > 0 ||
+    input.evidence.retrievalBenchmarks > 0 ||
     input.evidence.agentTaskBenchmarks > 0 ||
     input.evidence.agentTaskBenchmarkCompares > 0;
   const hasSessionContextEvidence = input.evidence.sessionContextBenchmarks > 0;
@@ -847,6 +969,8 @@ function renderPromptDeltaGateMarkdown(input: {
     `- agent task benchmarks: ${input.evidence.agentTaskBenchmarks}`,
     `- agent task compares: ${input.evidence.agentTaskBenchmarkCompares}`,
     `- retrieval benchmarks: ${input.evidence.retrievalBenchmarks} (compact ${input.evidence.compactRetrievalBenchmarks}, full ${input.evidence.fullRetrievalBenchmarks})`,
+    `- source-pointer retrieval benchmarks: ${input.evidence.retrievalSourcePointerBenchmarks} (failures ${input.evidence.retrievalSourcePointerFailures})`,
+    `- retrieval top-1/top-3/MRR: ${formatPercent(input.evidence.retrievalTop1HitRate)} / ${formatPercent(input.evidence.retrievalTop3HitRate)} / ${formatNumber(input.evidence.retrievalMrr)}`,
     `- continuity gaps: ${input.evidence.continuityGaps}`,
     `- task friction/failures: ${input.evidence.taskFriction}/${input.evidence.taskFailures}`,
     `- retrieval friction/failures: ${input.evidence.retrievalFriction}/${input.evidence.retrievalFailures}`,
@@ -880,6 +1004,23 @@ function promptDeltaSignalAssessment(
     case "fail":
       return "risk";
   }
+}
+
+function maxOptional(
+  current: number | undefined,
+  next: number | undefined,
+): number | undefined {
+  if (current === undefined) return next;
+  if (next === undefined) return current;
+  return Math.max(current, next);
+}
+
+function formatPercent(value: number | undefined): string {
+  return value === undefined ? "unknown" : `${Math.round(value * 100)}%`;
+}
+
+function formatNumber(value: number | undefined): string {
+  return value === undefined ? "unknown" : value.toFixed(3);
 }
 
 function objectField(

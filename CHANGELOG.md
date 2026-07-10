@@ -26,6 +26,10 @@ could include breaking changes.
   AGENTS/CLAUDE/Codex/Cursor skill and hook surfaces so agents use
   `anamnesis context query` to find source pointers and then read the returned
   `source_path` / `stable_ref` before making context-sensitive claims.
+- Added `anamnesis benchmark retrieval`, a deterministic public-safe
+  source-pointer benchmark for `doc-page`, `doc-heading`, and
+  `doc-ontology-ref` ranking with JSON, Markdown, SVG, and prompt-gate
+  evidence integration.
 
 ### Changed
 

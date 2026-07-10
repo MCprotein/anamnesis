@@ -213,6 +213,7 @@ function namespaceRows(namespace: HelpNamespace) {
     case "benchmark":
       return [
         { command: "benchmark report", description: "Generate the deterministic context-quality scorecard." },
+        { command: "benchmark retrieval", description: "Measure source-pointer query ranking over public-safe fixtures." },
         { command: "benchmark upgrade", description: "Run sanitized upgrade fixtures and graph evidence." },
         { command: "benchmark task", description: "Record a model-dependent task benchmark run." },
         { command: "benchmark task-series", description: "Roll up repeated full/compact task comparisons." },

@@ -158,6 +158,11 @@ import {
   type SessionContextBenchmarkResult,
 } from "./commands/benchmark_session_context.js";
 import {
+  retrievalBenchmark,
+  RetrievalBenchmarkError,
+  type RetrievalBenchmarkResult,
+} from "./commands/benchmark_retrieval.js";
+import {
   subagentInjectionBenchmark,
   SubagentInjectionBenchmarkError,
   type SubagentInjectionBenchmarkResult,
@@ -464,6 +469,8 @@ Commands:
                                   evidence and write numeric graph artifacts
   benchmark prompt-gate        Decide whether prompt-time context delta
                                   injection is justified by evidence
+  benchmark retrieval          Measure deterministic context-query source
+                                  pointer ranking over public-safe fixtures
   benchmark session-context    Compare full vs compact SessionStart context
                                   and optionally write JSON/SVG artifacts
   benchmark subagent-injection
@@ -716,6 +723,14 @@ Flags (benchmark prompt-gate):
   --source <path[,path]>        Extra evidence JSONL source(s)
   --max-tokens <n>              Max estimated prompt delta token budget
                                   (default: 800)
+
+Flags (benchmark retrieval):
+  --project-root <path>         Target directory (default: cwd)
+  --json                        Print structured JSON
+  --write                       Write JSON, markdown, and dependency-free SVG
+                                  charts under docs/benchmark-evidence
+  --append                      Record runtime evidence
+  --output <path>               Override artifact output directory
 
 Flags (benchmark session-context):
   --project-root <path>         Target directory (default: cwd)
@@ -1941,6 +1956,12 @@ function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
     `  retrieval benchmarks: ${result.evidence.retrievalBenchmarks} (compact ${result.evidence.compactRetrievalBenchmarks}, full ${result.evidence.fullRetrievalBenchmarks}), friction/failures ${result.evidence.retrievalFriction}/${result.evidence.retrievalFailures}`,
   );
   console.log(
+    `  source-pointer retrieval: ${result.evidence.retrievalSourcePointerBenchmarks} benchmark(s), failures ${result.evidence.retrievalSourcePointerFailures}`,
+  );
+  console.log(
+    `  retrieval top-1/top-3/MRR: ${formatCliRate(result.evidence.retrievalTop1HitRate)} / ${formatCliRate(result.evidence.retrievalTop3HitRate)} / ${result.evidence.retrievalMrr?.toFixed(3) ?? "unknown"}`,
+  );
+  console.log(
     `  context budget: ~${result.contextBudget.estimatedTokens}/${result.contextBudget.maxPromptDeltaTokens} tokens, duplicate risk ${result.contextBudget.duplicateContextRisk}`,
   );
   for (const signal of result.signals) {
@@ -2008,6 +2029,28 @@ function reportSessionContextBenchmark(
     result.artifacts.capSuccessSummarySvg,
   ]) {
     if (artifact) console.log(`  artifact: ${artifact}`);
+  }
+}
+
+function reportRetrievalBenchmark(result: RetrievalBenchmarkResult): void {
+  console.log("anamnesis benchmark retrieval");
+  console.log(`  cases: ${result.summary.cases}`);
+  console.log(
+    `  top-1: ${formatCliRate(result.summary.top1HitRate)} (${result.summary.top1Hits}/${result.summary.cases})`,
+  );
+  console.log(
+    `  top-3: ${formatCliRate(result.summary.top3HitRate)} (${result.summary.top3Hits}/${result.summary.cases})`,
+  );
+  console.log(`  mrr: ${result.summary.mrr.toFixed(3)}`);
+  console.log(
+    `  compact session context: ${result.summary.compactSessionStartTokens}/${result.summary.compactSessionStartCap} tokens`,
+  );
+  console.log(`  gate: ${result.summary.ok ? "pass" : "fail"}`);
+  if (result.artifacts.outputDir) {
+    console.log(`  artifacts: ${result.artifacts.outputDir}`);
+  }
+  if (result.evidenceRecordPath) {
+    console.log(`  evidence: ${result.evidenceRecordPath}`);
   }
 }
 
@@ -2953,6 +2996,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "task-compare" &&
         sub !== "task-series" &&
         sub !== "prompt-gate" &&
+        sub !== "retrieval" &&
         sub !== "session-context" &&
         sub !== "subagent-injection"
       ) {
@@ -2988,6 +3032,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis benchmark prompt-gate [--json] [--append] [--output=<path>]`,
+        );
+        console.error(
+          `       anamnesis benchmark retrieval [--json] [--write] [--append] [--output=<dir>]`,
         );
         console.error(
           `       anamnesis benchmark session-context [--json] [--write] [--output=<dir>]`,
@@ -3028,6 +3075,22 @@ async function main(argv: string[]): Promise<number> {
             reportSessionContextBenchmark(result);
           }
           return 0;
+        }
+
+        if (sub === "retrieval") {
+          const result = retrievalBenchmark({
+            projectRoot:
+              (flags["project-root"] as string | undefined) ?? process.cwd(),
+            write: flags["write"] === true,
+            append: flags["append"] === true,
+            outputPath: flags["output"] as string | undefined,
+          });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportRetrievalBenchmark(result);
+          }
+          return result.summary.ok ? 0 : 1;
         }
 
         if (sub === "prompt-gate") {
@@ -3233,6 +3296,7 @@ async function main(argv: string[]): Promise<number> {
           e instanceof AgentTaskBenchmarkSeriesError ||
           e instanceof PromptDeltaGateError ||
           e instanceof SessionContextBenchmarkError ||
+          e instanceof RetrievalBenchmarkError ||
           e instanceof SubagentInjectionBenchmarkError
         ) {
           console.error(`error: ${e.message}`);

@@ -197,6 +197,7 @@ anamnesis benchmark gallery --write  # refresh evidence-backed README claim cand
 anamnesis benchmark gallery --validate  # fail when gallery evidence is stale
 anamnesis benchmark trace --append  # roll up benchmark trace logs as runtime evidence
 anamnesis benchmark upgrade --write  # run sanitized upgrade fixtures and write JSON/SVG evidence
+anamnesis benchmark retrieval --write  # measure context-query source-pointer ranking and write evidence
 anamnesis benchmark task --template  # create a model-dependent task/retrieval/behavior benchmark input
 anamnesis benchmark task --input task-run.json --append  # record an agent task run separately
 anamnesis benchmark task-compare --template  # create a paired full/compact task template
@@ -339,6 +340,24 @@ Current run:
 Evidence and chart links are in
 [`docs/benchmark-evidence/`](docs/benchmark-evidence/) and
 [`docs/benchmark-evidence/session-context/`](docs/benchmark-evidence/session-context/).
+
+### Retrieval source-pointer benchmark
+
+v1.17 adds a deterministic public-safe retrieval benchmark for the document
+graph path. It measures whether `anamnesis context query` returns exact source
+pointers for `doc-page`, `doc-heading`, and `doc-ontology-ref` cases without
+expanding SessionStart payloads.
+
+Current run:
+
+- Source-pointer ranking: top-1 `6/6`, top-3 `6/6`, MRR `1.000`.
+- Compact SessionStart budget: `133/800` estimated tokens.
+- Fixture safety counters: hallucinated project facts `0`; `.bootstrap.yaml`
+  edit attempts `0`.
+
+Evidence and chart links are in
+[`docs/benchmark-evidence/`](docs/benchmark-evidence/) and
+[`docs/benchmark-evidence/retrieval-source-pointers/`](docs/benchmark-evidence/retrieval-source-pointers/).
 
 ### Subagent context benchmark
 

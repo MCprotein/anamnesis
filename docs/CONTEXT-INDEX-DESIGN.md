@@ -1,6 +1,6 @@
 # Context Index Design
 
-Status: v1.6 prototype hardened; MCP/API export deferred.
+Status: v1.17 document graph retrieval baseline; MCP/API export deferred.
 
 v1.7 extends the same local index with task harness retrieval targets under
 `.anamnesis/task-harnesses/`.
@@ -65,7 +65,8 @@ Required fields:
   semantically the same.
 - `kind`: small enum such as `agent-rule`, `ontology-entity`,
   `ontology-relationship`, `handoff-task`, `task-harness`,
-  `evidence-summary`, or `doc-section`.
+  `evidence-summary`, `doc-section`, `doc-page`, `doc-heading`, or
+  `doc-ontology-ref`.
 - `source_path`: repo-relative path to the authoritative source.
 - `source_hash`: hash of the source file or source slice.
 - `stable_ref`: source-local pointer, heading, YAML id, JSON pointer, or line
@@ -116,6 +117,9 @@ Prototype behavior:
   `doc-ontology-ref`. They point agents to the exact file, heading, or ontology
   reference to read next; they do not make document prose authoritative project
   memory.
+- `anamnesis benchmark retrieval --write` measures public-safe source-pointer
+  ranking for those document graph kinds and writes JSON/Markdown/SVG evidence
+  under `docs/benchmark-evidence/retrieval-source-pointers/`.
 - `anamnesis context resume` prints a compact bundle with active handoff
   pointer, latest archive pointer, touched git files, latest runtime evidence,
   diagnostic warnings, retrieval rules, and line/char/token estimates.

@@ -30,6 +30,7 @@ function record(
     "benchmark-report": ["anamnesis", "benchmark", "report"],
     "benchmark-compare": ["anamnesis", "benchmark", "compare"],
     "benchmark-trace-rollup": ["anamnesis", "benchmark", "trace"],
+    "retrieval-benchmark": ["anamnesis", "benchmark", "retrieval"],
     "subagent-injection-benchmark": [
       "anamnesis",
       "benchmark",
@@ -271,6 +272,30 @@ describe("runtime evidence", () => {
     });
     expect(summary.byKind[0]).toMatchObject({
       kind: "subagent-injection-benchmark",
+      total: 1,
+      stale: false,
+    });
+  });
+
+  it("accepts retrieval benchmark evidence records", () => {
+    const project = tmpDir("anamnesis-evidence-retrieval-");
+
+    appendEvidenceRecord(
+      project,
+      record("retrieval-benchmark", "2026-07-10T01:00:00.000Z"),
+    );
+
+    const summary = readEvidenceSummary(project, {
+      now: new Date("2026-07-10T01:00:01.000Z"),
+    });
+
+    expect(summary.total).toBe(1);
+    expect(summary.latest).toMatchObject({
+      kind: "retrieval-benchmark",
+      command: ["anamnesis", "benchmark", "retrieval"],
+    });
+    expect(summary.byKind[0]).toMatchObject({
+      kind: "retrieval-benchmark",
       total: 1,
       stale: false,
     });

@@ -32,6 +32,7 @@ or broad model-intelligence claims.
 | Fresh public frontend and backend/infra snapshots keep continuity at `6/6` with 0 doctor errors | `docs/BENCHMARKS.md`, `docs/BENCHMARK-GALLERY.md`, `docs/benchmark-evidence/public-shapes.jsonl` | Layer B enrichment remains missing in fresh-install evidence |
 | Self-dogfood keeps cross-agent continuity at `6/6` | `docs/BENCHMARK-GALLERY.md`, `docs/DOGFOOD.md`, `npm run dogfood:check` | Self-repo has base fragment only, so Layer A/B targets are intentionally partial |
 | Subagent context benchmark currently records separate-process startup `20/20` injected and same-session prompt-contract `20/20` accepted | `docs/benchmark-evidence/subagent-injection/`, `.anamnesis/evidence/events.jsonl`, `cli/src/commands/benchmark_subagent_injection.test.ts` | Deterministic self-repo evidence; prompt-contract acceptance is not automatic SessionStart injection |
+| Retrieval source-pointer benchmark currently records `doc-page`, `doc-heading`, and `doc-ontology-ref` top-1 `6/6`, top-3 `6/6`, and MRR `1.000` | `docs/benchmark-evidence/retrieval-source-pointers/`, `cli/src/commands/benchmark_retrieval.test.ts` | Deterministic pointer-ranking fixture, not proof that a model actually read the returned files |
 
 ## Allowed README Wording
 
@@ -47,6 +48,8 @@ The current README may claim:
   before/after adoption, and self-dogfood continuity;
 - subagent context evidence may report raw injection counts only when the
   lane is startup-hook or launcher-wrapper enforced;
+- retrieval source-pointer evidence may report deterministic ranking metrics,
+  but must not imply model source-read behavior without task benchmark records;
 - broader framework and ecosystem claims need more public-safe benchmark
   shapes.
 
@@ -63,6 +66,8 @@ Do not claim:
 - "agent/model benchmark-proven" from a single task run;
 - "same-session native subagents automatically receive SessionStart context"
   without direct benchmark evidence;
+- "agents always read the correct source file" from retrieval ranking evidence
+  alone;
 - "no user review needed for generated context."
 
 ## Update Rule
