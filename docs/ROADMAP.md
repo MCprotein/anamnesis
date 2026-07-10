@@ -1734,6 +1734,10 @@ Product boundary:
   remind the agent to run `anamnesis context query` when project facts,
   ontology, prior decisions, roadmap, or document evidence are needed; they
   should not automatically run broad searches on every prompt.
+- Command growth is now a product risk. The full catalog already has dozens of
+  command/subcommand entries, so v1.17 work must stay under existing
+  namespaces (`apply`, `status`, `doctor`, `context`, `handoff`,
+  `benchmark`, `ontology bootstrap`) instead of adding new top-level commands.
 - Generated benchmark reports and visualizations stay under
   `docs/benchmark-evidence/<suite>/`; README should link to concise evidence
   summaries instead of embedding chart galleries.
@@ -1755,6 +1759,10 @@ Current baseline on `release/v1.17`:
 - Separate-process subagents can receive `context subagent-preamble`;
   same-session native subagents still rely on leader-supplied prompt-contract
   evidence rather than guaranteed SessionStart hook execution.
+- v1.16 already made `anamnesis`, `anamnesis --help`, and the common command
+  reporters concise. `anamnesis --help --all` remains the maintainer escape
+  hatch for the full catalog; new v1.17 workflows should improve guidance
+  inside the existing surfaces rather than create more commands.
 
 Why this still helps when the agent controls the work:
 
@@ -1780,6 +1788,8 @@ indexed:
 | 6 | **`context docs` summary** | baseline implemented on `release/v1.17` | Keep `anamnesis context docs` read-only: summarize document roots, page counts, broken links, ontology-linked pages, and candidate issues. Baseline provides human and `--json` output. Defer any regenerable write path until a concrete consumer exists and it is clearly cache-like rather than user-facing doc generation. |
 | 7 | **Diagnostics and repair hints** | partial on `release/v1.17` | Keep deterministic hard facts in `context diagnose`, `status`, and `doctor`: broken internal doc links, missing heading anchors, stale ontology source refs, stale handoff/context index state, and missing local artifact paths. Missing canonical docs and doc-heavy workspace guidance must stay `info` at most unless a configured catalog makes the expectation explicit. Keep semantic stale-claim judgment in the existing `doc-freshness-review` skill. |
 | 8 | **Benchmark and fixture coverage** | planned | Add public-safe fixtures and benchmark gates proving agents can find needed source pointers without increasing SessionStart payload. Measure `doc-page`, `doc-heading`, and `doc-ontology-ref` retrieval first: expected source pointer top-3 hit rate `100%`, top-1 `>=90%`, query MRR `>=0.85`, compact SessionStart `<=800` estimated tokens, required source read rate `100%` on context-critical tasks, hallucinated project facts `0`, and `.bootstrap.yaml` edit attempts `0`. Store generated artifacts under `docs/benchmark-evidence/<suite>/`; README should retain only links and headline explanations. |
+| 9 | **Ontology refresh pipeline without new commands** | planned | Make ontology freshness feel automatic while preserving the existing command surface. `status` / `doctor` should detect stale Layer A bootstrap facts, missing or stale Layer B enrichment, invalid ontology source refs, and outdated context indexes. `apply` may print the next recommended ontology action after managed surfaces change, but semantic writes stay review-led through `ontology bootstrap` plus `/ontology-enrich`. Do not add `ontology refresh`, `ontology sync`, or a wiki command. |
+| 10 | **Progressive command disclosure hardening** | planned | Keep ordinary users on the short path: `init`, `apply`, `status`, `doctor`, and `upgrade`. Advanced namespaces (`context`, `handoff`, `benchmark`, `release`, `migrate`, `promote`, `ontology`) remain available for agents, maintainers, and scripts, but default guidance should present them only when the current diagnostic or workflow evidence calls for them. |
 
 Implementation notes:
 
@@ -1806,6 +1816,13 @@ Implementation notes:
   stale pointers silently.
 - Same-session native subagents should be handled by leader prompt contracts
   until a real runtime hook proves automatic injection.
+- Do not introduce a new command for ontology refresh. Fold freshness detection
+  into `status` / `doctor`, deterministic refresh into existing
+  `ontology bootstrap`, semantic review into `/ontology-enrich`, and source
+  discovery into `context query` / `context docs`.
+- Default help should remain a guided short path. Any new implementation under
+  `context`, `benchmark`, `handoff`, or `ontology` must be reachable from
+  diagnostics or `--help --all` without making the no-command guide noisy.
 
 Deferred from v1.17:
 
@@ -1816,6 +1833,9 @@ Deferred from v1.17:
 - **Apply/init document integration**: do not make `init` or `apply` crawl docs
   into ontology or materialize document-derived meaning. Keep first-run and
   maintenance UX under explicit `context` commands and dry-run diagnostics.
+- **New top-level refresh/sync/wiki commands**: do not add command names for
+  work that can be expressed as existing `apply`, `status`, `doctor`,
+  `context`, `handoff`, `benchmark`, or `ontology bootstrap` behavior.
 - **`doc-link` / `doc-backlink` query records**: keep diagnostic metadata only
   until benchmarks show they improve top-1 retrieval by at least 10 percentage
   points or reduce context tool turns by at least 25% over the
@@ -1843,6 +1863,12 @@ Exit criteria:
   `context query` and read required sources before making project claims.
 - `/ontology-enrich` guidance can use the document source pointers while still
   writing semantic facts only to `.enriched.yaml` or user-managed ontology.
+- Ontology refresh feels automatic from the user's perspective: stale facts are
+  detected by diagnostics, exact source pointers are suggested, deterministic
+  bootstrap refresh is explicit, and semantic enrichment remains reviewed.
+- The common command surface does not grow. `anamnesis` and `anamnesis --help`
+  stay focused on the short path, while `--help --all` keeps the complete
+  catalog for maintainers and scripts.
 - Default SessionStart context does not grow; only compact summaries and source
   pointers are eligible for startup injection.
 - Benchmarks record numeric evidence for doc graph readiness and retrieval
