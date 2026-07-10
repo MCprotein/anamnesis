@@ -352,6 +352,83 @@ describe("context index", () => {
     ).toBe(true);
   });
 
+  it("ranks active handoff context ahead of cold history unless history is explicit", () => {
+    const project = setupContextProject();
+    writeFile(
+      project,
+      ".anamnesis/handoff/active.md",
+      [
+        "# Active handoff index",
+        "",
+        "## Current focus",
+        "- payment migration rollout - archive: `.anamnesis/handoff/current.md`",
+        "",
+        "## Recently completed",
+        "- legacy payment migration - archive: `.anamnesis/handoff/closed.md`",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/current.md",
+      [
+        "---",
+        "handoff_status: open",
+        "retention_tier: warm",
+        "---",
+        "# Payment migration rollout",
+        "",
+        "## Next steps",
+        "Validate the active payment migration rollout.",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      ".anamnesis/handoff/closed.md",
+      [
+        "---",
+        "handoff_status: closed",
+        "retention_tier: cold",
+        "---",
+        "# Legacy payment migration decision",
+        "",
+        "## Decisions",
+        "Historical legacy payment migration used the retired queue.",
+        "",
+      ].join("\n"),
+    );
+
+    const current = contextQuery({
+      projectRoot: project,
+      query: "payment migration rollout next steps",
+      kind: "handoff-task",
+      limit: 4,
+    });
+    expect(current.matches[0]!.entry.source_path).not.toBe(
+      ".anamnesis/handoff/closed.md",
+    );
+    expect(
+      current.matches.find(
+        (match) => match.entry.source_path === ".anamnesis/handoff/closed.md",
+      )?.entry.freshness,
+    ).toBe("stale");
+
+    const historical = contextQuery({
+      projectRoot: project,
+      query: "historical closed legacy payment migration decision",
+      kind: "handoff-task",
+      limit: 4,
+    });
+    expect(historical.matches[0]!.entry).toMatchObject({
+      source_path: ".anamnesis/handoff/closed.md",
+      freshness: "stale",
+    });
+    expect(historical.matches[0]!.entry.tags).toEqual(
+      expect.arrayContaining(["closed", "cold"]),
+    );
+  });
+
   it("keeps querying valid entries when the JSONL index contains malformed or incomplete lines", () => {
     const project = setupContextProject();
     contextIndex({ projectRoot: project, write: true });

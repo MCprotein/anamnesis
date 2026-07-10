@@ -97,6 +97,10 @@ describe("context docs", () => {
     expect(result.schema_version).toBe("anamnesis.context_docs.v1");
     expect(result.projectRoot).toBe(".");
     expect(result.catalog.path).toBe(".anamnesis/docs/catalog.yaml");
+    expect(result.catalog.ontology_reference_prefixes).toEqual([
+      "system_graph.yaml",
+      ".anamnesis/ontology/",
+    ]);
     expect(result.summary).toMatchObject({
       pages: 3,
       canonicalPages: 2,
@@ -168,9 +172,63 @@ describe("context docs", () => {
 
     expect(result.catalog.path).toBeUndefined();
     expect(result.catalog.roots).toEqual(["README.md", "docs", "specs"]);
+    expect(result.catalog.ontology_reference_prefixes).toEqual([
+      "system_graph.yaml",
+      ".anamnesis/ontology/",
+    ]);
     expect(result.pages.map((page) => page.source_path)).toEqual([
       "README.md",
       "docs/guide.md",
+    ]);
+  });
+
+  it("supports reviewed monorepo ontology reference prefixes", () => {
+    const project = tmpDir("anamnesis-context-docs-prefixes-");
+    writeFile(
+      project,
+      ".anamnesis/docs/catalog.yaml",
+      [
+        "roots:",
+        "  - docs",
+        "allowed_ontology_reference_prefixes:",
+        "  - apps/api/.anamnesis/ontology/",
+        "  - ../outside/",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      "docs/architecture.md",
+      [
+        "# Architecture",
+        "",
+        "The API facts live in `apps/api/.anamnesis/ontology/http.yaml`.",
+        "Ordinary YAML is `config/runtime.yaml`, not ontology.",
+        "",
+      ].join("\n"),
+    );
+    writeFile(
+      project,
+      "apps/api/.anamnesis/ontology/http.yaml",
+      'schema_version: "anamnesis.ontology.v1"\n',
+    );
+
+    const result = contextDocs({ projectRoot: project });
+
+    expect(result.catalog.ontology_reference_prefixes).toEqual([
+      "system_graph.yaml",
+      ".anamnesis/ontology/",
+      "apps/api/.anamnesis/ontology/",
+    ]);
+    expect(result.ontology_refs).toEqual([
+      expect.objectContaining({
+        source_path: "docs/architecture.md",
+        target: "apps/api/.anamnesis/ontology/http.yaml",
+        status: "ok",
+      }),
+    ]);
+    expect(result.warnings).toEqual([
+      expect.stringContaining("ignored unsafe ontology reference prefix '../outside/'"),
     ]);
   });
 });

@@ -595,6 +595,11 @@ describe("status — continuity readiness", () => {
     expect(r.contextDiagnostics.ok).toBe(false);
     expect(r.contextDiagnostics.summary.byCode["doc-link-anchor-missing"]).toBe(1);
     expect(r.summary.contextDiagnosticWarnings).toBe(1);
+    expect(r.documents.summary).toMatchObject({
+      pages: 2,
+      brokenLinks: 1,
+      missingOntologyRefs: 0,
+    });
   });
 
   it("reports active handoff entries that do not point at the newest archive", () => {

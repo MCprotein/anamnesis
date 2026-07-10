@@ -101,7 +101,7 @@ export interface ContextQueryOptions {
   indexPath?: string;
 }
 
-interface ContextIndexFreshnessReport {
+export interface ContextIndexFreshnessReport {
   changedSources: string[];
   missingSources: string[];
   newSources: string[];
@@ -238,8 +238,12 @@ export function contextQuery(opts: ContextQueryOptions): ContextQueryResult {
   );
   const terms = tokenize(query);
   const normalizedQuery = searchable(query).trim();
+  const historicalIntent = isHistoricalQuery(terms);
   const matches = entries
-    .map((entry) => ({ entry, score: scoreEntry(entry, terms, normalizedQuery) }))
+    .map((entry) => ({
+      entry,
+      score: scoreEntry(entry, terms, normalizedQuery, historicalIntent),
+    }))
     .filter((match) => match.score > 0)
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
@@ -349,7 +353,7 @@ function loadQueryEntries(
   };
 }
 
-function contextIndexFreshness(
+export function contextIndexFreshness(
   projectRoot: string,
   entries: readonly ContextIndexEntry[],
 ): ContextIndexFreshnessReport {
@@ -967,7 +971,9 @@ function makeEntry(
     stable_ref: fields.stableRef,
     title: cleanText(fields.title, 96),
     snippet: cleanText(fields.snippet, 240),
-    tags: uniqueStrings(fields.tags.map(slugify).filter(Boolean)).slice(0, 12),
+    tags: uniqueStrings(
+      [...fields.tags, ...handoffLifecycleTags(ctx)].map(slugify).filter(Boolean),
+    ).slice(0, 12),
     freshness: freshnessForSource(ctx),
   };
 }
@@ -1062,6 +1068,7 @@ function scoreEntry(
   entry: ContextIndexEntry,
   terms: readonly string[],
   normalizedQuery: string,
+  historicalIntent: boolean,
 ): number {
   const title = searchable(entry.title);
   const tags = searchable(entry.tags.join(" "));
@@ -1087,7 +1094,7 @@ function scoreEntry(
     lexicalScore +
       kindPriority(entry.kind) +
       sourcePriority(entry.source_path) +
-      freshnessPriority(entry.freshness),
+      freshnessPriority(entry, historicalIntent),
   );
 }
 
@@ -1122,10 +1129,37 @@ function sourcePriority(sourcePath: string): number {
   return 0;
 }
 
-function freshnessPriority(freshness: ContextIndexFreshness): number {
-  if (freshness === "current") return 2;
-  if (freshness === "stale") return -8;
+function freshnessPriority(
+  entry: ContextIndexEntry,
+  historicalIntent: boolean,
+): number {
+  if (entry.freshness === "current") return 2;
+  if (entry.freshness === "stale") {
+    if (entry.kind === "handoff-task" && historicalIntent) return 2;
+    return -12;
+  }
   return 0;
+}
+
+function isHistoricalQuery(terms: readonly string[]): boolean {
+  const signals = new Set([
+    "archive",
+    "archived",
+    "closed",
+    "cold",
+    "deprecated",
+    "historical",
+    "history",
+    "old",
+    "past",
+    "previous",
+    "superseded",
+    "과거",
+    "보관",
+    "이전",
+    "종료",
+  ]);
+  return terms.some((term) => signals.has(term));
 }
 
 function normalizeKind(kind: string | undefined): ContextIndexKind | undefined {
@@ -1217,7 +1251,60 @@ function freshnessForSource(ctx: SourceContext): ContextIndexFreshness {
     );
     return missing.length > 0 ? "stale" : "current";
   }
+  if (ctx.source.relPath.startsWith(".anamnesis/handoff/")) {
+    return handoffLifecycleInactive(ctx.content) ? "stale" : "current";
+  }
   return "current";
+}
+
+function handoffLifecycleInactive(content: string): boolean {
+  const lifecycle = handoffLifecycleMetadata(content);
+  const status = lifecycle.handoffStatus?.toLowerCase();
+  const tier = lifecycle.retentionTier?.toLowerCase();
+  return (
+    status === "closed" ||
+    status === "deprecated" ||
+    status === "superseded" ||
+    tier === "cold" ||
+    tier === "deprecated" ||
+    lifecycle.supersededBy !== undefined
+  );
+}
+
+function handoffLifecycleTags(ctx: SourceContext): string[] {
+  if (!ctx.source.relPath.startsWith(".anamnesis/handoff/")) return [];
+  const lifecycle = handoffLifecycleMetadata(ctx.content);
+  return [
+    lifecycle.handoffStatus,
+    lifecycle.retentionTier,
+    lifecycle.supersededBy ? "superseded" : undefined,
+  ].filter((value): value is string => value !== undefined);
+}
+
+function handoffLifecycleMetadata(content: string): {
+  handoffStatus?: string;
+  retentionTier?: string;
+  supersededBy?: string;
+} {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
+  if (!match) return {};
+  try {
+    const parsed = YAML.parse(match[1] ?? "") as unknown;
+    if (!isObject(parsed)) return {};
+    return {
+      ...(typeof parsed.handoff_status === "string"
+        ? { handoffStatus: parsed.handoff_status }
+        : {}),
+      ...(typeof parsed.retention_tier === "string"
+        ? { retentionTier: parsed.retention_tier }
+        : {}),
+      ...(typeof parsed.superseded_by === "string"
+        ? { supersededBy: parsed.superseded_by }
+        : {}),
+    };
+  } catch {
+    return {};
+  }
 }
 
 function stableEntryId(

@@ -89,6 +89,10 @@ import {
   sessionContextBudget,
   type SessionContextBudgetResult,
 } from "./session_context_budget.js";
+import {
+  contextDocs,
+  type ContextDocsSummary,
+} from "./context_docs.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -196,6 +200,11 @@ export interface ContextDiagnosticStatus {
   summary: ContextDiagnosticsResult["summary"];
 }
 
+export interface DocumentGraphStatus {
+  catalogPath?: string;
+  summary: ContextDocsSummary;
+}
+
 export interface StatusResult {
   agentfile: Agentfile;
   /** Flat union across all scopes — preserved for back-compat and quick overview. */
@@ -222,6 +231,8 @@ export interface StatusResult {
   dependencies: FragmentDependencyStatus;
   /** Advisory repo-local context consistency summary. */
   contextDiagnostics: ContextDiagnosticStatus;
+  /** Compact Markdown document graph health without dumping page lists. */
+  documents: DocumentGraphStatus;
   /** Advisory executable adapter side-effect and shell-safety diagnostics. */
   executableSecurity: ExecutableSecurityStatus;
   /** Advisory checks for copied or over-expanded agent configuration context. */
@@ -536,6 +547,13 @@ export function status(opts: StatusOptions): StatusResult {
     ok: contextDiagnosticResult.ok,
     summary: contextDiagnosticResult.summary,
   };
+  const documentGraph = contextDocs({ projectRoot });
+  const documents: DocumentGraphStatus = {
+    ...(documentGraph.catalog.path
+      ? { catalogPath: documentGraph.catalog.path }
+      : {}),
+    summary: documentGraph.summary,
+  };
   const executableSecurity = analyzeExecutableSecurity(installedRenderPlan.actions);
   const agentConfigDamage = analyzeAgentConfigDamage({
     projectRoot,
@@ -596,6 +614,7 @@ export function status(opts: StatusOptions): StatusResult {
     evidence,
     dependencies,
     contextDiagnostics: contextDiagnosticStatus,
+    documents,
     executableSecurity,
     agentConfigDamage,
     sessionContextBudget: sessionContextBudgetResult,

@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { contextDiagnostics } from "./context_diagnostics.js";
+import { contextIndex } from "./context_index.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -497,6 +498,44 @@ describe("context diagnostics", () => {
           code: "doc-ontology-ref-missing",
           source_path: "README.md",
           related: [".anamnesis/ontology/missing.yaml"],
+        }),
+      ]),
+    );
+  });
+
+  it("reports catalog configuration and stale context index state", () => {
+    const project = tmpDir("anamnesis-context-diagnostics-catalog-index-");
+    writeFile(project, "README.md", "# Fixture\n");
+    writeFile(
+      project,
+      ".anamnesis/docs/catalog.yaml",
+      [
+        "canonical_docs:",
+        "  - docs/missing-canonical.md",
+        "allowed_ontology_reference_prefixes:",
+        "  - ../outside/",
+        "",
+      ].join("\n"),
+    );
+    contextIndex({ projectRoot: project, write: true });
+    writeFile(project, "docs/new.md", "# Newly added\n");
+
+    const result = contextDiagnostics({ projectRoot: project });
+
+    expect(result.summary.byCode["doc-catalog-warning"]).toBe(1);
+    expect(result.summary.byCode["doc-canonical-missing"]).toBe(1);
+    expect(result.summary.byCode["context-index-stale"]).toBe(1);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "doc-canonical-missing",
+          severity: "info",
+          related: ["docs/missing-canonical.md"],
+        }),
+        expect.objectContaining({
+          code: "context-index-stale",
+          severity: "info",
+          related: expect.arrayContaining(["docs/new.md"]),
         }),
       ]),
     );

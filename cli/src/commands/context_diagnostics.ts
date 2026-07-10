@@ -22,6 +22,11 @@ import {
   type DocumentGraphLink,
   type DocumentGraphOntologyRef,
 } from "./context_docs.js";
+import {
+  CONTEXT_INDEX_PATH,
+  contextIndexFreshness,
+  readContextIndex,
+} from "./context_index.js";
 
 export const CONTEXT_DIAGNOSTICS_SCHEMA_VERSION =
   "anamnesis.context_diagnostics.v1";
@@ -33,6 +38,9 @@ export type ContextDiagnosticCode =
   | "doc-link-anchor-missing"
   | "doc-link-target-missing"
   | "doc-ontology-ref-missing"
+  | "doc-canonical-missing"
+  | "doc-catalog-missing"
+  | "doc-catalog-warning"
   | "docs-bootstrap-conflict"
   | "handoff-active-archive-inactive"
   | "handoff-active-completed-entry"
@@ -46,7 +54,8 @@ export type ContextDiagnosticCode =
   | "ontology-superseded-entry-current"
   | "ontology-parse-error"
   | "evidence-artifact-missing"
-  | "evidence-invalid-record";
+  | "evidence-invalid-record"
+  | "context-index-stale";
 
 export interface ContextDiagnosticIssue {
   severity: ContextDiagnosticSeverity;
@@ -119,6 +128,9 @@ const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
   "doc-link-anchor-missing",
   "doc-link-target-missing",
   "doc-ontology-ref-missing",
+  "doc-canonical-missing",
+  "doc-catalog-missing",
+  "doc-catalog-warning",
   "docs-bootstrap-conflict",
   "handoff-active-archive-inactive",
   "handoff-active-completed-entry",
@@ -133,6 +145,7 @@ const CONTEXT_DIAGNOSTIC_CODES: readonly ContextDiagnosticCode[] = [
   "ontology-parse-error",
   "evidence-artifact-missing",
   "evidence-invalid-record",
+  "context-index-stale",
 ];
 
 const ACTIVE_GIT_REF_STALE_COMMIT_THRESHOLD = 3;
@@ -153,6 +166,7 @@ export function contextDiagnostics(
     ...handoffIssues(projectRoot, now, handoffThresholds),
     ...ontologyIssues(projectRoot),
     ...docGraphIssues(projectRoot),
+    ...contextIndexIssues(projectRoot),
     ...docFileReferenceIssues(projectRoot),
     ...docsBootstrapIssues(projectRoot),
     ...evidenceIssues(projectRoot),
@@ -411,6 +425,44 @@ function docGraphIssues(projectRoot: string): ContextDiagnosticIssue[] {
   const graph = contextDocs({ projectRoot });
   const issues: ContextDiagnosticIssue[] = [];
 
+  for (const warning of graph.warnings) {
+    issues.push({
+      severity: "warning",
+      code: "doc-catalog-warning",
+      message: warning,
+      source_path: graph.catalog.path ?? ".anamnesis/docs/catalog.yaml",
+      stable_ref: "catalog",
+      repair:
+        "Fix the document catalog YAML or remove unsafe roots, excludes, canonical docs, and ontology reference prefixes.",
+    });
+  }
+
+  if (graph.catalog.path) {
+    for (const canonical of graph.catalog.canonical) {
+      if (safeProjectFileExists(projectRoot, canonical)) continue;
+      issues.push({
+        severity: "info",
+        code: "doc-canonical-missing",
+        message: `configured canonical document is missing: ${canonical}`,
+        source_path: graph.catalog.path,
+        stable_ref: `canonical:${canonical}`,
+        related: [canonical],
+        repair:
+          "Restore the canonical document or remove its entry from .anamnesis/docs/catalog.yaml.",
+      });
+    }
+  } else if (graph.summary.pages >= 20) {
+    issues.push({
+      severity: "info",
+      code: "doc-catalog-missing",
+      message: `document-heavy workspace uses default discovery for ${graph.summary.pages} Markdown page(s)`,
+      source_path: ".anamnesis/docs/catalog.yaml",
+      stable_ref: "file",
+      repair:
+        "Optionally add .anamnesis/docs/catalog.yaml to review roots, excludes, canonical docs, and allowed ontology reference prefixes.",
+    });
+  }
+
   for (const link of graph.links) {
     if (link.status === "missing" && !isOntologySourceLink(link)) {
       issues.push(docLinkTargetMissingIssue(link));
@@ -426,6 +478,44 @@ function docGraphIssues(projectRoot: string): ContextDiagnosticIssue[] {
   }
 
   return issues;
+}
+
+function contextIndexIssues(projectRoot: string): ContextDiagnosticIssue[] {
+  const absPath = path.join(projectRoot, CONTEXT_INDEX_PATH);
+  if (!fs.existsSync(absPath)) return [];
+
+  let entries: ReturnType<typeof readContextIndex>;
+  try {
+    entries = readContextIndex(projectRoot);
+  } catch {
+    return [];
+  }
+  const freshness = contextIndexFreshness(projectRoot, entries);
+  const changed = freshness.changedSources.length;
+  const missing = freshness.missingSources.length;
+  const added = freshness.newSources.length;
+  const missingKinds = freshness.missingGeneratedKinds.length;
+  if (changed + missing + added + missingKinds === 0) return [];
+
+  return [
+    {
+      severity: "info",
+      code: "context-index-stale",
+      message:
+        `generated context index is stale ` +
+        `(changed=${changed}, missing=${missing}, new=${added}, missing-kinds=${missingKinds})`,
+      source_path: CONTEXT_INDEX_PATH,
+      stable_ref: "file",
+      related: [
+        ...freshness.changedSources,
+        ...freshness.missingSources,
+        ...freshness.newSources,
+        ...freshness.missingGeneratedKinds.map((kind) => `kind:${kind}`),
+      ].slice(0, 20),
+      repair:
+        "Run `anamnesis context index --write` to refresh the cache. `context query` already rebuilds a stale default index in memory before searching.",
+    },
+  ];
 }
 
 function docLinkTargetMissingIssue(link: DocumentGraphLink): ContextDiagnosticIssue {

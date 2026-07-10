@@ -60,6 +60,7 @@ export interface ContextDocsCatalog {
   roots: string[];
   excludes: string[];
   canonical: string[];
+  ontology_reference_prefixes: string[];
 }
 
 export interface ContextDocsSummary {
@@ -115,6 +116,10 @@ const DEFAULT_EXCLUDES = [
   "docs/benchmark-evidence",
 ] as const;
 const DEFAULT_CANONICAL = ["README.md"] as const;
+const DEFAULT_ONTOLOGY_REFERENCE_PREFIXES = [
+  "system_graph.yaml",
+  ".anamnesis/ontology/",
+] as const;
 
 export function contextDocs(opts: ContextDocsOptions): ContextDocsResult {
   const projectRoot = path.resolve(opts.projectRoot);
@@ -135,7 +140,13 @@ export function contextDocs(opts: ContextDocsOptions): ContextDocsResult {
   );
   const ontologyRefs = dedupeOntologyRefs([
     ...parsed.flatMap((item) => item.ontologyRefs),
-    ...links.flatMap((link) => ontologyRefsFromLink(projectRoot, link)),
+    ...links.flatMap((link) =>
+      ontologyRefsFromLink(
+        projectRoot,
+        link,
+        catalog.ontology_reference_prefixes,
+      ),
+    ),
   ]);
   const backlinks = backlinksForLinks(links);
   const pages = parsed.map((item) => {
@@ -181,12 +192,16 @@ function loadCatalog(
   const roots: string[] = [...DEFAULT_ROOTS];
   const excludes: string[] = [...DEFAULT_EXCLUDES];
   const canonical: string[] = [...DEFAULT_CANONICAL];
+  const ontologyReferencePrefixes: string[] = [
+    ...DEFAULT_ONTOLOGY_REFERENCE_PREFIXES,
+  ];
 
   if (!fs.existsSync(absPath)) {
     return {
       roots: uniqueStrings(roots),
       excludes: uniqueStrings(excludes),
       canonical: uniqueStrings(canonical),
+      ontology_reference_prefixes: uniqueStrings(ontologyReferencePrefixes),
     };
   }
 
@@ -199,6 +214,10 @@ function loadCatalog(
         ...stringArrayField(parsed, "canonical"),
         ...stringArrayField(parsed, "canonical_docs"),
       );
+      ontologyReferencePrefixes.push(
+        ...stringArrayField(parsed, "ontology_reference_prefixes"),
+        ...stringArrayField(parsed, "allowed_ontology_reference_prefixes"),
+      );
     }
   } catch (e) {
     warnings.push(`${relPath}: ${(e as Error).message}`);
@@ -209,6 +228,11 @@ function loadCatalog(
     roots: uniqueStrings(roots.map(normalizeRelPath)),
     excludes: uniqueStrings(excludes.map(normalizeRelPath)),
     canonical: uniqueStrings(canonical.map(normalizeRelPath)),
+    ontology_reference_prefixes: normalizeOntologyReferencePrefixes(
+      ontologyReferencePrefixes,
+      relPath,
+      warnings,
+    ),
   };
 }
 
@@ -282,7 +306,15 @@ function parseMarkdownSource(
       });
     }
 
-    ontologyRefs.push(...ontologyRefsFromLine(projectRoot, source.relPath, line, index + 1));
+    ontologyRefs.push(
+      ...ontologyRefsFromLine(
+        projectRoot,
+        source.relPath,
+        line,
+        index + 1,
+        catalog.ontology_reference_prefixes,
+      ),
+    );
   });
 
   const title =
@@ -441,13 +473,18 @@ function ontologyRefsFromLine(
   sourcePath: string,
   line: string,
   lineNumber: number,
+  allowedPrefixes: readonly string[],
 ): DocumentGraphOntologyRef[] {
   const refs = new Map<string, DocumentGraphOntologyRef>();
   if (isExampleOnlyOntologyLine(line)) return [];
-  const regex = /(?:^|[`\s([<])((?:\.\.?\/)*\.?anamnesis\/ontology\/[A-Za-z0-9._/-]+\.ya?ml|system_graph\.yaml)(?=$|[`)\]>\s.,;:])/g;
+  const regex = /(?:^|[`\s([<])((?:\.{0,2}\/)*[A-Za-z0-9._/-]+\.ya?ml)(?=$|[`)\]>\s.,;:])/g;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(line)) !== null) {
-    const target = normalizeOntologyTarget(sourcePath, match[1]!);
+    const target = normalizeOntologyTarget(
+      sourcePath,
+      match[1]!,
+      allowedPrefixes,
+    );
     if (!target) continue;
     refs.set(target, {
       source_path: sourcePath,
@@ -470,12 +507,10 @@ function isExampleOnlyOntologyLine(line: string): boolean {
 function ontologyRefsFromLink(
   projectRoot: string,
   link: DocumentGraphLink,
+  allowedPrefixes: readonly string[],
 ): DocumentGraphOntologyRef[] {
   const target = link.resolved_path;
-  if (
-    target !== "system_graph.yaml" &&
-    !target?.startsWith(".anamnesis/ontology/")
-  ) {
+  if (!target || !ontologyTargetAllowed(target, allowedPrefixes)) {
     return [];
   }
   return [
@@ -575,13 +610,53 @@ function resolveMarkdownPagePath(
 function normalizeOntologyTarget(
   sourcePath: string,
   value: string,
+  allowedPrefixes: readonly string[],
 ): string | undefined {
-  const normalized = resolveLocalPath(sourcePath, value.replace(/^\.\//, ""));
-  if (normalized === "system_graph.yaml") return normalized;
-  const marker = ".anamnesis/ontology/";
-  const markerIndex = normalized.indexOf(marker);
-  if (markerIndex >= 0) return normalized.slice(markerIndex);
-  return undefined;
+  const raw = normalizeRelPath(value.replace(/^\.\//, ""));
+  const rootRelative = ontologyTargetAllowed(raw, allowedPrefixes)
+    ? raw
+    : resolveLocalPath(sourcePath, value);
+  return ontologyTargetAllowed(rootRelative, allowedPrefixes)
+    ? rootRelative
+    : undefined;
+}
+
+function normalizeOntologyReferencePrefixes(
+  values: readonly string[],
+  catalogPath: string,
+  warnings: string[],
+): string[] {
+  const prefixes: string[] = [];
+  for (const value of values) {
+    const raw = value.trim().replace(/\\/g, "/").replace(/^\.\//, "");
+    const trailingSlash = raw.endsWith("/");
+    const normalized = path.posix.normalize(raw).replace(/^\.\//, "");
+    if (
+      normalized === "" ||
+      normalized === "." ||
+      normalized === ".." ||
+      normalized.startsWith("../") ||
+      path.posix.isAbsolute(normalized)
+    ) {
+      warnings.push(
+        `${catalogPath}: ignored unsafe ontology reference prefix '${value}'`,
+      );
+      continue;
+    }
+    prefixes.push(trailingSlash ? `${normalized.replace(/\/+$/, "")}/` : normalized);
+  }
+  return uniqueStrings(prefixes);
+}
+
+function ontologyTargetAllowed(
+  target: string,
+  allowedPrefixes: readonly string[],
+): boolean {
+  const normalized = normalizeRelPath(target);
+  return allowedPrefixes.some((prefix) => {
+    if (prefix.endsWith("/")) return normalized.startsWith(prefix);
+    return normalized === prefix;
+  });
 }
 
 function shouldExcludeDocumentPath(

@@ -1140,6 +1140,13 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
       evidence.invalid > 0 ? ` (${evidence.invalid} invalid line(s))` : "";
     console.log(`  evidence: none${suffix}`);
   }
+  const documents = result.documents;
+  console.log(
+    `  documents: ${documents.summary.pages} page(s), ${documents.summary.headings} heading(s), ` +
+      `${documents.summary.brokenLinks} broken link(s), ` +
+      `${documents.summary.missingOntologyRefs} missing ontology ref(s)` +
+      (documents.catalogPath ? ` [${documents.catalogPath}]` : " [default roots]"),
+  );
   const contextDiagnostics = result.contextDiagnostics;
   const contextInfo =
     contextDiagnostics.summary.info > 0
