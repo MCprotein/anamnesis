@@ -18,6 +18,14 @@ could include breaking changes.
   and user-configurable independent-review rules with OMX-to-Codex-native
   fallback. The design explicitly excludes execution-harness machinery such as
   Job/Run state, schedulers, daemons, heartbeats, and leases.
+- Implemented the first v1.18 storage/core slice: one canonical local Work
+  state root, immutable exact-byte source objects, coupled source-to-ledger
+  transactions, a hash-linked expected-head-CAS ledger with torn-tail recovery,
+  deterministic projections and progress, and disposable independent session
+  cursors. Managed paths reject symlinks, use private file modes, and use
+  bounded durable locks. Fresh verification passed all 48 targeted tests and
+  all 789 tests across 81 files, plus typecheck, lint, and diff checks; an
+  independent review returned `APPROVE`.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile
