@@ -98,6 +98,155 @@ describe("executableHookRenderer (claude-code)", () => {
     }
   });
 
+  it("registers the base Work hook for UserPromptSubmit", () => {
+    const workHookPath = "adapters/claude-code/hooks/work-briefing.sh";
+    fs.writeFileSync(path.join(fragmentDir, workHookPath), "#!/bin/bash\n");
+    const fragment: FragmentDefinition = {
+      id: "base",
+      version: 21,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "UserPromptSubmit",
+        source: workHookPath,
+        adapters_supported: ["claude-code"],
+        side_effects: ["local-write"],
+      },
+      makeContext(fragmentDir, fragment),
+    );
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0]?.kind).toBe("file");
+    if (actions[0]?.kind === "file") {
+      expect(actions[0].path).toBe(".claude/hooks/work-briefing.sh");
+      expect(actions[0].settingsHook).toEqual({ event: "UserPromptSubmit" });
+    }
+  });
+
+  it("forwards exact Claude UserPromptSubmit stdin bytes to the Work CLI", () => {
+    const projectRoot = tmpDir();
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/work-briefing.sh",
+    );
+    const input = Buffer.from(
+      `${JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "UserPromptSubmit",
+        prompt: "exact prompt bytes",
+        prompt_id: "prompt-claude-1",
+      })}\n`,
+      "utf8",
+    );
+    fs.writeFileSync(
+      shimPath,
+      [
+        "#!/usr/bin/env node",
+        "const chunks = [];",
+        "for await (const chunk of process.stdin) chunks.push(chunk);",
+        "const input = Buffer.concat(chunks);",
+        'if (process.argv.slice(2).join(" ") !== "work hook-user-prompt --client claude-code") process.exit(41);',
+        'if (input.toString("base64") !== process.env.EXPECTED_INPUT_BASE64) process.exit(42);',
+        'process.stdout.write("claude briefing\\n");',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        ANAMNESIS_BIN: shimPath,
+        CLAUDE_PROJECT_DIR: projectRoot,
+        EXPECTED_INPUT_BASE64: input.toString("base64"),
+      },
+      input,
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toBe("claude briefing\n");
+  });
+
+  it("uses a built anamnesis source checkout when no installed CLI exists", () => {
+    const projectRoot = tmpDir();
+    const checkoutBin = path.join(projectRoot, "cli/dist/index.js");
+    fs.mkdirSync(path.dirname(checkoutBin), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, "package.json"),
+      JSON.stringify({ name: "@mcprotein/anamnesis" }),
+    );
+    fs.writeFileSync(
+      checkoutBin,
+      `#!${process.execPath}\nprocess.stdout.write("checkout briefing\\n");\n`,
+    );
+    fs.chmodSync(checkoutBin, 0o755);
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: { CLAUDE_PROJECT_DIR: projectRoot, PATH: "/usr/bin:/bin" },
+        input: "{}\n",
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toBe("checkout briefing\n");
+  });
+
+  it("fails open without leaking Claude Work command stderr or prompt", () => {
+    const projectRoot = tmpDir();
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/work-briefing.sh",
+    );
+    const input = `${JSON.stringify({
+      cwd: projectRoot,
+      hook_event_name: "UserPromptSubmit",
+      prompt: "claude private failure sentinel",
+    })}\n`;
+    fs.writeFileSync(
+      shimPath,
+      [
+        "#!/usr/bin/env node",
+        'process.stderr.write("child failure detail: claude private failure sentinel\\n");',
+        "process.exit(23);",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        ANAMNESIS_BIN: shimPath,
+        CLAUDE_PROJECT_DIR: projectRoot,
+      },
+      input,
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("command failed");
+    expect(result.stderr).not.toContain("child failure detail");
+    expect(result.stderr).not.toContain("claude private failure sentinel");
+  });
+
   it("throws when hook source is missing", () => {
     expect(() =>
       executableHookRenderer.plan(

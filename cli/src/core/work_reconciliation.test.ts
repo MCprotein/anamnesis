@@ -11,6 +11,7 @@ import {
 	emptyWorkCursorReconciliationState,
 	evaluateReconciliationDue,
 	noteMeaningfulReconciliationAction,
+	observeInjectedReconciliation,
 	prepareReconciliationDelivery,
 } from "./work_reconciliation.js";
 
@@ -392,7 +393,28 @@ describe("reconciliation due evaluation", () => {
 				meaningful_actions_since_confirmed: 99,
 				current_fingerprint: base.confirmed_fingerprint,
 			}),
-		).toMatchObject({ due: false });
+		).toMatchObject({
+			due: true,
+			reasons: ["meaningful_actions", "max_silence"],
+		});
+	});
+
+	it("allows the same observed fingerprint to become due again by silence", () => {
+		const fingerprint = sha256("same");
+		expect(
+			evaluateReconciliationDue({
+				policy: frequent,
+				lifecycle: "open",
+				safe_boundary: true,
+				trigger: "work_resume",
+				now: "2026-08-13T00:05:00.000Z",
+				last_confirmed_at: "2026-08-13T00:00:00.000Z",
+				meaningful_actions_since_confirmed: 0,
+				current_fingerprint: fingerprint,
+				confirmed_fingerprint: null,
+				last_observed_fingerprint: fingerprint,
+			}),
+		).toMatchObject({ due: true, reasons: ["max_silence"] });
 	});
 
 	it("is clock-rollback safe, off is silent, and terminal Works never auto-continue", () => {
@@ -504,6 +526,37 @@ describe("reconciliation due evaluation", () => {
 });
 
 describe("reconciliation cursor transitions", () => {
+	it("records hidden injection separately without advancing confirmation fields", () => {
+		const initial = noteMeaningfulReconciliationAction(
+			emptyWorkCursorReconciliationState(),
+		);
+		const delivery = {
+			fingerprint: sha256("briefing"),
+			ledger_head: sha256("head"),
+			contract_revision: 2,
+			contract_hash: sha256("contract"),
+			policy_hash: sha256("policy"),
+		};
+		const observed = observeInjectedReconciliation(initial, {
+			delivery,
+			injected_at: "2026-08-13T00:00:00.000Z",
+			boundary_id: sha256("boundary"),
+			meaningful_actions_observed: 1,
+		});
+		expect(observed).toMatchObject({
+			last_reconciled_head: null,
+			last_reconciled_revision: null,
+			last_reconciled_at: null,
+			confirmed_delivery_fingerprint: null,
+			pending_delivery: delivery,
+			injected_unconfirmed: {
+				delivery,
+				boundary_id: sha256("boundary"),
+				meaningful_actions_observed: 1,
+			},
+		});
+	});
+
 	it("does not advance a confirmed baseline until visible delivery is confirmed", () => {
 		const fingerprint = sha256("briefing");
 		const delivery = {
@@ -534,6 +587,7 @@ describe("reconciliation cursor transitions", () => {
 			meaningful_actions_since_confirmed: 0,
 			pending_delivery: null,
 			confirmed_delivery_fingerprint: fingerprint,
+			injected_unconfirmed: null,
 		});
 	});
 

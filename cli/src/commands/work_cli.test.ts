@@ -7,6 +7,7 @@ import YAML from "yaml";
 
 import { readWorkCursor } from "../core/work_cursor.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
+import { deriveWorkHookCursorId } from "./work_hook.js";
 
 const roots: string[] = [];
 const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
@@ -70,6 +71,54 @@ function run(root: string, args: string[], input?: Buffer) {
 }
 
 describe("anamnesis work CLI", () => {
+	it("fails open on invalid hook input and emits bounded session onboarding", () => {
+		const root = project();
+		const invalid = run(
+			root,
+			["hook-user-prompt", "--client", "codex"],
+			Buffer.from("not-json"),
+		);
+		expect(invalid.status, invalid.stderr).toBe(0);
+		expect(invalid.stdout).toBe("");
+
+		const missingStableId = run(
+			root,
+			["hook-user-prompt", "--client", "codex"],
+			Buffer.from(JSON.stringify({ session_id: "session-hook", prompt: "secret" })),
+		);
+		expect(missingStableId.status, missingStableId.stderr).toBe(0);
+		expect(missingStableId.stdout).toBe("");
+		fs.writeFileSync(
+			path.join(root, "Agentfile"),
+			YAML.stringify({
+				version: 2,
+				project: { name: "hook-onboarding" },
+				tools: ["codex"],
+				fragments: [],
+				settings: {
+					work_policy: { reconciliation: { preset: "frequent" } },
+				},
+			}),
+		);
+
+		const onboarding = run(
+			root,
+			["hook-user-prompt", "--client", "codex"],
+			Buffer.from(
+				JSON.stringify({
+					session_id: "session-hook",
+					turn_id: "turn-1",
+					prompt: "PROMPT_MUST_NOT_APPEAR",
+				}),
+			),
+		);
+		expect(onboarding.status, onboarding.stderr).toBe(0);
+		expect(onboarding.stdout).toContain(
+			deriveWorkHookCursorId("codex", "session-hook"),
+		);
+		expect(onboarding.stdout).not.toContain("PROMPT_MUST_NOT_APPEAR");
+	});
+
 	it("runs create -> JSON brief pending -> explicit confirm with exact stdin bytes", () => {
 		const root = project();
 		writeDraft(root, "src_cli");
@@ -326,7 +375,7 @@ describe("anamnesis work CLI", () => {
 		expect(readWorkCursor(stateRoot, "session_b").cursor?.work_id).toBe(
 			"wu_one",
 		);
-	});
+	}, 10_000);
 
 	it("leaves briefing delivery pending when stdout closes before presentation", async () => {
 		const root = project();

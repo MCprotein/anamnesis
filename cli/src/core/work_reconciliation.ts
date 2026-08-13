@@ -199,6 +199,8 @@ export interface EvaluateReconciliationDueInput {
 	meaningful_actions_since_confirmed: number;
 	current_fingerprint: string;
 	confirmed_fingerprint: string | null;
+	/** Latest confirmed or explicitly unconfirmed delivery observation. */
+	last_observed_fingerprint?: string | null;
 }
 
 export interface ReconciliationDueDecision {
@@ -229,8 +231,12 @@ export function evaluateReconciliationDue(
 			"meaningful_actions_since_confirmed must be a non-negative safe integer",
 		);
 	}
-	const changed = input.current_fingerprint !== input.confirmed_fingerprint;
-	if (reconciliation.preset === "off" || !input.safe_boundary || !changed) {
+	const comparisonFingerprint =
+		input.last_observed_fingerprint === undefined
+			? input.confirmed_fingerprint
+			: input.last_observed_fingerprint;
+	const changed = input.current_fingerprint !== comparisonFingerprint;
+	if (reconciliation.preset === "off" || !input.safe_boundary) {
 		return {
 			due: false,
 			visible_emission: false,
@@ -240,6 +246,7 @@ export function evaluateReconciliationDue(
 	}
 	const reasons: ReconciliationDueDecision["reasons"] = [];
 	if (
+		changed &&
 		input.trigger !== null &&
 		reconciliation.triggers.includes(input.trigger)
 	) {
@@ -279,6 +286,7 @@ export function emptyWorkCursorReconciliationState(): WorkCursorReconciliationSt
 		meaningful_actions_since_confirmed: 0,
 		pending_delivery: null,
 		confirmed_delivery_fingerprint: null,
+		injected_unconfirmed: null,
 	};
 }
 
@@ -317,6 +325,40 @@ export interface ConfirmReconciliationDeliveryInput
 	confirmed_at: string;
 }
 
+export interface ObserveInjectedReconciliationInput {
+	delivery: ReconciliationDeliveryBinding;
+	injected_at: string;
+	boundary_id: string;
+	meaningful_actions_observed: number;
+}
+
+/** Record hidden context injection without advancing any confirmed baseline. */
+export function observeInjectedReconciliation(
+	state: WorkCursorReconciliationState,
+	input: ObserveInjectedReconciliationInput,
+): WorkCursorReconciliationState {
+	validateDeliveryBinding(input.delivery);
+	validateTimestamp(input.injected_at, "injected_at");
+	if (!isHash(input.boundary_id)) throw new Error("invalid boundary_id");
+	if (
+		!Number.isSafeInteger(input.meaningful_actions_observed) ||
+		input.meaningful_actions_observed < 0
+	) {
+		throw new Error(
+			"meaningful_actions_observed must be a non-negative safe integer",
+		);
+	}
+	return {
+		...prepareReconciliationDelivery(state, input.delivery),
+		injected_unconfirmed: {
+			delivery: { ...input.delivery },
+			injected_at: input.injected_at,
+			boundary_id: input.boundary_id,
+			meaningful_actions_observed: input.meaningful_actions_observed,
+		},
+	};
+}
+
 /** Advance the session-local baseline only after visible delivery is confirmed. */
 export function confirmReconciliationDelivery(
 	state: WorkCursorReconciliationState,
@@ -334,6 +376,7 @@ export function confirmReconciliationDelivery(
 		meaningful_actions_since_confirmed: 0,
 		pending_delivery: null,
 		confirmed_delivery_fingerprint: input.fingerprint,
+		injected_unconfirmed: null,
 	};
 }
 
@@ -549,6 +592,13 @@ function validateDueInputs(input: EvaluateReconciliationDueInput): void {
 		!isHash(input.confirmed_fingerprint)
 	) {
 		throw new Error("invalid confirmed reconciliation fingerprint");
+	}
+	if (
+		input.last_observed_fingerprint !== undefined &&
+		input.last_observed_fingerprint !== null &&
+		!isHash(input.last_observed_fingerprint)
+	) {
+		throw new Error("invalid observed reconciliation fingerprint");
 	}
 	const reconciliation = validateNormalizedReconciliationPolicy(
 		input.policy.reconciliation,

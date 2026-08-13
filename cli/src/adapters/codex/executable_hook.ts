@@ -12,14 +12,16 @@ import {
   mergeSideEffects,
 } from "../../core/capability_side_effects.js";
 import { codexNativeNodeCommand } from "../../core/codex_native.js";
+import type { CapabilitySideEffect } from "../../core/fragments.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
-import type { CapabilitySideEffect } from "../../core/fragments.js";
 
 const PRE_COMMIT_PATH = ".git/hooks/pre-commit";
 const CODEX_NATIVE_SESSION_START_WRAPPER =
   ".anamnesis/codex-native-hooks/session-start.mjs";
 const CODEX_NATIVE_SESSION_START_MATCHER = "startup|resume|clear";
+const CODEX_NATIVE_WORK_USER_PROMPT_WRAPPER =
+  ".anamnesis/codex-native-hooks/work-user-prompt.mjs";
 
 const PRE_COMMIT_CONTENT = `#!/usr/bin/env bash
 # anamnesis Codex pre-commit bridge.
@@ -79,6 +81,12 @@ export const executableHookRenderer: CapabilityRenderer = {
     // Region id: deterministic per fragment+hook so updates align.
     const regionId = `codex-hook-${basename.replace(/\.[^.]+$/, "")}`;
     const gitPreCommitEnabled = hasGitHooksDir(ctx.projectRoot);
+    const nativeWorkUserPrompt = baseNativeWorkUserPromptSupported({
+      fragmentId: ctx.fragment.id,
+      event: capability.event,
+      basename,
+      fragmentDir: ctx.fragmentDir,
+    });
     const nativeShellHook = codexNativeShellHookSupported(capability.event);
 
     const content = formatHookRegion({
@@ -132,6 +140,24 @@ export const executableHookRenderer: CapabilityRenderer = {
       });
     }
 
+    if (nativeWorkUserPrompt) {
+      actions.push({
+        kind: "file",
+        path: CODEX_NATIVE_WORK_USER_PROMPT_WRAPPER,
+        fragmentId: ctx.fragment.id,
+        fragmentVersion: ctx.fragment.version,
+        content: fs.readFileSync(nativeWorkUserPrompt.templatePath, "utf8"),
+        mode: 0o755,
+        sideEffects,
+        codexHook: {
+          event: "UserPromptSubmit",
+          command: codexNativeNodeCommand(
+            CODEX_NATIVE_WORK_USER_PROMPT_WRAPPER,
+          ),
+        },
+      });
+    }
+
     const scriptActionPath = path.posix.join(
       ".anamnesis/codex-hooks",
       codexHookFilename(ctx.fragment.id, capability.event, basename),
@@ -151,7 +177,7 @@ export const executableHookRenderer: CapabilityRenderer = {
       scriptActionAdded = true;
     };
 
-    if (nativeShellHook) {
+    if (nativeShellHook && !nativeWorkUserPrompt) {
       addScriptAction();
       const wrapperPath = path.posix.join(
         ".anamnesis/codex-native-hooks",
@@ -178,22 +204,21 @@ export const executableHookRenderer: CapabilityRenderer = {
       });
     }
 
-    if (gitPreCommitEnabled && capability.event !== "SessionStart") {
+    if (
+      gitPreCommitEnabled &&
+      capability.event !== "SessionStart" &&
+      !nativeWorkUserPrompt
+    ) {
       addScriptAction();
-      actions.push(
-        {
-          kind: "file",
-          path: PRE_COMMIT_PATH,
-          fragmentId: ctx.fragment.id,
-          fragmentVersion: ctx.fragment.version,
-          content: PRE_COMMIT_CONTENT,
-          mode: 0o755,
-          sideEffects: mergeSideEffects(sideEffects, [
-            "git-hook",
-            "local-write",
-          ]),
-        },
-      );
+      actions.push({
+        kind: "file",
+        path: PRE_COMMIT_PATH,
+        fragmentId: ctx.fragment.id,
+        fragmentVersion: ctx.fragment.version,
+        content: PRE_COMMIT_CONTENT,
+        mode: 0o755,
+        sideEffects: mergeSideEffects(sideEffects, ["git-hook", "local-write"]),
+      });
     }
 
     return actions;
@@ -221,8 +246,10 @@ function codexNativeWrapperFilename(
   event: string,
   basename: string,
 ): string {
-  return `${fragmentId}-${event}-${basename.replace(/\.[^.]+$/, "")}.mjs`
-    .replace(/[^A-Za-z0-9._-]/g, "-");
+  return `${fragmentId}-${event}-${basename.replace(/\.[^.]+$/, "")}.mjs`.replace(
+    /[^A-Za-z0-9._-]/g,
+    "-",
+  );
 }
 
 function parseHookEvent(event: string): { event: string; matcher?: string } {
@@ -282,15 +309,17 @@ function formatHookRegion(params: {
       ? "**Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback."
       : params.nativeCodexHook
         ? `**Codex native path:** when executable adapter writes are allowed, anamnesis installs a JSON wrapper under \`.anamnesis/codex-native-hooks/\` and registers \`${params.nativeCodexHook.event}${params.nativeCodexHook.matcher ? `:${params.nativeCodexHook.matcher}` : ""}\` in \`.codex/hooks.json\`. This region remains the manual fallback.`
-      : params.gitPreCommitEnabled
-        ? "**Codex fallback:** eligible for best-effort Git `pre-commit` installation under `.anamnesis/codex-hooks/` when executable adapter writes are allowed and no user-owned hook blocks it."
-        : "**Codex fallback:** documented here only; no `.git/hooks/` directory was present during rendering.",
+        : params.gitPreCommitEnabled
+          ? "**Codex fallback:** eligible for best-effort Git `pre-commit` installation under `.anamnesis/codex-hooks/` when executable adapter writes are allowed and no user-owned hook blocks it."
+          : "**Codex fallback:** documented here only; no `.git/hooks/` directory was present during rendering.",
     "",
     params.sideEffects.length > 0
       ? `**Declared side effects:** ${formatSideEffects(params.sideEffects)}.`
       : "",
     params.sideEffects.length > 0 ? "" : "",
-    `**Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).`,
+    params.event === "UserPromptSubmit"
+      ? "**Intent:** native adapters invoke this only with the documented hook payload. When that transport is unavailable, do not synthesize session or turn IDs; use `anamnesis work brief` explicitly at a safe boundary instead."
+      : `**Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).`,
     "",
     "```bash",
     params.script.trimEnd(),
@@ -484,6 +513,27 @@ function baseNativeSessionStartSupported(params: {
   if (!fs.existsSync(templatePath)) {
     throw new RenderError(
       `base Codex SessionStart wrapper not found: ${templatePath}`,
+    );
+  }
+  return { templatePath };
+}
+
+function baseNativeWorkUserPromptSupported(params: {
+  fragmentId: string;
+  event: string;
+  basename: string;
+  fragmentDir: string;
+}): { templatePath: string } | null {
+  if (params.fragmentId !== "base") return null;
+  if (params.event !== "UserPromptSubmit") return null;
+  if (params.basename !== "work-briefing.sh") return null;
+  const templatePath = path.join(
+    params.fragmentDir,
+    "adapters/codex/hooks/work-user-prompt.mjs",
+  );
+  if (!fs.existsSync(templatePath)) {
+    throw new RenderError(
+      `base Codex UserPromptSubmit wrapper not found: ${templatePath}`,
     );
   }
   return { templatePath };

@@ -74,6 +74,27 @@ could include breaking changes.
   tests across 88 files, plus typecheck, lint, build, and diff checks;
   independent code review returned `APPROVE` and adversarial verification
   returned `PASS`.
+- Added the first automatic Work reconciliation boundary. The base fragment
+  now installs dedicated Claude Code and Codex `UserPromptSubmit` adapters
+  behind `--allow-exec-adapters`; they forward the native JSON payload only on
+  stdin, keep prompt text out of logs, files, hashes, diagnostics, and returned
+  context, and fail open when the CLI or stable turn identity is unavailable.
+  The hook refolds only the session-selected Work, evaluates its frozen
+  reconciliation policy, records hidden delivery as `injected_unconfirmed`,
+  deduplicates retries by stable client boundary and briefing fingerprint, and
+  asks the foreground agent to visibly report requirements, done/remaining
+  work, blockers, progress, and then continue. Hidden context injection never
+  advances the user-visible confirmed baseline. Raw prompt staging and Work
+  allocation remain a separate follow-up so interruptions and unrelated
+  prompts are not durably retained by default. Compact output preserves the
+  completion contract, delta, configured gates, changed/at-risk requirements,
+  next action, blockers, and an authoritative status command under structural
+  budgets; oversized full output falls back atomically instead of silently
+  truncating. Codex keeps the default-off path visually silent. Fresh
+  verification passed 79 focused review tests and all 914 tests across 89
+  files, plus typecheck, lint, build, adapter parity, status, and diff checks;
+  independent code review returned `APPROVE` and adversarial verification
+  returned `PASS`.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile

@@ -44,6 +44,12 @@ Known implications:
   adapters are allowed. Commands and unsupported hook surfaces still keep
   explicit fallback surfaces because the user-facing goal is continuity, not
   identical UI.
+- The base Work continuity hook uses dedicated `UserPromptSubmit` wrappers on
+  Claude Code and Codex. Both are fail-open, keep raw prompt text out of
+  returned context and diagnostics, require documented stable turn identity,
+  and distinguish hidden `injected_unconfirmed` delivery from a user-visible
+  confirmation. Cursor has no equivalent native prompt hook and remains on the
+  explicit `work brief`/`work switch` command path.
 - Codex project-local skill discovery was verified with `codex exec -C
   <tmp-project> --ignore-user-config --sandbox read-only` over
   `.codex/skills/anamnesis-smoke/SKILL.md`, which loaded the skill and returned

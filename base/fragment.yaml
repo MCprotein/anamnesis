@@ -1,5 +1,5 @@
 id: base
-version: 20
+version: 21
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
@@ -39,6 +39,12 @@ capabilities:
     source: adapters/claude-code/hooks/handoff-reminder.sh
     adapters_supported: [claude-code, codex]
     side_effects: [local-write, repo-external-write]
+
+  - type: executable_hook
+    event: UserPromptSubmit
+    source: adapters/claude-code/hooks/work-briefing.sh
+    adapters_supported: [claude-code, codex]
+    side_effects: [local-write]
 
   - type: slash_command
     name: load-context
@@ -82,12 +88,14 @@ owns:
   - file: .anamnesis/codex-native-hooks/session-start.mjs
   - file: .anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs
   - file: .anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs
+  - file: .anamnesis/codex-native-hooks/work-user-prompt.mjs
   - file: .anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh
   - file: .anamnesis/codex-hooks/base-Stop-handoff-reminder.sh
   - file: .claude/hooks/inject-ontology.sh
   - file: .claude/hooks/remind-uncommitted.sh
   - file: .claude/hooks/inject-handoff.sh
   - file: .claude/hooks/handoff-reminder.sh
+  - file: .claude/hooks/work-briefing.sh
   - file: .claude/commands/load-context.md
   - file: .claude/commands/handoff-prepare.md
   - file: .claude/skills/load-context/SKILL.md

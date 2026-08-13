@@ -301,6 +301,18 @@ describe("Work cursor", () => {
 					policy_hash: sha256("policy"),
 				},
 				confirmed_delivery_fingerprint: sha256("confirmed"),
+				injected_unconfirmed: {
+					delivery: {
+						fingerprint: sha256("injected"),
+						ledger_head: sha256("injected-head"),
+						contract_revision: 2,
+						contract_hash: sha256("contract"),
+						policy_hash: sha256("policy"),
+					},
+					injected_at: "2026-08-13T01:03:00.000Z",
+					boundary_id: sha256("boundary"),
+					meaningful_actions_observed: 3,
+				},
 			},
 		});
 		writeWorkCursorAtomic(root, current);

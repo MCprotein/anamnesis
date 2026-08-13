@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { beforeEach, describe, expect, it } from "vitest";
+import { codexNativeNodeCommand } from "../../core/codex_native.js";
+import type { FragmentDefinition } from "../../core/fragments.js";
+import { type RenderContext, RenderError } from "../../core/render.js";
 import { executableHookRenderer } from "./executable_hook.js";
 import { skillRenderer } from "./skill.js";
 import { slashCommandRenderer } from "./slash_command.js";
-import { codexNativeNodeCommand } from "../../core/codex_native.js";
-import { RenderError, type RenderContext } from "../../core/render.js";
-import type { FragmentDefinition } from "../../core/fragments.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -84,7 +84,8 @@ describe("codex executable_hook fallback", () => {
     const wrapper = actions.find(
       (a) =>
         a.kind === "file" &&
-        a.path === ".anamnesis/codex-native-hooks/myfrag-PostToolUse-Edit-x.mjs",
+        a.path ===
+          ".anamnesis/codex-native-hooks/myfrag-PostToolUse-Edit-x.mjs",
     );
     expect(wrapper?.kind).toBe("file");
     if (wrapper?.kind === "file") {
@@ -209,6 +210,210 @@ describe("codex executable_hook fallback", () => {
     }
   });
 
+  it("selects the dedicated base UserPromptSubmit wrapper", () => {
+    fs.mkdirSync(path.join(fragmentDir, "adapters/codex/hooks"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/work-briefing.sh"),
+      "#!/bin/bash\n",
+    );
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/codex/hooks/work-user-prompt.mjs"),
+      "console.log('{}');\n",
+    );
+    const fragment: FragmentDefinition = {
+      id: "base",
+      version: 21,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "UserPromptSubmit",
+        source: "adapters/claude-code/hooks/work-briefing.sh",
+        adapters_supported: ["codex"],
+        side_effects: ["local-write"],
+      },
+      makeContext(fragmentDir, fragment),
+    );
+
+    const wrapper = actions.find(
+      (action) =>
+        action.kind === "file" &&
+        action.path === ".anamnesis/codex-native-hooks/work-user-prompt.mjs",
+    );
+    expect(wrapper?.kind).toBe("file");
+    if (wrapper?.kind === "file") {
+      expect(wrapper.codexHook).toEqual({
+        event: "UserPromptSubmit",
+        command: codexNativeNodeCommand(
+          ".anamnesis/codex-native-hooks/work-user-prompt.mjs",
+        ),
+      });
+      expect(wrapper.sideEffects).toEqual(["local-write"]);
+    }
+    expect(
+      actions.some(
+        (action) =>
+          action.kind === "file" &&
+          action.path.includes("base-UserPromptSubmit-work-briefing"),
+      ),
+    ).toBe(false);
+  });
+
+  it("forwards exact UserPromptSubmit bytes and isolates child stderr", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-user-prompt.mjs",
+    );
+    const input = Buffer.from(
+      `${JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "UserPromptSubmit",
+        prompt: "private prompt sentinel",
+        prompt_id: "prompt-123",
+      })}\n`,
+      "utf8",
+    );
+    fs.writeFileSync(
+      shimPath,
+      [
+        "#!/usr/bin/env node",
+        "const chunks = [];",
+        "for await (const chunk of process.stdin) chunks.push(chunk);",
+        "const input = Buffer.concat(chunks);",
+        'if (process.argv.slice(2).join(" ") !== "work hook-user-prompt --client codex") process.exit(41);',
+        'if (input.toString("base64") !== process.env.EXPECTED_INPUT_BASE64) process.exit(42);',
+        'process.stderr.write("child stderr sentinel\\n");',
+        'process.stdout.write("due briefing\\n");',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        ANAMNESIS_BIN: shimPath,
+        EXPECTED_INPUT_BASE64: input.toString("base64"),
+      },
+      input,
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).not.toContain("child stderr sentinel");
+    expect(result.stdout).not.toContain("private prompt sentinel");
+    expect(JSON.parse(result.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "UserPromptSubmit",
+        additionalContext: "due briefing\n",
+      },
+    });
+  });
+
+  it("fails open with sanitized output when the Work CLI is unavailable", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-missing-");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-user-prompt.mjs",
+    );
+    const input = `${JSON.stringify({
+      cwd: projectRoot,
+      hook_event_name: "UserPromptSubmit",
+      prompt: "missing cli private sentinel",
+    })}\n`;
+
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      env: { CODEX_PROJECT_DIR: projectRoot, PATH: "" },
+      input,
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stdout).not.toContain("missing cli private sentinel");
+    expect(result.stderr).toContain("executable unavailable");
+    expect(result.stderr).not.toContain("missing cli private sentinel");
+  });
+
+  it("uses a built anamnesis source checkout when no installed CLI exists", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-checkout-");
+    const checkoutBin = path.join(projectRoot, "cli/dist/index.js");
+    fs.mkdirSync(path.dirname(checkoutBin), { recursive: true });
+    fs.writeFileSync(
+      path.join(projectRoot, "package.json"),
+      JSON.stringify({ name: "@mcprotein/anamnesis" }),
+    );
+    fs.writeFileSync(
+      checkoutBin,
+      `#!${process.execPath}\nprocess.stdout.write("checkout briefing\\n");\n`,
+    );
+    fs.chmodSync(checkoutBin, 0o755);
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-user-prompt.mjs",
+    );
+
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      env: { CODEX_PROJECT_DIR: projectRoot, PATH: "" },
+      input: `${JSON.stringify({ cwd: projectRoot })}\n`,
+      encoding: "utf8",
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "UserPromptSubmit",
+        additionalContext: "checkout briefing\n",
+      },
+    });
+  });
+
+  it("returns empty hook JSON when the Work CLI emits no briefing", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-empty-");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-user-prompt.mjs",
+    );
+    const input = `${JSON.stringify({
+      cwd: projectRoot,
+      hook_event_name: "UserPromptSubmit",
+      prompt: "codex private empty sentinel",
+    })}\n`;
+    fs.writeFileSync(
+      shimPath,
+      [
+        "#!/usr/bin/env node",
+        'process.stderr.write("child empty stderr: codex private empty sentinel\\n");',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      env: { ...process.env, ANAMNESIS_BIN: shimPath },
+      input,
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stdout).not.toContain("codex private empty sentinel");
+    expect(result.stderr).toBe("");
+  });
+
   it("points to symlinked system_graph.yaml in the native SessionStart context", () => {
     if (process.platform === "win32") return;
 
@@ -276,7 +481,10 @@ describe("codex executable_hook fallback", () => {
     );
     const result = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      input: JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "SessionStart",
+      }),
       encoding: "utf8",
     });
 
@@ -301,7 +509,10 @@ describe("codex executable_hook fallback", () => {
 
     const full = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      input: JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "SessionStart",
+      }),
       env: {
         ...process.env,
         ANAMNESIS_SESSION_CONTEXT_MODE: "full",
@@ -358,10 +569,15 @@ describe("codex executable_hook fallback", () => {
       "utf8",
     );
 
-    const wrapperPath = path.resolve("base/adapters/codex/hooks/session-start.mjs");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/session-start.mjs",
+    );
     const compact = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      input: JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "SessionStart",
+      }),
       encoding: "utf8",
     });
 
@@ -379,7 +595,10 @@ describe("codex executable_hook fallback", () => {
 
     const full = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      input: JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "SessionStart",
+      }),
       env: {
         ...process.env,
         ANAMNESIS_SESSION_CONTEXT_MODE: "full",
@@ -421,10 +640,15 @@ describe("codex executable_hook fallback", () => {
       "utf8",
     );
 
-    const wrapperPath = path.resolve("base/adapters/codex/hooks/session-start.mjs");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/session-start.mjs",
+    );
     const compact = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      input: JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "SessionStart",
+      }),
       encoding: "utf8",
     });
 
@@ -473,10 +697,15 @@ describe("codex executable_hook fallback", () => {
       new Date("2026-06-03T00:00:00.000Z"),
     );
 
-    const wrapperPath = path.resolve("base/adapters/codex/hooks/session-start.mjs");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/session-start.mjs",
+    );
     const compact = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      input: JSON.stringify({ cwd: projectRoot, hook_event_name: "SessionStart" }),
+      input: JSON.stringify({
+        cwd: projectRoot,
+        hook_event_name: "SessionStart",
+      }),
       encoding: "utf8",
     });
 
@@ -489,7 +718,9 @@ describe("codex executable_hook fallback", () => {
     expect(context).toContain("- .anamnesis/handoff/new.md");
     expect(context).toContain("- .anamnesis/handoff/middle.md");
     expect(context).not.toContain("- .anamnesis/handoff/old.md");
-    expect(context).toContain("Retrieval rule: read the referenced warm archive");
+    expect(context).toContain(
+      "Retrieval rule: read the referenced warm archive",
+    );
     expect(context).toContain("anamnesis context query");
     expect(context).toContain("source_path/stable_ref");
   });

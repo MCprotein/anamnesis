@@ -44,6 +44,14 @@ export interface WorkCursorReconciliationState {
 	meaningful_actions_since_confirmed: number;
 	pending_delivery: WorkCursorPendingDelivery | null;
 	confirmed_delivery_fingerprint: string | null;
+	injected_unconfirmed?: WorkCursorInjectedObservation | null;
+}
+
+export interface WorkCursorInjectedObservation {
+	delivery: WorkCursorPendingDelivery;
+	injected_at: string;
+	boundary_id: string;
+	meaningful_actions_observed: number;
 }
 
 export interface WorkCursorPendingDelivery {
@@ -138,6 +146,7 @@ function parseReconciliationState(
 		"meaningful_actions_since_confirmed",
 		"pending_delivery",
 		"confirmed_delivery_fingerprint",
+		"injected_unconfirmed",
 	]);
 	const unknown = Object.keys(state).find((key) => !allowed.has(key));
 	if (unknown) {
@@ -145,7 +154,9 @@ function parseReconciliationState(
 			`invalid Work cursor: unknown reconciliation field ${unknown}`,
 		);
 	}
-	for (const field of allowed) {
+	for (const field of [...allowed].filter(
+		(field) => field !== "injected_unconfirmed",
+	)) {
 		if (!(field in state)) {
 			throw new Error(
 				`invalid Work cursor: missing reconciliation field ${field}`,
@@ -191,7 +202,64 @@ function parseReconciliationState(
 			"invalid Work cursor: confirmed_delivery_fingerprint must be a SHA-256 hash or null",
 		);
 	}
+	if (
+		state.injected_unconfirmed !== undefined &&
+		state.injected_unconfirmed !== null
+	) {
+		parseInjectedObservation(state.injected_unconfirmed);
+	}
 	return state as unknown as WorkCursorReconciliationState;
+}
+
+function parseInjectedObservation(
+	value: unknown,
+): WorkCursorInjectedObservation {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new Error(
+			"invalid Work cursor: injected_unconfirmed must be a mapping",
+		);
+	}
+	const observation = value as Record<string, unknown>;
+	const fields = [
+		"delivery",
+		"injected_at",
+		"boundary_id",
+		"meaningful_actions_observed",
+	] as const;
+	const unknown = Object.keys(observation).find(
+		(key) => !fields.includes(key as (typeof fields)[number]),
+	);
+	if (unknown) {
+		throw new Error(
+			`invalid Work cursor: unknown injected_unconfirmed field ${unknown}`,
+		);
+	}
+	for (const field of fields) {
+		if (!(field in observation)) {
+			throw new Error(
+				`invalid Work cursor: missing injected_unconfirmed field ${field}`,
+			);
+		}
+	}
+	parsePendingDelivery(observation.delivery);
+	requireIsoTimestamp(
+		observation.injected_at,
+		"injected_unconfirmed.injected_at",
+	);
+	if (!isHash(observation.boundary_id)) {
+		throw new Error(
+			"invalid Work cursor: injected_unconfirmed.boundary_id must be a SHA-256 hash",
+		);
+	}
+	if (
+		!Number.isSafeInteger(observation.meaningful_actions_observed) ||
+		(observation.meaningful_actions_observed as number) < 0
+	) {
+		throw new Error(
+			"invalid Work cursor: injected_unconfirmed.meaningful_actions_observed must be a non-negative integer",
+		);
+	}
+	return observation as unknown as WorkCursorInjectedObservation;
 }
 
 function parsePendingDelivery(value: unknown): WorkCursorPendingDelivery {

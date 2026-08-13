@@ -460,9 +460,13 @@ IDs/hash/source pointer even when not repeated verbatim. The token budget is a
 target: compact mode never cuts a required field or identifier mid-value and
 uses deterministic counts/groups plus pointers when the target cannot hold the
 whole set. `full` enumerates every current requirement and constraint without
-silent truncation; an adapter chunks it into ordered messages when necessary,
-then the agent continues after the final chunk. A close check always reconciles
-the full projection internally regardless of display detail.
+silent truncation when the adapter can deliver the complete payload. A
+single-context hook that cannot fit the complete enumeration emits no partial
+list: it marks full enumeration unavailable for that boundary and requires the
+foreground agent to retrieve the authoritative status before briefing.
+Multi-message adapters may chunk complete output into ordered messages, then
+continue after the final chunk. A close check always reconciles the full
+projection internally regardless of display detail.
 
 Briefing cadence is session-local, so `last_reconciled_at`, observed ledger
 head, briefing fingerprint, and `injected_unconfirmed | emitted_confirmed`
@@ -472,6 +476,16 @@ Repeated safe-hook notifications within the same minimum
 interval/fingerprint collapse to one briefing. Periodic briefings do not append
 canonical ledger noise or change progress; shared Work checkpoints remain the
 durable state summaries.
+
+The first automatic adapter slice evaluates this contract at
+`UserPromptSubmit`. It requires the documented stable boundary identity
+(`session_id + turn_id` for Codex, or `session_id + prompt_id` for supported
+Claude Code versions), refolds only the cursor-selected Work, and emits bounded
+additional context instructing the foreground agent to brief visibly and
+continue. Missing identity or runtime failure is fail-open. This slice does
+not retain the submitted prompt: exact raw capture requires a separate bounded
+staging lifecycle with explicit allocated, provisional, discarded, and
+garbage-collected outcomes.
 
 ## Automatic delegation and parallelism policy
 

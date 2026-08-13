@@ -1936,8 +1936,8 @@ fallback and keeps required parallelism fail-closed after provider exhaustion,
 but does not launch or supervise either runtime. Fresh verification passed
 48/48 targeted tests and 808/808 tests across 82 files, plus typecheck, lint,
 build, and diff checks; independent QA returned `SIGNOFF` and independent code
-review returned `APPROVE`. This does not complete v1.18: automatic hook
-briefings, delegation/review execution, adapter capture, handoff/index
+review returned `APPROVE`. This does not complete v1.18: delegation/review
+execution, raw adapter capture, handoff/index
 integration, benchmarks, optional MCP evaluation, and cross-host coordination
 remain deferred.
 
@@ -1957,9 +1957,9 @@ Pre-binding ledgers require an explicit dedicated migration event; ordinary
 publication cannot mint or override envelope-binding authority. Fresh
 verification passed 120/120 targeted tests and 868/868 tests across 84 files,
 plus typecheck, lint, build, import, and diff checks; independent adversarial
-verification and final code review returned `APPROVE`. Runtime capture,
-automatic hook rendering/emission, automatic continuation,
-review/delegation invocation, and final lifecycle transitions remain deferred.
+verification and final code review returned `APPROVE`. Raw prompt
+staging/allocation, review/delegation invocation, and final lifecycle
+transitions remain deferred.
 
 The first thin Work command slice is implemented. The `work` namespace offers
 `create|amend|transition|status|brief|confirm|switch` with strict draft and
@@ -1976,6 +1976,24 @@ instead of using last-writer-wins. Fresh verification passed 146 targeted Work t
 and 894/894 tests across 88 files, plus typecheck, lint, build, and diff checks;
 independent code review returned `APPROVE` and adversarial verification
 returned `PASS`.
+
+The first automatic Work reconciliation boundary is implemented behind the
+existing executable-adapter opt-in. Dedicated Claude Code and Codex
+`UserPromptSubmit` wrappers forward native JSON only through stdin, require
+documented stable session/turn identity, fail open, and never persist, log,
+fingerprint, or return submitted prompt text. The handler refolds only the
+session-selected Work, uses its frozen policy, and records additional-context
+delivery as `injected_unconfirmed` rather than visible confirmation. Compact
+context structurally preserves the completion contract, delta, configured
+review gates, changed/at-risk requirements, next action, blockers, and an
+authoritative status command; oversized full output falls back atomically
+without a partial list. Codex omits a per-prompt status message so default-off
+is visually silent. Fresh verification passed 79 focused review tests and
+914/914 tests across 89 files, plus typecheck, lint, build, adapter parity,
+status, and diff checks; independent review returned `APPROVE` and adversarial
+verification returned `PASS`. The remaining non-blocking cost is foreground
+CLI cold-start on prompt boundaries; measure it before adding more frequent
+hook events.
 
 The storage and responsibility boundaries are:
 
@@ -2089,11 +2107,11 @@ Work plan:
 | 1 | **Thin Work boundary, schema, and lifecycle** | creation/amend boundary commands implemented; closure deferred | Keep Work as the only durable task-domain object. `work create` requires `new_unit`, `work amend` requires `same_unit`, and interruption is rejected rather than allocated. Typed creation and monotonic contract revision preserve requirement identity, source provenance, frozen policy snapshots, accepted-boundary state, and explicit replacement lineage. Lifecycle closure remains fail-closed until user authority, completion evidence, and reopening/supersession rules are implemented. Foreground is a disposable per-session cursor, never global Work state. |
 | 2 | **Verbatim source-event ledger and projection** | core implemented; adapter capture/index integration deferred | Immutable exact-byte prompt objects, canonical envelopes, hash-linked allocation records, monotonic typed contracts, deterministic projection rebuilds, stable-order multi-source locking, exact envelope-hash binding, torn-tail recovery, and corruption/symlink fail-closed behavior are implemented. Adapter capture and exact-span allocation UI remain planned. |
 | 3 | **Evidence-based progress reporter** | deterministic core and CLI rendering implemented; evidence freshness diagnostics deferred | Projection, status, and briefing output report verified/applicable, pending, in-progress, implemented-unverified, blocked, and waived counts with explicit denominator/weights. Invalid, overflowing, inconsistent, or provenance-free states fail closed. Human and JSON presentation refold the ledger instead of trusting projection cache; deeper evidence freshness diagnostics remain planned. |
-| 4 | **Automatic reconciliation briefing** | command-boundary briefing implemented; automatic runtime emission deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples. `work brief` renders the ordered requirements/done/remaining/blockers/progress/next contract; safe-hook due evaluation and automatic same-turn emission remain planned. |
+| 4 | **Automatic reconciliation briefing** | first safe-hook emission implemented; broader lifecycle triggers deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples. `work brief` renders the ordered requirements/done/remaining/blockers/progress/next contract. Dedicated Claude Code and Codex `UserPromptSubmit` adapters now refold the session-selected Work, evaluate the frozen policy, record hidden context as `injected_unconfirmed`, suppress stable-boundary retries and same-fingerprint cadence noise, and instruct the foreground agent to brief visibly then continue. Hidden injection never claims user-visible confirmation. Compaction-specific and close-specific native triggers remain research-first. |
 | 5 | **Per-Work automatic delegation and runtime policy** | policy schema/resolver implemented; execution deferred | The pure resolver normalizes `off`, `auto`, `prefer`, and `required` parallelism, maximum agents, native/tmux preferences, fallback order, reassessment triggers, and unavailable behavior. Required parallelism fails closed after provider exhaustion. Dependency-lane assessment, runtime selection records, and actual native/tmux execution remain planned and runtime-owned. |
 | 6 | **User-configurable independent-review gates** | policy schema/resolver and planning fail-closed guard implemented; execution deferred | Agentfile v2 and the pure resolver normalize `off`, `advisory`, `strict`, and `custom` planning/completion gates across six policy layers. Required gates merge monotonically; only a current evidenced gate/revision waiver can lower one. Provider order and OMX-to-Codex-native fallback are declarative. Required planning currently blocks implementation entry because review evidence is not yet modeled; review invocation, evidence recording, invalidation, and completion-gate execution remain planned. |
 | 7 | **Multi-session checkpoints and Work boundaries** | cursor CAS, explicit boundary commands, and switch implemented; automatic semantic classifier deferred | Each session has a disposable revision-CAS cursor with exact reconciliation delivery state, while shared truth remains the Work ledger/projection. Canonical roots, linked-worktree sharing, bounded locking, atomic writes, symlink rejection, cursor lag recovery, independent cursor switching, and explicit new/same/interruption command classification are implemented. Automatic natural-language same-Work versus new-Work classification remains planned. |
-| 8 | **Compaction-aware adapter lifecycle** | research first | Audit each supported client/version using official schema evidence and real-CLI probes before naming native `PreCompact`, `PostCompact`, or compact-resume events. The current anamnesis Codex renderer does not implement a proven compact lifecycle path. Add version-gated native handling only after evidence exists, behind `--allow-exec-adapters`; otherwise keep tested manual, SessionStart, and resume fallbacks. |
+| 8 | **Compaction-aware adapter lifecycle** | prompt-boundary path implemented; compact lifecycle research first | Claude Code and Codex `UserPromptSubmit` payloads are handled through dedicated fail-open wrappers using stable session/turn identity where documented. Continue to audit each supported client/version before naming native `PreCompact`, `PostCompact`, or compact-resume events. The current renderer does not claim a proven compact lifecycle path. Add version-gated native handling only after evidence exists, behind `--allow-exec-adapters`; otherwise keep tested prompt, manual, SessionStart, and resume fallbacks. |
 | 9 | **Compact checkpoint digest** | planned | After a shared Work checkpoint or compaction, inject only the cursor-selected Work ID, goal hash/source pointer, revision, lifecycle, verified/applicable count, pending review gates, blockers, next requirement IDs, and the unit path. Keep unconditional per-prompt injection disabled; use the existing prompt gate and fingerprint dedupe before adding any prompt-time reminder. |
 | 10 | **Handoff, resume, index, TTL, and diagnostics integration** | planned | Include the local cursor and latest shared Work checkpoint in handoff/resume output; index authoritative ledger events plus individual requirement and rule pointers; diagnose missing source refs, stale evidence/reviews, verified entries without evidence, cursor revision lag, ledger-head conflicts, and digest/unit divergence. TTL may mark dormant Works stale, exclude digests, and garbage-collect disposable cursors; it never mutates Work meaning. |
 | 11 | **Work-unit continuity and policy benchmark** | planned | Add public-safe long-task fixtures, including a 100-requirement task, briefing and parallelism presets, review presets/provider fallback, task switches, concurrent sessions, and repeated manual/automatic compaction simulations. Measure requirement/rule retention, gate bypasses, false-complete rate, verified-evidence coverage, digest/briefing tokens, retrieval turns, duplicate reminders, safe delegation decisions, and progress reproducibility before making performance claims. |

@@ -33,6 +33,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; exec node \"$root/.anamnesis/codex-native-hooks/work-user-prompt.mjs\"'"
+          }
+        ]
+      }
     ]
   }
 }

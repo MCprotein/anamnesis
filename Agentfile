@@ -1,4 +1,4 @@
-version: 1
+version: 2
 project:
   name: anamnesis
 tools:
@@ -7,4 +7,16 @@ tools:
   - cursor
 fragments:
   - id: base
-    version: 20
+    version: 21
+settings:
+  ontology_file: system_graph.yaml
+  agents_md_path: AGENTS.md
+  claude_md_path: CLAUDE.md
+  commit_on_apply: false
+  backup_retention: 10
+  max_warm_handoff_archives: 5
+  max_cold_handoff_age_days: 90
+  max_handoff_bytes: 524288
+  work_policy:
+    reconciliation:
+      preset: frequent

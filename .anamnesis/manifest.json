@@ -120,6 +120,16 @@
       "base_rendered_hash": "sha256:974f5f910ebf922e7adb85a186ab929a345829c1fed4657133aa7c4367e65ddb",
       "last_applied_hash": "sha256:2486704ceb0380bed0c00b367e08545d9949a0cf397a7821dbd39314a3eee32e",
       "current_user_hash": "sha256:2486704ceb0380bed0c00b367e08545d9949a0cf397a7821dbd39314a3eee32e"
+    },
+    {
+      "file": "AGENTS.md",
+      "region_id": "codex-hook-work-briefing",
+      "fragment_id": "base",
+      "fragment_version": 21,
+      "template_version": 21,
+      "base_rendered_hash": "sha256:5c55bd71efa2746ce522c7f37c5e5f1590545b87d6ecde0ff013178fcf82d7f4",
+      "last_applied_hash": "sha256:14790d8aa343f3be2180cedc117355bc364125e234d331fe8339c40e97dfc762",
+      "current_user_hash": "sha256:14790d8aa343f3be2180cedc117355bc364125e234d331fe8339c40e97dfc762"
     }
   ],
   "files": [
@@ -318,6 +328,20 @@
       "fragment_version": 20,
       "last_applied_hash": "sha256:793bba00a7c8bc7a10ad6bfde4a595a6c6d1999348cbe21a58878011948a9b90",
       "current_user_hash": "sha256:793bba00a7c8bc7a10ad6bfde4a595a6c6d1999348cbe21a58878011948a9b90"
+    },
+    {
+      "path": ".claude/hooks/work-briefing.sh",
+      "fragment_id": "base",
+      "fragment_version": 21,
+      "last_applied_hash": "sha256:fe63842aee4fcbbc1102d0d05d75882a7cbb430f7fd5495bd525c03ad39a4371",
+      "current_user_hash": "sha256:fe63842aee4fcbbc1102d0d05d75882a7cbb430f7fd5495bd525c03ad39a4371"
+    },
+    {
+      "path": ".anamnesis/codex-native-hooks/work-user-prompt.mjs",
+      "fragment_id": "base",
+      "fragment_version": 21,
+      "last_applied_hash": "sha256:89f0fc7b8b007a1a73054b373b34fa9752235f9a14ce277354e0625ba96ca53c",
+      "current_user_hash": "sha256:89f0fc7b8b007a1a73054b373b34fa9752235f9a14ce277354e0625ba96ca53c"
     }
   ]
 }
