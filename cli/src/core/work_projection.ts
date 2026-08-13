@@ -3,10 +3,15 @@ import path from "node:path";
 import YAML from "yaml";
 import { isHash, sha256 } from "../util/hash.js";
 import {
+	parseTypedWorkEvent,
+	validateWorkLedgerSemantics,
+} from "./work_contract.js";
+import {
 	readWorkLedger,
 	type WorkLedgerRecord,
 	withWorkLedgerLock,
 } from "./work_ledger.js";
+import type { ReviewGateName, WorkPolicySnapshot } from "./work_policy.js";
 
 export const WORK_PROJECTION_SCHEMA_VERSION =
 	"anamnesis.work-projection.v1" as const;
@@ -35,12 +40,15 @@ export interface ProjectedRequirement {
 
 export interface WorkProjectionProgress {
 	applicable: number;
+	pending: number;
+	in_progress: number;
 	verified: number;
 	implemented_unverified: number;
 	blocked: number;
 	waived: number;
 	percent: number;
 	weighted: boolean;
+	denominator_empty: boolean;
 	verified_weight?: number;
 	applicable_weight?: number;
 }
@@ -48,15 +56,22 @@ export interface WorkProjectionProgress {
 export interface WorkProjection {
 	schema_version: typeof WORK_PROJECTION_SCHEMA_VERSION;
 	work_id: string;
+	title: string | null;
+	completion_contract: string | null;
 	contract_revision: number;
 	lifecycle: WorkLifecycle;
 	boundary_hash: string | null;
+	contract_hash: string | null;
 	policy_hash: string | null;
+	policy_snapshot: WorkPolicySnapshot | null;
+	configured_required_gates: ReviewGateName[];
 	ledger_head: string | null;
 	last_event_id: string | null;
 	requirements: ProjectedRequirement[];
 	conflicts: string[];
+	diagnostics: string[];
 	progress: WorkProjectionProgress;
+	requirements_ready: boolean;
 	projection_hash: string;
 }
 
@@ -107,16 +122,98 @@ export function foldWorkProjection(
 	}
 
 	let workId: string | undefined;
+	let title: string | null = null;
+	let completionContract: string | null = null;
 	let created = false;
 	let contractRevision = 0;
 	let lifecycle: WorkLifecycle = "open";
 	let boundaryHash: string | null = null;
+	let typedBoundaryState: "provisional" | "needs_user" | "accepted" | null =
+		null;
+	let contractHash: string | null = null;
 	let policyHash: string | null = null;
+	let policySnapshot: WorkPolicySnapshot | null = null;
 	const requirements = new Map<string, ProjectedRequirement>();
 	const conflicts = new Set<string>();
+	const diagnostics = new Set<string>();
+	validateWorkLedgerSemantics(records);
 
 	for (const record of records) {
 		const payload = record.payload;
+		if (
+			payload.schema_version === "anamnesis.work-contract-event.v1" ||
+			payload.schema_version === "anamnesis.work-progress-event.v1" ||
+			payload.schema_version === "anamnesis.work-lifecycle-event.v1"
+		) {
+			const typed = parseTypedWorkEvent(record);
+			if (
+				typed.kind === "work_created" ||
+				typed.kind === "work_contract_revised"
+			) {
+				if (typed.kind === "work_created" && created) {
+					throw new Error(
+						"Work projection contains repeated work_created event",
+					);
+				}
+				if (typed.kind === "work_contract_revised")
+					assertCreated(created, typed.kind);
+				workId = typed.payload.work_id;
+				title = boundedText(typed.payload.contract.work.title, "Work title", limits.maxSummaryUtf8Bytes);
+				completionContract = boundedText(typed.payload.contract.work.completion_contract, "Work completion contract", limits.maxSummaryUtf8Bytes);
+				created = true;
+				contractRevision = typed.payload.contract_revision;
+				contractHash = typed.payload.contract_hash;
+				policySnapshot = typed.payload.contract.policy_snapshot;
+				policyHash = policySnapshot.policy_hash;
+				boundaryHash = sha256(canonicalJson(typed.payload.contract.boundary));
+				typedBoundaryState = typed.payload.contract.boundary.state;
+				const supersededBy = new Map<string, string>();
+				for (const definition of typed.payload.contract.requirements) {
+					for (const target of definition.supersedes ?? []) supersededBy.set(target, definition.id);
+				}
+				const nextRequirements = new Map<string, ProjectedRequirement>();
+				for (const definition of typed.payload.contract.requirements) {
+					const previous = requirements.get(definition.id);
+					nextRequirements.set(definition.id, {
+						id: definition.id,
+						summary: definition.summary,
+						status: definition.superseded_by || supersededBy.has(definition.id)
+							? "waived"
+							: (previous?.status ?? "pending"),
+						source_event_ids: [...definition.source_event_ids],
+						evidence_refs: [...(previous?.evidence_refs ?? [])],
+						...(definition.weight === undefined
+							? {}
+							: { weight: definition.weight }),
+						...((definition.superseded_by ?? supersededBy.get(definition.id)) === undefined
+							? {}
+							: { superseded_by: definition.superseded_by ?? supersededBy.get(definition.id) }),
+						updated_at: record.occurred_at,
+					});
+				}
+				requirements.clear();
+				for (const [id, requirement] of nextRequirements)
+					requirements.set(id, requirement);
+				conflicts.clear();
+				for (const conflict of typed.payload.contract.open_conflicts)
+					conflicts.add(conflict.id);
+			} else if (typed.kind === "work_requirement_transitioned") {
+				const requirement = existingRequirement(
+					requirements,
+					typed.payload.requirement_id,
+				);
+				requirement.status = typed.payload.status;
+				requirement.evidence_refs = appendUnique(
+					requirement.evidence_refs,
+					typed.payload.evidence_refs,
+					limits,
+				);
+				requirement.updated_at = record.occurred_at;
+			} else if (typed.kind === "work_lifecycle_changed") {
+				lifecycle = typed.payload.lifecycle;
+			}
+			continue;
+		}
 
 		switch (record.kind) {
 			case "work_created": {
@@ -223,6 +320,13 @@ export function foldWorkProjection(
 					limits,
 				);
 				requirement.updated_at = record.occurred_at;
+				if (
+					requirement.status === "verified" &&
+					requirement.evidence_refs.length === 0
+				) {
+					requirement.status = "implemented_unverified";
+					diagnostics.add(`legacy_verified_without_evidence:${requirement.id}`);
+				}
 				break;
 			}
 			case "requirement_superseded": {
@@ -266,25 +370,61 @@ export function foldWorkProjection(
 	if (!workId)
 		throw new Error("Work projection requires a committed work_created event");
 	const requirementList = [...requirements.values()];
+	const progress = calculateWorkProgress(requirementList);
+	const configuredRequiredGates =
+		policySnapshot?.policy.review.gates
+			.filter((gate) => gate.enforcement === "required")
+			.map((gate) => gate.gate) ?? [];
 	const unsigned: Omit<WorkProjection, "projection_hash"> = {
 		schema_version: WORK_PROJECTION_SCHEMA_VERSION,
 		work_id: workId,
+		title,
+		completion_contract: completionContract,
 		contract_revision: contractRevision,
 		lifecycle,
 		boundary_hash: boundaryHash,
+		contract_hash: contractHash,
 		policy_hash: policyHash,
+		policy_snapshot: policySnapshot,
+		configured_required_gates: configuredRequiredGates,
 		ledger_head: records.at(-1)?.record_hash ?? null,
 		last_event_id: records.at(-1)?.event_id ?? null,
 		requirements: requirementList,
 		conflicts: [...conflicts],
-		progress: calculateWorkProgress(requirementList),
+		diagnostics: [...diagnostics].slice(0, limits.maxRequirements),
+		progress,
+		requirements_ready:
+			lifecycle === "open" &&
+			(contractHash === null || typedBoundaryState === "accepted") &&
+			!progress.denominator_empty &&
+			progress.pending === 0 &&
+			progress.in_progress === 0 &&
+			progress.implemented_unverified === 0 &&
+			progress.blocked === 0 &&
+			conflicts.size === 0,
 	};
 	return { ...unsigned, projection_hash: sha256(canonicalJson(unsigned)) };
+}
+
+function boundedText(value: string, label: string, maxUtf8Bytes: number): string {
+	if (Buffer.byteLength(value, "utf8") > maxUtf8Bytes)
+		throw new Error(`${label} exceeds UTF-8 byte limit`);
+	return value;
 }
 
 export function calculateWorkProgress(
 	requirements: readonly ProjectedRequirement[],
 ): WorkProjectionProgress {
+	for (const requirement of requirements) {
+		if (
+			requirement.weight !== undefined &&
+			(!Number.isFinite(requirement.weight) ||
+				requirement.weight <= 0 ||
+				requirement.weight > Number.MAX_SAFE_INTEGER)
+		) {
+			throw new Error("Work requirement weight must be finite and positive");
+		}
+	}
 	const applicable = requirements.filter(
 		(requirement) => requirement.status !== "waived",
 	);
@@ -296,20 +436,24 @@ export function calculateWorkProgress(
 		requirements.every((item) => item.weight !== undefined);
 	const base = {
 		applicable: applicable.length,
+		pending: applicable.filter((item) => item.status === "pending").length,
+		in_progress: applicable.filter((item) => item.status === "in_progress")
+			.length,
 		verified: verified.length,
 		implemented_unverified: applicable.filter(
 			(item) => item.status === "implemented_unverified",
 		).length,
 		blocked: applicable.filter((item) => item.status === "blocked").length,
 		waived: requirements.length - applicable.length,
+		denominator_empty: applicable.length === 0,
 	};
 	if (explicitlyWeighted) {
 		const applicableWeight = applicable.reduce(
-			(sum, item) => sum + (item.weight ?? 0),
+			(sum, item) => checkedWeightSum(sum, item.weight ?? 0),
 			0,
 		);
 		const verifiedWeight = verified.reduce(
-			(sum, item) => sum + (item.weight ?? 0),
+			(sum, item) => checkedWeightSum(sum, item.weight ?? 0),
 			0,
 		);
 		return {
@@ -331,6 +475,13 @@ export function calculateWorkProgress(
 				: roundPercent(verified.length / applicable.length),
 		weighted: false,
 	};
+}
+
+function checkedWeightSum(sum: number, weight: number): number {
+	const next = sum + weight;
+	if (!Number.isFinite(next) || next > Number.MAX_SAFE_INTEGER)
+		throw new Error("Work requirement weight sum exceeds the safe integer range");
+	return next;
 }
 
 export function rebuildWorkProjection(
@@ -355,6 +506,7 @@ export function writeWorkProjectionAtomic(
 	projectionPath: string,
 	projection: WorkProjection,
 ): void {
+	assertNoSymlinkAncestors(path.resolve(projectionPath));
 	const directory = path.dirname(projectionPath);
 	fs.mkdirSync(directory, { recursive: true });
 	assertManagedWritePath(directory, projectionPath);
@@ -388,6 +540,24 @@ export function writeWorkProjectionAtomic(
 			// A projection is a rebuildable cache; cleanup is best effort.
 		}
 		throw error;
+	}
+}
+
+function assertNoSymlinkAncestors(candidate: string): void {
+	const absolute = path.resolve(candidate);
+	const parsed = path.parse(absolute);
+	const parts = absolute.slice(parsed.root.length).split(path.sep).filter(Boolean);
+	if (parts.length === 0) return;
+	let current = fs.realpathSync(path.join(parsed.root, parts[0]!));
+	for (const part of parts.slice(1)) {
+		current = path.join(current, part);
+		try {
+			if (fs.lstatSync(current).isSymbolicLink())
+				throw new Error(`managed Work path contains a symbolic link: ${current}`);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+			throw error;
+		}
 	}
 }
 

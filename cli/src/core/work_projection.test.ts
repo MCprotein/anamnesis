@@ -3,7 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { sha256 } from "../util/hash.js";
+import {
+	calculateWorkContractHash,
+	type WorkContractDefinition,
+} from "./work_contract.js";
 import { appendWorkLedger, type WorkLedgerRecord } from "./work_ledger.js";
+import { createWorkPolicySnapshot, resolveWorkPolicy } from "./work_policy.js";
 import {
 	calculateWorkProgress,
 	foldWorkProjection,
@@ -43,6 +48,167 @@ function records(
 }
 
 describe("Work projection", () => {
+	it("rejects unsafe weighted sums", () => {
+		expect(calculateWorkProgress([
+			{ id: "fraction", summary: "fraction", status: "verified", source_event_ids: [], evidence_refs: ["x"], weight: 0.5, updated_at: "x" },
+		]).percent).toBe(100);
+		expect(() => calculateWorkProgress([
+			{ id: "a", summary: "a", status: "verified", source_event_ids: [], evidence_refs: ["x"], weight: Number.MAX_SAFE_INTEGER, updated_at: "x" },
+			{ id: "b", summary: "b", status: "verified", source_event_ids: [], evidence_refs: ["x"], weight: 1, updated_at: "x" },
+		])).toThrow(/safe integer/);
+	});
+
+	it("rejects non-positive weights at the exported progress boundary", () => {
+		for (const weight of [0, -1]) {
+			expect(() =>
+				calculateWorkProgress([
+					{
+						id: "bad_weight",
+						summary: "bad",
+						status: "pending",
+						source_event_ids: ["src"],
+						evidence_refs: [],
+						weight,
+						updated_at: "2026-08-13T00:00:00.000Z",
+					},
+				]),
+			).toThrow(/finite and positive/);
+		}
+	});
+	it("folds validated typed contract, policy, progress, and close readiness", () => {
+		const definition: WorkContractDefinition = {
+			work: { id: "wu_typed", title: "typed", completion_contract: "verified" },
+			boundary: {
+				state: "accepted",
+				classification: "same_unit",
+				reason_codes: ["same_completion_contract"],
+				confidence: "high",
+			},
+			policy_snapshot: createWorkPolicySnapshot(
+				1,
+				resolveWorkPolicy([
+					{
+						kind: "project",
+						source_refs: [{ source: "Agentfile", ref: "settings.work_policy" }],
+						config: { review: { preset: "strict" } },
+					},
+				]),
+			),
+			requirements: [
+				{ id: "req_typed", summary: "typed", source_event_ids: ["src_typed"] },
+			],
+			open_conflicts: [],
+		};
+		const contractHash = calculateWorkContractHash(definition);
+		const projection = foldWorkProjection(
+			records([
+				{
+					id: "lev_create",
+					kind: "work_created",
+					payload: {
+						schema_version: "anamnesis.work-contract-event.v1",
+						work_id: "wu_typed",
+						contract_revision: 1,
+						previous_contract_revision: null,
+						previous_contract_hash: null,
+						contract_hash: contractHash,
+						contract: definition,
+					},
+				},
+				{
+					id: "lev_progress",
+					kind: "work_requirement_transitioned",
+					payload: {
+						schema_version: "anamnesis.work-progress-event.v1",
+						work_id: "wu_typed",
+						requirement_id: "req_typed",
+						basis_contract_hash: contractHash,
+						status: "verified",
+						evidence_refs: ["test:typed"],
+					},
+				},
+			]),
+		);
+		expect(projection.contract_hash).toBe(contractHash);
+		expect(projection.title).toBe("typed");
+		expect(projection.completion_contract).toBe("verified");
+		expect(projection.policy_snapshot?.policy_hash).toBe(
+			projection.policy_hash,
+		);
+		expect(projection.configured_required_gates).toEqual([
+			"planning",
+			"completion",
+		]);
+		expect(projection.progress).toMatchObject({
+			pending: 0,
+			in_progress: 0,
+			denominator_empty: false,
+			percent: 100,
+		});
+		expect(projection.requirements_ready).toBe(true);
+	});
+
+	it.each([
+		["provisional", false],
+		["needs_user", false],
+		["accepted", true],
+	] as const)("requires an accepted typed boundary for close readiness: %s", (boundaryState, expected) => {
+		const definition: WorkContractDefinition = {
+			work: {
+				id: `wu_${boundaryState}`,
+				title: boundaryState,
+				completion_contract: "verified",
+			},
+			boundary: {
+				state: boundaryState,
+				classification: "same_unit",
+				reason_codes: ["same_completion_contract"],
+				confidence: "high",
+			},
+			policy_snapshot: createWorkPolicySnapshot(1, resolveWorkPolicy([])),
+			requirements: [
+				{
+					id: "req_boundary",
+					summary: "boundary",
+					source_event_ids: ["src_boundary"],
+				},
+			],
+			open_conflicts: [],
+		};
+		const contractHash = calculateWorkContractHash(definition);
+		const projection = foldWorkProjection(
+			records([
+				{
+					id: "lev_create",
+					kind: "work_created",
+					payload: {
+						schema_version: "anamnesis.work-contract-event.v1",
+						work_id: definition.work.id,
+						contract_revision: 1,
+						previous_contract_revision: null,
+						previous_contract_hash: null,
+						contract_hash: contractHash,
+						contract: definition,
+					},
+				},
+				{
+					id: "lev_progress",
+					kind: "work_requirement_transitioned",
+					payload: {
+						schema_version: "anamnesis.work-progress-event.v1",
+						work_id: definition.work.id,
+						requirement_id: "req_boundary",
+						basis_contract_hash: contractHash,
+						status: "verified",
+						evidence_refs: ["test:boundary"],
+					},
+				},
+			]),
+		);
+
+		expect(projection.requirements_ready).toBe(expected);
+	});
+
 	it("folds committed records deterministically with reproducible progress", () => {
 		const input = records([
 			{
@@ -88,13 +254,18 @@ describe("Work projection", () => {
 		expect(second).toEqual(first);
 		expect(first.progress).toEqual({
 			applicable: 2,
+			pending: 0,
+			in_progress: 0,
 			verified: 1,
 			implemented_unverified: 1,
 			blocked: 0,
 			waived: 0,
 			percent: 50,
 			weighted: false,
+			denominator_empty: false,
 		});
+		expect(first.title).toBeNull();
+		expect(first.completion_contract).toBeNull();
 		expect(first.ledger_head).toBe(input.at(-1)?.record_hash);
 		expect(first.last_event_id).toBe("lev_5");
 	});
@@ -229,7 +400,7 @@ describe("Work projection", () => {
 				payload: {
 					requirement_id: "req_1",
 					summary: "committed",
-					source_event_ids: ["evt_1"],
+					status: "waived",
 				},
 			},
 		]) {
@@ -237,7 +408,6 @@ describe("Work projection", () => {
 				ledgerPath,
 				event,
 				expectedHead: head,
-				sourcePrecondition: () => {},
 			}).head;
 		}
 		const projection = rebuildWorkProjection(ledgerPath, projectionPath);
@@ -385,5 +555,17 @@ describe("Work projection", () => {
 		expect(() => writeWorkProjectionAtomic(target, projection)).toThrow(
 			/symbolic link/,
 		);
+	});
+
+	it("rejects a symlink in a lexical projection ancestor without touching the victim", () => {
+		const root = temp();
+		const victim = temp();
+		const linked = path.join(root, "linked");
+		fs.symlinkSync(victim, linked, "dir");
+		const projection = foldWorkProjection(records([
+			{ id: "lev_1", kind: "work_created", payload: { work_id: "wu_one" } },
+		]));
+		expect(() => writeWorkProjectionAtomic(path.join(linked, "nested", "projection.yaml"), projection)).toThrow(/symbolic link/);
+		expect(fs.readdirSync(victim)).toHaveLength(0);
 	});
 });

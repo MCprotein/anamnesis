@@ -14,6 +14,9 @@ const positiveSafeInteger = z
 	.int()
 	.positive()
 	.max(Number.MAX_SAFE_INTEGER);
+const supportedIsoDuration = z
+	.string()
+	.regex(/^PT(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+S)?$/);
 const uniqueArray = <T extends z.ZodTypeAny>(item: T) =>
 	z.array(item).superRefine((values, ctx) => {
 		const seen = new Set<unknown>();
@@ -42,7 +45,7 @@ const reconciliationSchema = z
 		preset: z.enum(["off", "adaptive", "frequent", "custom"]),
 		due_after: z
 			.object({
-				max_silence: z.string().regex(/^PT(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+S)?$/),
+				max_silence: supportedIsoDuration,
 				meaningful_actions: positiveSafeInteger,
 			})
 			.strict()
@@ -289,6 +292,100 @@ const workPolicyGateWaiverSchema = workPolicySourceRefSchema
 	})
 	.strict();
 
+const normalizedReconciliationPolicySchema = z
+	.object({
+		preset: z.enum(["off", "adaptive", "frequent", "custom"]),
+		due_after: z
+			.object({
+				max_silence: supportedIsoDuration.nullable(),
+				meaningful_actions: positiveSafeInteger.nullable(),
+			})
+			.strict(),
+		triggers: uniqueArray(reconciliationTriggerSchema),
+		detail: z.enum(["compact", "full"]),
+		compact_target_tokens: positiveSafeInteger,
+		full_chunk_target_tokens: positiveSafeInteger,
+		after_briefing: z.literal("continue"),
+	})
+	.strict();
+
+/** Runtime-strict validation for a resolved reconciliation policy fragment. */
+export function validateNormalizedReconciliationPolicy(
+	value: unknown,
+): NormalizedReconciliationPolicy {
+	return clone(
+		normalizedReconciliationPolicySchema.parse(value),
+	) as NormalizedReconciliationPolicy;
+}
+
+const normalizedReviewGateSchema = z
+	.object({
+		gate: reviewGateNameSchema,
+		enforcement: z.enum(["off", "advisory", "required"]),
+		capability: z.literal("independent_agent"),
+		role_hint: nonEmptyString,
+		minimum_reviewers: positiveSafeInteger,
+		invalidation_inputs: uniqueArray(nonEmptyString),
+		provider_order: uniqueArray(reviewProviderSchema),
+		unavailable: z.enum(["continue", "fallback", "ask", "fail_closed"]),
+		waived_by: workPolicyGateWaiverSchema.nullable(),
+	})
+	.strict();
+
+const resolvedWorkPolicySchema = z
+	.object({
+		reconciliation: normalizedReconciliationPolicySchema,
+		review: z
+			.object({
+				preset: z.enum(["off", "advisory", "strict", "custom"]),
+				gates: z.array(normalizedReviewGateSchema),
+				provider_order: uniqueArray(reviewProviderSchema),
+				fallback_on: uniqueArray(
+					z.enum([
+						"authorization_error",
+						"unsupported_authority",
+						"unavailable",
+					]),
+				),
+				unavailable: z.enum(["continue", "fallback", "ask", "fail_closed"]),
+			})
+			.strict(),
+		delegation: z
+			.object({
+				parallelism: z.enum(["off", "auto", "prefer", "required"]),
+				max_agents: positiveSafeInteger,
+				native_agents: runtimePreferenceSchema,
+				tmux_team: runtimePreferenceSchema,
+				fallback_order: uniqueArray(delegationProviderSchema),
+				unavailable: z.enum(["fallback", "ask", "fail_closed"]),
+				reassess_on: uniqueArray(
+					z.enum([
+						"contract_revision",
+						"material_scope_change",
+						"provider_unavailable",
+					]),
+				),
+				provider_exhaustion: z.enum([
+					"continue_solo",
+					"ask",
+					"blocked_unavailable",
+				]),
+			})
+			.strict(),
+		source_refs: z.array(workPolicySourceRefSchema),
+		contributing_layers: uniqueArray(z.enum(WORK_POLICY_LAYER_PRECEDENCE)),
+	})
+	.strict();
+
+const workPolicySnapshotSchema = z
+	.object({
+		schema_version: z.literal("anamnesis.work-policy-snapshot.v1"),
+		revision: positiveSafeInteger,
+		policy: resolvedWorkPolicySchema,
+		policy_hash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+	})
+	.strict();
+
 const workPolicyLayerSchema = z
 	.object({
 		kind: z.enum(WORK_POLICY_LAYER_PRECEDENCE),
@@ -420,6 +517,89 @@ export function createWorkPolicySnapshot(
 		...unsigned,
 		policy_hash: sha256(canonicalJson(clonedPolicy)),
 	});
+}
+
+/** Runtime-strict validation for snapshots read from a Work ledger. */
+export function validateWorkPolicySnapshot(value: unknown): WorkPolicySnapshot {
+	const snapshot = workPolicySnapshotSchema.parse(value);
+	if (sha256(canonicalJson(snapshot.policy)) !== snapshot.policy_hash) {
+		throw new Error("work policy snapshot hash mismatch");
+	}
+	const gates = new Map(
+		snapshot.policy.review.gates.map((gate) => [gate.gate, gate]),
+	);
+	if (
+		snapshot.policy.review.gates.length !== 2 ||
+		gates.size !== 2 ||
+		!gates.has("planning") ||
+		!gates.has("completion")
+	) {
+		throw new Error(
+			"normalized review policy requires exactly planning and completion gates",
+		);
+	}
+	for (const gate of snapshot.policy.review.gates) {
+		if (gate.waived_by && gate.waived_by.gate !== gate.gate) {
+			throw new Error("work policy waiver gate identity mismatch");
+		}
+		const expectedEnforcement =
+			snapshot.policy.review.preset === "strict"
+				? "required"
+				: snapshot.policy.review.preset === "advisory"
+					? "advisory"
+					: snapshot.policy.review.preset === "off"
+						? "off"
+						: null;
+		const validPresetEnforcement =
+			expectedEnforcement === null ||
+			gate.enforcement === expectedEnforcement ||
+			((snapshot.policy.review.preset === "off" ||
+				snapshot.policy.review.preset === "advisory") &&
+				gate.enforcement === "required") ||
+			(snapshot.policy.review.preset === "strict" &&
+				gate.waived_by !== null &&
+				(gate.enforcement === "off" || gate.enforcement === "advisory"));
+		if (!validPresetEnforcement) {
+			throw new Error(
+				`${snapshot.policy.review.preset} review preset requires ${expectedEnforcement} gates`,
+			);
+		}
+		if (gate.waived_by && gate.waived_by.revision !== snapshot.revision) {
+			throw new Error(
+				`work policy waiver revision ${gate.waived_by.revision} does not match snapshot revision ${snapshot.revision}`,
+			);
+		}
+		if (gate.enforcement === "required" && gate.unavailable !== "fail_closed") {
+			throw new Error("required review gates must fail closed when unavailable");
+		}
+	}
+	const delegation = snapshot.policy.delegation;
+	if (
+		delegation.native_agents === "required" &&
+		delegation.tmux_team === "required"
+	) {
+		throw new Error("native_agents and tmux_team cannot both be required");
+	}
+	const requiredProvider =
+		delegation.native_agents === "required"
+			? "native_agents"
+			: delegation.tmux_team === "required"
+				? "tmux_team"
+				: null;
+	if (requiredProvider && delegation.fallback_order[0] !== requiredProvider) {
+		throw new Error(
+			"required delegation provider must be first in fallback_order",
+		);
+	}
+	if (
+		(delegation.parallelism === "required" ||
+			delegation.unavailable === "fail_closed" ||
+			requiredProvider !== null) &&
+		delegation.provider_exhaustion !== "blocked_unavailable"
+	) {
+		throw new Error("required delegation must block on provider exhaustion");
+	}
+	return clone(snapshot) as WorkPolicySnapshot;
 }
 
 /** Compare frozen revisions without reading current config or mutating either snapshot. */
@@ -583,7 +763,9 @@ function normalizeDelegation(
 		unavailable,
 		reassess_on: [...(config?.reassess_on ?? DEFAULT_REASSESS)],
 		provider_exhaustion:
-			parallelism === "required" || unavailable === "fail_closed"
+			parallelism === "required" ||
+			unavailable === "fail_closed" ||
+			requiredProvider !== undefined
 				? "blocked_unavailable"
 				: unavailable === "ask"
 					? "ask"

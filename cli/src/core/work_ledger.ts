@@ -31,7 +31,6 @@ export interface AppendWorkLedgerOptions {
   expectedHead: string | null;
   lockTimeoutMs?: number;
   lockRetryMs?: number;
-  sourcePrecondition?: () => void;
   onBeforeLedgerSync?: (record: WorkLedgerRecord) => void;
 }
 
@@ -89,10 +88,10 @@ export function validateWorkLedger(ledgerPath: string): WorkLedgerReadResult {
 export function appendWorkLedger(
   options: AppendWorkLedgerOptions,
 ): AppendWorkLedgerResult {
-  assertEvent(options.event);
-  if (hasSourceReference(options.event.payload) && !options.sourcePrecondition) {
+  assertWorkLedgerEvent(options.event);
+  if (hasSourceReference(options.event.payload)) {
     throw new Error(
-      "source-referencing work ledger events require a publication precondition",
+      "source-referencing work ledger events require the official source publication API",
     );
   }
   return withWorkLedgerLock(options.ledgerPath, options, () =>
@@ -100,12 +99,11 @@ export function appendWorkLedger(
   );
 }
 
-export function appendWorkLedgerUnlocked(
+function appendWorkLedgerUnlocked(
   options: AppendWorkLedgerOptions,
 ): AppendWorkLedgerResult {
     const ledgerPath = secureManagedFilePath(options.ledgerPath, true)!;
     const current = readWorkLedger(ledgerPath);
-    options.sourcePrecondition?.();
     const duplicate = current.records.find(
       (record) => record.event_id === options.event.event_id,
     );
@@ -124,6 +122,7 @@ export function appendWorkLedgerUnlocked(
         `work ledger head conflict: expected ${options.expectedHead ?? "null"}, actual ${current.head ?? "null"}`,
       );
     }
+    assertTypedSemanticValidationBoundary(current.records, options.event);
     const unsigned = {
       schema_version: WORK_LEDGER_SCHEMA_VERSION,
       event_id: options.event.event_id,
@@ -157,6 +156,45 @@ export function appendWorkLedgerUnlocked(
     return { record, head: record.record_hash, idempotent: false };
 }
 
+const TYPED_WORK_SCHEMAS = new Set([
+  "anamnesis.work-contract-event.v1",
+  "anamnesis.work-progress-event.v1",
+  "anamnesis.work-lifecycle-event.v1",
+]);
+const WORK_SEMANTIC_KINDS = new Set([
+  "work_created",
+  "contract_revised",
+  "work_contract_revised",
+  "requirement_added",
+  "requirement_recorded",
+  "requirement_status_changed",
+  "requirement_transitioned",
+  "work_requirement_transitioned",
+  "requirement_superseded",
+  "work_lifecycle_changed",
+  "lifecycle_changed",
+  "conflict_recorded",
+  "conflict_resolved",
+]);
+
+function assertTypedSemanticValidationBoundary(
+  records: readonly WorkLedgerRecord[],
+  event: WorkLedgerEvent,
+): void {
+  const created = records.find((record) => record.kind === "work_created");
+  const currentTyped = created ? isTypedWorkPayload(created.payload) : false;
+  const incomingTyped = isTypedWorkPayload(event.payload);
+  if (incomingTyped || (currentTyped && WORK_SEMANTIC_KINDS.has(event.kind))) {
+    throw new Error(
+      "typed Work semantic events require the typed Work append API",
+    );
+  }
+}
+
+function isTypedWorkPayload(payload: Record<string, unknown>): boolean {
+  return TYPED_WORK_SCHEMAS.has(String(payload.schema_version ?? ""));
+}
+
 function hasSourceReference(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasSourceReference);
   if (!value || typeof value !== "object") return false;
@@ -164,6 +202,8 @@ function hasSourceReference(value: unknown): boolean {
     ([key, item]) =>
       key === "source_event_id" ||
       key === "source_event_ids" ||
+	  key === "source_envelope_hash" ||
+	  key === "source_envelope_bindings" ||
       key === "source_object_hash" ||
       key === "source_object_path" ||
       hasSourceReference(item),
@@ -277,11 +317,11 @@ function isWorkLedgerRecord(value: unknown): value is WorkLedgerRecord {
   return (
     record.schema_version === WORK_LEDGER_SCHEMA_VERSION &&
     typeof record.event_id === "string" &&
-    record.event_id.length > 0 &&
+    record.event_id.trim().length > 0 &&
     typeof record.occurred_at === "string" &&
-    record.occurred_at.length > 0 &&
+    record.occurred_at.trim().length > 0 &&
     typeof record.kind === "string" &&
-    record.kind.length > 0 &&
+    record.kind.trim().length > 0 &&
     !!record.payload &&
     typeof record.payload === "object" &&
     !Array.isArray(record.payload) &&
@@ -290,8 +330,12 @@ function isWorkLedgerRecord(value: unknown): value is WorkLedgerRecord {
   );
 }
 
-function assertEvent(event: WorkLedgerEvent): void {
-  if (!event.event_id || !event.occurred_at || !event.kind) {
+export function assertWorkLedgerEvent(event: WorkLedgerEvent): void {
+  if (
+    typeof event.event_id !== "string" || event.event_id.trim().length === 0 ||
+    typeof event.occurred_at !== "string" || event.occurred_at.trim().length === 0 ||
+    typeof event.kind !== "string" || event.kind.trim().length === 0
+  ) {
     throw new Error("work ledger event requires event_id, occurred_at, and kind");
   }
   if (!event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) {

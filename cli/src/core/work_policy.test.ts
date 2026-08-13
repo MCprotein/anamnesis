@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { sha256 } from "../util/hash.js";
 
 import {
 	compareWorkPolicySnapshots,
@@ -7,9 +8,35 @@ import {
 	resolveWorkPolicy,
 	type WorkPolicyLayer,
 	workPolicyConfigSchema,
+	validateWorkPolicySnapshot,
 } from "./work_policy.js";
 
 const source = (name: string) => ({ source: name, ref: `${name}#policy` });
+
+function canonicalJson(value: unknown): string {
+	if (value === null || typeof value === "boolean" || typeof value === "string")
+		return JSON.stringify(value);
+	if (typeof value === "number") return JSON.stringify(value);
+	if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+	return `{${Object.entries(value as Record<string, unknown>)
+		.sort(([left], [right]) => {
+			const limit = Math.min(left.length, right.length);
+			for (let index = 0; index < limit; index += 1) {
+				const difference = left.charCodeAt(index) - right.charCodeAt(index);
+				if (difference !== 0) return difference;
+			}
+			return left.length - right.length;
+		})
+		.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+		.join(",")}}`;
+}
+
+function rehash<T extends { policy: unknown; policy_hash: string }>(
+	snapshot: T,
+): T {
+	snapshot.policy_hash = sha256(canonicalJson(snapshot.policy));
+	return snapshot;
+}
 
 describe("work policy schema and normalization", () => {
 	it("defaults every behavior off and expands frequent/advisory presets deterministically", () => {
@@ -356,6 +383,110 @@ describe("work policy resolution", () => {
 });
 
 describe("work policy snapshots", () => {
+	it("rejects hash-valid snapshots that violate normalized runtime invariants", () => {
+		const baseline = createWorkPolicySnapshot(1, resolveWorkPolicy([]));
+		const malformed = (mutate: (snapshot: typeof baseline) => void) => {
+			const snapshot = structuredClone(baseline);
+			mutate(snapshot);
+			return rehash(snapshot);
+		};
+
+		const invalidSnapshots = [
+			malformed((snapshot) => {
+				snapshot.policy.review.gates = [];
+			}),
+			malformed((snapshot) => {
+				snapshot.policy.review.gates.push(
+					structuredClone(snapshot.policy.review.gates[0]!),
+				);
+			}),
+			malformed((snapshot) => {
+				snapshot.policy.review.preset = "strict";
+			}),
+			malformed((snapshot) => {
+				snapshot.policy.reconciliation.due_after.max_silence = "nonsense";
+			}),
+			malformed((snapshot) => {
+				snapshot.policy.delegation.parallelism = "required";
+				snapshot.policy.delegation.provider_exhaustion = "continue_solo";
+			}),
+			malformed((snapshot) => {
+				snapshot.policy.delegation.native_agents = "required";
+				snapshot.policy.delegation.tmux_team = "required";
+				snapshot.policy.delegation.provider_exhaustion = "blocked_unavailable";
+			}),
+			malformed((snapshot) => {
+				snapshot.policy.delegation.native_agents = "required";
+				snapshot.policy.delegation.provider_exhaustion = "blocked_unavailable";
+				snapshot.policy.delegation.fallback_order = [
+					"tmux_team",
+					"native_agents",
+				];
+			}),
+		];
+
+		for (const snapshot of invalidSnapshots) {
+			expect(() => validateWorkPolicySnapshot(snapshot)).toThrow();
+		}
+	});
+
+	it("accepts normalized monotonic review gates and evidenced strict waivers", () => {
+		const monotonic = createWorkPolicySnapshot(
+			1,
+			resolveWorkPolicy([
+				{
+					kind: "per_work",
+					config: { review: { preset: "advisory" } },
+					source_refs: [source("work")],
+				},
+				{
+					kind: "project",
+					config: { review: { preset: "strict" } },
+					source_refs: [source("project")],
+				},
+			]),
+		);
+		expect(validateWorkPolicySnapshot(monotonic)).toEqual(monotonic);
+
+		const waived = createWorkPolicySnapshot(
+			1,
+			resolveWorkPolicy([
+				{
+					kind: "current_instruction",
+					source_refs: [source("instruction")],
+					waivers: [
+						{
+							gate: "planning",
+							source: "user_event",
+							ref: "evt_waiver",
+							reason: "explicit waiver",
+							revision: 1,
+						},
+					],
+				},
+				{
+					kind: "project",
+					config: { review: { preset: "strict" } },
+					source_refs: [source("project")],
+				},
+			]),
+		);
+		expect(validateWorkPolicySnapshot(waived)).toEqual(waived);
+	});
+
+	it("rejects a waiver attached to a different gate and non-fail-closed required gate", () => {
+		const baseline = createWorkPolicySnapshot(1, resolveWorkPolicy([]));
+		const mismatched = structuredClone(baseline);
+		mismatched.policy.review.gates[0]!.waived_by = {
+			gate: "completion", source: "user_event", ref: "evt", reason: "x", revision: 1,
+		};
+		expect(() => validateWorkPolicySnapshot(rehash(mismatched))).toThrow(/identity/);
+		const required = structuredClone(baseline);
+		required.policy.review.gates[0]!.enforcement = "required";
+		required.policy.review.gates[0]!.unavailable = "fallback";
+		expect(() => validateWorkPolicySnapshot(rehash(required))).toThrow(/fail closed/);
+	});
+
 	it("hashes policy plus ordered provenance with fixed canonicalization and freezes the revision", () => {
 		const firstPolicy = resolveWorkPolicy([
 			{

@@ -227,4 +227,141 @@ describe("Work cursor", () => {
 			0o600,
 		);
 	});
+
+	it("round-trips optional reconciliation state while accepting legacy cursors", () => {
+		const root = temp();
+		const legacy = cursor();
+		writeWorkCursorAtomic(root, legacy);
+		const legacyRead = readWorkCursor(root, legacy.cursor_id);
+		expect(legacyRead).toMatchObject({ status: "current" });
+		if (legacyRead.cursor) {
+			expect("reconciliation" in legacyRead.cursor).toBe(false);
+		}
+
+		const current = cursor({
+			reconciliation: {
+				last_reconciled_head: sha256("head"),
+				last_reconciled_revision: 2,
+				last_reconciled_at: "2026-08-13T01:02:03.000Z",
+				meaningful_actions_since_confirmed: 3,
+				pending_delivery: {
+					fingerprint: sha256("pending"),
+					ledger_head: sha256("pending-head"),
+					contract_revision: 2,
+					contract_hash: sha256("contract"),
+					policy_hash: sha256("policy"),
+				},
+				confirmed_delivery_fingerprint: sha256("confirmed"),
+			},
+		});
+		writeWorkCursorAtomic(root, current);
+		expect(readWorkCursor(root, current.cursor_id)).toMatchObject({
+			status: "current",
+			cursor: { reconciliation: current.reconciliation },
+		});
+	});
+
+	it("strictly rejects malformed reconciliation state", () => {
+		const root = temp();
+		for (const reconciliation of [
+			{
+				last_reconciled_head: null,
+				last_reconciled_revision: null,
+				last_reconciled_at: null,
+				meaningful_actions_since_confirmed: -1,
+				pending_delivery: null,
+				confirmed_delivery_fingerprint: null,
+			},
+			{
+				last_reconciled_head: null,
+				last_reconciled_revision: null,
+				last_reconciled_at: null,
+				meaningful_actions_since_confirmed: 0,
+				pending_delivery: null,
+				confirmed_delivery_fingerprint: null,
+				extra: true,
+			},
+			{
+				last_reconciled_head: sha256("head"),
+				last_reconciled_revision: 1,
+				last_reconciled_at: "2026-02-31T00:00:00.000Z",
+				meaningful_actions_since_confirmed: 0,
+				pending_delivery: null,
+				confirmed_delivery_fingerprint: null,
+			},
+		]) {
+			expect(() =>
+				writeWorkCursorAtomic(
+					root,
+					cursor({ reconciliation } as Partial<WorkCursor>),
+				),
+			).toThrow(/invalid Work cursor/);
+		}
+	});
+
+	it("strictly rejects unknown top-level fields without breaking legacy v1", () => {
+		const root = temp();
+		expect(() =>
+			writeWorkCursorAtomic(root, {
+				...cursor(),
+				unexpected: true,
+			} as WorkCursor),
+		).toThrow(/unknown field unexpected/);
+	});
+
+	it("never follows cursor directory or final-file symlinks for read or delete", () => {
+		const root = temp();
+		const elsewhere = temp();
+		writeWorkCursorAtomic(elsewhere, cursor());
+		fs.symlinkSync(
+			path.join(elsewhere, "work-cursors"),
+			path.join(root, "work-cursors"),
+			"dir",
+		);
+		expect(readWorkCursor(root, "cur_test")).toMatchObject({
+			status: "corrupt",
+			reload_required: true,
+		});
+		expect(() => deleteWorkCursor(root, "cur_test")).toThrow(/symbolic link/);
+		expect(readWorkCursor(elsewhere, "cur_test")).toMatchObject({
+			status: "current",
+		});
+
+		fs.unlinkSync(path.join(root, "work-cursors"));
+		fs.mkdirSync(path.join(root, "work-cursors"));
+		fs.symlinkSync(
+			workCursorPath(elsewhere, "cur_test"),
+			workCursorPath(root, "cur_test"),
+		);
+		expect(readWorkCursor(root, "cur_test")).toMatchObject({
+			status: "corrupt",
+			reload_required: true,
+		});
+		expect(() => deleteWorkCursor(root, "cur_test")).toThrow(/symbolic link/);
+		expect(readWorkCursor(elsewhere, "cur_test")).toMatchObject({
+			status: "current",
+		});
+	});
+
+	it("never follows a symlinked ancestor above the state root", () => {
+		const base = temp();
+		const victim = temp();
+		const victimState = path.join(victim, "state");
+		fs.mkdirSync(victimState);
+		writeWorkCursorAtomic(victimState, cursor());
+		fs.symlinkSync(victim, path.join(base, "link"), "dir");
+		const escapedState = path.join(base, "link", "state");
+
+		expect(readWorkCursor(escapedState, "cur_test")).toMatchObject({
+			status: "corrupt",
+			reload_required: true,
+		});
+		expect(() => deleteWorkCursor(escapedState, "cur_test")).toThrow(
+			/symbolic link/,
+		);
+		expect(fs.existsSync(workCursorPath(victimState, "cur_test"))).toBe(true);
+		expect(() => writeWorkCursorAtomic(escapedState, cursor())).toThrow(
+			/symbolic link/,
+		);
+	});
 });

@@ -1,6 +1,9 @@
 # Work Unit and Requirement Ledger Design
 
-Status: v1.18 target design. No implementation is shipped yet.
+Status: v1.18 target design with storage, typed contract, policy resolution,
+projection, session cursor, and reconciliation foundations implemented. CLI
+commands, adapter-triggered capture/emission, review/delegation execution, and
+closure orchestration remain unshipped.
 
 ## Goal
 

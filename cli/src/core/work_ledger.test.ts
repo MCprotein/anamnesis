@@ -30,6 +30,28 @@ function event(id: string, payload: Record<string, unknown> = {}): WorkLedgerEve
 }
 
 describe("work ledger", () => {
+	it.each([
+		["event_id", "   "],
+		["occurred_at", 123],
+		["kind", "\t"],
+	] as const)("rejects malformed runtime %s before commit", (field, value) => {
+		const ledgerPath = temporaryLedger();
+		const malformed = event("bad") as unknown as Record<string, unknown>;
+		malformed[field] = value;
+		expect(() => appendWorkLedger({ ledgerPath, event: malformed as unknown as WorkLedgerEvent, expectedHead: null })).toThrow(/requires event_id/);
+		expect(readWorkLedger(ledgerPath).records).toHaveLength(0);
+	});
+
+	it("rejects committed whitespace identifiers during read validation", () => {
+		const ledgerPath = temporaryLedger();
+		fs.writeFileSync(ledgerPath, `${JSON.stringify({ schema_version: "anamnesis.work-ledger.v1", event_id: " ", occurred_at: "x", kind: "test", payload: {}, previous_hash: null, record_hash: `sha256:${"0".repeat(64)}` })}\n`);
+		expect(() => readWorkLedger(ledgerPath)).toThrow(/invalid work ledger record/);
+	});
+  it("does not export forgeable unlocked or canonical typed append capabilities", async () => {
+    const module = await import("./work_ledger.js") as Record<string, unknown>;
+    expect(module.appendWorkLedgerUnlocked).toBeUndefined();
+    expect(module.appendCanonicalTypedWorkLedger).toBeUndefined();
+  });
   it("appends canonical hash-linked records and reads a validated contract", () => {
     const ledgerPath = temporaryLedger();
     const first = appendWorkLedger({
@@ -141,7 +163,7 @@ describe("work ledger", () => {
         event: event("evt_01", { source_event_id: "missing" }),
         expectedHead: null,
       }),
-    ).toThrow(/publication precondition/);
+		).toThrow(/official source publication API/);
     expect(readWorkLedger(ledgerPath).records).toHaveLength(0);
   });
 
@@ -159,7 +181,7 @@ describe("work ledger", () => {
           event: event(`evt_${index}`, payload),
           expectedHead: null,
         }),
-      ).toThrow(/publication precondition/);
+			).toThrow(/official source publication API/);
       expect(readWorkLedger(ledgerPath).records).toHaveLength(0);
     }
   });
@@ -252,26 +274,20 @@ describe("work ledger", () => {
     ).toThrow(/timed out/);
   });
 
-  it("runs the source precondition before an idempotent duplicate succeeds", () => {
-    const ledgerPath = temporaryLedger();
-    const sourceEvent = event("evt_01", { source_event_id: "source_01" });
-    appendWorkLedger({
-      ledgerPath,
-      event: sourceEvent,
-      expectedHead: null,
-      sourcePrecondition: () => {},
-    });
-    expect(() =>
-      appendWorkLedger({
-        ledgerPath,
-        event: sourceEvent,
-        expectedHead: null,
-        sourcePrecondition: () => {
-          throw new Error("source was purged");
-        },
-      }),
-    ).toThrow("source was purged");
-  });
+	it("cannot forge source integrity with a caller callback", () => {
+		const ledgerPath = temporaryLedger();
+		const sourceEvent = event("evt_01", { source_event_id: "source_01" });
+		expect(() =>
+			appendWorkLedger({
+				ledgerPath,
+				event: sourceEvent,
+				expectedHead: null,
+				sourcePrecondition: () => {
+					// Deliberately forged no-op/unused callback.
+				},
+			} as Parameters<typeof appendWorkLedger>[0]),
+		).toThrow(/official source publication API/);
+	});
 
   it("rejects invalid UTF-8 bytes even when newline terminated", () => {
     const ledgerPath = temporaryLedger();

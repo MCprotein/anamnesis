@@ -41,6 +41,22 @@ could include breaking changes.
   48 targeted tests and all 808 tests across 82 files, plus typecheck, lint,
   build, and diff checks; independent QA returned `SIGNOFF` and independent
   code review returned `APPROVE`.
+- Implemented the v1.18 typed Work-contract and reconciliation foundation.
+  Canonical contract revisions preserve requirement lineage and verbatim
+  source provenance, reject silent requirement deletion or semantic ID reuse,
+  and keep lifecycle closure fail-closed until closure orchestration exists.
+  Projections derive reproducible weighted or unweighted progress and expose
+  requirement readiness separately from review/closure authority. Deterministic
+  briefing snapshots now report requirements, completed and remaining work,
+  progress, conflicts, policy/contract identity, and deltas; per-session
+  cursors deduplicate only exactly confirmed delivery tuples. Multi-source
+  publication locks every referenced source in stable order through the Work
+  commit and binds exact canonical source-envelope bytes, so retries cannot
+  hide provenance tampering. A dedicated, fail-closed migration event can bind
+  pre-existing envelopes without granting ordinary callers binding authority.
+  Fresh verification passed all 120 targeted tests and all 868 tests across 84
+  files, plus typecheck, lint, build, import, and diff checks; independent
+  adversarial verification and final code review returned `APPROVE`.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile

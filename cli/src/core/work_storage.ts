@@ -4,14 +4,19 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { sha256 } from "../util/hash.js";
 import {
-  appendWorkLedger,
-  appendWorkLedgerUnlocked,
   type AppendWorkLedgerResult,
   type WorkLedgerEvent,
+  type WorkLedgerRecord,
+  WORK_LEDGER_SCHEMA_VERSION,
+  assertWorkLedgerEvent,
+  readWorkLedger,
   withWorkLedgerLock,
 } from "./work_ledger.js";
+import { parseTypedWorkEvent, validateWorkEventAppend } from "./work_contract.js";
 
 export const WORK_SOURCE_EVENT_SCHEMA_VERSION = "anamnesis.work-source.v1";
+export const SOURCE_ENVELOPE_BINDINGS_SCHEMA_VERSION =
+	"anamnesis.source-envelope-bindings.v1" as const;
 
 export type WorkCaptureFidelity =
   | "native_exact"
@@ -99,7 +104,20 @@ export interface PublishAndAppendWorkSourceEventOptions
   onBeforeLedgerSync?: AppendParameters["onBeforeLedgerSync"];
 }
 
-type AppendParameters = Parameters<typeof appendWorkLedger>[0];
+export interface MigrateLegacyWorkSourceEnvelopeBindingsInput {
+	stateRoot: string;
+	ledgerPath: string;
+	eventId: string;
+	occurredAt: string;
+	expectedHead: string | null;
+}
+
+interface AppendParameters {
+  ledgerPath: string;
+  event: WorkLedgerEvent;
+  expectedHead: string | null;
+  onBeforeLedgerSync?: (record: WorkLedgerRecord) => void;
+}
 
 export interface PublishedWorkSourceAllocation {
   source: PublishedWorkSourceEvent;
@@ -243,18 +261,100 @@ export function publishAndAppendWorkSourceEvent(
   input: PublishAndAppendWorkSourceEventInput,
   options: PublishAndAppendWorkSourceEventOptions = {},
 ): PublishedWorkSourceAllocation {
+	return publishAndAppendWorkSourceEventInternal(input, options, false);
+}
+
+/** Official source-first typed publication path with fixed canonical validation. */
+export function publishAndAppendCanonicalTypedWorkSourceEvent(
+	input: PublishAndAppendWorkSourceEventInput,
+	options: PublishAndAppendWorkSourceEventOptions = {},
+): PublishedWorkSourceAllocation {
+	return publishAndAppendWorkSourceEventInternal(input, options, true);
+}
+
+/**
+ * Explicit TOFU migration for pre-binding ledgers. The operator authorizes the
+ * currently published canonical envelopes as the one-time historical baseline.
+ */
+export function migrateLegacyWorkSourceEnvelopeBindings(
+	input: MigrateLegacyWorkSourceEnvelopeBindingsInput,
+	options: WorkStorageOptions = {},
+): AppendWorkLedgerResult {
+	assertSafeId(input.eventId, "ledger event ID");
+	assertWorkLedgerEvent({ event_id: input.eventId, occurred_at: input.occurredAt, kind: "source_envelope_bindings_migrated", payload: {} });
+	const stateRoot = secureStateRoot(input.stateRoot);
+	const snapshot = readWorkLedger(input.ledgerPath);
+	if (snapshot.head !== input.expectedHead)
+		throw new Error(`work ledger head conflict: expected ${input.expectedHead ?? "null"}, actual ${snapshot.head ?? "null"}`);
+	const referencedIds = new Set<string>();
+	const existingBindings = new Map<string, string>();
+	for (const record of snapshot.records) {
+		collectSourceEventIds(record.payload, referencedIds);
+		for (const binding of parseEnvelopeBindingMigrationEvent(record))
+			existingBindings.set(binding.source_event_id, binding.source_envelope_hash);
+		if (typeof record.payload.source_event_id === "string" && typeof record.payload.source_envelope_hash === "string")
+			existingBindings.set(record.payload.source_event_id, record.payload.source_envelope_hash);
+	}
+	const missingIds = [...referencedIds].filter((id) => !existingBindings.has(id)).sort(compareCodeUnits);
+	if (missingIds.length === 0) throw new Error("legacy envelope binding migration has no missing bindings");
+	const deadline = Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
+	return withSourceEventLocks(stateRoot, missingIds, options, deadline, () =>
+		withWorkLedgerLock(input.ledgerPath, options, () => {
+			const current = readWorkLedger(input.ledgerPath);
+			if (current.head !== input.expectedHead)
+				throw new Error(`work ledger head conflict: expected ${input.expectedHead ?? "null"}, actual ${current.head ?? "null"}`);
+			const bindings = missingIds.map((source_event_id) => {
+				assertPayloadSourceReferences(stateRoot, { source_event_ids: [source_event_id] }, source_event_id);
+				const envelopePath = managedDescendant(stateRoot, path.join("work-inputs", "events", `${source_event_id}.yaml`));
+				return { source_event_id, source_envelope_hash: sha256(readFileNoFollow(envelopePath)) };
+			});
+			const migrationEvent: WorkLedgerEvent = {
+				event_id: input.eventId,
+				occurred_at: input.occurredAt,
+				kind: "source_envelope_bindings_migrated",
+				payload: { schema_version: SOURCE_ENVELOPE_BINDINGS_SCHEMA_VERSION, source_envelope_bindings: bindings },
+			};
+			parseEnvelopeBindingMigrationEvent(migrationEvent);
+			return appendPublishedLedgerUnlocked({
+				ledgerPath: input.ledgerPath,
+				expectedHead: input.expectedHead,
+				event: migrationEvent,
+			}, stateRoot);
+		}),
+	);
+}
+
+function publishAndAppendWorkSourceEventInternal(
+	input: PublishAndAppendWorkSourceEventInput,
+	options: PublishAndAppendWorkSourceEventOptions,
+	typedLane: boolean,
+): PublishedWorkSourceAllocation {
+	const sourceEvent: WorkLedgerEvent = {
+		...input.ledgerEvent,
+		payload: input.ledgerEvent.payload ?? {},
+	};
+	assertWorkLedgerEvent(sourceEvent);
+	if (Object.hasOwn(sourceEvent.payload, "source_envelope_bindings"))
+		throw new Error("source_envelope_bindings is reserved for the dedicated legacy migration API");
+	if (!typedLane && isTypedWorkPayload(input.ledgerEvent.payload)) {
+		throw new Error(
+			"typed Work events require the canonical typed source publication API",
+		);
+	}
+	if (typedLane) parseTypedWorkEvent(sourceEvent);
   assertSafeId(input.source.eventId, "event ID");
   const stateRoot = secureStateRoot(input.source.stateRoot);
-  const lockPath = managedDescendant(
-    stateRoot,
-    path.join("work-inputs", ".locks", input.source.eventId),
-  );
-  return withWorkSourceEventLock(lockPath, options, () => {
+  const referencedIds = new Set<string>([input.source.eventId]);
+  collectSourceEventIds(input.ledgerEvent.payload ?? {}, referencedIds);
+  const orderedIds = [...referencedIds].sort(compareCodeUnits);
+  const sourceLockDeadline = Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
+  return withSourceEventLocks(stateRoot, orderedIds, options, sourceLockDeadline, () => {
     const source = publishWorkSourceEventUnlocked(input.source, options, stateRoot);
     options.onSourcePublished?.(source);
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...(input.ledgerEvent.payload ?? {}),
       source_event_id: source.envelope.event_id,
+	  source_envelope_hash: envelopeBytesHash(source.envelope),
       source_object_hash: source.envelope.object_hash,
       source_object_path: source.envelope.object_path,
     };
@@ -262,19 +362,292 @@ export function publishAndAppendWorkSourceEvent(
       ledgerPath: input.ledgerPath,
       event: { ...input.ledgerEvent, payload },
       expectedHead: input.expectedHead,
-      sourcePrecondition: () => assertPublishedWorkSourceEvent(source),
       onBeforeLedgerSync: options.onBeforeLedgerSync,
     };
+    assertPayloadSourceReferences(stateRoot, payload, source.envelope.event_id);
     const ledger = withWorkLedgerLock(
       input.ledgerPath,
       {
         lockTimeoutMs: options.ledgerLockTimeoutMs,
         lockRetryMs: options.ledgerLockRetryMs,
       },
-      () => appendWorkLedgerUnlocked(appendOptions),
+      () => {
+        assertPublishedWorkSourceEvent(source);
+        assertPayloadSourceReferences(stateRoot, payload, source.envelope.event_id);
+		return appendPublishedLedgerUnlocked(
+			appendOptions,
+			stateRoot,
+		);
+      },
     );
     return { source, ledger };
   });
+}
+
+function isTypedWorkPayload(payload: Record<string, unknown> | undefined): boolean {
+	return [
+		"anamnesis.work-contract-event.v1",
+		"anamnesis.work-progress-event.v1",
+		"anamnesis.work-lifecycle-event.v1",
+	].includes(String(payload?.schema_version ?? ""));
+}
+
+function appendPublishedLedgerUnlocked(
+  options: AppendParameters,
+	stateRoot: string,
+): AppendWorkLedgerResult {
+  const current = readWorkLedger(options.ledgerPath);
+	assertCommittedEnvelopeBindings(stateRoot, current.records, options.event);
+  const duplicate = current.records.find((record) => record.event_id === options.event.event_id);
+  if (duplicate) {
+    if (duplicate.occurred_at !== options.event.occurred_at || duplicate.kind !== options.event.kind || canonicalJson(duplicate.payload) !== canonicalJson(options.event.payload))
+      throw new Error(`work ledger event ID collision: ${options.event.event_id}`);
+    return { record: duplicate, head: current.head!, idempotent: true };
+  }
+  if (current.head !== options.expectedHead)
+    throw new Error(`work ledger head conflict: expected ${options.expectedHead ?? "null"}, actual ${current.head ?? "null"}`);
+  validateWorkEventAppend(current.records, options.event);
+  const unsigned = {
+    schema_version: WORK_LEDGER_SCHEMA_VERSION,
+    event_id: options.event.event_id,
+    occurred_at: options.event.occurred_at,
+    kind: options.event.kind,
+    payload: options.event.payload,
+    previous_hash: current.head,
+  } as const;
+  const record: WorkLedgerRecord = { ...unsigned, record_hash: sha256(Buffer.from(canonicalJson(unsigned), "utf8")) };
+  const fd = fs.openSync(path.resolve(options.ledgerPath), fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_CREAT | noFollowFlag(), 0o600);
+  try {
+    fs.fchmodSync(fd, 0o600);
+    options.onBeforeLedgerSync?.(record);
+    writeAll(fd, Buffer.from(`${canonicalJson(record)}\n`, "utf8"));
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  fsyncDirectory(path.dirname(path.resolve(options.ledgerPath)));
+  return { record, head: record.record_hash, idempotent: false };
+}
+
+function assertCommittedEnvelopeBindings(
+	stateRoot: string,
+	records: readonly WorkLedgerRecord[],
+	currentEvent: WorkLedgerEvent,
+): void {
+	resolveCommittedEnvelopeBindings(stateRoot, records, currentEvent);
+}
+
+function resolveCommittedEnvelopeBindings(
+	stateRoot: string,
+	records: readonly WorkLedgerRecord[],
+	currentEvent: WorkLedgerEvent,
+): void {
+	const bindings = new Map<string, string>();
+	const events = [...records, currentEvent];
+	for (const event of events) {
+		const parsedBindings = parseEnvelopeBindingMigrationEvent(event);
+		for (const binding of parsedBindings) {
+			const previous = bindings.get(binding.source_event_id);
+			if (previous && previous !== binding.source_envelope_hash)
+				throw new Error(`source event ${binding.source_event_id} envelope hash binding changed`);
+			bindings.set(binding.source_event_id, binding.source_envelope_hash);
+		}
+	}
+	for (const { payload } of events) {
+		const eventId = payload.source_event_id;
+		const envelopeHash = payload.source_envelope_hash;
+		if (typeof eventId !== "string") continue;
+		let effectiveHash: string;
+		if (typeof envelopeHash !== "string") {
+			const committedBinding = bindings.get(eventId);
+			if (committedBinding) effectiveHash = committedBinding;
+			else throw new Error(`source event ${eventId} requires explicit legacy envelope binding migration`);
+		} else effectiveHash = envelopeHash;
+		const previous = bindings.get(eventId);
+		if (previous && previous !== effectiveHash)
+			throw new Error(`source event ${eventId} envelope hash binding changed`);
+		bindings.set(eventId, effectiveHash);
+	}
+	const referencedIds = new Set<string>();
+	collectSourceEventIds(currentEvent.payload, referencedIds);
+	for (const eventId of referencedIds) {
+		const binding = bindings.get(eventId);
+		if (!binding) throw new Error(`source event ${eventId} has no committed envelope hash binding`);
+		const envelopePath = managedDescendant(stateRoot, path.join("work-inputs", "events", `${eventId}.yaml`));
+		if (sha256(readFileNoFollow(envelopePath)) !== binding)
+			throw new Error(`source event ${eventId} envelope metadata changed after publication`);
+	}
+}
+
+function parseEnvelopeBindingMigrationEvent(event: Pick<WorkLedgerEvent, "kind" | "payload">): Array<{ source_event_id: string; source_envelope_hash: string }> {
+	const hasReserved = Object.hasOwn(event.payload, "source_envelope_bindings");
+	if (event.kind !== "source_envelope_bindings_migrated") {
+		if (hasReserved) throw new Error("source_envelope_bindings is reserved for migration records");
+		return [];
+	}
+	const keys = Object.keys(event.payload).sort(compareCodeUnits);
+	if (canonicalJson(keys) !== canonicalJson(["schema_version", "source_envelope_bindings"]))
+		throw new Error("invalid source envelope binding migration payload keys");
+	if (event.payload.schema_version !== SOURCE_ENVELOPE_BINDINGS_SCHEMA_VERSION)
+		throw new Error("invalid source envelope binding migration schema version");
+	const value = event.payload.source_envelope_bindings;
+	if (!Array.isArray(value) || value.length === 0) throw new Error("source envelope binding migration requires nonempty bindings");
+	const seen = new Set<string>();
+	const parsed = value.map((item) => {
+		if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("invalid source_envelope_bindings entry");
+		const keys = Object.keys(item).sort(compareCodeUnits);
+		if (canonicalJson(keys) !== canonicalJson(["source_envelope_hash", "source_event_id"])) throw new Error("invalid source_envelope_bindings entry keys");
+		const binding = item as Record<string, unknown>;
+		if (typeof binding.source_event_id !== "string" || !SAFE_ID.test(binding.source_event_id) || typeof binding.source_envelope_hash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(binding.source_envelope_hash)) throw new Error("invalid source_envelope_bindings entry");
+		if (seen.has(binding.source_event_id)) throw new Error("duplicate source_envelope_bindings event ID");
+		seen.add(binding.source_event_id);
+		return { source_event_id: binding.source_event_id, source_envelope_hash: binding.source_envelope_hash };
+	});
+	for (let index = 1; index < parsed.length; index += 1) {
+		if (compareCodeUnits(parsed[index - 1]!.source_event_id, parsed[index]!.source_event_id) >= 0)
+			throw new Error("source envelope binding migration bindings must be code-unit sorted");
+	}
+	return parsed;
+}
+
+function envelopeBytesHash(envelope: WorkSourceEventEnvelope): string {
+	return sha256(Buffer.from(`${canonicalJson(envelope)}\n`, "utf8"));
+}
+
+function withSourceEventLocks<T>(
+  stateRoot: string,
+  eventIds: readonly string[],
+  options: WorkStorageOptions,
+  deadline: number,
+  operation: () => T,
+  index = 0,
+): T {
+  if (index === eventIds.length) return operation();
+  const eventId = eventIds[index]!;
+  assertSafeId(eventId, "source event ID");
+  const lockPath = managedDescendant(
+    stateRoot,
+    path.join("work-inputs", ".locks", eventId),
+  );
+  return withWorkSourceEventLock(lockPath, { ...options, lockTimeoutMs: Math.max(0, deadline - Date.now()) }, () =>
+    withSourceEventLocks(stateRoot, eventIds, options, deadline, operation, index + 1),
+  );
+}
+
+function assertPayloadSourceReferences(
+	stateRoot: string,
+	payload: Record<string, unknown>,
+	newSourceEventId: string,
+): void {
+	const ids = new Set<string>();
+	collectSourceEventIds(payload, ids);
+	if (!ids.has(newSourceEventId))
+		throw new Error("published source must be referenced by the appended Work event");
+	for (const eventId of ids) {
+		assertSafeId(eventId, "source event ID");
+		const envelopePath = managedDescendant(stateRoot, path.join("work-inputs", "events", `${eventId}.yaml`));
+		let envelope: WorkSourceEventEnvelope;
+		let envelopeBytes: Buffer;
+		try {
+			envelopeBytes = readFileNoFollow(envelopePath);
+			envelope = JSON.parse(envelopeBytes.toString("utf8")) as WorkSourceEventEnvelope;
+		} catch (error) {
+			throw new Error(`referenced source event ${eventId} is not published`, { cause: error });
+		}
+		if (!isStrictWorkSourceEnvelope(envelope) || envelope.event_id !== eventId)
+			throw new Error(`referenced source event ${eventId} envelope mismatch`);
+		if (!envelopeBytes.equals(Buffer.from(`${canonicalJson(envelope)}\n`, "utf8")))
+			throw new Error(`referenced source event ${eventId} envelope is not canonical`);
+		const expectedObjectPath = path.posix.join("work-inputs", "objects", `${eventId}.txt`);
+		if (envelope.object_path !== expectedObjectPath)
+			throw new Error(`referenced source event ${eventId} object path mismatch`);
+		try {
+			const objectPath = managedDescendant(stateRoot, envelope.object_path);
+			if (sha256(readFileNoFollow(objectPath)) !== envelope.object_hash)
+				throw new Error(`referenced source event ${eventId} object hash mismatch`);
+		} catch (error) {
+			if (isMissing(error))
+				throw new Error(`source event ${eventId} is not published`, { cause: error });
+			throw error;
+		}
+	}
+	assertPayloadObjectRefsMatch(payload, stateRoot, ids);
+}
+
+function isStrictWorkSourceEnvelope(value: unknown): value is WorkSourceEventEnvelope {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+	const envelope = value as Partial<WorkSourceEventEnvelope>;
+	const keys = Object.keys(value).sort(compareCodeUnits);
+	const expected = ["allocation_status", "attachment_refs", "captured_at", "client", "content_type", "event_id", "fidelity", "object_hash", "object_path", "schema_version"].sort(compareCodeUnits);
+	return canonicalJson(keys) === canonicalJson(expected) &&
+		envelope.schema_version === WORK_SOURCE_EVENT_SCHEMA_VERSION &&
+		typeof envelope.event_id === "string" && SAFE_ID.test(envelope.event_id) &&
+		typeof envelope.captured_at === "string" && typeof envelope.client === "string" &&
+		typeof envelope.content_type === "string" && typeof envelope.allocation_status === "string" &&
+		["native_exact", "client_exact", "agent_observed"].includes(String(envelope.fidelity)) &&
+		typeof envelope.object_hash === "string" && /^sha256:[a-f0-9]{64}$/.test(envelope.object_hash) &&
+		typeof envelope.object_path === "string" &&
+		Array.isArray(envelope.attachment_refs) && envelope.attachment_refs.every((item) => typeof item === "string");
+}
+
+function assertPayloadObjectRefsMatch(payload: Record<string, unknown>, stateRoot: string, ids: Set<string>): void {
+	const hashes = new Set<string>();
+	const paths = new Set<string>();
+	const envelopeHashes = new Set<string>();
+	const envelopes = new Map<string, WorkSourceEventEnvelope>();
+	for (const id of ids) {
+		const envelope = JSON.parse(readFileNoFollow(managedDescendant(stateRoot, path.join("work-inputs", "events", `${id}.yaml`))).toString("utf8")) as WorkSourceEventEnvelope;
+		envelopes.set(id, envelope);
+		envelopeHashes.add(envelopeBytesHash(envelope));
+		hashes.add(envelope.object_hash);
+		paths.add(envelope.object_path);
+	}
+	walkObjectRefs(payload, hashes, paths, envelopeHashes, envelopes);
+}
+
+function walkObjectRefs(value: unknown, hashes: Set<string>, paths: Set<string>, envelopeHashes: Set<string>, envelopes: Map<string, WorkSourceEventEnvelope>): void {
+	if (Array.isArray(value)) { for (const item of value) walkObjectRefs(item, hashes, paths, envelopeHashes, envelopes); return; }
+	if (!value || typeof value !== "object") return;
+	const object = value as Record<string, unknown>;
+	if (typeof object.source_event_id === "string") {
+		const envelope = envelopes.get(object.source_event_id);
+		if (!envelope) throw new Error("source event object reference is not published");
+		if (object.source_object_hash !== undefined && object.source_object_hash !== envelope.object_hash)
+			throw new Error("source object hash does not match its source event envelope");
+		if (object.source_object_path !== undefined && object.source_object_path !== envelope.object_path)
+			throw new Error("source object path does not match its source event envelope");
+		if (object.source_envelope_hash !== undefined && object.source_envelope_hash !== envelopeBytesHash(envelope))
+			throw new Error("source envelope hash does not match its source event envelope");
+	}
+	for (const [key, item] of Object.entries(value)) {
+		if (key === "source_object_hash" && (typeof item !== "string" || !hashes.has(item))) throw new Error("source object hash does not match a referenced source envelope");
+		else if (key === "source_object_path" && (typeof item !== "string" || !paths.has(item))) throw new Error("source object path does not match a referenced source envelope");
+		else if (key === "source_envelope_hash" && (typeof item !== "string" || !envelopeHashes.has(item))) throw new Error("source envelope hash does not match a referenced source envelope");
+		else walkObjectRefs(item, hashes, paths, envelopeHashes, envelopes);
+	}
+}
+
+function compareCodeUnits(left: string, right: string): number {
+	const limit = Math.min(left.length, right.length);
+	for (let index = 0; index < limit; index += 1) {
+		const difference = left.charCodeAt(index) - right.charCodeAt(index);
+		if (difference !== 0) return difference;
+	}
+	return left.length - right.length;
+}
+
+function collectSourceEventIds(value: unknown, output: Set<string>): void {
+	if (Array.isArray(value)) {
+		for (const item of value) collectSourceEventIds(item, output);
+		return;
+	}
+	if (!value || typeof value !== "object") return;
+	for (const [key, item] of Object.entries(value)) {
+		if (key === "source_event_id" && typeof item === "string") output.add(item);
+		else if (key === "source_event_ids" && Array.isArray(item)) {
+			for (const id of item) if (typeof id === "string") output.add(id);
+		} else collectSourceEventIds(item, output);
+	}
 }
 
 export function assertPublishedWorkSourceEvent(

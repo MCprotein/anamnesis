@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { sha256 } from "../util/hash.js";
 import {
+	migrateLegacyWorkSourceEnvelopeBindings,
+	publishAndAppendCanonicalTypedWorkSourceEvent,
   publishAndAppendWorkSourceEvent,
   publishWorkSourceEvent,
   resolveWorkStateRoot,
@@ -240,6 +242,114 @@ describe("work source storage", () => {
     expect(readWorkLedger(ledgerPath).records).toHaveLength(0);
   });
 
+  it("rejects redirected and non-canonical published envelopes", () => {
+    for (const mutation of ["redirect", "extra"] as const) {
+      const root = temporaryDirectory(`anamnesis-work-envelope-${mutation}-`);
+      const ledgerPath = path.join(root, "work-units", "wu_01", "ledger.jsonl");
+      expect(() => publishAndAppendWorkSourceEvent(
+        {
+          source: sourceInput(root, "exact source"), ledgerPath,
+          ledgerEvent: { event_id: `allocation_${mutation}`, occurred_at: "2026-08-13T00:00:01.000Z", kind: "source_allocated" }, expectedHead: null,
+        },
+        { onSourcePublished: (source) => {
+          const envelope = JSON.parse(fs.readFileSync(source.envelope_path, "utf8"));
+          if (mutation === "redirect") envelope.object_path = "work-inputs/objects/other.txt";
+          else envelope.extra = true;
+          fs.writeFileSync(source.envelope_path, `${JSON.stringify(envelope)}\n`);
+        } },
+      )).toThrow(/envelope|object path/);
+      expect(readWorkLedger(ledgerPath).records).toHaveLength(0);
+    }
+  });
+
+  it("rejects malformed ledger events before publication", () => {
+    for (const field of ["event_id", "occurred_at", "kind"] as const) {
+      const root = temporaryDirectory(`anamnesis-work-malformed-${field}-`);
+      const ledgerPath = path.join(root, "work-units", "wu_01", "ledger.jsonl");
+      const ledgerEvent = { event_id: "event", occurred_at: "time", kind: "source_allocated" };
+      ledgerEvent[field] = "";
+      expect(() => publishAndAppendWorkSourceEvent({ source: sourceInput(root, "exact"), ledgerPath, ledgerEvent, expectedHead: null })).toThrow(/requires event_id/);
+      expect(readWorkLedger(ledgerPath).records).toHaveLength(0);
+      expect(fs.existsSync(path.join(root, "work-inputs", "events", "evt_01test.yaml"))).toBe(false);
+    }
+  });
+
+  it("requires explicit migration for legacy source records without envelope bindings", () => {
+    const root = temporaryDirectory("anamnesis-work-legacy-binding-");
+    const ledgerPath = path.join(root, "work-units", "wu_01", "ledger.jsonl");
+    const old = publishWorkSourceEvent({ ...sourceInput(root, "old"), eventId: "old" });
+    const unsigned = {
+      schema_version: "anamnesis.work-ledger.v1", event_id: "legacy", occurred_at: "x", kind: "source_allocated",
+      payload: { source_event_id: "old", source_object_hash: old.envelope.object_hash, source_object_path: old.envelope.object_path }, previous_hash: null,
+    } as const;
+    const record = { ...unsigned, record_hash: sha256(Buffer.from(canonicalTestJson(unsigned), "utf8")) };
+    fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
+    fs.writeFileSync(ledgerPath, `${canonicalTestJson(record)}\n`);
+    const input = {
+      source: { ...sourceInput(root, "new"), eventId: "new" }, ledgerPath, expectedHead: record.record_hash,
+      ledgerEvent: { event_id: "next", occurred_at: "x", kind: "source_allocated", payload: { source_event_ids: ["old"] } },
+    };
+		expect(() => publishAndAppendWorkSourceEvent(input)).toThrow(/explicit legacy envelope binding migration/);
+		expect(() => publishAndAppendWorkSourceEvent(input, { allowLegacyEnvelopeBindingMigration: true } as never)).toThrow(/explicit legacy envelope binding migration/);
+		const migrated = migrateLegacyWorkSourceEnvelopeBindings({ stateRoot: root, ledgerPath, eventId: "binding-migration", occurredAt: "x", expectedHead: record.record_hash });
+		expect(migrated.idempotent).toBe(false);
+		expect(migrated.record.payload.source_envelope_bindings).toEqual([
+			{ source_event_id: "old", source_envelope_hash: sha256(fs.readFileSync(old.envelope_path)) },
+		]);
+		const next = {
+			source: { ...sourceInput(root, "later"), eventId: "later" }, ledgerPath, expectedHead: migrated.head,
+			ledgerEvent: { event_id: "later-event", occurred_at: "x", kind: "source_allocated", payload: { source_event_ids: ["old"] } },
+		};
+		expect(publishAndAppendWorkSourceEvent(next).ledger.idempotent).toBe(false);
+		const envelope = JSON.parse(fs.readFileSync(old.envelope_path, "utf8"));
+		envelope.client = "tampered-after-migration";
+		fs.writeFileSync(old.envelope_path, `${canonicalTestJson(envelope)}\n`);
+		const afterTamper = {
+			source: { ...sourceInput(root, "last"), eventId: "last" }, ledgerPath, expectedHead: readWorkLedger(ledgerPath).head,
+			ledgerEvent: { event_id: "last-event", occurred_at: "x", kind: "source_allocated", payload: { source_event_ids: ["old"] } },
+		};
+		expect(() => publishAndAppendWorkSourceEvent(afterTamper, { allowLegacyEnvelopeBindingMigration: true } as never)).toThrow(/metadata changed/);
+  });
+
+  it("rejects caller-supplied envelope binding payloads", () => {
+		for (const publish of [publishAndAppendWorkSourceEvent, publishAndAppendCanonicalTypedWorkSourceEvent]) {
+			const root = temporaryDirectory("anamnesis-work-forged-binding-");
+			expect(() => publish({
+				source: sourceInput(root, "exact"), ledgerPath: path.join(root, "ledger.jsonl"), expectedHead: null,
+				ledgerEvent: { event_id: "forged", occurred_at: "x", kind: "source_allocated", payload: { source_envelope_bindings: [{ source_event_id: "x", source_envelope_hash: `sha256:${"0".repeat(64)}` }] } },
+			})).toThrow(/reserved/);
+		}
+	});
+
+	it("rejects forged historical bindings on non-migration records", () => {
+		const root = temporaryDirectory("anamnesis-work-forged-history-");
+		const ledgerPath = path.join(root, "ledger.jsonl");
+		const unsigned = {
+			schema_version: "anamnesis.work-ledger.v1", event_id: "forged-note", occurred_at: "x", kind: "note",
+			payload: { source_envelope_bindings: [{ source_event_id: "old", source_envelope_hash: `sha256:${"0".repeat(64)}` }] }, previous_hash: null,
+		} as const;
+		const record = { ...unsigned, record_hash: sha256(Buffer.from(canonicalTestJson(unsigned), "utf8")) };
+		fs.writeFileSync(ledgerPath, `${canonicalTestJson(record)}\n`);
+		expect(() => publishAndAppendWorkSourceEvent({
+			source: sourceInput(root, "new"), ledgerPath, expectedHead: record.record_hash,
+			ledgerEvent: { event_id: "next", occurred_at: "x", kind: "source_allocated" },
+		})).toThrow(/reserved for migration records/);
+	});
+
+	it.each([
+		["wrong-schema", { schema_version: "wrong", source_envelope_bindings: [{ source_event_id: "a", source_envelope_hash: `sha256:${"0".repeat(64)}` }] }],
+		["extra-key", { schema_version: "anamnesis.source-envelope-bindings.v1", source_envelope_bindings: [{ source_event_id: "a", source_envelope_hash: `sha256:${"0".repeat(64)}` }], extra: true }],
+		["empty", { schema_version: "anamnesis.source-envelope-bindings.v1", source_envelope_bindings: [] }],
+		["unsorted", { schema_version: "anamnesis.source-envelope-bindings.v1", source_envelope_bindings: [{ source_event_id: "z", source_envelope_hash: `sha256:${"0".repeat(64)}` }, { source_event_id: "a", source_envelope_hash: `sha256:${"1".repeat(64)}` }] }],
+	] as const)("rejects malformed historical migration payload: %s", (_name, payload) => {
+		const root = temporaryDirectory("anamnesis-work-malformed-migration-");
+		const ledgerPath = path.join(root, "ledger.jsonl");
+		const unsigned = { schema_version: "anamnesis.work-ledger.v1", event_id: "migration", occurred_at: "x", kind: "source_envelope_bindings_migrated", payload, previous_hash: null } as const;
+		const record = { ...unsigned, record_hash: sha256(Buffer.from(canonicalTestJson(unsigned), "utf8")) };
+		fs.writeFileSync(ledgerPath, `${canonicalTestJson(record)}\n`);
+		expect(() => publishAndAppendWorkSourceEvent({ source: sourceInput(root, "new"), ledgerPath, expectedHead: record.record_hash, ledgerEvent: { event_id: "next", occurred_at: "x", kind: "source_allocated" } })).toThrow(/migration|bindings|schema|sorted/);
+	});
+
   it("rejects a symlinked managed input ancestor", () => {
     const root = temporaryDirectory("anamnesis-work-source-symlink-");
     const victim = temporaryDirectory("anamnesis-work-source-victim-");
@@ -341,4 +451,11 @@ async function waitForFile(
     if (Date.now() >= deadline) throw new Error("lock-holder readiness timed out");
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
+}
+
+function canonicalTestJson(value: unknown): string {
+  if (value === null || typeof value === "boolean" || typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalTestJson).join(",")}]`;
+  return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0).map(([key, item]) => `${JSON.stringify(key)}:${canonicalTestJson(item)}`).join(",")}}`;
 }
