@@ -103,8 +103,10 @@ describe("init", () => {
     ).toContain("project-purpose-and-entrypoints");
 
     const af = readAgentfile(project);
+    expect(af.version).toBe(2);
     expect(af.fragments).toHaveLength(0);
     expect(af.tools).toEqual(["claude-code"]);
+    expect(af.settings).toBeUndefined();
 
     const m = readManifest(project);
     expect(m.regions).toHaveLength(0);

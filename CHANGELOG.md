@@ -26,6 +26,21 @@ could include breaking changes.
   bounded durable locks. Fresh verification passed all 48 targeted tests and
   all 789 tests across 81 files, plus typecheck, lint, and diff checks; an
   independent review returned `APPROVE`.
+- Implemented the v1.18 Agentfile v2 and pure Work-policy resolution slice.
+  Agentfile v2 strictly accepts optional `settings.work_policy`; new projects
+  emit v2 without materializing policy, so briefing, review, and delegation
+  remain off by default. Existing v1 files use an explicit, version-only,
+  backup-preserving, idempotent v1-to-v2 migration. The side-effect-free
+  resolver applies fixed current-instruction, per-Work, matched-harness,
+  project, user, and product precedence; keeps required review gates monotonic
+  unless a current gate- and revision-scoped evidenced waiver lowers one; and
+  produces deterministic provenance-aware `policy_hash` values plus immutable
+  revision snapshots and drift comparisons. It also normalizes declarative
+  OMX-to-Codex-native review fallback and fail-closed required-parallelism
+  exhaustion without launching either runtime. Fresh verification passed all
+  48 targeted tests and all 808 tests across 82 files, plus typecheck, lint,
+  build, and diff checks; independent QA returned `SIGNOFF` and independent
+  code review returned `APPROVE`.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile

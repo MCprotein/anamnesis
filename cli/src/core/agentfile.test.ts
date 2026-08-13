@@ -4,6 +4,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
   parseAgentfile,
+  parseAgentfileV1,
+  parseAgentfileV2,
   stringifyAgentfile,
   AgentfileParseError,
   findAgentfile,
@@ -80,14 +82,100 @@ overrides:
     expect(result.overrides?.regions?.[0]?.locked).toBe(true);
   });
 
-  it("rejects wrong version", () => {
+  it("rejects unsupported versions", () => {
     const yaml = `
-version: 2
+version: 3
 project: { name: x }
 tools: [claude-code]
 fragments: []
 `;
     expect(() => parseAgentfile(yaml)).toThrow(AgentfileParseError);
+  });
+
+  it("keeps v1 strict and rejects v2-only work policy settings", () => {
+    const yaml = `
+version: 1
+project: { name: x }
+tools: [claude-code]
+fragments: []
+settings:
+  work_policy: {}
+`;
+    expect(() => parseAgentfileV1(yaml)).toThrow(/Unrecognized key/);
+    expect(() => parseAgentfile(yaml)).toThrow(/Unrecognized key/);
+  });
+
+  it("accepts an absent work policy in v2 without materializing it", () => {
+    const yaml = `
+version: 2
+project: { name: x }
+tools: [claude-code]
+fragments: []
+settings:
+  backup_retention: 3
+`;
+    const result = parseAgentfileV2(yaml);
+
+    expect(result.version).toBe(2);
+    expect(result.settings?.backup_retention).toBe(3);
+    expect(result.settings).not.toHaveProperty("work_policy");
+  });
+
+  it("accepts the strict work policy schema in v2", () => {
+    const yaml = `
+version: 2
+project: { name: x }
+tools: [claude-code]
+fragments: []
+settings:
+  work_policy:
+    reconciliation:
+      preset: frequent
+      due_after:
+        max_silence: PT5M
+        meaningful_actions: 5
+      triggers: [work_resume, contract_revision, before_work_close]
+      detail: compact
+      compact_target_tokens: 220
+      after_briefing: continue
+    delegation:
+      parallelism: auto
+      max_agents: 4
+      native_agents: prefer
+      tmux_team: auto
+      fallback_order: [native_agents, tmux_team]
+      unavailable: fallback
+      reassess_on: [contract_revision, material_scope_change]
+`;
+    const result = parseAgentfileV2(yaml);
+
+    expect(result.settings?.work_policy?.reconciliation?.preset).toBe(
+      "frequent",
+    );
+    expect(result.settings?.work_policy?.delegation?.max_agents).toBe(4);
+  });
+
+  it("rejects unknown work policy keys at every nested level", () => {
+    const fixtures = [
+      `  work_policy:\n    enabled: true`,
+      `  work_policy:\n    reconciliation:\n      preset: off\n      timer_daemon: true`,
+      `  work_policy:\n    reconciliation:\n      preset: custom\n      due_after:\n        seconds: 300`,
+      `  work_policy:\n    delegation:\n      parallelism: auto\n      worker_pool: shared`,
+      `  work_policy:\n    delegation:\n      parallelism: auto\n      composition:\n        native_agents_lanes: []\n        tmux_team_lanes: []\n        solo_lanes: []`,
+    ];
+
+    for (const settings of fixtures) {
+      expect(() =>
+        parseAgentfileV2(`
+version: 2
+project: { name: x }
+tools: [claude-code]
+fragments: []
+settings:
+${settings}
+`),
+      ).toThrow(/Unrecognized key/);
+    }
   });
 
   it("rejects unknown tool name", () => {

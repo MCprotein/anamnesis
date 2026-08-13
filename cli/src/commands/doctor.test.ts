@@ -618,7 +618,7 @@ capabilities:
     const library = makeLibrary();
     fs.writeFileSync(
       path.join(project, "Agentfile"),
-      `version: 1
+      `version: 2
 project:
   name: disabled-adapter
 tools:

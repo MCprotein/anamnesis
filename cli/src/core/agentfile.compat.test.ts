@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseAgentfile, stringifyAgentfile } from "./agentfile.js";
+import {
+  parseAgentfileV1,
+  stringifyAgentfile,
+} from "./agentfile.js";
 import { effectiveScopes } from "./scope.js";
 
 const FIXTURES = {
@@ -87,7 +90,7 @@ fragments:
 
 describe("Agentfile v1 compatibility fixtures", () => {
   it("accepts historical Claude Code-only managed projects", () => {
-    const af = parseAgentfile(FIXTURES.legacyClaudeOnly);
+    const af = parseAgentfileV1(FIXTURES.legacyClaudeOnly);
 
     expect(af.tools).toEqual(["claude-code"]);
     expect(af.fragments.map((fragment) => fragment.id)).toEqual([
@@ -104,7 +107,7 @@ describe("Agentfile v1 compatibility fixtures", () => {
   });
 
   it("accepts the current all-adapter single-scope shape", () => {
-    const af = parseAgentfile(FIXTURES.allAdapterSingleScope);
+    const af = parseAgentfileV1(FIXTURES.allAdapterSingleScope);
 
     expect(af.tools).toEqual(["claude-code", "codex", "cursor"]);
     expect(af.settings).toMatchObject({
@@ -128,7 +131,7 @@ describe("Agentfile v1 compatibility fixtures", () => {
   });
 
   it("accepts multi-scope pinned projects and resolves effective scopes", () => {
-    const af = parseAgentfile(FIXTURES.multiScopePinned);
+    const af = parseAgentfileV1(FIXTURES.multiScopePinned);
     const scopes = effectiveScopes(af);
 
     const root = scopes.find((scope) => scope.path === ".")!;
@@ -154,14 +157,14 @@ describe("Agentfile v1 compatibility fixtures", () => {
 
   it("roundtrips compatibility fixtures through stringify", () => {
     for (const fixture of Object.values(FIXTURES)) {
-      const parsed = parseAgentfile(fixture);
-      expect(parseAgentfile(stringifyAgentfile(parsed))).toEqual(parsed);
+      const parsed = parseAgentfileV1(fixture);
+      expect(parseAgentfileV1(stringifyAgentfile(parsed))).toEqual(parsed);
     }
   });
 
   it("continues rejecting duplicate declined entries", () => {
     expect(() =>
-      parseAgentfile(`
+      parseAgentfileV1(`
 version: 1
 project: { name: duplicate-declined }
 tools: [claude-code]

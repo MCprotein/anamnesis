@@ -1913,18 +1913,33 @@ allowed to finish. It should also be able to say “brief and continue every few
 minutes/actions” and “use safe parallel agents, preferring or requiring tmux
 for this Work” once, instead of making the user repeat those instructions.
 
-The first storage/core slice is implemented: canonical local state-root
-resolution, immutable exact-byte source objects, coupled source-to-ledger
-transactions, a hash-linked expected-head-CAS ledger with torn-tail recovery,
-deterministic projections and progress, and disposable independent
-multi-session cursors. Managed storage rejects symlink traversal, applies
-private modes, and uses bounded durable locks. Fresh verification passed 48/48
-targeted tests and 789/789 tests across 81 files, plus typecheck, lint, and diff
-checks; an independent review returned `APPROVE`. This does not complete
-v1.18: Agentfile/schema integration, policy resolution, adapter hooks,
-automatic briefings, delegation/runtime policy, review-gate orchestration,
-handoff/index/diagnostics integration, benchmarks, optional MCP evaluation,
-and any cross-host coordination remain deferred.
+The storage/core slice is implemented: canonical local state-root resolution,
+immutable exact-byte source objects, coupled source-to-ledger transactions, a
+hash-linked expected-head-CAS ledger with torn-tail recovery, deterministic
+projections and progress, and disposable independent multi-session cursors.
+Managed storage rejects symlink traversal, applies private modes, and uses
+bounded durable locks. Its acceptance evidence passed 48/48 targeted tests and
+789/789 tests across 81 files, plus typecheck, lint, and diff checks; an
+independent review returned `APPROVE`.
+
+The Agentfile v2 and pure Work-policy resolution slice is also implemented.
+Agentfile v2 strictly accepts optional `settings.work_policy`; new `init`
+output uses v2 without materializing policy, preserving all-off defaults.
+Existing v1 files migrate explicitly and idempotently by changing only the
+version while preserving a backup. A side-effect-free resolver applies the
+fixed current-instruction, per-Work, matched-harness, project, user, and product
+precedence; preserves stronger required review gates unless a current,
+evidenced gate/revision waiver lowers one; freezes deterministic
+provenance-aware `policy_hash` snapshots by contract revision; and reports
+policy/provenance drift. It normalizes declarative OMX-to-Codex-native review
+fallback and keeps required parallelism fail-closed after provider exhaustion,
+but does not launch or supervise either runtime. Fresh verification passed
+48/48 targeted tests and 808/808 tests across 82 files, plus typecheck, lint,
+build, and diff checks; independent QA returned `SIGNOFF` and independent code
+review returned `APPROVE`. This does not complete v1.18: automatic briefings,
+delegation/review execution, CLI diagnostics, adapter hooks, handoff/index
+integration, benchmarks, optional MCP evaluation, and cross-host coordination
+remain deferred.
 
 The storage and responsibility boundaries are:
 
@@ -2037,9 +2052,9 @@ Work plan:
 | 1 | **Thin Work boundary, schema, and lifecycle** | planned | Keep Work as the only durable task-domain object. Define it by one user-recognizable acceptance/release/cancel decision with stable boundary reason codes, confidence, related/successor lineage, contract revision, policy/evidence hashes, and bounded completed-unit retention. Foreground is a disposable per-session cursor, never global Work state. Treat separate files/reviewers/deadlines as advisory signals, not boundaries, and store the accepted boundary hash rather than re-inferring membership after compaction. |
 | 2 | **Verbatim source-event ledger and projection** | in progress | Capture user-visible prompt payloads as immutable hashed source events when the adapter supports exact capture; declare downgraded fidelity otherwise. Allocate whole events or exact spans to one append-only hash-linked Work ledger, and maintain a separate agent-authored projection for normalized requirements, duplicates, conflicts, status, and progress. Never overwrite raw wording with a summary. Durably publish and `fsync` the source object/envelope before ledger commit. Treat a validated newline-terminated ledger record as the commit point, recover only a torn final tail, fail closed on interior/hash-chain corruption, and rebuild stale manifest/projection caches after crashes. |
 | 3 | **Evidence-based progress reporter** | in progress | Report verified/applicable progress, implemented-but-unverified count, blocked requirements, waived requirements, and evidence freshness. JSON output must make the denominator and any weights explicit so two runs over the same ledger produce the same result. |
-| 4 | **Automatic reconciliation briefing** | planned | Make the user's repeated “requirements / done / remaining / percentage, then continue” prompt a Work policy with `off`, `adaptive`, `frequent`, and `custom` presets. Reconcile the complete projection, emit a bounded compact summary or untruncated chunked full briefing, and continue in the same turn. Use safe-boundary time/action thresholds and disposable cursor fingerprints rather than a timer daemon or canonical reminder events. Existing projects default to `off`. |
-| 5 | **Per-Work automatic delegation and runtime policy** | planned | Add `off`, `auto`, `prefer`, and `required` parallelism plus maximum-agent, native-agent, tmux-Team, fallback, and unavailable behavior. Assess dependency-independent read/write/effect scopes once per contract revision and on material scope changes; never invent lanes. The current agent runtime launches and supervises workers. Anamnesis records one bounded assessment/result, and OMX authority failure falls through to allowed Codex-native agents. Existing projects default to `off`. |
-| 6 | **User-configurable independent-review gates** | planned | Ship `off`, `advisory`, `strict`, and `custom` presets across user, project, task-harness, and per-unit scopes. `advisory` and `strict` use the same default checkpoints and differ only in enforcement; `custom` resolves each gate to `off`, `advisory`, or `required`. Resolve capability separately from provider and record provider attempts as ledger evidence. Existing agents execute OMX/Codex-native fallback; anamnesis does not schedule or supervise them. Material input changes invalidate reviews. Existing projects default to `off`. |
+| 4 | **Automatic reconciliation briefing** | policy schema/resolver implemented; execution deferred | The strict Agentfile v2 schema and pure resolver normalize `off`, `adaptive`, `frequent`, and `custom` policy, including safe-boundary triggers, thresholds, detail, chunk targets, and continue-after-briefing behavior. Existing projects remain `off`. Complete-projection reconciliation, dedupe, emission, and automatic continuation at runtime boundaries remain planned. |
+| 5 | **Per-Work automatic delegation and runtime policy** | policy schema/resolver implemented; execution deferred | The pure resolver normalizes `off`, `auto`, `prefer`, and `required` parallelism, maximum agents, native/tmux preferences, fallback order, reassessment triggers, and unavailable behavior. Required parallelism fails closed after provider exhaustion. Dependency-lane assessment, runtime selection records, and actual native/tmux execution remain planned and runtime-owned. |
+| 6 | **User-configurable independent-review gates** | policy schema/resolver implemented; execution deferred | Agentfile v2 and the pure resolver normalize `off`, `advisory`, `strict`, and `custom` planning/completion gates across six policy layers. Required gates merge monotonically; only a current evidenced gate/revision waiver can lower one. Provider order and OMX-to-Codex-native fallback are declarative. Review invocation, evidence recording, invalidation, and protected-transition enforcement remain planned. |
 | 7 | **Multi-session checkpoints and Work boundaries** | in progress | Give every session a disposable cursor (`work_id`, observed revision, last event), while shared checkpoints remain Work-ledger events. Resolve one canonical state root across a checkout and its linked Git worktrees. Use unique event IDs, a short per-unit file lock, expected-head CAS, and atomic cache rename; never last-writer-wins. Classify new input as same-Work amendment, new related Work, interruption, or provisional ambiguity. Switching a session cursor does not globally pause a Work. Ask only when ownership, cancel/replace intent, completion contract, review waiver, or dirty/external scope is genuinely ambiguous or conflicting. |
 | 8 | **Compaction-aware adapter lifecycle** | research first | Audit each supported client/version using official schema evidence and real-CLI probes before naming native `PreCompact`, `PostCompact`, or compact-resume events. The current anamnesis Codex renderer does not implement a proven compact lifecycle path. Add version-gated native handling only after evidence exists, behind `--allow-exec-adapters`; otherwise keep tested manual, SessionStart, and resume fallbacks. |
 | 9 | **Compact checkpoint digest** | planned | After a shared Work checkpoint or compaction, inject only the cursor-selected Work ID, goal hash/source pointer, revision, lifecycle, verified/applicable count, pending review gates, blockers, next requirement IDs, and the unit path. Keep unconditional per-prompt injection disabled; use the existing prompt gate and fingerprint dedupe before adding any prompt-time reminder. |
@@ -2118,13 +2133,15 @@ fallback; anamnesis injects the preference and records each result as an
 `activity_id`-grouped ledger event. Self-review cannot satisfy an independent
 gate.
 
-Configuration should be preset-first through `anamnesis init
---review-preset`, a guided `anamnesis context policy configure --scope
-user|project`, and visible resolution in `status`/`doctor`. The user-level
-default belongs in platform/XDG configuration. Project policy belongs in
-Agentfile and needs an explicit schema migration because Agentfile v1 rejects
-unknown fields. Detailed custom rules may be stored in a referenced policy
-file or task harness instead of making users hand-author every gate.
+Project policy now has a strict optional home at Agentfile v2
+`settings.work_policy`. New `init` output uses v2 but leaves that field absent,
+so all behaviors remain off. Existing v1 files migrate explicitly and
+idempotently by changing only `version`, with a backup on apply; v1 continues
+to reject v2-only policy fields. Preset-first `anamnesis init --review-preset`,
+a guided `anamnesis context policy configure --scope user|project`, user-level
+platform/XDG policy, and visible resolution in `status`/`doctor` remain
+planned. Detailed custom rules may later live in a referenced policy file or
+task harness instead of making users hand-author every gate.
 
 ### Automatic briefing and parallel execution policy
 

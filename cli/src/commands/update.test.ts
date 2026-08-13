@@ -4,7 +4,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { update } from "./update.js";
 import { init } from "./init.js";
-import type { AgentfileMigration } from "./migrate.js";
+import {
+  builtinAgentfileMigrations,
+  type AgentfileMigration,
+} from "./migrate.js";
 import { readAgentfile, writeAgentfile } from "../core/agentfile.js";
 import { findRegion, upsertRegion } from "../core/regions.js";
 import {
@@ -201,6 +204,11 @@ describe("update — preconditions", () => {
     const { project } = setupPrismaProject(library);
     const agentfilePath = path.join(project, "Agentfile");
     const agentsPath = path.join(project, "AGENTS.md");
+    fs.writeFileSync(
+      agentfilePath,
+      fs.readFileSync(agentfilePath, "utf8").replace("version: 2", "version: 1"),
+      "utf8",
+    );
     const beforeAgentfile = fs.readFileSync(agentfilePath, "utf8");
     const beforeAgents = fs.readFileSync(agentsPath, "utf8");
 
@@ -210,7 +218,10 @@ describe("update — preconditions", () => {
         libraryRoot: library,
         apply: true,
         allowExecAdapters: false,
-        agentfileMigrations: [addBackupRetentionMigration],
+        agentfileMigrations: [
+          addBackupRetentionMigration,
+          ...builtinAgentfileMigrations,
+        ],
       }),
     ).toThrow(/Agentfile schema migration is required before update/);
 
@@ -909,7 +920,7 @@ describe("update — per-fragment adapter overrides", () => {
     const project = tmpDir("anamnesis-proj-");
     fs.writeFileSync(
       path.join(project, "Agentfile"),
-      `version: 1
+      `version: 2
 project:
   name: adapter-overrides
 tools:
@@ -956,7 +967,7 @@ fragments:
     fs.mkdirSync(path.join(project, "apps/web"), { recursive: true });
     fs.writeFileSync(
       path.join(project, "Agentfile"),
-      `version: 1
+      `version: 2
 project:
   name: adapter-overrides
   scopes:
@@ -1077,7 +1088,7 @@ capabilities:
     // Multi-scope Agentfile written by hand.
     fs.writeFileSync(
       path.join(project, "Agentfile"),
-      `version: 1
+      `version: 2
 project:
   name: monorepo
   scopes:

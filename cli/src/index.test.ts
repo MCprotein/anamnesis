@@ -14,7 +14,7 @@ const indexPath = path.join(repoRoot, "cli/src/index.ts");
 function writeMinimalAgentfile(project: string): void {
   fs.writeFileSync(
     path.join(project, "Agentfile"),
-    `version: 1
+    `version: 2
 project:
   name: fixture
 tools:
@@ -277,7 +277,7 @@ describe("CLI entrypoint", () => {
     writeFile(
       project,
       "Agentfile",
-      `version: 1
+      `version: 2
 project:
   name: fixture
 tools:

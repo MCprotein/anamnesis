@@ -10,10 +10,11 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import {
   AgentfileParseError,
   findAgentfile,
-  parseAgentfile,
+  parseAgentfileV1,
+  parseAgentfileV2,
 } from "../core/agentfile.js";
 
-export const CURRENT_AGENTFILE_VERSION = 1;
+export const CURRENT_AGENTFILE_VERSION = 2;
 
 export interface AgentfileMigration {
   id: string;
@@ -59,7 +60,18 @@ export class MigrateError extends Error {
   }
 }
 
-export const builtinAgentfileMigrations: readonly AgentfileMigration[] = [];
+export const builtinAgentfileMigrations: readonly AgentfileMigration[] = [
+  {
+    id: "v1-to-v2-work-policy",
+    fromVersion: 1,
+    toVersion: 2,
+    title: "Upgrade Agentfile schema to v2",
+    applies: () => true,
+    apply(raw) {
+      return { ...(raw as Record<string, unknown>), version: 2 };
+    },
+  },
+];
 
 export function migrateAgentfile(
   opts: MigrateAgentfileOptions,
@@ -110,9 +122,9 @@ export function migrateAgentfile(
     plan.length === 0
       ? currentContent
       : stringifyYaml(nextRaw, { indent: 2, lineWidth: 100 });
-  if (plan.length > 0 && targetVersion === CURRENT_AGENTFILE_VERSION) {
+  if (plan.length > 0) {
     try {
-      parseAgentfile(newContent);
+      parseAgentfileVersion(newContent, targetVersion);
     } catch (e) {
       if (e instanceof AgentfileParseError) {
         throw new MigrateError(
@@ -208,17 +220,25 @@ function parseRawAgentfile(content: string, filepath: string): unknown {
   }
 
   const version = rawVersion(raw, filepath);
-  if (version === CURRENT_AGENTFILE_VERSION) {
-    try {
-      parseAgentfile(content);
-    } catch (e) {
-      if (e instanceof AgentfileParseError) {
-        throw new MigrateError(e.message);
-      }
-      throw e;
+  try {
+    parseAgentfileVersion(content, version);
+  } catch (e) {
+    if (e instanceof AgentfileParseError) {
+      throw new MigrateError(e.message);
     }
+    throw e;
   }
   return raw;
+}
+
+function parseAgentfileVersion(content: string, version: number): void {
+  if (version === 1) {
+    parseAgentfileV1(content);
+    return;
+  }
+  if (version === 2) {
+    parseAgentfileV2(content);
+  }
 }
 
 function rawVersion(raw: unknown, filepath: string): number {

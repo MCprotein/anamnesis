@@ -330,7 +330,7 @@ export function init(opts: InitOptions): InitResult {
   const projectName = opts.projectName ?? path.basename(projectRoot);
   const tools = opts.tools ?? ["claude-code"];
   const agentfile: Agentfile = {
-    version: 1,
+    version: 2,
     project: subScopes.length > 0
       ? {
           name: projectName,

@@ -5,7 +5,6 @@ import * as path from "node:path";
 import { init } from "./init.js";
 import { update } from "./update.js";
 import { upgradePlan } from "./upgrade_plan.js";
-import type { AgentfileMigration } from "./migrate.js";
 import { upsertRegion } from "../core/regions.js";
 
 function tmpDir(prefix: string): string {
@@ -56,25 +55,6 @@ function installProject(library: string): string {
   });
   return project;
 }
-
-const addBackupRetentionMigration: AgentfileMigration = {
-  id: "v1-add-backup-retention",
-  fromVersion: 1,
-  toVersion: 1,
-  title: "Add backup retention default",
-  applies(raw) {
-    const settings = (raw as { settings?: Record<string, unknown> }).settings;
-    return settings?.backup_retention === undefined;
-  },
-  apply(raw) {
-    const object = raw as Record<string, unknown>;
-    const settings = {
-      ...((object.settings as Record<string, unknown> | undefined) ?? {}),
-      backup_retention: 10,
-    };
-    return { ...object, settings };
-  },
-};
 
 describe("upgrade plan", () => {
   it("combines package, project status, apply preview, and doctor summaries", () => {
@@ -189,13 +169,18 @@ describe("upgrade plan", () => {
   it("stops at the schema migration gate before project apply diagnostics", () => {
     const library = makeLibrary({ version: 1 });
     const project = installProject(library);
+    const agentfilePath = path.join(project, "Agentfile");
+    fs.writeFileSync(
+      agentfilePath,
+      fs.readFileSync(agentfilePath, "utf8").replace("version: 2", "version: 1"),
+      "utf8",
+    );
 
     const result = upgradePlan({
       projectRoot: project,
       libraryRoot: library,
       currentVersion: "1.9.0",
       latestVersion: "1.9.0",
-      agentfileMigrations: [addBackupRetentionMigration],
     });
 
     expect(result.project.kind).toBe("managed");

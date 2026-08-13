@@ -126,7 +126,7 @@ function installOldProject(library: string): string {
 }
 
 describe("upgrade compatibility matrix", () => {
-  it("keeps representative v1.4, v1.5, and v1.7 Agentfile shapes on the dry-run upgrade path", () => {
+  it("gates representative v1.4, v1.5, and v1.7 Agentfiles on schema migration", () => {
     const v1Library = makeUpgradeLibrary({
       featureVersion: 1,
       featureContent: "## Feature\n\nv1 rules.\n",
@@ -192,15 +192,14 @@ describe("upgrade compatibility matrix", () => {
         "utf8",
       );
 
-      const preview = update({
-        projectRoot: project,
-        libraryRoot: v2Library,
-        apply: false,
-        allowExecAdapters: true,
-      });
-
-      expect(preview.writtenToDisk, fixture.label).toBe(false);
-      expect(preview.changes.length, fixture.label).toBeGreaterThan(0);
+      expect(() =>
+        update({
+          projectRoot: project,
+          libraryRoot: v2Library,
+          apply: false,
+          allowExecAdapters: true,
+        }),
+      ).toThrow(/Agentfile schema migration is required before update/);
       expect(readAgentfile(project).fragments.find((f) => f.id === "feature"))
         .toMatchObject({ version: 1 });
     }

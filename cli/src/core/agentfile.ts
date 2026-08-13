@@ -5,6 +5,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
+import {
+  workPolicyConfigSchema,
+  type WorkPolicyConfig,
+} from "./work_policy.js";
 
 // ---------------------------------------------------------------------------
 // Schema (specs/agentfile.md §4)
@@ -78,24 +82,35 @@ export const AGENTFILE_SETTING_DEFAULTS = {
   max_handoff_bytes: 512 * 1024,
 } as const;
 
-const settingsSchema = z
+const settingsShape = {
+  ontology_file: z.string().default(AGENTFILE_SETTING_DEFAULTS.ontology_file),
+  agents_md_path: z.string().default(AGENTFILE_SETTING_DEFAULTS.agents_md_path),
+  claude_md_path: z.string().default(AGENTFILE_SETTING_DEFAULTS.claude_md_path),
+  commit_on_apply: z.boolean().default(AGENTFILE_SETTING_DEFAULTS.commit_on_apply),
+  backup_retention: z.number().int().nonnegative().default(
+    AGENTFILE_SETTING_DEFAULTS.backup_retention,
+  ),
+  max_warm_handoff_archives: z.number().int().nonnegative().default(
+    AGENTFILE_SETTING_DEFAULTS.max_warm_handoff_archives,
+  ),
+  max_cold_handoff_age_days: z.number().int().nonnegative().default(
+    AGENTFILE_SETTING_DEFAULTS.max_cold_handoff_age_days,
+  ),
+  max_handoff_bytes: z.number().int().positive().default(
+    AGENTFILE_SETTING_DEFAULTS.max_handoff_bytes,
+  ),
+} as const;
+
+const settingsV1Schema = z
   .object({
-    ontology_file: z.string().default(AGENTFILE_SETTING_DEFAULTS.ontology_file),
-    agents_md_path: z.string().default(AGENTFILE_SETTING_DEFAULTS.agents_md_path),
-    claude_md_path: z.string().default(AGENTFILE_SETTING_DEFAULTS.claude_md_path),
-    commit_on_apply: z.boolean().default(AGENTFILE_SETTING_DEFAULTS.commit_on_apply),
-    backup_retention: z.number().int().nonnegative().default(
-      AGENTFILE_SETTING_DEFAULTS.backup_retention,
-    ),
-    max_warm_handoff_archives: z.number().int().nonnegative().default(
-      AGENTFILE_SETTING_DEFAULTS.max_warm_handoff_archives,
-    ),
-    max_cold_handoff_age_days: z.number().int().nonnegative().default(
-      AGENTFILE_SETTING_DEFAULTS.max_cold_handoff_age_days,
-    ),
-    max_handoff_bytes: z.number().int().positive().default(
-      AGENTFILE_SETTING_DEFAULTS.max_handoff_bytes,
-    ),
+    ...settingsShape,
+  })
+  .strict();
+
+const settingsV2Schema = z
+  .object({
+    ...settingsShape,
+    work_policy: workPolicyConfigSchema.optional(),
   })
   .strict();
 
@@ -131,19 +146,39 @@ const projectSchema = z
   })
   .strict();
 
-export const agentfileSchema = z
+const agentfileShape = {
+  project: projectSchema,
+  tools: z.array(toolNameSchema).min(1),
+  fragments: z.array(fragmentSchema),
+  declined: z.array(declinedSchema).optional(),
+  overrides: overridesSchema,
+} as const;
+
+export const agentfileV1Schema = z
   .object({
     version: z.literal(1),
-    project: projectSchema,
-    tools: z.array(toolNameSchema).min(1),
-    fragments: z.array(fragmentSchema),
-    declined: z.array(declinedSchema).optional(),
-    settings: settingsSchema.optional(),
-    overrides: overridesSchema,
+    ...agentfileShape,
+    settings: settingsV1Schema.optional(),
   })
   .strict();
 
+export const agentfileV2Schema = z
+  .object({
+    version: z.literal(2),
+    ...agentfileShape,
+    settings: settingsV2Schema.optional(),
+  })
+  .strict();
+
+export const agentfileSchema = z.discriminatedUnion("version", [
+  agentfileV1Schema,
+  agentfileV2Schema,
+]);
+
+export type AgentfileV1 = z.infer<typeof agentfileV1Schema>;
+export type AgentfileV2 = z.infer<typeof agentfileV2Schema>;
 export type Agentfile = z.infer<typeof agentfileSchema>;
+export type { WorkPolicyConfig };
 export type ToolName = z.infer<typeof toolNameSchema>;
 export type Fragment = z.infer<typeof fragmentSchema>;
 
@@ -215,7 +250,10 @@ function semanticErrors(af: Agentfile): string[] {
 // Parse / Stringify
 // ---------------------------------------------------------------------------
 
-export function parseAgentfile(input: string): Agentfile {
+function parseAgentfileWithSchema<T extends Agentfile>(
+  input: string,
+  schema: z.ZodType<T>,
+): T {
   let raw: unknown;
   try {
     raw = parseYaml(input);
@@ -225,7 +263,7 @@ export function parseAgentfile(input: string): Agentfile {
     );
   }
 
-  const result = agentfileSchema.safeParse(raw);
+  const result = schema.safeParse(raw);
   if (!result.success) {
     const lines = result.error.issues.map(
       (i) => `  ${i.path.join(".") || "<root>"}: ${i.message}`,
@@ -244,6 +282,18 @@ export function parseAgentfile(input: string): Agentfile {
   }
 
   return result.data;
+}
+
+export function parseAgentfile(input: string): Agentfile {
+  return parseAgentfileWithSchema(input, agentfileSchema);
+}
+
+export function parseAgentfileV1(input: string): AgentfileV1 {
+  return parseAgentfileWithSchema(input, agentfileV1Schema);
+}
+
+export function parseAgentfileV2(input: string): AgentfileV2 {
+  return parseAgentfileWithSchema(input, agentfileV2Schema);
 }
 
 export function stringifyAgentfile(af: Agentfile): string {
