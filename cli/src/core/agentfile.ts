@@ -1,14 +1,18 @@
 // Agentfile parser / validator / serializer.
-// Schema source of truth: specs/agentfile.md (v1).
+// Schema source of truth: specs/agentfile.md (v1/v2).
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
 import {
-  workPolicyConfigSchema,
   type WorkPolicyConfig,
+  workPolicyConfigSchema,
 } from "./work_policy.js";
+import {
+  type WorkPromptCaptureConfig,
+  workPromptCaptureConfigSchema,
+} from "./work_prompt_policy.js";
 
 // ---------------------------------------------------------------------------
 // Schema (specs/agentfile.md §4)
@@ -111,6 +115,7 @@ const settingsV2Schema = z
   .object({
     ...settingsShape,
     work_policy: workPolicyConfigSchema.optional(),
+    work_prompt_capture: workPromptCaptureConfigSchema.optional(),
   })
   .strict();
 
@@ -178,7 +183,7 @@ export const agentfileSchema = z.discriminatedUnion("version", [
 export type AgentfileV1 = z.infer<typeof agentfileV1Schema>;
 export type AgentfileV2 = z.infer<typeof agentfileV2Schema>;
 export type Agentfile = z.infer<typeof agentfileSchema>;
-export type { WorkPolicyConfig };
+export type { WorkPolicyConfig, WorkPromptCaptureConfig };
 export type ToolName = z.infer<typeof toolNameSchema>;
 export type Fragment = z.infer<typeof fragmentSchema>;
 

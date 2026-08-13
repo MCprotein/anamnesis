@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import YAML from "yaml";
+import * as workCursorModule from "../core/work_cursor.js";
 import {
 	newWorkCursor,
 	readWorkCursor,
@@ -10,6 +11,10 @@ import {
 	writeWorkCursorAtomic,
 } from "../core/work_cursor.js";
 import { buildWorkBriefingSnapshot } from "../core/work_reconciliation.js";
+import {
+	deriveWorkPromptCaptureId,
+	readStagedWorkPrompt,
+} from "../core/work_prompt_stage.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { sha256 } from "../util/hash.js";
 import {
@@ -29,6 +34,7 @@ import {
 const roots: string[] = [];
 afterEach(() => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	for (const root of roots.splice(0)) {
 		fs.rmSync(root, { recursive: true, force: true });
 	}
@@ -37,7 +43,9 @@ afterEach(() => {
 function projectRoot(
 	preset: "off" | "frequent" = "frequent",
 	reviewPreset: "off" | "strict" = "off",
+	capture = false,
 ): string {
+	if (capture) vi.stubEnv("ANAMNESIS_WORK_PROMPT_CAPTURE", "1");
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-work-hook-"));
 	roots.push(root);
 	fs.writeFileSync(
@@ -48,6 +56,9 @@ function projectRoot(
 			tools: ["codex"],
 			fragments: [],
 			settings: {
+				...(capture
+					? { work_prompt_capture: { preset: "bounded" } }
+					: {}),
 				work_policy: {
 					reconciliation: { preset },
 					review: { preset: reviewPreset },
@@ -154,6 +165,178 @@ function postToolPayload(
 }
 
 describe("foreground Work UserPromptSubmit hook", () => {
+	it("stages exact decoded prompt bytes and returns only an opaque classification token", () => {
+		const root = projectRoot("off", "off", true);
+		const prompt = " 앞\r\n한글\0emoji 😀 e\u0301  ";
+		const result = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "codex",
+			payload: codexPayload("capture-session", "capture-turn", prompt),
+			now: "2026-08-14T00:00:00.000Z",
+		});
+		const captureId = deriveWorkPromptCaptureId({
+			client: "codex",
+			sessionId: "capture-session",
+			boundaryId: "capture-turn",
+		});
+		expect(result).toMatchObject({
+			status: "capture_staged",
+			reason: "capture_staged",
+			context: expect.stringContaining(captureId),
+		});
+		expect(result.context).not.toContain(prompt);
+		expect(result.context).not.toContain(sha256(prompt));
+		expect(result.context).toContain("do not infer a Work from the current cursor");
+		const staged = readStagedWorkPrompt(
+			resolveWorkStateRoot(root).state_root,
+			captureId,
+		);
+		expect(staged?.body).toEqual(Buffer.from(prompt, "utf8"));
+		expect(staged?.record.fidelity).toBe("client_exact");
+	});
+
+	it("preserves the staged classification obligation when the linked Work is missing", () => {
+		const root = projectRoot("frequent", "off", true);
+		const sessionId = "missing-work-session";
+		seed(root, "codex", sessionId);
+		const state = resolveWorkStateRoot(root);
+		fs.rmSync(path.join(state.state_root, "work-units", "wu_hook"), {
+			recursive: true,
+			force: true,
+		});
+
+		const result = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "codex",
+			payload: codexPayload(
+				sessionId,
+				"missing-work-turn",
+				"private missing Work requirement",
+			),
+			now: "2026-08-14T00:02:00.000Z",
+		});
+		const captureId = deriveWorkPromptCaptureId({
+			client: "codex",
+			sessionId,
+			boundaryId: "missing-work-turn",
+		});
+
+		expect(result).toMatchObject({
+			status: "capture_staged",
+			reason: "capture_staged",
+			context: expect.stringContaining(captureId),
+		});
+		expect(result.context).toContain("choose exactly one outcome");
+		expect(readStagedWorkPrompt(state.state_root, captureId)).toBeDefined();
+	});
+
+	it("preserves the staged classification obligation after cursor CAS exhaustion", () => {
+		const root = projectRoot("frequent", "off", true);
+		const sessionId = "stale-cursor-session";
+		seed(root, "codex", sessionId);
+		const update = vi
+			.spyOn(workCursorModule, "updateWorkCursorAtomic")
+			.mockImplementation(() => {
+				throw new Error("stale Work cursor write");
+			});
+
+		const result = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "codex",
+			payload: codexPayload(
+				sessionId,
+				"stale-cursor-turn",
+				"private stale cursor requirement",
+			),
+			now: "2026-08-14T00:03:00.000Z",
+		});
+		const captureId = deriveWorkPromptCaptureId({
+			client: "codex",
+			sessionId,
+			boundaryId: "stale-cursor-turn",
+		});
+
+		expect(update).toHaveBeenCalledTimes(65);
+		expect(result).toMatchObject({
+			status: "capture_staged",
+			reason: "capture_staged",
+			context: expect.stringContaining(captureId),
+		});
+	});
+
+	it("fails closed without exposing prompt-derived data on a stable-boundary collision", () => {
+		const root = projectRoot("off", "off", true);
+		const firstPrompt = "first private requirement";
+		const conflictingPrompt = "different private requirement";
+		expect(
+			handleWorkUserPromptSubmit({
+				project_root: root,
+				client: "codex",
+				payload: codexPayload(
+					"collision-session",
+					"collision-turn",
+					firstPrompt,
+				),
+				now: "2026-08-14T00:00:00.000Z",
+			}),
+		).toMatchObject({ status: "capture_staged" });
+
+		const collision = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "codex",
+			payload: codexPayload(
+				"collision-session",
+				"collision-turn",
+				conflictingPrompt,
+			),
+			now: "2026-08-14T00:01:00.000Z",
+		});
+		expect(collision).toMatchObject({
+			status: "unavailable",
+			reason: "capture_unavailable",
+			context: expect.stringContaining("allocation remains unresolved"),
+		});
+		expect(collision.context).not.toContain(firstPrompt);
+		expect(collision.context).not.toContain(conflictingPrompt);
+		expect(collision.context).not.toContain(sha256(firstPrompt));
+		expect(collision.context).not.toContain(sha256(conflictingPrompt));
+	});
+
+	it("fails open without storing a prompt containing an unpaired UTF-16 surrogate", () => {
+		const root = projectRoot("off", "off", true);
+		const result = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "codex",
+			payload: codexPayload("capture-session", "bad-turn", "bad\ud800prompt"),
+		});
+		expect(result).toMatchObject({
+			status: "unavailable",
+			reason: "invalid_payload",
+			context: null,
+		});
+		expect(
+			fs.existsSync(path.join(root, ".anamnesis/work-prompt-stage")),
+		).toBe(false);
+	});
+
+	it("requires user-local consent in addition to repository capture policy", () => {
+		const root = projectRoot("off", "off", true);
+		vi.unstubAllEnvs();
+		const result = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "codex",
+			payload: codexPayload("no-consent", "turn-1", "private requirement"),
+		});
+		expect(result).toMatchObject({
+			status: "not_due",
+			reason: "policy_off",
+			context: null,
+		});
+		expect(
+			fs.existsSync(path.join(root, ".anamnesis/work-prompt-stage")),
+		).toBe(false);
+	});
+
 	it("returns bounded onboarding with no cursor and no briefing under an off policy", () => {
 		const noCursorRoot = projectRoot();
 		expect(

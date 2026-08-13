@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import YAML from "yaml";
 
 import { readWorkCursor } from "../core/work_cursor.js";
+import { deriveWorkPromptCaptureId } from "../core/work_prompt_stage.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { deriveWorkHookCursorId } from "./work_hook.js";
 
@@ -66,7 +67,12 @@ function run(root: string, args: string[], input?: Buffer) {
 	return spawnSync(
 		process.execPath,
 		[tsxCli, anamnesisCli, "work", ...args, "--project-root", root],
-		{ cwd: repositoryRoot, input, encoding: "utf8" },
+		{
+			cwd: repositoryRoot,
+			input,
+			encoding: "utf8",
+			env: { ...process.env, ANAMNESIS_WORK_PROMPT_CAPTURE: "1" },
+		},
 	);
 }
 
@@ -76,7 +82,11 @@ function runAsync(root: string, args: string[], input: Buffer) {
 			const child = spawn(
 				process.execPath,
 				[tsxCli, anamnesisCli, "work", ...args, "--project-root", root],
-				{ cwd: repositoryRoot, stdio: ["pipe", "pipe", "pipe"] },
+				{
+					cwd: repositoryRoot,
+					stdio: ["pipe", "pipe", "pipe"],
+					env: { ...process.env, ANAMNESIS_WORK_PROMPT_CAPTURE: "1" },
+				},
 			);
 			let stdout = "";
 			let stderr = "";
@@ -91,6 +101,99 @@ function runAsync(root: string, args: string[], input: Buffer) {
 }
 
 describe("anamnesis work CLI", () => {
+	it("stages UserPromptSubmit and allocates it through the explicit prompt command", () => {
+		const root = project();
+		fs.writeFileSync(
+			path.join(root, "Agentfile"),
+			YAML.stringify({
+				version: 2,
+				project: { name: "prompt-stage-cli" },
+				tools: ["codex"],
+				fragments: [],
+				settings: { work_prompt_capture: { preset: "bounded" } },
+			}),
+		);
+		const raw = "CLI staged prompt\r\n한글 😀\0tail";
+		const hook = run(
+			root,
+			["hook-user-prompt", "--client", "codex"],
+			Buffer.from(
+				JSON.stringify({
+					session_id: "stage-cli-session",
+					turn_id: "stage-cli-turn",
+					prompt: raw,
+				}),
+			),
+		);
+		expect(hook.status, hook.stderr).toBe(0);
+		expect(hook.stdout).not.toContain(raw);
+		const captureId = deriveWorkPromptCaptureId({
+			client: "codex",
+			sessionId: "stage-cli-session",
+			boundaryId: "stage-cli-turn",
+		});
+		expect(hook.stdout).toContain(captureId);
+		writeNamedDraft(root, "staged.yaml", "@staged", "Staged CLI Work");
+		const allocated = run(root, [
+			"prompt",
+			"allocate-new",
+			"--stage",
+			captureId,
+			"--work",
+			"wu_stage_cli",
+			"--draft",
+			"staged.yaml",
+			"--occurred-at",
+			"2026-08-14T00:01:00.000Z",
+			"--json",
+		]);
+		expect(allocated.status, allocated.stderr).toBe(0);
+		const result = JSON.parse(allocated.stdout);
+		expect(allocated.stdout).not.toContain("body_hash");
+		expect(allocated.stdout).not.toContain("assertion_hash");
+		expect(result).toMatchObject({
+			schema_version: "anamnesis.work-prompt-resolution.v1",
+			resolution: "allocate_new",
+			work_id: "wu_stage_cli",
+		});
+		expect(
+			fs.readFileSync(
+				path.join(
+					root,
+					".anamnesis/work-inputs/objects",
+					`${result.outcome.source_event_id}.txt`,
+				),
+			),
+		).toEqual(Buffer.from(raw, "utf8"));
+
+		const unresolved = run(
+			root,
+			["hook-user-prompt", "--client", "codex"],
+			Buffer.from(
+				JSON.stringify({
+					session_id: "stage-cli-session",
+					turn_id: "stage-cli-unresolved",
+					prompt: "expire this private stage",
+				}),
+			),
+		);
+		expect(unresolved.status, unresolved.stderr).toBe(0);
+		const unresolvedCaptureId = deriveWorkPromptCaptureId({
+			client: "codex",
+			sessionId: "stage-cli-session",
+			boundaryId: "stage-cli-unresolved",
+		});
+		const gc = run(root, [
+			"prompt",
+			"gc",
+			"--now",
+			"2099-01-01T00:00:00.000Z",
+			"--json",
+		]);
+		expect(gc.status, gc.stderr).toBe(0);
+		expect(JSON.parse(gc.stdout).removed).toContain(unresolvedCaptureId);
+	}, 20_000);
+
 	it("fails open on invalid hook input and emits bounded session onboarding", () => {
 		const root = project();
 		const invalid = run(

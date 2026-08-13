@@ -1,4 +1,4 @@
-# Agentfile 스펙 (v1)
+# Agentfile 스펙 (v1 / v2)
 
 > `Agentfile` / `agentfile.yaml` 은 프로젝트에서 anamnesis 가 **단일 진실의 소스(single source of truth)** 로 삼는 파일이다.
 > 어떤 fragment 를 설치했고, 어떤 도구를 타겟하며, 어떤 파라미터를 썼는지 명시한다.
@@ -24,7 +24,7 @@ anamnesis CLI 는 다음 순서로 찾는다:
 ## 2. 최소 예시
 
 ```yaml
-version: 1
+version: 2
 
 project:
   name: example-service
@@ -42,7 +42,7 @@ fragments:
 ## 3. 완전한 예시
 
 ```yaml
-version: 1
+version: 2
 
 project:
   name: example-service
@@ -90,6 +90,12 @@ settings:
   max_warm_handoff_archives: 5 # active.md 없을 때 startup/resume 이 warm 으로 보는 최신 archive 수
   max_cold_handoff_age_days: 90 # cold archive 가 GC review 후보가 되는 age budget
   max_handoff_bytes: 524288    # handoff 전체 byte budget; 초과 시 diagnostics/GC 경고
+  work_prompt_capture:          # optional; absent/off 가 기본
+    preset: bounded
+    ttl: PT24H
+    max_entry_bytes: 262144
+    max_total_bytes: 2097152
+    max_entries: 64
 
 overrides:
   regions:
@@ -107,7 +113,7 @@ overrides:
 
 | 키 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `version` | `int` | ✅ | Agentfile 스키마 버전. 현재 `1` |
+| `version` | `int` | ✅ | Agentfile 스키마 버전. 현재 `2`; `1`은 strict historical schema로 읽고 명시적 migration을 제공 |
 | `project` | `Project` | ✅ | 프로젝트 메타 |
 | `tools` | `string[]` | ✅ | 활성 어댑터. `claude-code` \| `codex` \| `cursor`. `init` 기본값은 `claude-code`; 첫 설치부터 전체 surface 를 원하면 `anamnesis init --tools all` 을 사용한다. |
 | `fragments` | `Fragment[]` | ✅ | 설치된 fragment 목록 (순서는 병합 우선순위) |
@@ -178,6 +184,20 @@ rulebook 이 `declined` 에 있는 fragment 를 매칭해도 **다시 제안하�
 | `max_warm_handoff_archives` | `int` | `5` | active reference 가 없을 때 warm 으로 취급할 최신 handoff archive 개수. 0 = 자동 최신 archive fallback 없음 |
 | `max_cold_handoff_age_days` | `int` | `90` | cold handoff archive 가 review 후보가 되는 age budget |
 | `max_handoff_bytes` | `int` | `524288` | `.anamnesis/handoff` 전체 byte budget. 초과 시 `status`/`doctor`/`context diagnose`/`gc` 가 경고 또는 후보를 보고 |
+| `work_policy` | `WorkPolicyConfig` | 생략 시 전체 `off` | v2 전용 Work reconciliation/review/delegation 정책. 해결된 정책은 Work contract revision에 snapshot으로 고정하며 live Agentfile 변경은 drift로 보고 |
+| `work_prompt_capture` | `WorkPromptCaptureConfig` | `{ preset: off }` | v2 전용 UserPrompt 임시 보존 정책. `bounded`일 때만 exact decoded text를 private stage에 저장하고 명시적 allocation/provisional/discard 전에는 Work source로 만들지 않음 |
+
+`work_prompt_capture.preset: bounded`는 `ttl`(지원되는 양의 `PT...`
+duration), `max_entry_bytes`, `max_total_bytes`, `max_entries`를 선택적으로
+받는다. 기본값은 각각 `PT24H`, `262144`, `2097152`, `64`다. hard cap은
+30일, 8 MiB/entry, 64 MiB total, 1024 entries이며 total은 entry보다 작을
+수 없다. 원문은 Git·backup·context index에서 제외되는 `0700`/`0600`
+private staging 경로에만 남고, hook context·stdout/stderr·diagnostics에는
+stage ID와 제어 문구만 노출한다. 이 저장소 정책은 허용 범위일 뿐이며,
+실제 원문 capture에는 사용자 로컬 환경의
+`ANAMNESIS_WORK_PROMPT_CAPTURE=1`도 동시에 필요하다. 저장소 변경만으로
+협업자의 원문 보존을 켤 수 없다. TTL은 다음 capture 또는 명시적
+`anamnesis work prompt gc` 실행에서 집행되며 daemon을 만들지 않는다.
 
 ### 4.7 `Overrides`
 
@@ -215,7 +235,7 @@ manifest, filesystem 상태가 필요한 검증은 `status`, `doctor`, `init`,
 
 `Agentfile` 을 읽는 즉시 거부:
 
-1. `version` 이 지원 범위 밖 (`1`만 지원)
+1. `version` 이 지원 범위 밖 (`1`과 `2`만 지원)
 2. `project.name` 누락 또는 빈 문자열
 3. `tools` 누락, 빈 배열, 또는 알 수 없는 어댑터 이름
 4. `fragments[].id` 누락 또는 중복
@@ -226,8 +246,9 @@ manifest, filesystem 상태가 필요한 검증은 `status`, `doctor`, `init`,
 9. `project.scopes[].extends` 가 선언되지 않은 scope path 를 가리킴
 10. `project.scopes[].extends` 가 자기 자신을 가리킴
 11. YAML 문법 오류 또는 필드 타입 오류
-12. v1 스키마가 모르는 필드. `params` 는 fragment 별 자유 입력으로
-    열려 있지만, 그 외 top-level / nested object 는 strict 하게 검증한다.
+12. 해당 version 스키마가 모르는 필드. `params` 는 fragment 별 자유
+    입력으로 열려 있지만, 그 외 top-level / nested object 는 strict 하게
+    검증한다. `work_policy`와 `work_prompt_capture`는 v2에서만 허용한다.
 
 ### 5.2 Library/project-aware diagnostics
 

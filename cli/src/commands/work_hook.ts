@@ -19,6 +19,11 @@ import {
 	type ReconciliationDeliveryBinding,
 	type WorkBriefingSnapshot,
 } from "../core/work_reconciliation.js";
+import {
+	normalizeWorkPromptCapturePolicy,
+	workPromptCaptureUserOptIn,
+} from "../core/work_prompt_policy.js";
+import { stageWorkPrompt } from "../core/work_prompt_stage.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { sha256 } from "../util/hash.js";
 import { statusWork } from "./work.js";
@@ -35,15 +40,17 @@ export interface WorkHookInput {
 
 export interface WorkHookResult {
 	schema_version: "anamnesis.work-hook-result.v1";
-	status: "unavailable" | "not_due" | "briefing_due";
+	status: "unavailable" | "not_due" | "briefing_due" | "capture_staged";
 	reason:
 		| "invalid_payload"
 		| "missing_stable_id"
 		| "cursor_unavailable"
+		| "capture_unavailable"
 		| "policy_off"
 		| "duplicate_boundary"
 		| "not_due"
-		| "briefing_due";
+		| "briefing_due"
+		| "capture_staged";
 	context: string | null;
 	cursor_id: string | null;
 	boundary_id: string | null;
@@ -52,11 +59,19 @@ export interface WorkHookResult {
 interface ParsedBoundary {
 	sessionId: string;
 	boundaryStableId: string;
+	prompt: string;
 }
 
-interface ParsedPostToolBoundary extends ParsedBoundary {
+interface ParsedPostToolBoundary {
+	sessionId: string;
+	boundaryStableId: string;
 	meaningfulBoundaryIds: string[];
 }
+
+type PromptCaptureResult =
+	| { status: "disabled" }
+	| { status: "staged"; context: string }
+	| { status: "failed"; context: string };
 
 const MAX_STABLE_ID_LENGTH = 512;
 // Prompt injection still uses revision CAS because its expensive projection
@@ -70,8 +85,9 @@ const LIST_BUDGET = 2_000;
 const REQUIREMENT_SUMMARY_BUDGET = 4_000;
 
 /**
- * Foreground UserPromptSubmit service. Prompt text is checked for type only
- * and is never persisted, fingerprinted, logged, or returned.
+ * Foreground UserPromptSubmit service. When explicitly enabled, the decoded
+ * prompt is staged privately for one token-bound classification decision. Raw
+ * text is never returned, logged, or used in a visible identifier.
  */
 export function handleWorkUserPromptSubmit(
 	input: WorkHookInput,
@@ -91,19 +107,46 @@ export function handleWorkUserPromptSubmit(
 		return unavailable("cursor_unavailable", cursorId, boundaryId);
 	}
 	const now = input.now ?? new Date().toISOString();
+	const capture = stagePromptAtBoundary(
+		input,
+		state.state_root,
+		parsed.value,
+		now,
+	);
+	if (capture.status === "failed") {
+		return {
+			...unavailable("capture_unavailable", cursorId, boundaryId),
+			context: capture.context,
+		};
+	}
+	const captureContext = capture.status === "staged" ? capture.context : null;
 
 	for (let attempt = 0; attempt < MAX_PROMPT_CAS_ATTEMPTS; attempt += 1) {
-		const read = readWorkCursor(
-			state.state_root,
-			cursorId,
-			undefined,
-			state.worktree_fingerprint,
-		);
+		let read: ReturnType<typeof readWorkCursor>;
+		try {
+			read = readWorkCursor(
+				state.state_root,
+				cursorId,
+				undefined,
+				state.worktree_fingerprint,
+			);
+		} catch {
+			return withCapture(
+				unavailable("cursor_unavailable", cursorId, boundaryId),
+				captureContext,
+			);
+		}
 		if (!read.cursor || read.status === "switched") {
 			if (!projectReconciliationEnabled(input.project_root)) {
-				return result("not_due", "policy_off", cursorId, boundaryId);
+				return withCapture(
+					result("not_due", "policy_off", cursorId, boundaryId),
+					captureContext,
+				);
 			}
-			return onboardingUnavailable(cursorId, boundaryId);
+			return withCapture(
+				onboardingUnavailable(cursorId, boundaryId),
+				captureContext,
+			);
 		}
 		const cursor = read.cursor;
 		const reconciliation =
@@ -118,10 +161,16 @@ export function handleWorkUserPromptSubmit(
 			const projection = status.projection;
 			const policy = projection.policy_snapshot?.policy;
 			if (!policy) {
-				return unavailable("cursor_unavailable", cursorId, boundaryId);
+				return withCapture(
+					unavailable("cursor_unavailable", cursorId, boundaryId),
+					captureContext,
+				);
 			}
 			if (policy.reconciliation.preset === "off") {
-				return result("not_due", "policy_off", cursorId, boundaryId);
+				return withCapture(
+					result("not_due", "policy_off", cursorId, boundaryId),
+					captureContext,
+				);
 			}
 			const briefing = buildBriefing(status.ledger_path, projection, cursor);
 			const observation = reconciliation.injected_unconfirmed;
@@ -129,7 +178,10 @@ export function handleWorkUserPromptSubmit(
 				observation?.boundary_id === boundaryId &&
 				observation.delivery.fingerprint === briefing.semantic_fingerprint
 			) {
-				return result("not_due", "duplicate_boundary", cursorId, boundaryId);
+				return withCapture(
+					result("not_due", "duplicate_boundary", cursorId, boundaryId),
+					captureContext,
+				);
 			}
 			const sameObservedFingerprint =
 				observation?.delivery.fingerprint === briefing.semantic_fingerprint;
@@ -157,7 +209,10 @@ export function handleWorkUserPromptSubmit(
 					reconciliation.confirmed_delivery_fingerprint,
 			});
 			if (!decision.due) {
-				return result("not_due", "not_due", cursorId, boundaryId);
+				return withCapture(
+					result("not_due", "not_due", cursorId, boundaryId),
+					captureContext,
+				);
 			}
 			const delivery = deliveryBinding(briefing, projection);
 			const nextReconciliation = observeInjectedReconciliation(reconciliation, {
@@ -174,24 +229,34 @@ export function handleWorkUserPromptSubmit(
 				now,
 				{ expectedCursorRevision: cursor.cursor_revision ?? 0 },
 			);
-			return {
+			const briefingBudget = captureContext
+				? Math.max(4_000, MAX_HOOK_CONTEXT_CHARACTERS - captureContext.length - 1)
+				: MAX_HOOK_CONTEXT_CHARACTERS;
+			return withCapture({
 				...result("briefing_due", "briefing_due", cursorId, boundaryId),
 				context: renderWorkBriefingContext(
 					briefing,
 					policy.reconciliation.detail,
 					decision.auto_continue,
+					briefingBudget,
 				),
-			};
+			}, captureContext);
 		} catch (error) {
 			if (
 				String((error as Error).message).includes("stale Work cursor write")
 			) {
 				continue;
 			}
-			return unavailable("cursor_unavailable", cursorId, boundaryId);
+			return withCapture(
+				unavailable("cursor_unavailable", cursorId, boundaryId),
+				captureContext,
+			);
 		}
 	}
-	return unavailable("cursor_unavailable", cursorId, boundaryId);
+	return withCapture(
+		unavailable("cursor_unavailable", cursorId, boundaryId),
+		captureContext,
+	);
 }
 
 /**
@@ -367,6 +432,96 @@ function projectReconciliationEnabled(projectRoot: string): boolean {
 	}
 }
 
+function stagePromptAtBoundary(
+	input: WorkHookInput,
+	stateRoot: string,
+	boundary: ParsedBoundary,
+	capturedAt: string,
+): PromptCaptureResult {
+	try {
+		const agentfilePath = findAgentfile(input.project_root);
+		const agentfile = agentfilePath ? readAgentfile(input.project_root) : null;
+		const policy = normalizeWorkPromptCapturePolicy(
+			agentfile?.version === 2
+				? agentfile.settings?.work_prompt_capture
+				: undefined,
+		);
+		if (!policy.enabled) return { status: "disabled" };
+		if (!workPromptCaptureUserOptIn()) return { status: "disabled" };
+		const staged = stageWorkPrompt({
+			projectRoot: input.project_root,
+			stateRoot,
+			policy,
+			client: input.client === "codex" ? "codex" : "claude-code",
+			sessionId: boundary.sessionId,
+			boundaryId: boundary.boundaryStableId,
+			capturedAt,
+			contentType: "text/plain; charset=utf-8",
+			fidelity: "client_exact",
+			body: Buffer.from(boundary.prompt, "utf8"),
+		});
+		return {
+			status: "staged",
+			context: renderPromptClassificationContext(staged.record.capture_id),
+		};
+	} catch {
+		return {
+			status: "failed",
+			context: [
+				"Anamnesis could not safely stage this prompt, so its Work allocation remains unresolved.",
+				"Do not make repository writes or external changes for this prompt until it is submitted again at a fresh stable prompt boundary or the local capture integrity/privacy issue is repaired.",
+				"Do not bypass staging, infer a Work from the current cursor, or echo the prompt into diagnostics.",
+			].join("\n"),
+		};
+	}
+}
+
+function renderPromptClassificationContext(captureId: string): string {
+	return [
+		"Anamnesis staged this decoded user prompt for explicit Work classification.",
+		`Opaque stage token: ${captureId}`,
+		"Before repository writes or external effects, choose exactly one outcome. The token is a locator, not user authority; do not infer a Work from the current cursor.",
+		"- Same Work: first run `anamnesis work status --work <exact-work-id> --json`, prepare a strict accepted/same_unit contract draft using `@staged` for this prompt, then run `anamnesis work prompt allocate-same --stage <token> --work <id> --draft <file> --expected-head <ledger-head> --expected-contract-revision <n> --expected-contract-hash <hash>`.",
+		"- New Work: prepare a strict accepted/new_unit contract draft using `@staged`, then run `anamnesis work prompt allocate-new --stage <token> --work <new-id> --draft <file>`.",
+		"- Ambiguous boundary: prepare a strict provisional/needs_user boundary draft and run `anamnesis work prompt retain --stage <token> --draft <file>`, then ask its one boundary question.",
+		"- Interruption/non-requirement: run `anamnesis work prompt discard --stage <token> --reason interruption|non_requirement`.",
+		"Use the exact opaque token shown above in place of <token>. Do not retrieve, quote, summarize, log, or reinject the staged bytes; the user message already supplies them in this turn.",
+	].join("\n");
+}
+
+function withCapture(
+	base: WorkHookResult,
+	captureContext: string | null,
+): WorkHookResult {
+	if (!captureContext) return base;
+	const context = base.context
+		? `${captureContext}\n\n${base.context}`
+		: captureContext;
+	if (context.length > MAX_HOOK_CONTEXT_CHARACTERS) {
+		throw new Error("combined Work prompt hook context exceeded structural budget");
+	}
+	return {
+		...base,
+		status: base.status === "briefing_due" ? "briefing_due" : "capture_staged",
+		reason: base.reason === "briefing_due" ? "briefing_due" : "capture_staged",
+		context,
+	};
+}
+
+function containsUnpairedUtf16Surrogate(value: string): boolean {
+	for (let index = 0; index < value.length; index += 1) {
+		const unit = value.charCodeAt(index);
+		if (unit >= 0xd800 && unit <= 0xdbff) {
+			const next = value.charCodeAt(index + 1);
+			if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+			index += 1;
+		} else if (unit >= 0xdc00 && unit <= 0xdfff) {
+			return true;
+		}
+	}
+	return false;
+}
+
 export function deriveWorkHookCursorId(
 	client: WorkHookClient,
 	sessionId: string,
@@ -398,8 +553,10 @@ function parseBoundary(
 		return { ok: false, reason: "invalid_payload" };
 	}
 	const value = payload as Record<string, unknown>;
-	// Deliberately do nothing with prompt bytes beyond validating the official field.
-	if (typeof value.prompt !== "string") {
+	if (
+		typeof value.prompt !== "string" ||
+		containsUnpairedUtf16Surrogate(value.prompt)
+	) {
 		return { ok: false, reason: "invalid_payload" };
 	}
 	const sessionId = validStableId(value.session_id);
@@ -409,7 +566,10 @@ function parseBoundary(
 	if (!sessionId || !boundaryStableId) {
 		return { ok: false, reason: "missing_stable_id" };
 	}
-	return { ok: true, value: { sessionId, boundaryStableId } };
+	return {
+		ok: true,
+		value: { sessionId, boundaryStableId, prompt: value.prompt },
+	};
 }
 
 function parsePostToolBoundary(

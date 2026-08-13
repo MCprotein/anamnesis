@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 17 capabilities (covers all 6 types; v22+)
+├── fragment.yaml                # 17 capabilities (covers all 6 types; v23+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -19,7 +19,7 @@ base/
     │   ├── inject-ontology.sh    # SessionStart: cats ontology slices recursively
     │   ├── inject-handoff.sh     # SessionStart: active.md + warm active archive pointers
     │   ├── handoff-reminder.sh   # Stop: deduped dirty-work handoff reminder
-    │   ├── work-briefing.sh      # UserPromptSubmit: due Work briefing
+    │   ├── work-briefing.sh      # UserPromptSubmit: opt-in capture + due briefing
     │   ├── work-post-tool-batch.mjs # PostToolBatch: same-turn Work cadence
     │   └── remind-uncommitted.sh # PostToolUse:Edit: nags on dirty git tree
     ├── commands/
@@ -37,7 +37,7 @@ base/
 └── adapters/codex/
     └── hooks/
         ├── session-start.mjs    # Native Codex SessionStart JSON wrapper
-        ├── work-user-prompt.mjs # Native Codex Work prompt JSON wrapper
+        ├── work-user-prompt.mjs # Native Codex opt-in capture/briefing wrapper
         └── work-post-tool-use.mjs # Native Codex same-turn Work wrapper
 ```
 
@@ -87,3 +87,13 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 | `adapters/claude-code/skills/doc-freshness-review/SKILL.md` | `.codex/skills/doc-freshness-review/SKILL.md` + `AGENTS.md` fallback region |
 
 Without `--allow-exec-adapters`, the AGENTS.md region and ontology file install but native/executable adapter files such as Claude Code hooks/commands/skills, Codex native skills/hooks, and Cursor rules are reported as `blocked` (supply-chain protection).
+
+The `UserPromptSubmit` wrappers perform a bounded local preflight before they
+start the CLI. With prompt capture and project reconciliation off, an unlinked
+session returns immediately without Work storage writes. When
+`settings.work_prompt_capture.preset: bounded` and the user-local
+`ANAMNESIS_WORK_PROMPT_CAPTURE=1` environment opt-in are both enabled, the
+wrapper passes the complete native JSON payload exactly once through child
+stdin; prompt text is never placed in argv, logs, or temporary files. Claude
+UserPromptSubmit handling always requires a native `prompt_id`, including for
+an already linked session cursor.

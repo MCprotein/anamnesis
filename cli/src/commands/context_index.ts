@@ -1067,6 +1067,8 @@ function shouldExcludePath(relPath: string): boolean {
     parts.includes("__pycache__") ||
     relPath.startsWith(".anamnesis/backups/") ||
     relPath.startsWith(".anamnesis/overrides/") ||
+    relPath.startsWith(".anamnesis/work-inputs/") ||
+    relPath.startsWith(".anamnesis/work-prompt-stage/") ||
     relPath.startsWith(".anamnesis/handoff/drafts/")
   ) {
     return true;

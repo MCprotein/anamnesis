@@ -1,15 +1,15 @@
-import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { describe, expect, it } from "vitest";
 import {
+  AgentfileParseError,
+  findAgentfile,
   parseAgentfile,
   parseAgentfileV1,
   parseAgentfileV2,
-  stringifyAgentfile,
-  AgentfileParseError,
-  findAgentfile,
   readAgentfile,
+  stringifyAgentfile,
   writeAgentfile,
 } from "./agentfile.js";
 
@@ -92,8 +92,8 @@ fragments: []
     expect(() => parseAgentfile(yaml)).toThrow(AgentfileParseError);
   });
 
-  it("keeps v1 strict and rejects v2-only work policy settings", () => {
-    const yaml = `
+  it("keeps v1 strict and rejects v2-only Work settings", () => {
+    const workPolicy = `
 version: 1
 project: { name: x }
 tools: [claude-code]
@@ -101,8 +101,18 @@ fragments: []
 settings:
   work_policy: {}
 `;
-    expect(() => parseAgentfileV1(yaml)).toThrow(/Unrecognized key/);
-    expect(() => parseAgentfile(yaml)).toThrow(/Unrecognized key/);
+    const promptCapture = `
+version: 1
+project: { name: x }
+tools: [claude-code]
+fragments: []
+settings:
+  work_prompt_capture: { preset: bounded }
+`;
+    expect(() => parseAgentfileV1(workPolicy)).toThrow(/Unrecognized key/);
+    expect(() => parseAgentfile(workPolicy)).toThrow(/Unrecognized key/);
+    expect(() => parseAgentfileV1(promptCapture)).toThrow(/Unrecognized key/);
+    expect(() => parseAgentfile(promptCapture)).toThrow(/Unrecognized key/);
   });
 
   it("accepts an absent work policy in v2 without materializing it", () => {
@@ -153,6 +163,59 @@ settings:
       "frequent",
     );
     expect(result.settings?.work_policy?.delegation?.max_agents).toBe(4);
+  });
+
+  it("accepts bounded prompt capture only in v2 and preserves absence", () => {
+    const enabled = parseAgentfileV2(`
+version: 2
+project: { name: x }
+tools: [codex]
+fragments: []
+settings:
+  work_prompt_capture:
+    preset: bounded
+    ttl: PT12H
+    max_entry_bytes: 65536
+    max_total_bytes: 524288
+    max_entries: 16
+`);
+    expect(enabled.settings?.work_prompt_capture).toEqual({
+      preset: "bounded",
+      ttl: "PT12H",
+      max_entry_bytes: 65536,
+      max_total_bytes: 524288,
+      max_entries: 16,
+    });
+
+    const absent = parseAgentfileV2(`
+version: 2
+project: { name: x }
+tools: [codex]
+fragments: []
+settings: { backup_retention: 3 }
+`);
+    expect(absent.settings).not.toHaveProperty("work_prompt_capture");
+  });
+
+  it("rejects invalid prompt capture configuration", () => {
+    for (const capture of [
+      "{ preset: off, ttl: PT1H }",
+      "{ preset: bounded, ttl: P1D }",
+      "{ preset: bounded, max_entry_bytes: 4096, max_total_bytes: 1024 }",
+      "{ preset: bounded, max_entries: 0 }",
+      "{ preset: bounded, extra: true }",
+    ]) {
+      expect(() =>
+        parseAgentfileV2(`
+version: 2
+project: { name: x }
+tools: [codex]
+fragments: []
+settings:
+  work_prompt_capture: ${capture}
+`),
+      ).toThrow();
+    }
   });
 
   it("rejects unknown work policy keys at every nested level", () => {

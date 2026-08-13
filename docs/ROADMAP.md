@@ -1937,7 +1937,7 @@ but does not launch or supervise either runtime. Fresh verification passed
 48/48 targeted tests and 808/808 tests across 82 files, plus typecheck, lint,
 build, and diff checks; independent QA returned `SIGNOFF` and independent code
 review returned `APPROVE`. This does not complete v1.18: delegation/review
-execution, raw adapter capture, handoff/index
+execution, handoff/index
 integration, benchmarks, optional MCP evaluation, and cross-host coordination
 remain deferred.
 
@@ -1957,9 +1957,8 @@ Pre-binding ledgers require an explicit dedicated migration event; ordinary
 publication cannot mint or override envelope-binding authority. Fresh
 verification passed 120/120 targeted tests and 868/868 tests across 84 files,
 plus typecheck, lint, build, import, and diff checks; independent adversarial
-verification and final code review returned `APPROVE`. Raw prompt
-staging/allocation, review/delegation invocation, and final lifecycle
-transitions remain deferred.
+verification and final code review returned `APPROVE`. Review/delegation
+invocation and final lifecycle transitions remain deferred.
 
 The first thin Work command slice is implemented. The `work` namespace offers
 `create|amend|transition|status|brief|confirm|switch` with strict draft and
@@ -1980,8 +1979,10 @@ returned `PASS`.
 The first automatic Work reconciliation boundary is implemented behind the
 existing executable-adapter opt-in. Dedicated Claude Code and Codex
 `UserPromptSubmit` wrappers forward native JSON only through stdin, require
-documented stable session/turn identity, fail open, and never persist, log,
-fingerprint, or return submitted prompt text. The handler refolds only the
+documented stable session/turn identity, fail open, and never log, fingerprint,
+or return submitted prompt text. With capture absent/off they do not persist
+it; with explicit bounded capture they may stage private `client_exact` UTF-8
+bytes until the foreground agent records one explicit outcome. The handler refolds only the
 session-selected Work, uses its frozen policy, and records additional-context
 delivery as `injected_unconfirmed` rather than visible confirmation. Compact
 context structurally preserves the completion contract, delta, configured
@@ -1994,6 +1995,20 @@ status, and diff checks; independent review returned `APPROVE` and adversarial
 verification returned `PASS`. The remaining non-blocking cost is foreground
 CLI cold-start on prompt boundaries; measure it before adding more frequent
 hook events.
+
+Bounded raw prompt staging and allocation are now implemented as the next thin
+slice. Agentfile v2 accepts optional `settings.work_prompt_capture` without a
+new schema version; absence remains off, and user-local
+`ANAMNESIS_WORK_PROMPT_CAPTURE=1` is a second required consent key. Native boundary identity derives an
+opaque stage/source ID without prompt bytes, identical retries are idempotent,
+and same-ID/different-body input fails closed. The foreground control path must
+choose same-Work, new-Work, provisional retention, or discard and supplies
+exact Work head/revision/hash authority where applicable; it never infers the
+current cursor as ownership. Provisional sources bind later without envelope
+mutation, discarded entries commit content-free receipts before cleanup, and
+bounded GC shares the stage locks. Explicit `work prompt gc` enforces TTL and
+repairs expired partial/temp residue without a daemon. Stage/source/Work lock order and deterministic
+events make crash retries recoverable while keeping the design daemon-free.
 
 The storage and responsibility boundaries are:
 
@@ -2105,9 +2120,9 @@ Work plan:
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Thin Work boundary, schema, and lifecycle** | creation/amend boundary commands implemented; closure deferred | Keep Work as the only durable task-domain object. `work create` requires `new_unit`, `work amend` requires `same_unit`, and interruption is rejected rather than allocated. Typed creation and monotonic contract revision preserve requirement identity, source provenance, frozen policy snapshots, accepted-boundary state, and explicit replacement lineage. Lifecycle closure remains fail-closed until user authority, completion evidence, and reopening/supersession rules are implemented. Foreground is a disposable per-session cursor, never global Work state. |
-| 2 | **Verbatim source-event ledger and projection** | core implemented; adapter capture/index integration deferred | Immutable exact-byte prompt objects, canonical envelopes, hash-linked allocation records, monotonic typed contracts, deterministic projection rebuilds, stable-order multi-source locking, exact envelope-hash binding, torn-tail recovery, and corruption/symlink fail-closed behavior are implemented. Adapter capture and exact-span allocation UI remain planned. |
+| 2 | **Verbatim source-event ledger and projection** | bounded native prompt staging/allocation implemented; exact-span UI deferred | Immutable exact-byte prompt objects, canonical envelopes, hash-linked allocation records, monotonic typed contracts, deterministic projection rebuilds, stable-order multi-source locking, exact envelope-hash binding, torn-tail recovery, and corruption/symlink fail-closed behavior are implemented. Agentfile v2 bounds and user-local environment consent jointly enable private UserPrompt staging; Codex/Claude adapters preserve `client_exact` UTF-8 bytes and expose an opaque four-way same/new/provisional/discard allocation contract. Explicit GC enforces TTL and repairs partial/temp crash residue without a daemon. Raw paths remain outside Git, backups, context index, logs, hook context, and default MCP. Exact sub-prompt span allocation remains planned. |
 | 3 | **Evidence-based progress reporter** | deterministic core and CLI rendering implemented; evidence freshness diagnostics deferred | Projection, status, and briefing output report verified/applicable, pending, in-progress, implemented-unverified, blocked, and waived counts with explicit denominator/weights. Invalid, overflowing, inconsistent, or provenance-free states fail closed. Human and JSON presentation refold the ledger instead of trusting projection cache; deeper evidence freshness diagnostics remain planned. |
-| 4 | **Automatic reconciliation briefing** | prompt and same-turn safe-hook emission implemented; compaction/close triggers deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples. `work brief` renders the ordered requirements/done/remaining/blockers/progress/next contract. Dedicated Claude Code and Codex `UserPromptSubmit` adapters handle foreground prompt boundaries. Codex `PostToolUse` and Claude Code batch-level `PostToolBatch` now evaluate meaningful-action and silence cadence during a long turn without a daemon. Wrappers discard tool payloads, one durable lock-scoped cursor mutation deduplicates stable boundary IDs, and hidden context remains `injected_unconfirmed`. Compaction-specific and close-specific native triggers remain research-first. |
+| 4 | **Automatic reconciliation briefing** | prompt and same-turn safe-hook emission plus prompt classification control implemented; compaction/close triggers deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples. `work brief` renders the ordered requirements/done/remaining/blockers/progress/next contract. Dedicated Claude Code and Codex `UserPromptSubmit` adapters handle foreground prompt boundaries and, when bounded capture is enabled, combine the due briefing with an opaque explicit allocation obligation. Codex `PostToolUse` and Claude Code batch-level `PostToolBatch` evaluate meaningful-action and silence cadence during a long turn without a daemon. Wrappers discard tool payloads, one durable lock-scoped cursor mutation deduplicates stable boundary IDs, and hidden context remains `injected_unconfirmed`. Compaction-specific and close-specific native triggers remain research-first. |
 | 5 | **Per-Work automatic delegation and runtime policy** | policy schema/resolver implemented; execution deferred | The pure resolver normalizes `off`, `auto`, `prefer`, and `required` parallelism, maximum agents, native/tmux preferences, fallback order, reassessment triggers, and unavailable behavior. Required parallelism fails closed after provider exhaustion. Dependency-lane assessment, runtime selection records, and actual native/tmux execution remain planned and runtime-owned. |
 | 6 | **User-configurable independent-review gates** | policy schema/resolver and planning fail-closed guard implemented; execution deferred | Agentfile v2 and the pure resolver normalize `off`, `advisory`, `strict`, and `custom` planning/completion gates across six policy layers. Required gates merge monotonically; only a current evidenced gate/revision waiver can lower one. Provider order and OMX-to-Codex-native fallback are declarative. Required planning currently blocks implementation entry because review evidence is not yet modeled; review invocation, evidence recording, invalidation, and completion-gate execution remain planned. |
 | 7 | **Multi-session checkpoints and Work boundaries** | cursor CAS, explicit boundary commands, and switch implemented; automatic semantic classifier deferred | Each session has a disposable revision-CAS cursor with exact reconciliation delivery state, while shared truth remains the Work ledger/projection. Canonical roots, linked-worktree sharing, bounded locking, atomic writes, symlink rejection, cursor lag recovery, independent cursor switching, and explicit new/same/interruption command classification are implemented. Automatic natural-language same-Work versus new-Work classification remains planned. |

@@ -1,9 +1,9 @@
 # Work Unit and Requirement Ledger Design
 
 Status: v1.18 target design with storage, typed contract, policy resolution,
-projection, session cursor, and reconciliation foundations implemented. CLI
-commands, adapter-triggered capture/emission, review/delegation execution, and
-closure orchestration remain unshipped.
+projection, session cursor, thin CLI commands, bounded prompt staging, and
+prompt/safe-tool reconciliation hooks implemented. Review/delegation execution,
+compaction-native triggers, and closure orchestration remain unshipped.
 
 ## Goal
 
@@ -65,6 +65,11 @@ Work state root:
 
 ```text
 .anamnesis/
+  work-prompt-stage/
+    bodies/<capture-id>.bin
+    records/<capture-id>.json
+    outcomes/<capture-id>.json
+    bindings/<capture-id>.json
   work-inputs/
     events/<event-id>.yaml
     objects/<event-id>.txt
@@ -140,6 +145,45 @@ it is allocated to a work unit or remains provisionally ambiguous. A pure
 interruption/non-requirement discards the body after classification and keeps
 at most minimal retention-policy metadata. Full user-prompt archival is a
 separate explicit opt-in.
+
+The implemented staging policy requires two keys: Agentfile v2
+`settings.work_prompt_capture` must permit bounded capture, and the local user
+must set `ANAMNESIS_WORK_PROMPT_CAPTURE=1` in the foreground client environment.
+Either key being absent leaves capture `off`, so a repository change cannot
+unilaterally retain collaborators' prompts. `bounded` capture uses
+a deterministic identity derived from the native client/session/turn boundary,
+never from prompt bytes, and enforces TTL, per-entry, total-byte, and entry-count
+budgets. Codex requires `session_id + turn_id`; Claude Code stages only when an
+actual `prompt_id` is present. The stored fidelity is `client_exact`: exact
+decoded prompt text re-encoded as UTF-8, not a claim about original transport
+or JSON escape bytes. Lone surrogate input is rejected rather than normalized.
+
+Resolution is an explicit four-way foreground decision. `allocate-same`
+requires the exact Work ID plus observed head/revision/contract hash;
+`allocate-new` requires a new accepted contract; `retain` commits a truthful
+provisional source and an ambiguity/boundary receipt; `discard` commits a
+content-free terminal receipt before deleting the body. The current session
+cursor is never implicit allocation authority. Retained provisional sources
+bind later through a separate append-only receipt without mutating the original
+envelope. Retry identity and assertion hashes make the same decision
+idempotent, while a different decision or stale Work precondition fails
+closed.
+
+Capture and GC acquire the global budget lock before stage locks. Resolution
+acquires stage, then sorted source, then sorted Work locks and never nests the
+budget lock. The source/ledger append is the allocation commit point; stage
+cleanup happens last. A crash before commit keeps the stage retryable, while a
+crash after commit lets an exact retry validate the immutable source and ledger
+then finish cleanup.
+
+`anamnesis work prompt gc` is the daemon-free expiry boundary. It scans the
+bounded union of body and record files plus stale atomic-publication temps,
+revalidates terminal outcome receipts, and removes expired partial/corrupt
+stages under the same budget → stage lock order. TTL means eligible at the next
+capture or explicit GC boundary; no background timer is implied. Outcome and
+binding JSON are content-free, non-domain operational receipts retained for
+idempotent recovery and later provisional binding; raw body expiry does not
+depend on deleting those receipts.
 
 For a retained source event, “verbatim” means the exact user-visible payload
 supplied by the client or native prompt hook, not a rephrasing reconstructed
@@ -483,9 +527,10 @@ The first automatic adapter slice evaluates this contract at
 Claude Code versions), refolds only the cursor-selected Work, and emits bounded
 additional context instructing the foreground agent to brief visibly and
 continue. Missing identity or runtime failure is fail-open. This slice does
-not retain the submitted prompt: exact raw capture requires a separate bounded
-staging lifecycle with explicit allocated, provisional, discarded, and
-garbage-collected outcomes.
+not retain the submitted prompt by default. When repository bounds and the
+user-local consent key both enable it, the adapter uses the bounded staging
+lifecycle above and injects only an opaque allocated/provisional/discard
+control obligation.
 
 The next thin adapter slice evaluates elapsed-time and meaningful-action
 cadence inside a long foreground turn without adding a timer or daemon. Codex
@@ -734,6 +779,10 @@ an explicit privileged read to return a raw body.
 
 - Supported native capture round-trips every user-visible prompt payload with
   the same content hash and diagnoses tampering or downgraded fidelity.
+- With capture absent/off an unlinked prompt performs no CLI/storage work.
+  With bounded capture, identical native boundary plus identical bytes is
+  idempotent, the same boundary plus different bytes fails closed, and two
+  identical bodies in different turns retain distinct identities.
 - Crash-ordering fixtures prove that a committed allocation never references
   an unpublished source body and that only a torn final ledger tail is
   recoverable.

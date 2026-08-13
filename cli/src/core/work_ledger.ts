@@ -6,6 +6,8 @@ import { isHash, sha256 } from "../util/hash.js";
 
 export const WORK_LEDGER_SCHEMA_VERSION = "anamnesis.work-ledger.v1";
 
+let cachedCurrentProcessStartIdentity: string | undefined;
+
 export interface WorkLedgerEvent {
   event_id: string;
   occurred_at: string;
@@ -470,8 +472,13 @@ function currentLockOwner(): WorkLockOwner {
     schema_version: "anamnesis.work-lock.v1",
     nonce: randomBytes(16).toString("hex"),
     pid: process.pid,
-    process_start: processStartIdentity(process.pid),
+    process_start: currentProcessStartIdentity(),
   };
+}
+
+function currentProcessStartIdentity(): string {
+  cachedCurrentProcessStartIdentity ??= processStartIdentity(process.pid);
+  return cachedCurrentProcessStartIdentity;
 }
 
 function processStartIdentity(pid: number): string {

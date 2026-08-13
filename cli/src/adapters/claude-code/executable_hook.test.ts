@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -307,7 +308,7 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(result.stderr).toBe("");
   });
 
-  it("forwards exact Claude UserPromptSubmit stdin bytes to the Work CLI", () => {
+  it("forwards exact Claude stdin bytes for quoted flow-map capture policy", () => {
     const projectRoot = tmpDir();
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     const hook = path.resolve(
@@ -317,6 +318,7 @@ describe("executableHookRenderer (claude-code)", () => {
       `${JSON.stringify({
         cwd: projectRoot,
         hook_event_name: "UserPromptSubmit",
+        session_id: "session-claude-1",
         prompt: "exact prompt bytes",
         prompt_id: "prompt-claude-1",
       })}\n`,
@@ -337,12 +339,18 @@ describe("executableHookRenderer (claude-code)", () => {
       "utf8",
     );
     fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      'version: 2\n"settings": { "work_prompt_capture": { "preset": "bounded" } }\n',
+    );
 
     const result = spawnSync("bash", [hook], {
       cwd: projectRoot,
       env: {
         ...process.env,
         ANAMNESIS_BIN: shimPath,
+        ANAMNESIS_NODE: process.execPath,
+        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
         CLAUDE_PROJECT_DIR: projectRoot,
         EXPECTED_INPUT_BASE64: input.toString("base64"),
       },
@@ -353,6 +361,43 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toBe("claude briefing\n");
+  });
+
+  it("defers quoted flow-map reconciliation policy to the Work CLI", () => {
+    const projectRoot = tmpDir();
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nprocess.stdout.write("reconciliation briefing\\n");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      'version: 2\n"settings": { "work_policy": { "reconciliation": { "preset": "custom" } } }\n',
+    );
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "reconciliation-session",
+          prompt_id: "reconciliation-prompt",
+          prompt: "private reconciliation prompt",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("reconciliation briefing\n");
   });
 
   it("uses a built anamnesis source checkout when no installed CLI exists", () => {
@@ -368,14 +413,28 @@ describe("executableHookRenderer (claude-code)", () => {
       `#!${process.execPath}\nprocess.stdout.write("checkout briefing\\n");\n`,
     );
     fs.chmodSync(checkoutBin, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture: { preset: bounded }\n",
+    );
 
     const result = spawnSync(
       "bash",
       [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
       {
         cwd: projectRoot,
-        env: { CLAUDE_PROJECT_DIR: projectRoot, PATH: "/usr/bin:/bin" },
-        input: "{}\n",
+        env: {
+          CLAUDE_PROJECT_DIR: projectRoot,
+          ANAMNESIS_NODE: process.execPath,
+          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+          PATH: "/usr/bin:/bin",
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "checkout-session",
+          prompt_id: "checkout-prompt",
+          prompt: "checkout",
+        })}\n`,
         encoding: "utf8",
       },
     );
@@ -393,8 +452,14 @@ describe("executableHookRenderer (claude-code)", () => {
     const input = `${JSON.stringify({
       cwd: projectRoot,
       hook_event_name: "UserPromptSubmit",
+      session_id: "failure-session",
+      prompt_id: "failure-prompt",
       prompt: "claude private failure sentinel",
     })}\n`;
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+    );
     fs.writeFileSync(
       shimPath,
       [
@@ -412,6 +477,8 @@ describe("executableHookRenderer (claude-code)", () => {
       env: {
         ...process.env,
         ANAMNESIS_BIN: shimPath,
+        ANAMNESIS_NODE: process.execPath,
+        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
         CLAUDE_PROJECT_DIR: projectRoot,
       },
       input,
@@ -423,6 +490,285 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(result.stderr).toContain("command failed");
     expect(result.stderr).not.toContain("child failure detail");
     expect(result.stderr).not.toContain("claude private failure sentinel");
+  });
+
+  it("does not start the Work CLI for a clear default-off unlinked Claude prompt", () => {
+    const projectRoot = tmpDir();
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      'version: 2\n"settings": { "work_prompt_capture": { "preset": "off" } }\n',
+    );
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "off-claude-session",
+          prompt_id: "off-claude-prompt",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("does not start the Work CLI for a full-root flow-map off policy", () => {
+    const projectRoot = tmpDir();
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "{version: 2, settings: {work_prompt_capture: {preset: off}}}\n",
+    );
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "flow-off-claude-session",
+          prompt_id: "flow-off-claude-prompt",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("silently fails open before parsing or forwarding oversized Claude stdin", () => {
+    const projectRoot = tmpDir();
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+        },
+        input: Buffer.alloc(10 * 1024 * 1024 + 1, "x"),
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("does not start capture unless the Claude environment opt-in is exactly 1", () => {
+    const projectRoot = tmpDir();
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+    );
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+          ANAMNESIS_WORK_PROMPT_CAPTURE: "true",
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "no-env-session",
+          prompt_id: "no-env-prompt",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("does not start full-root flow-map capture without the environment opt-in", () => {
+    const projectRoot = tmpDir();
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "{version: 2, settings: {work_prompt_capture: {preset: bounded}}}\n",
+    );
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "flow-no-env-claude-session",
+          prompt_id: "flow-no-env-claude-prompt",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("requires a native Claude prompt_id before capture can start the CLI", () => {
+    const projectRoot = tmpDir();
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+    );
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "capture-claude-session",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("skips a linked Claude session without prompt_id", () => {
+    const projectRoot = tmpDir();
+    const marker = path.join(projectRoot, "invoked");
+    const sessionId = "linked-claude-session";
+    const digest = createHash("sha256")
+      .update(`claude\0${sessionId}`, "utf8")
+      .digest("hex");
+    fs.mkdirSync(path.join(projectRoot, ".anamnesis/work-cursors"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(projectRoot, ".anamnesis/work-cursors", `hook_${digest}.yaml`),
+      "linked: true\n",
+    );
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_NODE: process.execPath,
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: sessionId,
+          prompt: "brief only",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
   });
 
   it("throws when hook source is missing", () => {

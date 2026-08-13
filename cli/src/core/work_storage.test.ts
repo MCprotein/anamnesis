@@ -111,6 +111,15 @@ describe("work source storage", () => {
     expect(fs.readFileSync(first.object_path, "utf8")).toBe("original\r\n");
   });
 
+	it("rejects an unallocated immutable source envelope status", () => {
+		const root = temporaryDirectory("anamnesis-work-source-status-");
+		expect(() => publishWorkSourceEvent({
+			...sourceInput(root, "body"),
+			allocationStatus: "unallocated",
+		} as WorkSourceEventInput)).toThrow(/allocated or provisional/);
+		expect(fs.existsSync(path.join(root, "work-inputs"))).toBe(false);
+	});
+
   it("can resume envelope publication after a crash seam leaves a durable body", () => {
     const root = temporaryDirectory("anamnesis-work-source-resume-");
     const input = sourceInput(root, "body");

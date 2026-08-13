@@ -174,6 +174,16 @@ function setupContextProject(): string {
   );
   writeFile(
     project,
+    ".anamnesis/work-prompt-stage/bodies/private.bin",
+    "PROMPT_STAGE_SECRET_MUST_NOT_BE_INDEXED",
+  );
+  writeFile(
+    project,
+    ".anamnesis/work-inputs/objects/source.txt",
+    "WORK_SOURCE_SECRET_MUST_NOT_BE_INDEXED",
+  );
+  writeFile(
+    project,
     "docs/ROADMAP.md",
     [
       "# Roadmap",
@@ -226,6 +236,10 @@ describe("context index", () => {
     });
 
     const firstJsonl = fs.readFileSync(indexPath, "utf8");
+    expect(firstJsonl).not.toContain("PROMPT_STAGE_SECRET_MUST_NOT_BE_INDEXED");
+    expect(firstJsonl).not.toContain("WORK_SOURCE_SECRET_MUST_NOT_BE_INDEXED");
+    expect(firstJsonl).not.toContain("work-prompt-stage");
+    expect(firstJsonl).not.toContain("work-inputs");
     contextIndex({ projectRoot: project, write: true });
     expect(fs.readFileSync(indexPath, "utf8")).toBe(firstJsonl);
     expect(readContextIndex(project)).toHaveLength(result.summary.entries);

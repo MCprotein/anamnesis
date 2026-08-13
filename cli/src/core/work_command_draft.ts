@@ -89,8 +89,27 @@ export const workTransitionDraftSchema = z
 	})
 	.strict();
 
+export const workPromptRetainDraftSchema = z
+	.object({
+		boundary: z
+			.object({
+				state: z.enum(["provisional", "needs_user"]),
+				classification: z.enum(["same_unit", "new_unit"]),
+				reason_codes: uniqueNonEmpty.min(1),
+				confidence: z.enum(["low", "medium"]),
+			})
+			.strict(),
+		question: nonEmpty,
+	})
+	.strict();
+
 export type WorkContractDraft = z.infer<typeof workContractDraftSchema>;
 export type WorkTransitionDraft = z.infer<typeof workTransitionDraftSchema>;
+export type WorkPromptRetainDraft = z.infer<
+	typeof workPromptRetainDraftSchema
+>;
+
+export const STAGED_WORK_SOURCE_PLACEHOLDER = "@staged";
 
 /** Parse one strict UTF-8 YAML document. Drafts intentionally omit computed authority fields. */
 export function parseSingleWorkDraft<T>(
@@ -120,4 +139,46 @@ export function parseWorkContractDraft(bytes: Buffer): WorkContractDraft {
 
 export function parseWorkTransitionDraft(bytes: Buffer): WorkTransitionDraft {
 	return parseSingleWorkDraft(bytes, workTransitionDraftSchema);
+}
+
+/**
+ * Replace the staged-source placeholder only after strict draft parsing. This
+ * keeps the derived source ID out of hook context while preserving exact
+ * requirement/source ownership in the canonical contract.
+ */
+export function parseStagedWorkContractDraft(
+	bytes: Buffer,
+	sourceEventId: string,
+): WorkContractDraft {
+	const draft = parseWorkContractDraft(bytes);
+	let replacements = 0;
+	const replace = (values: readonly string[]): string[] =>
+		values.map((value) => {
+			if (value !== STAGED_WORK_SOURCE_PLACEHOLDER) return value;
+			replacements += 1;
+			return sourceEventId;
+		});
+	const resolved = workContractDraftSchema.parse({
+		...draft,
+		requirements: draft.requirements.map((requirement) => ({
+			...requirement,
+			source_event_ids: replace(requirement.source_event_ids),
+		})),
+		open_conflicts: draft.open_conflicts.map((conflict) => ({
+			...conflict,
+			source_event_ids: replace(conflict.source_event_ids),
+		})),
+	});
+	if (replacements === 0) {
+		throw new Error(
+			`staged Work draft must reference ${STAGED_WORK_SOURCE_PLACEHOLDER}`,
+		);
+	}
+	return resolved;
+}
+
+export function parseWorkPromptRetainDraft(
+	bytes: Buffer,
+): WorkPromptRetainDraft {
+	return parseSingleWorkDraft(bytes, workPromptRetainDraftSchema);
 }

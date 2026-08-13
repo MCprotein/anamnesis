@@ -107,6 +107,22 @@ could include breaking changes.
   structural 8,000-character budget,
   terminal Work never auto-continues, and hooks do not launch agents, tmux,
   daemons, schedulers, or provider runtimes.
+- Added opt-in bounded raw UserPrompt staging and explicit Work allocation.
+  Agentfile v2 now accepts strict `settings.work_prompt_capture` limits while
+  absence remains `off`; raw capture additionally requires user-local
+  `ANAMNESIS_WORK_PROMPT_CAPTURE=1`, so repository policy alone cannot retain
+  collaborators' prompts. Supported hooks preserve the exact decoded prompt
+  text as private `client_exact` UTF-8 bytes, return only an opaque stage ID,
+  and require an explicit same-Work, new-Work, provisional-retain, or discard
+  decision; they never infer allocation from the current cursor. Stage/source/
+  Work lock ordering, durable discard and provisional receipts, immutable
+  later binding, bounded GC, symlink/private-mode checks, deterministic retry
+  IDs, and expected-head/revision/hash checks protect crash and concurrency
+  boundaries without introducing a daemon, queue, scheduler, or Job/Run model.
+  Raw stage/source paths are ignored by Git and excluded from context indexing.
+  `anamnesis work prompt gc` enforces TTL without a daemon and recovers expired
+  terminal-cleanup, partial-publication, corrupt-stage, and stale-temp residue.
+  Public JSON resolution output excludes prompt-derived and assertion hashes.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile

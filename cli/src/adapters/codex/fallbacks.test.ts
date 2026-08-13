@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -462,7 +463,7 @@ describe("codex executable_hook fallback", () => {
     expect(result.stderr).toBe("");
   });
 
-  it("forwards exact UserPromptSubmit bytes and isolates child stderr", () => {
+  it("forwards exact UserPromptSubmit bytes for quoted flow-map capture policy", () => {
     const projectRoot = tmpDir("anamnesis-codex-work-prompt-");
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     const wrapperPath = path.resolve(
@@ -472,8 +473,9 @@ describe("codex executable_hook fallback", () => {
       `${JSON.stringify({
         cwd: projectRoot,
         hook_event_name: "UserPromptSubmit",
+        session_id: "session-123",
+        turn_id: "turn-123",
         prompt: "private prompt sentinel",
-        prompt_id: "prompt-123",
       })}\n`,
       "utf8",
     );
@@ -493,12 +495,17 @@ describe("codex executable_hook fallback", () => {
       "utf8",
     );
     fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      'version: 2\n"settings": { "work_prompt_capture": { "preset": "bounded" } }\n',
+    );
 
     const result = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
       env: {
         ...process.env,
         ANAMNESIS_BIN: shimPath,
+        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
         EXPECTED_INPUT_BASE64: input.toString("base64"),
       },
       input,
@@ -517,6 +524,41 @@ describe("codex executable_hook fallback", () => {
     });
   });
 
+  it("defers quoted flow-map reconciliation policy to the Work CLI", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-reconciliation-");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nprocess.stdout.write("reconciliation briefing\\n");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      'version: 2\n"settings": { "work_policy": { "reconciliation": { "preset": "custom" } } }\n',
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, ANAMNESIS_BIN: shimPath },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "reconciliation-session",
+          turn_id: "reconciliation-turn",
+          prompt: "private reconciliation prompt",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout).hookSpecificOutput.additionalContext).toBe(
+      "reconciliation briefing\n",
+    );
+  });
+
   it("fails open with sanitized output when the Work CLI is unavailable", () => {
     const projectRoot = tmpDir("anamnesis-codex-work-prompt-missing-");
     const wrapperPath = path.resolve(
@@ -525,12 +567,22 @@ describe("codex executable_hook fallback", () => {
     const input = `${JSON.stringify({
       cwd: projectRoot,
       hook_event_name: "UserPromptSubmit",
+      session_id: "session-missing-cli",
+      turn_id: "turn-missing-cli",
       prompt: "missing cli private sentinel",
     })}\n`;
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture: { preset: bounded }\n",
+    );
 
     const result = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      env: { CODEX_PROJECT_DIR: projectRoot, PATH: "" },
+      env: {
+        CODEX_PROJECT_DIR: projectRoot,
+        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+        PATH: "",
+      },
       input,
       encoding: "utf8",
     });
@@ -555,14 +607,27 @@ describe("codex executable_hook fallback", () => {
       `#!${process.execPath}\nprocess.stdout.write("checkout briefing\\n");\n`,
     );
     fs.chmodSync(checkoutBin, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+    );
     const wrapperPath = path.resolve(
       "base/adapters/codex/hooks/work-user-prompt.mjs",
     );
 
     const result = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      env: { CODEX_PROJECT_DIR: projectRoot, PATH: "" },
-      input: `${JSON.stringify({ cwd: projectRoot })}\n`,
+      env: {
+        CODEX_PROJECT_DIR: projectRoot,
+        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+        PATH: "",
+      },
+      input: `${JSON.stringify({
+        cwd: projectRoot,
+        session_id: "checkout-session",
+        turn_id: "checkout-turn",
+        prompt: "checkout prompt",
+      })}\n`,
       encoding: "utf8",
     });
 
@@ -584,8 +649,14 @@ describe("codex executable_hook fallback", () => {
     const input = `${JSON.stringify({
       cwd: projectRoot,
       hook_event_name: "UserPromptSubmit",
+      session_id: "empty-session",
+      turn_id: "empty-turn",
       prompt: "codex private empty sentinel",
     })}\n`;
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+    );
     fs.writeFileSync(
       shimPath,
       [
@@ -599,7 +670,11 @@ describe("codex executable_hook fallback", () => {
 
     const result = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
-      env: { ...process.env, ANAMNESIS_BIN: shimPath },
+      env: {
+        ...process.env,
+        ANAMNESIS_BIN: shimPath,
+        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+      },
       input,
       encoding: "utf8",
     });
@@ -608,6 +683,266 @@ describe("codex executable_hook fallback", () => {
     expect(JSON.parse(result.stdout)).toEqual({});
     expect(result.stdout).not.toContain("codex private empty sentinel");
     expect(result.stderr).toBe("");
+  });
+
+  it("does not start the Work CLI for a clear default-off unlinked Codex prompt", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-off-");
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      'version: 2\n"settings": { "work_prompt_capture": { "preset": "off" } }\n',
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "off-session",
+          turn_id: "off-turn",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("does not start the Work CLI for a full-root flow-map off policy", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-flow-off-");
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "{version: 2, settings: {work_prompt_capture: {preset: off}}}\n",
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "flow-off-session",
+          turn_id: "flow-off-turn",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("silently fails open before parsing or forwarding oversized Codex stdin", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-oversized-");
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, ANAMNESIS_BIN: shimPath },
+        input: Buffer.alloc(10 * 1024 * 1024 + 1, "x"),
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("does not start capture unless the Codex environment opt-in is exactly 1", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-no-env-");
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+    );
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          ANAMNESIS_BIN: shimPath,
+          ANAMNESIS_WORK_PROMPT_CAPTURE: "true",
+        },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "no-env-session",
+          turn_id: "no-env-turn",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("does not start full-root flow-map capture without the environment opt-in", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-flow-no-env-");
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "{version: 2, settings: {work_prompt_capture: {preset: bounded}}}\n",
+    );
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, ANAMNESIS_BIN: shimPath },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "flow-no-env-session",
+          turn_id: "flow-no-env-turn",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("does not start the Codex Work CLI when a stable prompt id is missing", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-no-id-");
+    const marker = path.join(projectRoot, "invoked");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      path.join(projectRoot, "Agentfile"),
+      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+    );
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, ANAMNESIS_BIN: shimPath },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: "capture-session",
+          prompt: "must not be forwarded",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("starts the Codex Work CLI for the exact linked session cursor", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-prompt-cursor-");
+    const sessionId = "linked-codex-session";
+    const digest = createHash("sha256")
+      .update(`codex\0${sessionId}`, "utf8")
+      .digest("hex");
+    fs.mkdirSync(path.join(projectRoot, ".anamnesis/work-cursors"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(projectRoot, ".anamnesis/work-cursors", `hook_${digest}.yaml`),
+      "linked: true\n",
+    );
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    fs.writeFileSync(
+      shimPath,
+      `#!${process.execPath}\nprocess.stdout.write("linked briefing\\n");\n`,
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve("base/adapters/codex/hooks/work-user-prompt.mjs")],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, ANAMNESIS_BIN: shimPath },
+        input: `${JSON.stringify({
+          cwd: projectRoot,
+          session_id: sessionId,
+          turn_id: "linked-turn",
+          prompt: "linked prompt",
+        })}\n`,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout).hookSpecificOutput.additionalContext).toBe(
+      "linked briefing\n",
+    );
   });
 
   it("points to symlinked system_graph.yaml in the native SessionStart context", () => {

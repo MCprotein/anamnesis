@@ -174,16 +174,23 @@ import {
   type MigrateAgentfileResult,
 } from "./commands/migrate.js";
 import {
+  allocateStagedPromptToNewWork,
+  allocateStagedPromptToSameWork,
   amendWork,
   briefWork,
   confirmWorkBrief,
   createWork,
+  discardStagedPrompt,
+	gcStagedWorkPromptEntries,
+	publicWorkPromptResolution,
+  retainStagedPromptProvisional,
   statusWork,
   switchWork,
   transitionWork,
   type WorkBriefResult,
   type WorkMutationInput,
   type WorkMutationResult,
+  type WorkPromptResolutionResult,
   type WorkRawSource,
   type WorkStatusResult,
 } from "./commands/work.js";
@@ -2523,6 +2530,18 @@ function optionalWorkFlag(
   return value;
 }
 
+function requiredWorkPositiveIntegerFlag(
+  flags: ParsedArgs["flags"],
+  name: string,
+): number {
+  const value = requiredWorkFlag(flags, name);
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error(`--${name} must be a positive safe integer`);
+  }
+  return parsed;
+}
+
 function workHookClient(flags: ParsedArgs["flags"]): WorkHookClient {
   const value = requiredWorkFlag(flags, "client");
   if (value === "codex") return "codex";
@@ -2616,6 +2635,17 @@ function reportWorkMutation(result: WorkMutationResult): void {
   console.log(
     `  source: ${result.allocation?.source.envelope.event_id ?? "evidence-only transition"}`,
   );
+}
+
+function reportWorkPromptResolution(result: WorkPromptResolutionResult): void {
+  console.log(`Work prompt ${result.capture_id}`);
+  console.log(`  resolution: ${result.resolution}`);
+  console.log(`  outcome: ${result.outcome.outcome}`);
+  if (result.work_id) console.log(`  work: ${result.work_id}`);
+  if (result.projection) {
+    console.log(`  revision: ${result.projection.contract_revision}`);
+    console.log(`  progress: ${result.projection.progress.percent}%`);
+  }
 }
 
 function reportWorkStatus(result: WorkStatusResult): void {
@@ -3011,6 +3041,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "brief" &&
         sub !== "confirm" &&
         sub !== "switch" &&
+        sub !== "prompt" &&
         sub !== "hook-user-prompt" &&
         sub !== "hook-post-tool-use"
       ) {
@@ -3019,6 +3050,107 @@ async function main(argv: string[]): Promise<number> {
         return 1;
       }
       try {
+        if (sub === "prompt") {
+          const action = positional[1];
+          if (
+            action !== "allocate-same" &&
+            action !== "allocate-new" &&
+            action !== "retain" &&
+            action !== "discard" &&
+			action !== "gc"
+          ) {
+            throw new Error(
+              "work prompt requires allocate-same, allocate-new, retain, discard, or gc",
+            );
+          }
+          const projectRoot =
+            optionalWorkFlag(flags, "project-root") ?? process.cwd();
+          const stateRoot = optionalWorkFlag(flags, "state-root");
+		  if (action === "gc") {
+			const gcResult = gcStagedWorkPromptEntries({
+				project_root: projectRoot,
+				state_root: stateRoot,
+				now: optionalWorkFlag(flags, "now"),
+			});
+			if (flags.json === true) {
+				await writeStdoutFully(`${JSON.stringify(gcResult, null, 2)}\n`);
+			} else {
+				console.log(`Work prompt GC removed ${gcResult.removed.length} stage(s)`);
+				if (gcResult.skipped_locked.length > 0)
+					console.log(`  locked: ${gcResult.skipped_locked.length}`);
+				if (gcResult.skipped_indeterminate.length > 0)
+					console.log(`  indeterminate: ${gcResult.skipped_indeterminate.length}`);
+			}
+			return 0;
+		  }
+          const captureId = requiredWorkFlag(flags, "stage");
+          const occurredAt = workTimestamp(flags, false);
+          let resolution: WorkPromptResolutionResult;
+          if (action === "retain") {
+            resolution = retainStagedPromptProvisional({
+              project_root: projectRoot,
+              state_root: stateRoot,
+              capture_id: captureId,
+              resolved_at: occurredAt,
+              draft: fs.readFileSync(
+                path.resolve(projectRoot, requiredWorkFlag(flags, "draft")),
+              ),
+            });
+          } else if (action === "discard") {
+            const reason = requiredWorkFlag(flags, "reason");
+            if (reason !== "interruption" && reason !== "non_requirement") {
+              throw new Error(
+                "--reason must be interruption or non_requirement",
+              );
+            }
+            resolution = discardStagedPrompt({
+              project_root: projectRoot,
+              state_root: stateRoot,
+              capture_id: captureId,
+              resolved_at: occurredAt,
+              reason,
+            });
+          } else {
+            const allocationInput = {
+              project_root: projectRoot,
+              state_root: stateRoot,
+              capture_id: captureId,
+              work_id: requiredWorkFlag(flags, "work"),
+              occurred_at: occurredAt,
+              draft: fs.readFileSync(
+                path.resolve(projectRoot, requiredWorkFlag(flags, "draft")),
+              ),
+              expected_head:
+                action === "allocate-same"
+                  ? requiredWorkFlag(flags, "expected-head")
+                  : null,
+              expected_contract_revision:
+                action === "allocate-same"
+                  ? requiredWorkPositiveIntegerFlag(
+                      flags,
+                      "expected-contract-revision",
+                    )
+                  : null,
+              expected_contract_hash:
+                action === "allocate-same"
+                  ? requiredWorkFlag(flags, "expected-contract-hash")
+                  : null,
+            };
+            resolution =
+              action === "allocate-same"
+                ? allocateStagedPromptToSameWork(allocationInput)
+                : allocateStagedPromptToNewWork(allocationInput);
+          }
+          if (flags.json === true) {
+            await writeStdoutFully(
+				`${JSON.stringify(publicWorkPromptResolution(resolution), null, 2)}\n`,
+			);
+          } else {
+            reportWorkPromptResolution(resolution);
+          }
+          return 0;
+        }
+
         if (sub === "hook-user-prompt" || sub === "hook-post-tool-use") {
           let payload: unknown;
           try {

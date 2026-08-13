@@ -1,15 +1,33 @@
 #!/usr/bin/env node
 // anamnesis Work UserPromptSubmit hook for Codex.
 //
-// Reads the complete native hook payload as bytes and forwards those exact
-// bytes only through stdin. Child stderr and hook input are never returned as
-// model context. Every failure is fail-open with a sanitized diagnostic.
+// The full native payload is forwarded only through child stdin and only when
+// prompt capture, project reconciliation, or this exact session cursor makes
+// Work handling relevant. Default-off, unlinked sessions do not start the CLI.
 
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, readFileSync } from "node:fs";
-import { delimiter, isAbsolute, join, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import {
+  accessSync,
+  constants,
+  existsSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
+import { delimiter, dirname, isAbsolute, join, resolve } from "node:path";
 
 const EVENT = "UserPromptSubmit";
+const MAX_STABLE_ID_LENGTH = 512;
+const MAX_AGENTFILE_BYTES = 256 * 1024;
+// Includes the native JSON envelope around the 8 MiB decoded prompt hard cap.
+const MAX_HOOK_INPUT_BYTES = 10 * 1024 * 1024;
+const AGENTFILE_CANDIDATES = [
+  "Agentfile",
+  "agentfile.yaml",
+  "agentfile.yml",
+  ".anamnesis/agentfile.yaml",
+];
 
 function isExecutable(candidate) {
   if (!candidate) return false;
@@ -27,15 +45,17 @@ function safeObject(value) {
     : {};
 }
 
-function payloadCwd(input) {
-  try {
-    const payload = safeObject(JSON.parse(input.toString("utf8")));
-    return typeof payload.cwd === "string" && payload.cwd.trim()
-      ? payload.cwd
-      : "";
-  } catch {
-    return "";
-  }
+function safeString(value) {
+  return typeof value === "string" ? value : "";
+}
+
+function validStableId(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_STABLE_ID_LENGTH &&
+    !/[\u0000-\u001f\u007f]/u.test(value)
+  );
 }
 
 function findOnPath(name) {
@@ -75,10 +95,193 @@ function findExecutable(projectRoot) {
 
 async function readStdinBuffer() {
   const chunks = [];
+  let totalBytes = 0;
+  let oversized = false;
   for await (const chunk of process.stdin) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+    if (oversized) continue;
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+    totalBytes += buffer.length;
+    if (totalBytes > MAX_HOOK_INPUT_BYTES) {
+      oversized = true;
+      chunks.length = 0;
+      continue;
+    }
+    chunks.push(buffer);
   }
-  return Buffer.concat(chunks);
+  return oversized ? null : Buffer.concat(chunks, totalBytes);
+}
+
+function parsePayload(input) {
+  try {
+    return safeObject(JSON.parse(input.toString("utf8")));
+  } catch {
+    return {};
+  }
+}
+
+function stripYamlComment(line) {
+  let single = false;
+  let double = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === "'" && !double) single = !single;
+    if (char === '"' && !single && line[index - 1] !== "\\") double = !double;
+    if (char === "#" && !single && !double) return line.slice(0, index);
+  }
+  return line;
+}
+
+function yamlKeyPattern(key) {
+  return `(?:${key}|"${key}"|'${key}')`;
+}
+
+function yamlHasKey(source, key) {
+  return new RegExp(
+    `(?:^|[\\n{,])\\s*${yamlKeyPattern(key)}\\s*:`,
+    "u",
+  ).test(source);
+}
+
+function yamlKeyIsClearlyOff(source, key, ancestors) {
+  const keyPattern = yamlKeyPattern(key);
+  const presetPattern = yamlKeyPattern("preset");
+  const offPattern = `(?:off|"off"|'off')`;
+  const occurrences = source.match(
+    new RegExp(`(?:^|[\\n{,])\\s*${keyPattern}\\s*:`, "gu"),
+  );
+  if (occurrences?.length !== 1) return false;
+
+  const flowPath = ancestors
+    .map(
+      (ancestor) =>
+        `${yamlKeyPattern(ancestor)}\\s*:\\s*\\{[^{}\\n]*`,
+    )
+    .join("");
+  if (
+    new RegExp(
+      `(?:^|[\\n{,])\\s*${flowPath}${keyPattern}\\s*:\\s*\\{\\s*${presetPattern}\\s*:\\s*${offPattern}\\s*\\}`,
+      "u",
+    ).test(source)
+  ) {
+    return true;
+  }
+
+  const lines = source.split("\n");
+  const keyLine = new RegExp(`^([ \\t]*)${keyPattern}\\s*:\\s*$`, "u");
+  const anyKeyLine = /^([ \t]*)(?:[A-Za-z_][A-Za-z0-9_]*|"[^"]+"|'[^']+')\s*:/u;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = keyLine.exec(lines[index]);
+    if (!match) continue;
+    const parentIndent = match[1].length;
+    const foundAncestors = [];
+    let enclosingIndent = parentIndent;
+    for (let back = index - 1; back >= 0; back -= 1) {
+      const candidate = anyKeyLine.exec(lines[back]);
+      if (!candidate || candidate[1].length >= enclosingIndent) continue;
+      foundAncestors.unshift(
+        candidate[0]
+          .slice(candidate[1].length, candidate[0].lastIndexOf(":"))
+          .replace(/^["']|["']$/gu, ""),
+      );
+      enclosingIndent = candidate[1].length;
+    }
+    if (foundAncestors.slice(-ancestors.length).join("\0") !== ancestors.join("\0")) {
+      continue;
+    }
+    let next = index + 1;
+    while (next < lines.length && lines[next].trim() === "") next += 1;
+    const preset = new RegExp(
+      `^([ \\t]+)${presetPattern}\\s*:\\s*${offPattern}\\s*$`,
+      "u",
+    ).exec(lines[next] ?? "");
+    if (!preset || preset[1].length <= parentIndent) continue;
+    next += 1;
+    while (next < lines.length && lines[next].trim() === "") next += 1;
+    const followingIndent = /^([ \t]*)/u.exec(lines[next] ?? "")?.[1].length ?? 0;
+    if (next === lines.length || followingIndent <= parentIndent) return true;
+  }
+  return false;
+}
+
+function projectPolicySignals(projectRoot) {
+  const captureOptIn = process.env.ANAMNESIS_WORK_PROMPT_CAPTURE === "1";
+  try {
+    const found = AGENTFILE_CANDIDATES.map((name) => join(projectRoot, name)).filter(
+      (candidate) => existsSync(candidate),
+    );
+    if (found.length === 0) return { capture: false, reconciliation: false };
+    if (found.length !== 1 || statSync(found[0]).size > MAX_AGENTFILE_BYTES) {
+      return { capture: captureOptIn, reconciliation: true };
+    }
+    const source = readFileSync(found[0], "utf8")
+      .split(/\r?\n/u)
+      .map((line) => stripYamlComment(line).replace(/[ \t]+$/u, ""))
+      .join("\n");
+    const hasCapture = yamlHasKey(source, "work_prompt_capture");
+    const hasReconciliation = yamlHasKey(source, "reconciliation");
+    const isVersion2 = /(?:^|[\n{,])\s*(?:version|"version"|'version')\s*:\s*(?:2|"2"|'2')(?=\s*(?:$|[\n,}]))/mu.test(
+      source,
+    );
+    if ((hasCapture || hasReconciliation) && !isVersion2) {
+      return { capture: captureOptIn && hasCapture, reconciliation: true };
+    }
+    return {
+      capture:
+        captureOptIn &&
+        hasCapture &&
+        !yamlKeyIsClearlyOff(source, "work_prompt_capture", ["settings"]),
+      reconciliation:
+        hasReconciliation &&
+        !yamlKeyIsClearlyOff(source, "reconciliation", [
+          "settings",
+          "work_policy",
+        ]),
+    };
+  } catch {
+    return { capture: captureOptIn, reconciliation: true };
+  }
+}
+
+function findGitMarker(start) {
+  let current = start;
+  while (true) {
+    if (existsSync(join(current, ".git"))) return true;
+    const parent = dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+}
+
+function canonicalStateRoot(projectRoot) {
+  if (!findGitMarker(projectRoot)) {
+    try {
+      return join(realpathSync(projectRoot), ".anamnesis");
+    } catch {
+      return null;
+    }
+  }
+  const git = spawnSync(
+    "git",
+    ["-C", projectRoot, "worktree", "list", "--porcelain", "-z"],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 500 },
+  );
+  if (!git.error && git.status === 0) {
+    const first = git.stdout
+      .split("\0")
+      .find((entry) => entry.startsWith("worktree "))
+      ?.slice("worktree ".length);
+    return first ? join(realpathSync(first), ".anamnesis") : null;
+  }
+  return null;
+}
+
+function sessionCursorExists(projectRoot, sessionId) {
+  const stateRoot = canonicalStateRoot(projectRoot);
+  if (!stateRoot) return false;
+  const digest = createHash("sha256")
+    .update(`codex\0${sessionId}`, "utf8")
+    .digest("hex");
+  return existsSync(join(stateRoot, "work-cursors", `hook_${digest}.yaml`));
 }
 
 function writeContext(stdout) {
@@ -96,19 +299,39 @@ function writeContext(stdout) {
   );
 }
 
-function failOpen(reason) {
-  process.stderr.write(`[anamnesis] Work prompt hook skipped: ${reason}.\n`);
+function failOpen(reason = "") {
+  if (reason) {
+    process.stderr.write(`[anamnesis] Work prompt hook skipped: ${reason}.\n`);
+  }
   process.stdout.write("{}\n");
 }
 
 async function main() {
   const input = await readStdinBuffer();
+  if (input === null) {
+    failOpen();
+    return;
+  }
+  const payload = parsePayload(input);
+  if (!validStableId(payload.session_id) || !validStableId(payload.turn_id)) {
+    failOpen();
+    return;
+  }
   const projectRoot = resolve(
-    payloadCwd(input) ||
+    safeString(payload.cwd).trim() ||
       process.env.CODEX_PROJECT_DIR ||
       process.env.CLAUDE_PROJECT_DIR ||
       process.cwd(),
   );
+  const policy = projectPolicySignals(projectRoot);
+  if (
+    !policy.capture &&
+    !policy.reconciliation &&
+    !sessionCursorExists(projectRoot, payload.session_id)
+  ) {
+    failOpen();
+    return;
+  }
   const executable = findExecutable(projectRoot);
   if (!executable) {
     failOpen("executable unavailable");
@@ -124,6 +347,7 @@ async function main() {
       input,
       stdio: ["pipe", "pipe", "pipe"],
       maxBuffer: 8 * 1024 * 1024,
+      timeout: 35_000,
     },
   );
   if (result.error || result.status !== 0) {

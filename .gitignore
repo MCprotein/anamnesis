@@ -33,6 +33,8 @@ Thumbs.db
 **/.anamnesis/context/
 **/.anamnesis/handoff/
 **/.anamnesis/overrides/
+**/.anamnesis/work-inputs/
+**/.anamnesis/work-prompt-stage/
 
 # Lock files - prefer npm for v0.1
 yarn.lock

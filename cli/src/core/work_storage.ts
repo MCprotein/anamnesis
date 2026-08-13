@@ -18,10 +18,14 @@ export const WORK_SOURCE_EVENT_SCHEMA_VERSION = "anamnesis.work-source.v1";
 export const SOURCE_ENVELOPE_BINDINGS_SCHEMA_VERSION =
 	"anamnesis.source-envelope-bindings.v1" as const;
 
+let cachedCurrentProcessStartIdentity: string | undefined;
+
 export type WorkCaptureFidelity =
   | "native_exact"
   | "client_exact"
   | "agent_observed";
+
+export type WorkSourceAllocationStatus = "allocated" | "provisional";
 
 export interface WorkStateRoot {
   project_root: string;
@@ -38,7 +42,7 @@ export interface WorkSourceEventInput {
   client: string;
   contentType: string;
   fidelity: WorkCaptureFidelity;
-  allocationStatus: string;
+  allocationStatus: WorkSourceAllocationStatus;
   body: string | Buffer;
   attachmentRefs?: readonly string[];
 }
@@ -50,7 +54,7 @@ export interface WorkSourceEventEnvelope {
   client: string;
   content_type: string;
   fidelity: WorkCaptureFidelity;
-  allocation_status: string;
+  allocation_status: WorkSourceAllocationStatus;
   object_hash: string;
   object_path: string;
   attachment_refs: string[];
@@ -131,6 +135,14 @@ export interface AppendCanonicalTypedWorkProgressEventInput {
   expectedHead: string | null;
 }
 
+export interface AppendCanonicalTypedWorkEventWithPublishedSourceInput {
+	stateRoot: string;
+	sourceEventId: string;
+	ledgerPath: string;
+	ledgerEvent: WorkLedgerEvent;
+	expectedHead: string | null;
+}
+
 const DEFAULT_LOCK_TIMEOUT_MS = 2_000;
 const DEFAULT_LOCK_RETRY_MS = 10;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -180,6 +192,9 @@ export function publishWorkSourceEvent(
   options: WorkStorageOptions = {},
 ): PublishedWorkSourceEvent {
   assertSafeId(input.eventId, "event ID");
+  if (!["allocated", "provisional"].includes(input.allocationStatus)) {
+    throw new Error("source event allocation status must be allocated or provisional");
+  }
   const stateRoot = secureStateRoot(input.stateRoot);
   managedDescendant(stateRoot, path.join("work-inputs", "objects", `${input.eventId}.txt`));
   managedDescendant(stateRoot, path.join("work-inputs", "events", `${input.eventId}.yaml`));
@@ -299,18 +314,11 @@ export function appendCanonicalTypedWorkProgressEvent(
 		throw new Error("source-free Work progress event cannot contain source references");
 	}
 	const stateRoot = secureStateRoot(input.stateRoot);
-	const relativeLedger = path.relative(stateRoot, path.resolve(input.ledgerPath));
-	const ledgerParts = relativeLedger.split(path.sep);
-	if (
-		ledgerParts.length !== 3 ||
-		ledgerParts[0] !== "work-units" ||
-		!SAFE_ID.test(ledgerParts[1] ?? "") ||
-		ledgerParts[1] !== event.payload.work_id ||
-		ledgerParts[2] !== "ledger.jsonl"
-	) {
-		throw new Error("source-free Work progress ledger path is not canonical");
-	}
-	const ledgerPath = managedDescendant(stateRoot, relativeLedger);
+	const ledgerPath = canonicalTypedWorkLedgerPath(
+		stateRoot,
+		input.ledgerPath,
+		event.payload.work_id,
+	);
 	return withWorkLedgerLock(ledgerPath, options, () =>
 		appendPublishedLedgerUnlocked(
 			{
@@ -321,6 +329,50 @@ export function appendCanonicalTypedWorkProgressEvent(
 			stateRoot,
 		),
 	);
+}
+
+/** Bind an already immutable source envelope to a canonical typed Work event. */
+export function appendCanonicalTypedWorkEventWithPublishedSource(
+	input: AppendCanonicalTypedWorkEventWithPublishedSourceInput,
+	options: PublishAndAppendWorkSourceEventOptions = {},
+): PublishedWorkSourceAllocation {
+	assertSafeId(input.sourceEventId, "source event ID");
+	const typedEvent = parseTypedWorkEvent(input.ledgerEvent);
+	const stateRoot = secureStateRoot(input.stateRoot);
+	const ledgerPath = canonicalTypedWorkLedgerPath(
+		stateRoot,
+		input.ledgerPath,
+		typedEvent.payload.work_id,
+	);
+	const referencedIds = new Set<string>([input.sourceEventId]);
+	collectSourceEventIds(typedEvent.payload, referencedIds);
+	const orderedIds = [...referencedIds].sort(compareCodeUnits);
+	const deadline = Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
+	return withSourceEventLocks(stateRoot, orderedIds, options, deadline, () => {
+		const source = readPublishedWorkSourceEventUnlocked(stateRoot, input.sourceEventId);
+		const payload: Record<string, unknown> = {
+			...typedEvent.payload,
+			source_event_id: source.envelope.event_id,
+			source_envelope_hash: envelopeBytesHash(source.envelope),
+			source_object_hash: source.envelope.object_hash,
+			source_object_path: source.envelope.object_path,
+		};
+		assertPayloadSourceReferences(stateRoot, payload, source.envelope.event_id);
+		const ledger = withWorkLedgerLock(
+			ledgerPath,
+			{ lockTimeoutMs: options.ledgerLockTimeoutMs, lockRetryMs: options.ledgerLockRetryMs },
+			() => {
+				assertPublishedWorkSourceEvent(source);
+				return appendPublishedLedgerUnlocked({
+					ledgerPath,
+					event: { ...typedEvent, payload },
+					expectedHead: input.expectedHead,
+					onBeforeLedgerSync: options.onBeforeLedgerSync,
+				}, stateRoot);
+			},
+		);
+		return { source, ledger };
+	});
 }
 
 /**
@@ -380,6 +432,8 @@ function publishAndAppendWorkSourceEventInternal(
 	options: PublishAndAppendWorkSourceEventOptions,
 	typedLane: boolean,
 ): PublishedWorkSourceAllocation {
+	if (!["allocated", "provisional"].includes(input.source.allocationStatus))
+		throw new Error("source event allocation status must be allocated or provisional");
 	const sourceEvent: WorkLedgerEvent = {
 		...input.ledgerEvent,
 		payload: input.ledgerEvent.payload ?? {},
@@ -392,9 +446,16 @@ function publishAndAppendWorkSourceEventInternal(
 			"typed Work events require the canonical typed source publication API",
 		);
 	}
-	if (typedLane) parseTypedWorkEvent(sourceEvent);
+	const typedEvent = typedLane ? parseTypedWorkEvent(sourceEvent) : undefined;
   assertSafeId(input.source.eventId, "event ID");
   const stateRoot = secureStateRoot(input.source.stateRoot);
+	const ledgerPath = typedEvent
+		? canonicalTypedWorkLedgerPath(
+				stateRoot,
+				input.ledgerPath,
+				typedEvent.payload.work_id,
+			)
+		: input.ledgerPath;
   const referencedIds = new Set<string>([input.source.eventId]);
   collectSourceEventIds(input.ledgerEvent.payload ?? {}, referencedIds);
   const orderedIds = [...referencedIds].sort(compareCodeUnits);
@@ -410,14 +471,14 @@ function publishAndAppendWorkSourceEventInternal(
       source_object_path: source.envelope.object_path,
     };
     const appendOptions: AppendParameters = {
-      ledgerPath: input.ledgerPath,
+      ledgerPath,
       event: { ...input.ledgerEvent, payload },
       expectedHead: input.expectedHead,
       onBeforeLedgerSync: options.onBeforeLedgerSync,
     };
     assertPayloadSourceReferences(stateRoot, payload, source.envelope.event_id);
     const ledger = withWorkLedgerLock(
-      input.ledgerPath,
+      ledgerPath,
       {
         lockTimeoutMs: options.ledgerLockTimeoutMs,
         lockRetryMs: options.ledgerLockRetryMs,
@@ -433,6 +494,41 @@ function publishAndAppendWorkSourceEventInternal(
     );
     return { source, ledger };
   });
+}
+
+function canonicalTypedWorkLedgerPath(
+	stateRoot: string,
+	ledgerPath: string,
+	workId: string,
+): string {
+	const relativeLedger = path.relative(
+		stateRoot,
+		canonicalManagedCandidate(ledgerPath),
+	);
+	const ledgerParts = relativeLedger.split(path.sep);
+	if (
+		ledgerParts.length !== 3 ||
+		ledgerParts[0] !== "work-units" ||
+		!SAFE_ID.test(ledgerParts[1] ?? "") ||
+		ledgerParts[1] !== workId ||
+		ledgerParts[2] !== "ledger.jsonl"
+	) {
+		throw new Error("canonical typed Work ledger path is not canonical");
+	}
+	return managedDescendant(stateRoot, relativeLedger);
+}
+
+function canonicalManagedCandidate(candidate: string): string {
+	let current = path.resolve(candidate);
+	const missing: string[] = [];
+	while (!fs.existsSync(current)) {
+		missing.unshift(path.basename(current));
+		const parent = path.dirname(current);
+		if (parent === current)
+			throw new Error(`managed Work path has no trusted ancestor: ${candidate}`);
+		current = parent;
+	}
+	return path.join(fs.realpathSync(current), ...missing);
 }
 
 function isTypedWorkPayload(payload: Record<string, unknown> | undefined): boolean {
@@ -649,11 +745,37 @@ function isStrictWorkSourceEnvelope(value: unknown): value is WorkSourceEventEnv
 		envelope.schema_version === WORK_SOURCE_EVENT_SCHEMA_VERSION &&
 		typeof envelope.event_id === "string" && SAFE_ID.test(envelope.event_id) &&
 		typeof envelope.captured_at === "string" && typeof envelope.client === "string" &&
-		typeof envelope.content_type === "string" && typeof envelope.allocation_status === "string" &&
+		typeof envelope.content_type === "string" && ["allocated", "provisional"].includes(String(envelope.allocation_status)) &&
 		["native_exact", "client_exact", "agent_observed"].includes(String(envelope.fidelity)) &&
 		typeof envelope.object_hash === "string" && /^sha256:[a-f0-9]{64}$/.test(envelope.object_hash) &&
 		typeof envelope.object_path === "string" &&
 		Array.isArray(envelope.attachment_refs) && envelope.attachment_refs.every((item) => typeof item === "string");
+}
+
+function readPublishedWorkSourceEventUnlocked(
+	stateRoot: string,
+	eventId: string,
+): PublishedWorkSourceEvent {
+	const envelopePath = managedDescendant(stateRoot, path.join("work-inputs", "events", `${eventId}.yaml`));
+	let envelope: WorkSourceEventEnvelope;
+	try {
+		const bytes = readFileNoFollow(envelopePath);
+		envelope = JSON.parse(bytes.toString("utf8")) as WorkSourceEventEnvelope;
+		if (!isStrictWorkSourceEnvelope(envelope) || envelope.event_id !== eventId)
+			throw new Error("invalid source envelope");
+		if (!bytes.equals(Buffer.from(`${canonicalJson(envelope)}\n`, "utf8")))
+			throw new Error("non-canonical source envelope");
+	} catch (error) {
+		throw new Error(`source event ${eventId} is not published`, { cause: error });
+	}
+	const published = {
+		envelope,
+		envelope_path: envelopePath,
+		object_path: managedDescendant(stateRoot, envelope.object_path),
+		created: false,
+	};
+	assertPublishedWorkSourceEvent(published);
+	return published;
 }
 
 function assertPayloadObjectRefsMatch(payload: Record<string, unknown>, stateRoot: string, ids: Set<string>): void {
@@ -739,6 +861,21 @@ export function assertPublishedWorkSourceEvent(
   if (!envelopeBytes.equals(expectedEnvelope)) {
     throw new Error(`source event ${published.envelope.event_id} envelope mismatch`);
   }
+}
+
+export function readPublishedWorkSourceEvent(
+	stateRoot: string,
+	eventId: string,
+): PublishedWorkSourceEvent {
+	assertSafeId(eventId, "source event ID");
+	const root = secureStateRoot(stateRoot);
+	return withSourceEventLocks(
+		root,
+		[eventId],
+		{},
+		Date.now() + DEFAULT_LOCK_TIMEOUT_MS,
+		() => readPublishedWorkSourceEventUnlocked(root, eventId),
+	);
 }
 
 function resolveGitWorktreeRoot(projectRoot: string): string | undefined {
@@ -975,8 +1112,13 @@ function currentSourceLockOwner(): SourceLockOwner {
     schema_version: "anamnesis.work-source-lock.v1",
     nonce: randomBytes(16).toString("hex"),
     pid: process.pid,
-    process_start: processStartIdentity(process.pid),
+    process_start: currentProcessStartIdentity(),
   };
+}
+
+function currentProcessStartIdentity(): string {
+  cachedCurrentProcessStartIdentity ??= processStartIdentity(process.pid);
+  return cachedCurrentProcessStartIdentity;
 }
 
 function processStartIdentity(pid: number): string {

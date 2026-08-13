@@ -222,6 +222,7 @@ function namespaceRows(namespace: HelpNamespace) {
         { command: "work create", description: "Create a Work from one exact source prompt and a strict contract draft." },
         { command: "work amend", description: "Append requirements to the current Work contract." },
         { command: "work transition", description: "Record one requirement status transition with evidence." },
+        { command: "work prompt", description: "Classify, allocate, or garbage-collect privately staged user prompts." },
         { command: "work status", description: "Refold and report authoritative Work state." },
         { command: "work brief", description: "Prepare a session-scoped reconciliation briefing." },
         { command: "work confirm", description: "Acknowledge that a prepared briefing was actually presented." },
