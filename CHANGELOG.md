@@ -95,6 +95,18 @@ could include breaking changes.
   files, plus typecheck, lint, build, adapter parity, status, and diff checks;
   independent code review returned `APPROVE` and adversarial verification
   returned `PASS`.
+- Added same-turn Work reconciliation at safe tool boundaries without a daemon
+  or background scheduler. Codex uses a dedicated canonical-tool
+  `PostToolUse` wrapper; Claude Code uses one `PostToolBatch` hook per parallel
+  batch. Both discard prompts, transcripts, tool input, and tool output before
+  invoking the CLI and forward only documented stable IDs and canonical tool
+  names. A per-session durable cursor lock stores a bounded hashed boundary
+  FIFO together with the meaningful-action counter and optional
+  `injected_unconfirmed` observation in one atomic mutation, so retries count
+  once while distinct concurrent actions accumulate. Same-turn output uses a
+  structural 8,000-character budget,
+  terminal Work never auto-continues, and hooks do not launch agents, tmux,
+  daemons, schedulers, or provider runtimes.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile

@@ -50,6 +50,13 @@ Known implications:
   and distinguish hidden `injected_unconfirmed` delivery from a user-visible
   confirmation. Cursor has no equivalent native prompt hook and remains on the
   explicit `work brief`/`work switch` command path.
+- Same-turn Work cadence uses provider-specific safe boundaries: Codex
+  `PostToolUse` with a canonical tool matcher and Claude Code `PostToolBatch`
+  once after a parallel batch. Dedicated wrappers forward only stable IDs and
+  canonical tool names, never tool input/output or transcript content. One
+  lock-scoped cursor mutation and a bounded boundary-ID FIFO make
+  concurrent/retried events idempotent. Cursor still has no equivalent native
+  lifecycle event.
 - Codex project-local skill discovery was verified with `codex exec -C
   <tmp-project> --ignore-user-config --sandbox read-only` over
   `.codex/skills/anamnesis-smoke/SKILL.md`, which loaded the skill and returned

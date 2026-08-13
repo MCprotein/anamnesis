@@ -63,6 +63,7 @@ export interface FileAction {
     command: string;
     timeout?: number;
     statusMessage?: string;
+    additionalContextLimit?: number;
   };
 }
 

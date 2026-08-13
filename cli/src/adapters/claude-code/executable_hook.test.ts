@@ -129,6 +129,184 @@ describe("executableHookRenderer (claude-code)", () => {
     }
   });
 
+  it("registers the base Work safe-boundary hook for PostToolBatch", () => {
+    const hookPath = "adapters/claude-code/hooks/work-post-tool-batch.mjs";
+    fs.writeFileSync(path.join(fragmentDir, hookPath), "#!/usr/bin/env node\n");
+    const fragment: FragmentDefinition = {
+      id: "base",
+      version: 22,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "PostToolBatch",
+        source: hookPath,
+        adapters_supported: ["claude-code"],
+        side_effects: ["local-write"],
+      },
+      makeContext(fragmentDir, fragment),
+    );
+    expect(actions).toHaveLength(1);
+    expect(actions[0]?.kind).toBe("file");
+    if (actions[0]?.kind === "file") {
+      expect(actions[0].path).toBe(
+        ".claude/hooks/work-post-tool-batch.mjs",
+      );
+      expect(actions[0].settingsHook).toEqual({ event: "PostToolBatch" });
+    }
+  });
+
+  it("sanitizes Claude PostToolBatch and filters read-only calls", () => {
+    const projectRoot = tmpDir();
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/work-post-tool-batch.mjs",
+    );
+    fs.writeFileSync(
+      shimPath,
+      [
+        "#!/usr/bin/env node",
+        "const chunks = [];",
+        "for await (const chunk of process.stdin) chunks.push(chunk);",
+        "const input = Buffer.concat(chunks).toString('utf8');",
+        'if (process.argv.slice(2).join(" ") !== "work hook-post-tool-use --client claude-code") process.exit(41);',
+        'if (input.includes("PRIVATE") || input.includes("transcript")) process.exit(42);',
+        'const value = JSON.parse(input);',
+        'if (JSON.stringify(value) !== JSON.stringify({session_id:"session-c",prompt_id:"prompt-c",events:[{tool_name:"Edit",tool_use_id:"edit-1"},{tool_name:"Agent",tool_use_id:"agent-1"}]})) process.exit(43);',
+        'process.stdout.write("claude boundary briefing\\n");',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.chmodSync(shimPath, 0o755);
+    const result = spawnSync(process.execPath, [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, ANAMNESIS_BIN: shimPath },
+      input: `${JSON.stringify({
+        cwd: projectRoot,
+        session_id: "session-c",
+        prompt_id: "prompt-c",
+        transcript_path: "/PRIVATE/transcript",
+        tool_calls: [
+          { tool_name: "Read", tool_use_id: "read-1", tool_input: "PRIVATE" },
+          { tool_name: "Edit", tool_use_id: "edit-1", tool_response: "PRIVATE" },
+          { tool_name: "Agent", tool_use_id: "agent-1", tool_input: "PRIVATE" },
+        ],
+      })}\n`,
+      encoding: "utf8",
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PostToolBatch",
+        additionalContext: "claude boundary briefing\n",
+      },
+    });
+  });
+
+  it("skips Claude subagent and read-only batches without launching the CLI", () => {
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/work-post-tool-batch.mjs",
+    );
+    for (const payload of [
+      {
+        agent_id: "child-1",
+        tool_calls: [{ tool_name: "Edit", tool_use_id: "edit-1" }],
+      },
+      { tool_calls: [{ tool_name: "Read", tool_use_id: "read-1" }] },
+    ]) {
+      const result = spawnSync(process.execPath, [hook], {
+        env: { ...process.env, ANAMNESIS_BIN: "/must/not/run" },
+        input: `${JSON.stringify(payload)}\n`,
+        encoding: "utf8",
+      });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toBe("");
+    }
+  });
+
+  it("skips Claude batches with missing stable IDs before launching the CLI", () => {
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/work-post-tool-batch.mjs",
+    );
+    for (const payload of [
+      {
+        session_id: "session-c",
+        tool_calls: [{ tool_name: "Edit", tool_use_id: "edit-1" }],
+      },
+      {
+        session_id: "session-c",
+        prompt_id: "prompt-c",
+        tool_calls: [{ tool_name: "Edit", tool_use_id: "" }],
+      },
+    ]) {
+      const result = spawnSync(process.execPath, [hook], {
+        env: { ...process.env, ANAMNESIS_BIN: "/must/not/run" },
+        input: `${JSON.stringify(payload)}\n`,
+        encoding: "utf8",
+      });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toBe("");
+    }
+  });
+
+  it("skips an unlinked Claude session before resolving the foreground CLI", () => {
+    const projectRoot = tmpDir();
+    const binDir = path.join(projectRoot, "bin");
+    const marker = path.join(projectRoot, "unexpected-cli-call");
+    fs.mkdirSync(binDir);
+    const shim = path.join(binDir, "anamnesis");
+    fs.writeFileSync(
+      shim,
+      `#!/bin/sh\ntouch ${JSON.stringify(marker)}\nexit 0\n`,
+      "utf8",
+    );
+    fs.chmodSync(shim, 0o755);
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/work-post-tool-batch.mjs",
+    );
+    const result = spawnSync(process.execPath, [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, PATH: binDir },
+      input: `${JSON.stringify({
+        cwd: projectRoot,
+        session_id: "unlinked-session",
+        prompt_id: "prompt-1",
+        tool_calls: [{ tool_name: "Edit", tool_use_id: "edit-1" }],
+      })}\n`,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("fails open and UI-silent when the Claude boundary CLI is unavailable", () => {
+    const projectRoot = tmpDir();
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/work-post-tool-batch.mjs",
+    );
+    const result = spawnSync(process.execPath, [hook], {
+      cwd: projectRoot,
+      env: { CLAUDE_PROJECT_DIR: projectRoot, PATH: "" },
+      input: `${JSON.stringify({
+        session_id: "session-c",
+        prompt_id: "prompt-c",
+        tool_calls: [{ tool_name: "Write", tool_use_id: "write-1" }],
+      })}\n`,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+  });
+
   it("forwards exact Claude UserPromptSubmit stdin bytes to the Work CLI", () => {
     const projectRoot = tmpDir();
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");

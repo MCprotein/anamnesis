@@ -487,6 +487,25 @@ not retain the submitted prompt: exact raw capture requires a separate bounded
 staging lifecycle with explicit allocated, provisional, discarded, and
 garbage-collected outcomes.
 
+The next thin adapter slice evaluates elapsed-time and meaningful-action
+cadence inside a long foreground turn without adding a timer or daemon. Codex
+uses documented `PostToolUse` identities; Claude Code uses `PostToolBatch` so a
+parallel tool batch produces one model-context injection point rather than
+concurrent competing messages. Provider wrappers discard tool input/output,
+transcript paths, and prompt content before invoking anamnesis. Only stable
+session/turn or prompt identity, opaque tool-use IDs, and allowlisted canonical
+tool names cross the boundary.
+
+Each newly observed meaningful boundary increments the session-local counter
+once. A bounded hash FIFO, counter update, and optional hidden injection are
+committed through one durable lock-scoped cursor mutation, so duplicate delivery does not
+inflate cadence and distinct concurrent events are accumulated. Tool
+boundaries do not pretend to be `work_resume`; they pass no semantic trigger
+and become due only through configured action or silence cadence. They never
+append Work-ledger events. Visible confirmation resets the counter but retains
+the FIFO against late retries; switching Work resets the disposable
+reconciliation state. Terminal lifecycle still forces `auto_continue = false`.
+
 ## Automatic delegation and parallelism policy
 
 Anamnesis may require the current agent to assess and use parallel execution,

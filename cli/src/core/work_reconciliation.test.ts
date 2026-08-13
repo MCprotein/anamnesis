@@ -588,6 +588,35 @@ describe("reconciliation cursor transitions", () => {
 			pending_delivery: null,
 			confirmed_delivery_fingerprint: fingerprint,
 			injected_unconfirmed: null,
+			recent_meaningful_action_boundary_ids: [],
+		});
+	});
+
+	it("resets the visible-confirmation counter while preserving the dedupe ring", () => {
+		const delivery = {
+			fingerprint: sha256("ring-briefing"),
+			ledger_head: sha256("ring-head"),
+			contract_revision: 1,
+			contract_hash: sha256("ring-contract"),
+			policy_hash: sha256("ring-policy"),
+		};
+		const boundary = sha256("recent-boundary");
+		const state = prepareReconciliationDelivery(
+			{
+				...emptyWorkCursorReconciliationState(),
+				meaningful_actions_since_confirmed: 5,
+				recent_meaningful_action_boundary_ids: [boundary],
+			},
+			delivery,
+		);
+		expect(
+			confirmReconciliationDelivery(state, {
+				...delivery,
+				confirmed_at: "2026-08-13T00:06:00.000Z",
+			}),
+		).toMatchObject({
+			meaningful_actions_since_confirmed: 0,
+			recent_meaningful_action_boundary_ids: [boundary],
 		});
 	});
 

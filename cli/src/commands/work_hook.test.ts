@@ -20,6 +20,7 @@ import {
 } from "./work.js";
 import {
 	deriveWorkHookCursorId,
+	handleWorkPostToolBoundary,
 	handleWorkUserPromptSubmit,
 	renderWorkBriefingContext,
 	type WorkHookClient,
@@ -137,6 +138,19 @@ function seed(root: string, client: WorkHookClient, sessionId: string): string {
 
 function codexPayload(sessionId: string, turnId: string, prompt = "continue") {
 	return { session_id: sessionId, turn_id: turnId, prompt };
+}
+
+function postToolPayload(
+	sessionId: string,
+	turnId: string,
+	toolUseId: string,
+	toolName = "apply_patch",
+) {
+	return {
+		session_id: sessionId,
+		turn_id: turnId,
+		events: [{ tool_name: toolName, tool_use_id: toolUseId }],
+	};
 }
 
 describe("foreground Work UserPromptSubmit hook", () => {
@@ -315,9 +329,50 @@ describe("foreground Work UserPromptSubmit hook", () => {
 				},
 			},
 		});
+		const hostileBriefing = {
+			...briefing,
+			work: {
+				...briefing.work,
+				completion_contract: "완료-계약-".repeat(2_000),
+			},
+			blockers: {
+				requirement_ids: Array.from(
+					{ length: 100 },
+					(_, index) => `req_blocker_${index.toString().padStart(3, "0")}`,
+				),
+				conflict_ids: Array.from(
+					{ length: 100 },
+					(_, index) => `conflict_${index.toString().padStart(3, "0")}`,
+				),
+			},
+			delta: {
+				added_requirement_ids: requirements.map((item) => item.id),
+				status_changed: requirements.map((item) => ({
+					requirement_id: item.id,
+					from: "pending" as const,
+					to: "implemented_unverified" as const,
+				})),
+				superseded: requirements.map((item, index) => ({
+					requirement_id: item.id,
+					superseded_by: `req_replacement_${index.toString().padStart(3, "0")}`,
+				})),
+				conflicts_added: Array.from(
+					{ length: 100 },
+					(_, index) => `conflict_added_${index}`,
+				),
+				conflicts_resolved: Array.from(
+					{ length: 100 },
+					(_, index) => `conflict_resolved_${index}`,
+				),
+			},
+		};
 		for (const detail of ["compact", "full"] as const) {
-			const context = renderWorkBriefingContext(briefing, detail, true);
-			expect(context.length).toBeLessThanOrEqual(32_000);
+			const context = renderWorkBriefingContext(
+				hostileBriefing,
+				detail,
+				true,
+			);
+			expect(context.length).toBeLessThanOrEqual(8_000);
 			expect(context).toContain("Required retrieval:");
 			expect(context).toContain("Completion contract:");
 			expect(context).toContain("Configured required review gates");
@@ -329,6 +384,19 @@ describe("foreground Work UserPromptSubmit hook", () => {
 				expect(context).toContain(
 					"Full requirement enumeration unavailable in one hook context",
 				);
+				expect(context).not.toContain("Current requirements:");
+			}
+		}
+		for (const detail of ["compact", "full"] as const) {
+			const context = renderWorkBriefingContext(
+				hostileBriefing,
+				detail,
+				true,
+				8_000,
+			);
+			expect(context.length).toBeLessThanOrEqual(8_000);
+			expect(context).toContain("Required retrieval:");
+			if (detail === "full") {
 				expect(context).not.toContain("Current requirements:");
 			}
 		}
@@ -482,6 +550,133 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			expect(fs.readFileSync(file)).not.toContain(secret);
 			expect(fs.readFileSync(file, "utf8")).not.toContain(secretHash);
 		}
+	});
+});
+
+describe("same-turn Work post-tool hook", () => {
+	it("counts each stable meaningful boundary once and briefs on the fifth action", () => {
+		const root = projectRoot();
+		const cursorId = seed(root, "codex", "post-session");
+		for (let index = 1; index <= 4; index += 1) {
+			expect(
+				handleWorkPostToolBoundary({
+					project_root: root,
+					client: "codex",
+					payload: postToolPayload("post-session", "turn-1", `tool-${index}`),
+					now: `2026-08-13T00:00:0${index}.000Z`,
+				}),
+			).toMatchObject({ status: "not_due", context: null });
+		}
+		const fifth = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: postToolPayload("post-session", "turn-1", "tool-5"),
+			now: "2026-08-13T00:00:05.000Z",
+		});
+		expect(fifth).toMatchObject({ status: "briefing_due" });
+		expect(fifth.context?.length).toBeLessThanOrEqual(8_000);
+		expect(fifth.context).toContain("Required retrieval:");
+
+		const duplicate = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: postToolPayload("post-session", "turn-1", "tool-5"),
+			now: "2026-08-13T00:00:06.000Z",
+		});
+		expect(duplicate).toMatchObject({
+			status: "not_due",
+			reason: "duplicate_boundary",
+		});
+		const state = readWorkCursor(
+			resolveWorkStateRoot(root).state_root,
+			cursorId,
+		).cursor?.reconciliation;
+		expect(state?.meaningful_actions_since_confirmed).toBe(5);
+		expect(state?.recent_meaningful_action_boundary_ids).toHaveLength(5);
+		expect(state?.injected_unconfirmed).not.toBeNull();
+	});
+
+	it("counts distinct batch events, ignores forbidden tools, and has no first-tool resume trigger", () => {
+		const root = projectRoot();
+		const cursorId = seed(root, "claude-code", "claude-post");
+		const first = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "claude-code",
+			payload: {
+				session_id: "claude-post",
+				prompt_id: "prompt-1",
+				events: [
+					{ tool_name: "Edit", tool_use_id: "edit-1" },
+					{ tool_name: "Write", tool_use_id: "write-1" },
+					{ tool_name: "Read", tool_use_id: "read-1" },
+				],
+			},
+			now: "2026-08-13T00:00:01.000Z",
+		});
+		expect(first).toMatchObject({ status: "not_due", reason: "not_due" });
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor
+				?.reconciliation,
+		).toMatchObject({ meaningful_actions_since_confirmed: 2 });
+	});
+
+	it("uses max silence after an unconfirmed prompt injection and never retains secrets", () => {
+		const root = projectRoot();
+		seed(root, "codex", "silence-session");
+		expect(
+			handleWorkUserPromptSubmit({
+				project_root: root,
+				client: "codex",
+				payload: codexPayload("silence-session", "turn-1"),
+				now: "2026-08-13T00:00:00.000Z",
+			}).status,
+		).toBe("briefing_due");
+		const secret = "POST_TOOL_SECRET_91f1";
+		const due = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: {
+				...postToolPayload("silence-session", "turn-1", "tool-secret"),
+				tool_input: secret,
+				tool_response: secret,
+				transcript_path: secret,
+			},
+			now: "2026-08-13T00:05:00.000Z",
+		});
+		expect(due.status).toBe("briefing_due");
+		expect(JSON.stringify(due)).not.toContain(secret);
+		expect(
+			fs.readFileSync(
+				path.join(
+					resolveWorkStateRoot(root).state_root,
+					"work-cursors",
+					`${deriveWorkHookCursorId("codex", "silence-session")}.yaml`,
+				),
+				"utf8",
+			),
+		).not.toContain(secret);
+	});
+
+	it("fails open for missing stable IDs and does not onboard an unlinked session", () => {
+		const root = projectRoot();
+		expect(
+			handleWorkPostToolBoundary({
+				project_root: root,
+				client: "codex",
+				payload: { session_id: "x", events: [] },
+			}),
+		).toMatchObject({ status: "unavailable", context: null });
+		expect(
+			handleWorkPostToolBoundary({
+				project_root: root,
+				client: "codex",
+				payload: postToolPayload("unlinked", "turn-1", "tool-1"),
+			}),
+		).toMatchObject({
+			status: "unavailable",
+			reason: "cursor_unavailable",
+			context: null,
+		});
 	});
 });
 

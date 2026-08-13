@@ -44,6 +44,16 @@
           }
         ]
       }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/work-post-tool-batch.mjs"
+          }
+        ]
+      }
     ]
   }
 }

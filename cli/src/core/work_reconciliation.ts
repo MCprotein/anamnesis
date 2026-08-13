@@ -287,6 +287,7 @@ export function emptyWorkCursorReconciliationState(): WorkCursorReconciliationSt
 		pending_delivery: null,
 		confirmed_delivery_fingerprint: null,
 		injected_unconfirmed: null,
+		recent_meaningful_action_boundary_ids: [],
 	};
 }
 
@@ -377,6 +378,8 @@ export function confirmReconciliationDelivery(
 		pending_delivery: null,
 		confirmed_delivery_fingerprint: input.fingerprint,
 		injected_unconfirmed: null,
+		recent_meaningful_action_boundary_ids:
+			state.recent_meaningful_action_boundary_ids ?? [],
 	};
 }
 

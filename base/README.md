@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 15 capabilities (covers all 6 types; v21+)
+├── fragment.yaml                # 17 capabilities (covers all 6 types; v22+)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -20,6 +20,7 @@ base/
     │   ├── inject-handoff.sh     # SessionStart: active.md + warm active archive pointers
     │   ├── handoff-reminder.sh   # Stop: deduped dirty-work handoff reminder
     │   ├── work-briefing.sh      # UserPromptSubmit: due Work briefing
+    │   ├── work-post-tool-batch.mjs # PostToolBatch: same-turn Work cadence
     │   └── remind-uncommitted.sh # PostToolUse:Edit: nags on dirty git tree
     ├── commands/
     │   ├── load-context.md      # /load-context slash command
@@ -36,7 +37,8 @@ base/
 └── adapters/codex/
     └── hooks/
         ├── session-start.mjs    # Native Codex SessionStart JSON wrapper
-        └── work-user-prompt.mjs # Native Codex Work prompt JSON wrapper
+        ├── work-user-prompt.mjs # Native Codex Work prompt JSON wrapper
+        └── work-post-tool-use.mjs # Native Codex same-turn Work wrapper
 ```
 
 ## Why every capability type?
@@ -64,6 +66,7 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 | `task-harnesses/context-continuity.yaml` | `.anamnesis/task-harnesses/context-continuity.yaml` |
 | `adapters/codex/hooks/session-start.mjs` | `.anamnesis/codex-native-hooks/session-start.mjs` + `.codex/hooks.json` `SessionStart` registration |
 | `adapters/codex/hooks/work-user-prompt.mjs` | `.anamnesis/codex-native-hooks/work-user-prompt.mjs` + `.codex/hooks.json` `UserPromptSubmit` registration |
+| `adapters/codex/hooks/work-post-tool-use.mjs` | `.anamnesis/codex-native-hooks/work-post-tool-use.mjs` + canonical `.codex/hooks.json` `PostToolUse` registration |
 | `adapters/claude-code/hooks/remind-uncommitted.sh` | `.anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh` + `.anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs` + `.codex/hooks.json` `PostToolUse` registration |
 | `adapters/claude-code/hooks/handoff-reminder.sh` | `.anamnesis/codex-hooks/base-Stop-handoff-reminder.sh` + `.anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs` + `.codex/hooks.json` `Stop` registration |
 | `adapters/claude-code/hooks/inject-ontology.sh` | `.claude/hooks/inject-ontology.sh` (mode 0o755) |
@@ -71,6 +74,7 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 | `adapters/claude-code/hooks/inject-handoff.sh` | `.claude/hooks/inject-handoff.sh` (mode 0o755) |
 | `adapters/claude-code/hooks/handoff-reminder.sh` | `.claude/hooks/handoff-reminder.sh` (mode 0o755) |
 | `adapters/claude-code/hooks/work-briefing.sh` | `.claude/hooks/work-briefing.sh` (mode 0o755) + `.claude/settings.json` `UserPromptSubmit` registration |
+| `adapters/claude-code/hooks/work-post-tool-batch.mjs` | `.claude/hooks/work-post-tool-batch.mjs` (mode 0o755) + matcherless `.claude/settings.json` `PostToolBatch` registration |
 | `adapters/claude-code/commands/load-context.md` | `.claude/commands/load-context.md` |
 | `adapters/claude-code/commands/handoff-prepare.md` | `.claude/commands/handoff-prepare.md` |
 | `adapters/claude-code/skills/load-context/SKILL.md` | `.claude/skills/load-context/SKILL.md` |

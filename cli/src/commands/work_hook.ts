@@ -1,8 +1,10 @@
 import { findAgentfile, readAgentfile } from "../core/agentfile.js";
 import {
+	mutateWorkCursorAtomic,
 	readWorkCursor,
 	updateWorkCursorAtomic,
 	type WorkCursor,
+	type WorkCursorReconciliationState,
 } from "../core/work_cursor.js";
 import { readWorkLedger } from "../core/work_ledger.js";
 import {
@@ -52,9 +54,18 @@ interface ParsedBoundary {
 	boundaryStableId: string;
 }
 
+interface ParsedPostToolBoundary extends ParsedBoundary {
+	meaningfulBoundaryIds: string[];
+}
+
 const MAX_STABLE_ID_LENGTH = 512;
-const MAX_CAS_ATTEMPTS = 3;
-const MAX_HOOK_CONTEXT_CHARACTERS = 32_000;
+// Prompt injection still uses revision CAS because its expensive projection
+// read need not serialize tool hooks. Same-turn action accounting uses the
+// lock-scoped cursor mutator below instead.
+const MAX_PROMPT_CAS_ATTEMPTS = 65;
+const MAX_HOOK_CONTEXT_CHARACTERS = 8_000;
+const MAX_SAME_TURN_CONTEXT_CHARACTERS = 8_000;
+const MAX_RECENT_MEANINGFUL_BOUNDARIES = 64;
 const LIST_BUDGET = 2_000;
 const REQUIREMENT_SUMMARY_BUDGET = 4_000;
 
@@ -81,7 +92,7 @@ export function handleWorkUserPromptSubmit(
 	}
 	const now = input.now ?? new Date().toISOString();
 
-	for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
+	for (let attempt = 0; attempt < MAX_PROMPT_CAS_ATTEMPTS; attempt += 1) {
 		const read = readWorkCursor(
 			state.state_root,
 			cursorId,
@@ -183,6 +194,165 @@ export function handleWorkUserPromptSubmit(
 	return unavailable("cursor_unavailable", cursorId, boundaryId);
 }
 
+/**
+ * Foreground same-turn service for already-sanitized post-tool envelopes.
+ * Wrappers must discard tool input, tool response, and transcript content.
+ */
+export function handleWorkPostToolBoundary(
+	input: WorkHookInput,
+): WorkHookResult {
+	const parsed = parsePostToolBoundary(input.client, input.payload);
+	if (!parsed.ok) return unavailable(parsed.reason);
+	const cursorId = deriveWorkHookCursorId(input.client, parsed.value.sessionId);
+	const aggregateBoundaryId = sha256(
+		parsed.value.meaningfulBoundaryIds.join("\0"),
+	);
+	if (parsed.value.meaningfulBoundaryIds.length === 0) {
+		return result("not_due", "not_due", cursorId, aggregateBoundaryId);
+	}
+	let state: ReturnType<typeof resolveWorkStateRoot>;
+	try {
+		state = resolveWorkStateRoot(input.project_root, input.state_root);
+	} catch {
+		return unavailable("cursor_unavailable", cursorId, aggregateBoundaryId);
+	}
+	const now = input.now ?? new Date().toISOString();
+
+	try {
+		const mutation = mutateWorkCursorAtomic(
+			state.state_root,
+			cursorId,
+			(cursor) => {
+				if (cursor.worktree_fingerprint !== state.worktree_fingerprint) {
+					throw new Error("Work cursor belongs to a different worktree");
+				}
+				const reconciliation =
+					cursor.reconciliation ?? emptyWorkCursorReconciliationState();
+				const recent =
+					reconciliation.recent_meaningful_action_boundary_ids ?? [];
+				const novel = parsed.value.meaningfulBoundaryIds.filter(
+					(id) => !recent.includes(id),
+				);
+				if (novel.length === 0) {
+					return {
+						next_cursor: null,
+						result: result(
+							"not_due",
+							"duplicate_boundary",
+							cursorId,
+							aggregateBoundaryId,
+						),
+					};
+				}
+			const status = statusWork({
+				project_root: input.project_root,
+				state_root: input.state_root,
+				work_id: cursor.work_id,
+			});
+			const projection = status.projection;
+			const policy = projection.policy_snapshot?.policy;
+			if (!policy) {
+				throw new Error("Work policy unavailable");
+			}
+			if (policy.reconciliation.preset === "off") {
+				return {
+					next_cursor: null,
+					result: result(
+						"not_due",
+						"policy_off",
+						cursorId,
+						aggregateBoundaryId,
+					),
+				};
+			}
+			const briefing = buildBriefing(status.ledger_path, projection, cursor);
+			const nextCount =
+				reconciliation.meaningful_actions_since_confirmed + novel.length;
+			if (!Number.isSafeInteger(nextCount)) {
+				throw new Error("meaningful action counter overflow");
+			}
+			const nextRecent = [...recent, ...novel].slice(
+				-MAX_RECENT_MEANINGFUL_BOUNDARIES,
+			);
+			let nextReconciliation: WorkCursorReconciliationState = {
+				...reconciliation,
+				meaningful_actions_since_confirmed: nextCount,
+				recent_meaningful_action_boundary_ids: nextRecent,
+			};
+			const observation = reconciliation.injected_unconfirmed;
+			const sameObservedFingerprint =
+				observation?.delivery.fingerprint === briefing.semantic_fingerprint;
+			const actionsAtObservation = sameObservedFingerprint
+				? observation.meaningful_actions_observed
+				: 0;
+			const decision = evaluateReconciliationDue({
+				policy,
+				lifecycle: projection.lifecycle,
+				safe_boundary: true,
+				trigger: null,
+				now,
+				last_confirmed_at: sameObservedFingerprint
+					? observation.injected_at
+					: reconciliation.last_reconciled_at,
+				meaningful_actions_since_confirmed: Math.max(
+					0,
+					nextCount - actionsAtObservation,
+				),
+				current_fingerprint: briefing.semantic_fingerprint,
+				confirmed_fingerprint: reconciliation.confirmed_delivery_fingerprint,
+				last_observed_fingerprint:
+					observation?.delivery.fingerprint ??
+					reconciliation.confirmed_delivery_fingerprint,
+			});
+			const context = decision.due
+				? renderWorkBriefingContext(
+						briefing,
+						policy.reconciliation.detail,
+						decision.auto_continue,
+						MAX_SAME_TURN_CONTEXT_CHARACTERS,
+					)
+				: null;
+			if (decision.due) {
+				nextReconciliation = observeInjectedReconciliation(nextReconciliation, {
+					delivery: deliveryBinding(briefing, projection),
+					injected_at: now,
+					boundary_id: aggregateBoundaryId,
+					meaningful_actions_observed: nextCount,
+				});
+			}
+			const truth = projectionTruth(projection);
+			const nextCursor: WorkCursor = {
+				...cursor,
+				work_id: truth.work_id,
+				observed_revision: truth.revision,
+				last_event_id: truth.last_event_id,
+				projection_hash: truth.projection_hash,
+				updated_at: now,
+				reconciliation: nextReconciliation,
+			};
+			return {
+				next_cursor: nextCursor,
+				result: decision.due
+					? {
+							...result(
+								"briefing_due",
+								"briefing_due",
+								cursorId,
+								aggregateBoundaryId,
+							),
+							context,
+						}
+					: result("not_due", "not_due", cursorId, aggregateBoundaryId),
+			};
+			},
+			{ lockTimeoutMs: 30_000, lockRetryMs: 2 },
+		);
+		return mutation.result;
+	} catch {
+		return unavailable("cursor_unavailable", cursorId, aggregateBoundaryId);
+	}
+}
+
 function projectReconciliationEnabled(projectRoot: string): boolean {
 	try {
 		if (!findAgentfile(projectRoot)) return false;
@@ -242,6 +412,62 @@ function parseBoundary(
 	return { ok: true, value: { sessionId, boundaryStableId } };
 }
 
+function parsePostToolBoundary(
+	client: WorkHookClient,
+	payload: unknown,
+):
+	| { ok: true; value: ParsedPostToolBoundary }
+	| { ok: false; reason: "invalid_payload" | "missing_stable_id" } {
+	if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+		return { ok: false, reason: "invalid_payload" };
+	}
+	const value = payload as Record<string, unknown>;
+	const sessionId = validStableId(value.session_id);
+	const boundaryStableId = validStableId(
+		client === "codex" ? value.turn_id : value.prompt_id,
+	);
+	if (!sessionId || !boundaryStableId) {
+		return { ok: false, reason: "missing_stable_id" };
+	}
+	if (
+		!Array.isArray(value.events) ||
+		value.events.length === 0 ||
+		value.events.length > MAX_RECENT_MEANINGFUL_BOUNDARIES
+	) {
+		return { ok: false, reason: "invalid_payload" };
+	}
+	const allowedTools =
+		client === "codex"
+			? new Set(["Bash", "apply_patch", "Agent"])
+			: new Set(["Bash", "Edit", "Write", "NotebookEdit", "Agent"]);
+	const meaningfulBoundaryIds: string[] = [];
+	for (const event of value.events) {
+		if (!event || typeof event !== "object" || Array.isArray(event)) {
+			return { ok: false, reason: "invalid_payload" };
+		}
+		const entry = event as Record<string, unknown>;
+		const toolName = validStableId(entry.tool_name);
+		const toolUseId = validStableId(entry.tool_use_id);
+		if (!toolName || !toolUseId) {
+			return { ok: false, reason: "missing_stable_id" };
+		}
+		if (!allowedTools.has(toolName)) continue;
+		meaningfulBoundaryIds.push(
+			sha256(
+				`${canonicalClient(client)}\0${sessionId}\0${boundaryStableId}\0${toolName}\0${toolUseId}`,
+			),
+		);
+	}
+	return {
+		ok: true,
+		value: {
+			sessionId,
+			boundaryStableId,
+			meaningfulBoundaryIds: uniqueIds(meaningfulBoundaryIds),
+		},
+	};
+}
+
 function validStableId(value: unknown): string | null {
 	if (
 		typeof value !== "string" ||
@@ -295,7 +521,11 @@ export function renderWorkBriefingContext(
 	briefing: WorkBriefingSnapshot,
 	detail: "compact" | "full",
 	autoContinue: boolean,
+	maxCharacters = MAX_HOOK_CONTEXT_CHARACTERS,
 ): string {
+	if (!Number.isSafeInteger(maxCharacters) || maxCharacters < 4_000) {
+		throw new Error("invalid Work hook context structural budget");
+	}
 	const counts = briefing.requirement_ids_by_status;
 	const changedRequirementIds = uniqueIds([
 		...briefing.delta.added_requirement_ids,
@@ -311,90 +541,91 @@ export function renderWorkBriefingContext(
 	const nextRequirement = briefing.requirements.find(
 		(requirement) => requirement.id === briefing.next_requirement_ids[0],
 	);
+	// The mandatory skeleton is deliberately capped field-by-field. Optional
+	// detail then consumes the one remaining shared budget; nothing is blindly
+	// sliced after assembly.
 	const lines = [
 		"Anamnesis Work briefing is due at this foreground boundary.",
 		"Delivery observation: injected_unconfirmed. Hidden context injection does not prove the user saw a briefing.",
 		autoContinue
 			? "Before continuing, read the complete authoritative Work status, visibly brief the requirements, done, remaining, blockers, and progress, then continue the same task in this turn."
 			: "Visibly brief the requirements, done, remaining, blockers, and progress. This Work is terminal; do not continue or restart it automatically.",
-		`Required retrieval: run ${shellCommandForStatus(briefing.work_id)} before the visible briefing; compact context never replaces the complete projection.`,
-		`Work: ${boundedSemanticField(briefing.work_id, 256)} — ${boundedSemanticField(briefing.work.title ?? "untitled", 512)} (contract revision ${briefing.contract_revision}, lifecycle ${briefing.lifecycle})`,
-		`Completion contract: ${boundedSemanticField(briefing.work.completion_contract ?? "not recorded", 1_000)}`,
-		`Contract delta: baseline=${briefing.baseline_available ? "confirmed" : "unavailable"}; added=${boundedIds(briefing.delta.added_requirement_ids)}; status_changed=${boundedStatusChanges(briefing.delta.status_changed)}; superseded=${boundedSuperseded(briefing.delta.superseded)}; conflicts_added=${boundedIds(briefing.delta.conflicts_added)}; conflicts_resolved=${boundedIds(briefing.delta.conflicts_resolved)}`,
+		`Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; compact context never replaces the complete projection.`,
+		`Completion contract: ${boundedSemanticField(briefing.work.completion_contract ?? "not recorded", 700)}`,
 		`Progress: ${briefing.progress.percent}% (${briefing.progress.verified}/${briefing.progress.denominator} verified/applicable)`,
-		`Counts: pending=${counts.pending.length}, in_progress=${counts.in_progress.length}, implemented_unverified=${counts.implemented_unverified.length}, verified=${counts.verified.length}, blocked=${counts.blocked.length}, waived=${counts.waived.length}`,
-		`Configured required review gates (not proof of satisfaction): ${briefing.configured_required_gates.join(", ") || "none"}`,
-		`Changed requirements: ${boundedRequirements(changedRequirements)}`,
-		`At-risk requirements: ${boundedRequirements(atRiskRequirements)}`,
-		`Next requirement IDs: ${boundedIds(briefing.next_requirement_ids)}`,
-		`Next action: ${nextRequirement ? formatRequirement(nextRequirement) : autoContinue ? "reconcile the completion contract and configured review gates before claiming completion" : "none; report the terminal state only"}`,
-		`Blocker IDs: ${boundedIds([
-			...briefing.blockers.requirement_ids,
-			...briefing.blockers.conflict_ids,
-		])}`,
-		`Complete authoritative pointer: Work ${briefing.work_id}, semantic fingerprint ${briefing.semantic_fingerprint}.`,
+		`Contract delta: baseline=${briefing.baseline_available ? "confirmed" : "unavailable"}; added=${boundedIds(briefing.delta.added_requirement_ids, 250)}; status_changed=${boundedStatusChanges(briefing.delta.status_changed, 250)}; superseded=${boundedSuperseded(briefing.delta.superseded, 250)}; conflicts_added=${boundedIds(briefing.delta.conflicts_added, 250)}; conflicts_resolved=${boundedIds(briefing.delta.conflicts_resolved, 250)}`,
+		`Configured required review gates (not proof of satisfaction): ${boundedIds(briefing.configured_required_gates, 400)}`,
+		`Changed requirements: ${boundedRequirements(changedRequirements, 500)}`,
+		`At-risk requirements: ${boundedRequirements(atRiskRequirements, 500)}`,
+		`Next requirement IDs: ${boundedIds(briefing.next_requirement_ids, 500)}`,
+		`Next action: ${nextRequirement ? formatRequirement(nextRequirement, 128, 640) : autoContinue ? "reconcile the completion contract and configured review gates before claiming completion" : "none; report the terminal state only"}`,
+		`Blocker IDs: ${boundedIds(
+			[...briefing.blockers.requirement_ids, ...briefing.blockers.conflict_ids],
+			650,
+		)}`,
+		`Complete authoritative pointer: Work ${boundedSemanticField(briefing.work_id, 128)}, semantic fingerprint ${briefing.semantic_fingerprint}.`,
 	];
+	const appendOptional = (line: string): boolean => {
+		const used = lines.reduce((total, item) => total + item.length + 1, 0);
+		if (used + line.length + 1 > maxCharacters) return false;
+		lines.push(line);
+		return true;
+	};
+
+	const optionalLines = [
+		`Work: ${boundedSemanticField(briefing.work_id, 256)} — ${boundedSemanticField(briefing.work.title ?? "untitled", 512)} (contract revision ${briefing.contract_revision}, lifecycle ${briefing.lifecycle})`,
+		`Counts: pending=${counts.pending.length}, in_progress=${counts.in_progress.length}, implemented_unverified=${counts.implemented_unverified.length}, verified=${counts.verified.length}, blocked=${counts.blocked.length}, waived=${counts.waived.length}`,
+	];
+	for (const line of optionalLines) appendOptional(line);
+
 	if (detail === "full") {
 		const requirementLines = briefing.requirements.map(
 			(requirement) =>
 				`- ${requirement.id} [${requirement.status}]: ${requirement.summary}`,
 		);
-		const requiredCharacters = requirementLines.reduce(
-			(total, line) => total + line.length + 1,
-			"Current requirements:".length + 1,
-		);
-		const usedCharacters = lines.reduce(
-			(total, line) => total + line.length + 1,
-			0,
-		);
-		if (usedCharacters + requiredCharacters <= MAX_HOOK_CONTEXT_CHARACTERS) {
-			lines.push("Current requirements:", ...requirementLines);
+		const fullBlock = ["Current requirements:", ...requirementLines].join("\n");
+		if (appendOptional(fullBlock)) {
+			// Full is deliberately one atomic block: never a partial enumeration.
 		} else {
-			lines.push(
-				`Full requirement enumeration unavailable in one hook context (${briefing.requirements.length} requirements, ${requiredCharacters} characters). The required authoritative status retrieval above remains mandatory.`,
+			appendOptional(
+				`Full requirement enumeration unavailable in one hook context (${briefing.requirements.length} requirements, ${fullBlock.length} characters). The required authoritative status retrieval above remains mandatory.`,
 			);
 		}
 	}
-	const context = lines.join("\n");
-	if (context.length > MAX_HOOK_CONTEXT_CHARACTERS) {
-		throw new Error("bounded Work hook context exceeded its structural budget");
-	}
-	return context;
+	return lines.join("\n");
 }
 
-function boundedIds(ids: readonly string[]): string {
-	return boundedList(ids, LIST_BUDGET, (id) => id);
+function boundedIds(ids: readonly string[], budget = LIST_BUDGET): string {
+	return boundedList(ids, budget, (id) => id);
 }
 
 function boundedStatusChanges(
 	changes: WorkBriefingSnapshot["delta"]["status_changed"],
+	budget = LIST_BUDGET,
 ): string {
 	return boundedList(
 		changes,
-		LIST_BUDGET,
+		budget,
 		(change) => `${change.requirement_id}:${change.from}->${change.to}`,
 	);
 }
 
 function boundedSuperseded(
 	changes: WorkBriefingSnapshot["delta"]["superseded"],
+	budget = LIST_BUDGET,
 ): string {
 	return boundedList(
 		changes,
-		LIST_BUDGET,
+		budget,
 		(change) => `${change.requirement_id}->${change.superseded_by}`,
 	);
 }
 
 function boundedRequirements(
 	requirements: WorkBriefingSnapshot["requirements"],
+	budget = REQUIREMENT_SUMMARY_BUDGET,
 ): string {
-	return boundedList(
-		requirements,
-		REQUIREMENT_SUMMARY_BUDGET,
-		formatRequirement,
-		" | ",
-	);
+	return boundedList(requirements, budget, formatRequirement, " | ");
 }
 
 function uniqueIds(ids: readonly string[]): string[] {
@@ -410,8 +641,10 @@ function boundedSemanticField(value: string, maxLength: number): string {
 
 function formatRequirement(
 	requirement: WorkBriefingSnapshot["requirements"][number],
+	idLength = 256,
+	summaryLength = 512,
 ): string {
-	return `${boundedSemanticField(requirement.id, 256)} [${requirement.status}]: ${boundedSemanticField(requirement.summary, 512)}`;
+	return `${boundedSemanticField(requirement.id, idLength)} [${requirement.status}]: ${boundedSemanticField(requirement.summary, summaryLength)}`;
 }
 
 function boundedList<T>(

@@ -21,6 +21,16 @@
             "statusMessage": "Running anamnesis PostToolUse hook"
           }
         ]
+      },
+      {
+        "matcher": "^(Bash|apply_patch|Agent)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; exec node \"$root/.anamnesis/codex-native-hooks/work-post-tool-use.mjs\"'",
+            "additionalContextLimit": 4000
+          }
+        ]
       }
     ],
     "Stop": [

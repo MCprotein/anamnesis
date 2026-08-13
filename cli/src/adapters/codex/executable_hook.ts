@@ -22,6 +22,9 @@ const CODEX_NATIVE_SESSION_START_WRAPPER =
 const CODEX_NATIVE_SESSION_START_MATCHER = "startup|resume|clear";
 const CODEX_NATIVE_WORK_USER_PROMPT_WRAPPER =
   ".anamnesis/codex-native-hooks/work-user-prompt.mjs";
+const CODEX_NATIVE_WORK_POST_TOOL_WRAPPER =
+  ".anamnesis/codex-native-hooks/work-post-tool-use.mjs";
+const CODEX_NATIVE_WORK_POST_TOOL_MATCHER = "^(Bash|apply_patch|Agent)$";
 
 const PRE_COMMIT_CONTENT = `#!/usr/bin/env bash
 # anamnesis Codex pre-commit bridge.
@@ -82,6 +85,12 @@ export const executableHookRenderer: CapabilityRenderer = {
     const regionId = `codex-hook-${basename.replace(/\.[^.]+$/, "")}`;
     const gitPreCommitEnabled = hasGitHooksDir(ctx.projectRoot);
     const nativeWorkUserPrompt = baseNativeWorkUserPromptSupported({
+      fragmentId: ctx.fragment.id,
+      event: capability.event,
+      basename,
+      fragmentDir: ctx.fragmentDir,
+    });
+    const nativeWorkPostTool = baseNativeWorkPostToolSupported({
       fragmentId: ctx.fragment.id,
       event: capability.event,
       basename,
@@ -158,6 +167,24 @@ export const executableHookRenderer: CapabilityRenderer = {
       });
     }
 
+    if (nativeWorkPostTool) {
+      actions.push({
+        kind: "file",
+        path: CODEX_NATIVE_WORK_POST_TOOL_WRAPPER,
+        fragmentId: ctx.fragment.id,
+        fragmentVersion: ctx.fragment.version,
+        content: fs.readFileSync(nativeWorkPostTool.templatePath, "utf8"),
+        mode: 0o755,
+        sideEffects,
+        codexHook: {
+          event: "PostToolUse",
+          matcher: CODEX_NATIVE_WORK_POST_TOOL_MATCHER,
+          command: codexNativeNodeCommand(CODEX_NATIVE_WORK_POST_TOOL_WRAPPER),
+          additionalContextLimit: 4000,
+        },
+      });
+    }
+
     const scriptActionPath = path.posix.join(
       ".anamnesis/codex-hooks",
       codexHookFilename(ctx.fragment.id, capability.event, basename),
@@ -177,7 +204,7 @@ export const executableHookRenderer: CapabilityRenderer = {
       scriptActionAdded = true;
     };
 
-    if (nativeShellHook && !nativeWorkUserPrompt) {
+    if (nativeShellHook && !nativeWorkUserPrompt && !nativeWorkPostTool) {
       addScriptAction();
       const wrapperPath = path.posix.join(
         ".anamnesis/codex-native-hooks",
@@ -207,7 +234,8 @@ export const executableHookRenderer: CapabilityRenderer = {
     if (
       gitPreCommitEnabled &&
       capability.event !== "SessionStart" &&
-      !nativeWorkUserPrompt
+      !nativeWorkUserPrompt &&
+      !nativeWorkPostTool
     ) {
       addScriptAction();
       actions.push({
@@ -534,6 +562,29 @@ function baseNativeWorkUserPromptSupported(params: {
   if (!fs.existsSync(templatePath)) {
     throw new RenderError(
       `base Codex UserPromptSubmit wrapper not found: ${templatePath}`,
+    );
+  }
+  return { templatePath };
+}
+
+function baseNativeWorkPostToolSupported(params: {
+  fragmentId: string;
+  event: string;
+  basename: string;
+  fragmentDir: string;
+}): { templatePath: string } | null {
+  if (params.fragmentId !== "base") return null;
+  if (params.event !== `PostToolUse:${CODEX_NATIVE_WORK_POST_TOOL_MATCHER}`) {
+    return null;
+  }
+  if (params.basename !== "work-post-tool-use.mjs") return null;
+  const templatePath = path.join(
+    params.fragmentDir,
+    "adapters/codex/hooks/work-post-tool-use.mjs",
+  );
+  if (!fs.existsSync(templatePath)) {
+    throw new RenderError(
+      `base Codex PostToolUse wrapper not found: ${templatePath}`,
     );
   }
   return { templatePath };

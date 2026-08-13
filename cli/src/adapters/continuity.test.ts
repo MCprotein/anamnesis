@@ -134,6 +134,15 @@ describe("cross-agent context continuity acceptance", () => {
       matcher: "Edit",
     });
 
+    const workBoundary = fileByPath(
+      actions,
+      ".claude/hooks/work-post-tool-batch.mjs",
+    );
+    expect(workBoundary.mode).toBe(0o755);
+    expect(workBoundary.settingsHook).toEqual({ event: "PostToolBatch" });
+    expect(workBoundary.content).not.toContain("tmux");
+    expect(workBoundary.content).not.toContain("spawn_agent");
+
     expectContainsAll(
       fileByPath(actions, ".claude/commands/load-context.md").content,
       [".anamnesis/ontology/", "system_graph.yaml", "anamnesis context query"],
@@ -230,6 +239,21 @@ describe("cross-agent context continuity acceptance", () => {
       ),
       statusMessage: "Running anamnesis Stop hook",
     });
+
+    const workBoundary = fileByPath(
+      actions,
+      ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
+    );
+    expect(workBoundary.codexHook).toEqual({
+      event: "PostToolUse",
+      matcher: "^(Bash|apply_patch|Agent)$",
+      command: codexNativeNodeCommand(
+        ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
+      ),
+      additionalContextLimit: 4000,
+    });
+    expect(workBoundary.content).not.toContain("tmux");
+    expect(workBoundary.content).not.toContain("spawn_agent");
 
     expectContainsAll(regionById(actions, "codex-cmd-load-context").content, [
       "/load-context",

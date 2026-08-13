@@ -188,6 +188,7 @@ import {
   type WorkStatusResult,
 } from "./commands/work.js";
 import {
+  handleWorkPostToolBoundary,
   handleWorkUserPromptSubmit,
   type WorkHookClient,
 } from "./commands/work_hook.js";
@@ -3010,14 +3011,15 @@ async function main(argv: string[]): Promise<number> {
         sub !== "brief" &&
         sub !== "confirm" &&
         sub !== "switch" &&
-        sub !== "hook-user-prompt"
+        sub !== "hook-user-prompt" &&
+        sub !== "hook-post-tool-use"
       ) {
         console.error(`error: unknown 'work' subcommand: ${sub}`);
         console.error("usage: anamnesis work <create|amend|transition|status|brief|confirm|switch> [options]");
         return 1;
       }
       try {
-        if (sub === "hook-user-prompt") {
+        if (sub === "hook-user-prompt" || sub === "hook-post-tool-use") {
           let payload: unknown;
           try {
             const source = new TextDecoder("utf-8", { fatal: true }).decode(
@@ -3027,14 +3029,18 @@ async function main(argv: string[]): Promise<number> {
           } catch {
             return 0;
           }
-          const result = handleWorkUserPromptSubmit({
+          const hookInput = {
             project_root:
               optionalWorkFlag(flags, "project-root") ?? process.cwd(),
             state_root: optionalWorkFlag(flags, "state-root"),
             client: workHookClient(flags),
             payload,
             now: workTimestamp(flags, false),
-          });
+          };
+          const result =
+            sub === "hook-user-prompt"
+              ? handleWorkUserPromptSubmit(hookInput)
+              : handleWorkPostToolBoundary(hookInput);
           if (flags.json === true) {
             await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
           } else if (result.context) {

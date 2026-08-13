@@ -112,6 +112,7 @@ export interface FileChange {
     command: string;
     timeout?: number;
     statusMessage?: string;
+    additionalContextLimit?: number;
   };
 }
 

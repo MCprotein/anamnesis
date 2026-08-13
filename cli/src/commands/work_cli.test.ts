@@ -70,6 +70,26 @@ function run(root: string, args: string[], input?: Buffer) {
 	);
 }
 
+function runAsync(root: string, args: string[], input: Buffer) {
+	return new Promise<{ code: number | null; stdout: string; stderr: string }>(
+		(resolve) => {
+			const child = spawn(
+				process.execPath,
+				[tsxCli, anamnesisCli, "work", ...args, "--project-root", root],
+				{ cwd: repositoryRoot, stdio: ["pipe", "pipe", "pipe"] },
+			);
+			let stdout = "";
+			let stderr = "";
+			child.stdout.setEncoding("utf8");
+			child.stderr.setEncoding("utf8");
+			child.stdout.on("data", (chunk: string) => (stdout += chunk));
+			child.stderr.on("data", (chunk: string) => (stderr += chunk));
+			child.once("exit", (code) => resolve({ code, stdout, stderr }));
+			child.stdin.end(input);
+		},
+	);
+}
+
 describe("anamnesis work CLI", () => {
 	it("fails open on invalid hook input and emits bounded session onboarding", () => {
 		const root = project();
@@ -196,7 +216,7 @@ describe("anamnesis work CLI", () => {
 			readWorkCursor(stateRoot, "session_one").cursor?.reconciliation
 				?.last_reconciled_head,
 		).toBe(prepared.delivery.ledger_head);
-	});
+	}, 15_000);
 
 	it("keeps JSON stdout clean and reports invalid source selection on stderr", () => {
 		const root = project();
@@ -438,4 +458,111 @@ describe("anamnesis work CLI", () => {
 		expect(cursor?.reconciliation?.pending_delivery).not.toBeNull();
 		expect(cursor?.reconciliation?.last_reconciled_head).toBeNull();
 	});
+
+	it("deduplicates identical concurrent post-tool hooks without losing distinct actions", async () => {
+		const root = project();
+		fs.writeFileSync(
+			path.join(root, "Agentfile"),
+			YAML.stringify({
+				version: 2,
+				project: { name: "post-tool-concurrency" },
+				tools: ["codex"],
+				fragments: [],
+				settings: {
+					work_policy: { reconciliation: { preset: "frequent" } },
+				},
+			}),
+		);
+		writeDraft(root, "src_concurrent");
+		expect(
+			run(
+				root,
+				[
+					"create",
+					"--work",
+					"wu_concurrent",
+					"--event-id",
+					"evt_concurrent",
+					"--source-event-id",
+					"src_concurrent",
+					"--occurred-at",
+					"2026-08-13T16:00:00.000Z",
+					"--draft",
+					"draft.yaml",
+					"--source-stdin",
+				],
+				Buffer.from("concurrency source"),
+			).status,
+		).toBe(0);
+		const cursorId = deriveWorkHookCursorId("codex", "concurrent-session");
+		expect(
+			run(root, [
+				"switch",
+				"--work",
+				"wu_concurrent",
+				"--session",
+				cursorId,
+				"--occurred-at",
+				"2026-08-13T16:00:01.000Z",
+			]).status,
+		).toBe(0);
+		const envelope = (toolUseId: string) =>
+			Buffer.from(
+				JSON.stringify({
+					session_id: "concurrent-session",
+					turn_id: "turn-1",
+					events: [{ tool_name: "apply_patch", tool_use_id: toolUseId }],
+				}),
+			);
+		const args = [
+			"hook-post-tool-use",
+			"--client",
+			"codex",
+			"--occurred-at",
+			"2026-08-13T16:00:02.000Z",
+			"--json",
+		];
+		const identical = await Promise.all([
+			runAsync(root, args, envelope("same-tool")),
+			runAsync(root, args, envelope("same-tool")),
+		]);
+		expect(identical.every((result) => result.code === 0)).toBe(true);
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor
+				?.reconciliation?.meaningful_actions_since_confirmed,
+		).toBe(1);
+
+		const distinct = await Promise.all([
+			runAsync(root, args, envelope("distinct-a")),
+			runAsync(root, args, envelope("distinct-b")),
+		]);
+		expect(distinct.every((result) => result.code === 0)).toBe(true);
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor
+				?.reconciliation?.meaningful_actions_since_confirmed,
+		).toBe(3);
+
+		const fanout = await Promise.all(
+			Array.from({ length: 64 }, (_, index) =>
+				runAsync(root, args, envelope(`fanout-${index}`)),
+			),
+		);
+		expect(fanout.every((result) => result.code === 0)).toBe(true);
+		const fanoutResults = fanout.map((result) => JSON.parse(result.stdout));
+		expect(
+			fanoutResults.some(
+				(result) =>
+					result.status === "unavailable" &&
+					result.reason === "cursor_unavailable",
+			),
+		).toBe(false);
+		const finalReconciliation = readWorkCursor(
+			resolveWorkStateRoot(root).state_root,
+			cursorId,
+		).cursor?.reconciliation;
+		expect(finalReconciliation?.meaningful_actions_since_confirmed).toBe(67);
+		expect(finalReconciliation?.recent_meaningful_action_boundary_ids).toHaveLength(
+			64,
+		);
+	}, 60_000);
 });

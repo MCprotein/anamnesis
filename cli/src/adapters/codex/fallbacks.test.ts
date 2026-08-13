@@ -266,6 +266,202 @@ describe("codex executable_hook fallback", () => {
     ).toBe(false);
   });
 
+  it("selects the dedicated base PostToolUse Work wrapper", () => {
+    fs.mkdirSync(path.join(fragmentDir, "adapters/codex/hooks"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/codex/hooks/work-post-tool-use.mjs"),
+      "console.log('{}');\n",
+    );
+    const fragment: FragmentDefinition = {
+      id: "base",
+      version: 22,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+    const actions = executableHookRenderer.plan(
+      {
+        type: "executable_hook",
+        event: "PostToolUse:^(Bash|apply_patch|Agent)$",
+        source: "adapters/codex/hooks/work-post-tool-use.mjs",
+        adapters_supported: ["codex"],
+        side_effects: ["local-write"],
+      },
+      makeContext(fragmentDir, fragment),
+    );
+
+    const wrapper = actions.find(
+      (action) =>
+        action.kind === "file" &&
+        action.path ===
+          ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
+    );
+    expect(wrapper?.kind).toBe("file");
+    if (wrapper?.kind === "file") {
+      expect(wrapper.codexHook).toEqual({
+        event: "PostToolUse",
+        matcher: "^(Bash|apply_patch|Agent)$",
+        command: codexNativeNodeCommand(
+          ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
+        ),
+        additionalContextLimit: 4000,
+      });
+      expect(wrapper.codexHook).not.toHaveProperty("statusMessage");
+    }
+    expect(
+      actions.some(
+        (action) =>
+          action.kind === "file" &&
+          action.path.includes("base-PostToolUse-work-post-tool-use"),
+      ),
+    ).toBe(false);
+  });
+
+  it("sanitizes Codex PostToolUse before invoking the Work CLI", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-boundary-");
+    const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-post-tool-use.mjs",
+    );
+    fs.writeFileSync(
+      shimPath,
+      [
+        "#!/usr/bin/env node",
+        "const chunks = [];",
+        "for await (const chunk of process.stdin) chunks.push(chunk);",
+        "const input = Buffer.concat(chunks).toString('utf8');",
+        'if (process.argv.slice(2).join(" ") !== "work hook-post-tool-use --client codex") process.exit(41);',
+        'if (input.includes("PRIVATE_INPUT") || input.includes("PRIVATE_OUTPUT") || input.includes("transcript")) process.exit(42);',
+        'const value = JSON.parse(input);',
+        'if (JSON.stringify(value) !== JSON.stringify({session_id:"session-1",turn_id:"turn-1",events:[{tool_name:"apply_patch",tool_use_id:"tool-1"}]})) process.exit(43);',
+        'process.stdout.write("brief and continue\\n");',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.chmodSync(shimPath, 0o755);
+
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      env: { ...process.env, ANAMNESIS_BIN: shimPath },
+      input: `${JSON.stringify({
+        cwd: projectRoot,
+        session_id: "session-1",
+        turn_id: "turn-1",
+        hook_event_name: "PostToolUse",
+        tool_name: "apply_patch",
+        tool_use_id: "tool-1",
+        tool_input: { patch: "PRIVATE_INPUT" },
+        tool_response: "PRIVATE_OUTPUT",
+        transcript_path: "/private/transcript",
+      })}\n`,
+      encoding: "utf8",
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PostToolUse",
+        additionalContext: "brief and continue\n",
+      },
+    });
+    expect(result.stdout).not.toContain("PRIVATE");
+  });
+
+  it("skips unsupported Codex tools without launching the CLI", () => {
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-post-tool-use.mjs",
+    );
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      env: { ...process.env, ANAMNESIS_BIN: "/must/not/run" },
+      input: `${JSON.stringify({ tool_name: "Read", tool_use_id: "tool-1" })}\n`,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+  });
+
+  it("skips Codex tool boundaries with missing stable IDs before launching the CLI", () => {
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-post-tool-use.mjs",
+    );
+    for (const payload of [
+      { session_id: "session-1", tool_name: "Bash", tool_use_id: "tool-1" },
+      {
+        session_id: "session-1",
+        turn_id: "turn-1",
+        tool_name: "Bash",
+        tool_use_id: "",
+      },
+    ]) {
+      const result = spawnSync(process.execPath, [wrapperPath], {
+        env: { ...process.env, ANAMNESIS_BIN: "/must/not/run" },
+        input: `${JSON.stringify(payload)}\n`,
+        encoding: "utf8",
+      });
+      expect(result.status).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({});
+      expect(result.stderr).toBe("");
+    }
+  });
+
+  it("skips an unlinked Codex session before resolving the foreground CLI", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-boundary-unlinked-");
+    const binDir = path.join(projectRoot, "bin");
+    const marker = path.join(projectRoot, "unexpected-cli-call");
+    fs.mkdirSync(binDir);
+    const shim = path.join(binDir, "anamnesis");
+    fs.writeFileSync(
+      shim,
+      `#!/bin/sh\ntouch ${JSON.stringify(marker)}\nexit 0\n`,
+      "utf8",
+    );
+    fs.chmodSync(shim, 0o755);
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-post-tool-use.mjs",
+    );
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      env: { ...process.env, PATH: binDir },
+      input: `${JSON.stringify({
+        cwd: projectRoot,
+        session_id: "unlinked-session",
+        turn_id: "turn-1",
+        tool_name: "Bash",
+        tool_use_id: "tool-1",
+      })}\n`,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it("fails open and UI-silent when the Codex boundary CLI is unavailable", () => {
+    const projectRoot = tmpDir("anamnesis-codex-work-boundary-missing-");
+    const wrapperPath = path.resolve(
+      "base/adapters/codex/hooks/work-post-tool-use.mjs",
+    );
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: projectRoot,
+      env: { CODEX_PROJECT_DIR: projectRoot, PATH: "" },
+      input: `${JSON.stringify({
+        session_id: "session-1",
+        turn_id: "turn-1",
+        tool_name: "Bash",
+        tool_use_id: "tool-1",
+      })}\n`,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({});
+    expect(result.stderr).toBe("");
+  });
+
   it("forwards exact UserPromptSubmit bytes and isolates child stderr", () => {
     const projectRoot = tmpDir("anamnesis-codex-work-prompt-");
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");

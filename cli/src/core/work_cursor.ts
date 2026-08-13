@@ -29,6 +29,23 @@ export interface WorkCursorWriteOptions {
 	lockRetryMs?: number;
 }
 
+export interface WorkCursorMutation<T> {
+	/** Null records no change and leaves the cursor revision untouched. */
+	next_cursor: WorkCursor | null;
+	result: T;
+}
+
+export interface WorkCursorMutationResult<T> {
+	cursor: WorkCursor;
+	path: string;
+	result: T;
+}
+
+export type WorkCursorMutationOptions = Omit<
+	WorkCursorWriteOptions,
+	"expectedCursorRevision"
+>;
+
 export interface NewWorkCursorInput {
 	cursor_id: string;
 	client_session_ref: string | null;
@@ -45,6 +62,7 @@ export interface WorkCursorReconciliationState {
 	pending_delivery: WorkCursorPendingDelivery | null;
 	confirmed_delivery_fingerprint: string | null;
 	injected_unconfirmed?: WorkCursorInjectedObservation | null;
+	recent_meaningful_action_boundary_ids?: string[];
 }
 
 export interface WorkCursorInjectedObservation {
@@ -147,6 +165,7 @@ function parseReconciliationState(
 		"pending_delivery",
 		"confirmed_delivery_fingerprint",
 		"injected_unconfirmed",
+		"recent_meaningful_action_boundary_ids",
 	]);
 	const unknown = Object.keys(state).find((key) => !allowed.has(key));
 	if (unknown) {
@@ -155,7 +174,9 @@ function parseReconciliationState(
 		);
 	}
 	for (const field of [...allowed].filter(
-		(field) => field !== "injected_unconfirmed",
+		(field) =>
+			field !== "injected_unconfirmed" &&
+			field !== "recent_meaningful_action_boundary_ids",
 	)) {
 		if (!(field in state)) {
 			throw new Error(
@@ -207,6 +228,19 @@ function parseReconciliationState(
 		state.injected_unconfirmed !== null
 	) {
 		parseInjectedObservation(state.injected_unconfirmed);
+	}
+	if (state.recent_meaningful_action_boundary_ids !== undefined) {
+		if (
+			!Array.isArray(state.recent_meaningful_action_boundary_ids) ||
+			state.recent_meaningful_action_boundary_ids.length > 64 ||
+			state.recent_meaningful_action_boundary_ids.some((id) => !isHash(id)) ||
+			new Set(state.recent_meaningful_action_boundary_ids).size !==
+				state.recent_meaningful_action_boundary_ids.length
+		) {
+			throw new Error(
+				"invalid Work cursor: recent_meaningful_action_boundary_ids must be a unique SHA-256 FIFO of at most 64 entries",
+			);
+		}
 	}
 	return state as unknown as WorkCursorReconciliationState;
 }
@@ -425,58 +459,97 @@ export function writeWorkCursorAtomic(
 				`stale Work cursor write: expected revision ${String(options.expectedCursorRevision)}, found ${String(priorRevision)}`,
 			);
 		}
-		const nextRevision = (priorRevision ?? 0) + 1;
-		if (
-			cursor.cursor_revision !== undefined &&
-			cursor.cursor_revision !== priorRevision &&
-			cursor.cursor_revision !== nextRevision
-		) {
-			throw new Error(
-				`invalid Work cursor revision: expected next revision ${nextRevision}`,
-			);
-		}
-		const normalized: WorkCursor = {
-			...cursor,
-			cursor_revision: nextRevision,
-		};
-		// Validate the exact value before touching the disposable cache on disk.
-		parseWorkCursor(YAML.stringify(normalized));
-		const directory = path.dirname(target);
-		assertManagedWritePath(stateRoot, target);
-		io.mkdirSync(directory, { recursive: true });
-		const temporary = `${target}.tmp-${process.pid}-${Math.random().toString(16).slice(2)}`;
-		let file: number | undefined;
-		try {
-			file = io.openSync(
-				temporary,
-				fs.constants.O_WRONLY |
-					fs.constants.O_CREAT |
-					fs.constants.O_EXCL |
-					fs.constants.O_NOFOLLOW,
-				0o600,
-			);
-			io.writeFileSync(file, YAML.stringify(normalized), "utf8");
-			io.fsyncSync(file);
-			io.closeSync(file);
-			file = undefined;
-			io.renameSync(temporary, target);
-			const dir = io.openSync(directory, "r");
-			try {
-				io.fsyncSync(dir);
-			} finally {
-				io.closeSync(dir);
-			}
-		} catch (error) {
-			if (file !== undefined) io.closeSync(file);
-			try {
-				fs.unlinkSync(temporary);
-			} catch {
-				// Best-effort cleanup; cursor files are explicitly disposable.
-			}
-			throw error;
-		}
+		writeWorkCursorUnlocked(stateRoot, target, cursor, priorRevision, io);
 		return target;
 	});
+}
+
+/**
+ * Mutate one cursor while holding its durable lock across read, validation,
+ * decision, and write. The callback must not call another cursor writer.
+ */
+export function mutateWorkCursorAtomic<T>(
+	stateRoot: string,
+	cursorId: string,
+	mutator: (cursor: WorkCursor) => WorkCursorMutation<T>,
+	options: WorkCursorMutationOptions = {},
+): WorkCursorMutationResult<T> {
+	const target = workCursorPath(stateRoot, cursorId);
+	return withWorkLedgerLock(target, options, () => {
+		const prior = readPriorCursorForWrite(stateRoot, cursorId);
+		if (!prior) throw new Error(`missing Work cursor: ${cursorId}`);
+		const mutation = mutator(prior);
+		if (mutation.next_cursor === null) {
+			return { cursor: prior, path: target, result: mutation.result };
+		}
+		if (mutation.next_cursor.cursor_id !== cursorId) {
+			throw new Error("Work cursor mutation cannot change cursor_id");
+		}
+		const cursor = writeWorkCursorUnlocked(
+			stateRoot,
+			target,
+			mutation.next_cursor,
+			prior.cursor_revision ?? 0,
+			defaultFs,
+		);
+		return { cursor, path: target, result: mutation.result };
+	});
+}
+
+function writeWorkCursorUnlocked(
+	stateRoot: string,
+	target: string,
+	cursor: WorkCursor,
+	priorRevision: number | null,
+	io: WorkCursorFs,
+): WorkCursor {
+	const nextRevision = (priorRevision ?? 0) + 1;
+	if (
+		cursor.cursor_revision !== undefined &&
+		cursor.cursor_revision !== priorRevision &&
+		cursor.cursor_revision !== nextRevision
+	) {
+		throw new Error(
+			`invalid Work cursor revision: expected next revision ${nextRevision}`,
+		);
+	}
+	const normalized: WorkCursor = { ...cursor, cursor_revision: nextRevision };
+	parseWorkCursor(YAML.stringify(normalized));
+	const directory = path.dirname(target);
+	assertManagedWritePath(stateRoot, target);
+	io.mkdirSync(directory, { recursive: true });
+	const temporary = `${target}.tmp-${process.pid}-${Math.random().toString(16).slice(2)}`;
+	let file: number | undefined;
+	try {
+		file = io.openSync(
+			temporary,
+			fs.constants.O_WRONLY |
+				fs.constants.O_CREAT |
+				fs.constants.O_EXCL |
+				fs.constants.O_NOFOLLOW,
+			0o600,
+		);
+		io.writeFileSync(file, YAML.stringify(normalized), "utf8");
+		io.fsyncSync(file);
+		io.closeSync(file);
+		file = undefined;
+		io.renameSync(temporary, target);
+		const dir = io.openSync(directory, "r");
+		try {
+			io.fsyncSync(dir);
+		} finally {
+			io.closeSync(dir);
+		}
+	} catch (error) {
+		if (file !== undefined) io.closeSync(file);
+		try {
+			fs.unlinkSync(temporary);
+		} catch {
+			// Best-effort cleanup; cursor files are explicitly disposable.
+		}
+		throw error;
+	}
+	return normalized;
 }
 
 export function switchWorkCursorAtomic(

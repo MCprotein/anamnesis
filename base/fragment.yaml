@@ -1,5 +1,5 @@
 id: base
-version: 21
+version: 22
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
@@ -46,6 +46,18 @@ capabilities:
     adapters_supported: [claude-code, codex]
     side_effects: [local-write]
 
+  - type: executable_hook
+    event: PostToolUse:^(Bash|apply_patch|Agent)$
+    source: adapters/codex/hooks/work-post-tool-use.mjs
+    adapters_supported: [codex]
+    side_effects: [read-only, local-write]
+
+  - type: executable_hook
+    event: PostToolBatch
+    source: adapters/claude-code/hooks/work-post-tool-batch.mjs
+    adapters_supported: [claude-code]
+    side_effects: [read-only, local-write]
+
   - type: slash_command
     name: load-context
     source: adapters/claude-code/commands/load-context.md
@@ -89,6 +101,7 @@ owns:
   - file: .anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs
   - file: .anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs
   - file: .anamnesis/codex-native-hooks/work-user-prompt.mjs
+  - file: .anamnesis/codex-native-hooks/work-post-tool-use.mjs
   - file: .anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh
   - file: .anamnesis/codex-hooks/base-Stop-handoff-reminder.sh
   - file: .claude/hooks/inject-ontology.sh
@@ -96,6 +109,7 @@ owns:
   - file: .claude/hooks/inject-handoff.sh
   - file: .claude/hooks/handoff-reminder.sh
   - file: .claude/hooks/work-briefing.sh
+  - file: .claude/hooks/work-post-tool-batch.mjs
   - file: .claude/commands/load-context.md
   - file: .claude/commands/handoff-prepare.md
   - file: .claude/skills/load-context/SKILL.md

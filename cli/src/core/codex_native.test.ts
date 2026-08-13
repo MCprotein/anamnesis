@@ -108,6 +108,24 @@ describe("Codex native hook config helpers", () => {
     );
   });
 
+  it("renders an additional context limit for bounded hook injection", () => {
+    const merged = mergeCodexHookRegistration(null, {
+      event: "PostToolUse",
+      matcher: "^(Bash|apply_patch|Agent)$",
+      command: "node work-post-tool-use.mjs",
+      additionalContextLimit: 4000,
+    });
+    const parsed = JSON.parse(merged.content) as {
+      hooks: Record<
+        string,
+        Array<{ hooks?: Array<{ additionalContextLimit?: number }> }>
+      >;
+    };
+    expect(
+      parsed.hooks.PostToolUse?.[0]?.hooks?.[0]?.additionalContextLimit,
+    ).toBe(4000);
+  });
+
   it("dedupes managed hooks even when the command wrapper shape changes", () => {
     const merged = mergeCodexHookRegistration(
       JSON.stringify({

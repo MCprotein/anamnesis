@@ -21,6 +21,7 @@ export interface CodexHookRegistration {
   command: string;
   timeout?: number;
   statusMessage?: string;
+  additionalContextLimit?: number;
 }
 
 export type CodexHookSyncStatus = "create" | "noop";
@@ -459,6 +460,9 @@ function hookCommand(reg: CodexHookRegistration): Record<string, unknown> {
     command: reg.command,
     ...(reg.statusMessage ? { statusMessage: reg.statusMessage } : {}),
     ...(typeof reg.timeout === "number" ? { timeout: reg.timeout } : {}),
+    ...(typeof reg.additionalContextLimit === "number"
+      ? { additionalContextLimit: reg.additionalContextLimit }
+      : {}),
   };
 }
 

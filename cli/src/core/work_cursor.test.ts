@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { sha256 } from "../util/hash.js";
 import {
 	deleteWorkCursor,
+	mutateWorkCursorAtomic,
 	newWorkCursor,
 	parseWorkCursor,
 	readWorkCursor,
@@ -313,6 +314,7 @@ describe("Work cursor", () => {
 					boundary_id: sha256("boundary"),
 					meaningful_actions_observed: 3,
 				},
+				recent_meaningful_action_boundary_ids: [sha256("recent")],
 			},
 		});
 		writeWorkCursorAtomic(root, current);
@@ -380,6 +382,7 @@ describe("Work cursor", () => {
 				meaningful_actions_since_confirmed: 4,
 				pending_delivery: null,
 				confirmed_delivery_fingerprint: sha256("confirmed"),
+				recent_meaningful_action_boundary_ids: [sha256("recent")],
 			},
 		});
 		writeWorkCursorAtomic(root, current);
@@ -409,6 +412,7 @@ describe("Work cursor", () => {
 					meaningful_actions_since_confirmed: 0,
 					pending_delivery: null,
 					confirmed_delivery_fingerprint: null,
+					recent_meaningful_action_boundary_ids: [],
 				},
 			},
 		});
@@ -460,6 +464,29 @@ describe("Work cursor", () => {
 				client_session_ref: "session-1",
 			},
 		});
+	});
+
+	it("mutates under one durable lock and can return metadata without writing", () => {
+		const root = temp();
+		const initial = cursor({ cursor_revision: undefined });
+		writeWorkCursorAtomic(root, initial, { expectedCursorRevision: null });
+		const changed = mutateWorkCursorAtomic(root, initial.cursor_id, (current) => ({
+			next_cursor: {
+				...current,
+				updated_at: "2026-08-13T00:00:01.000Z",
+			},
+			result: { observed: current.cursor_revision },
+		}));
+		expect(changed.result).toEqual({ observed: 1 });
+		expect(changed.cursor.cursor_revision).toBe(2);
+		const unchanged = mutateWorkCursorAtomic(
+			root,
+			initial.cursor_id,
+			(current) => ({ next_cursor: null, result: current.updated_at }),
+		);
+		expect(unchanged.result).toBe("2026-08-13T00:00:01.000Z");
+		expect(unchanged.cursor.cursor_revision).toBe(2);
+		expect(readWorkCursor(root, initial.cursor_id).cursor?.cursor_revision).toBe(2);
 	});
 
 	it("strictly rejects malformed reconciliation state", () => {

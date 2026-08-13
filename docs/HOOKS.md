@@ -47,3 +47,46 @@ Contract evidence: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 prompt retention is intentionally deferred to a bounded staging/allocation/GC
 protocol rather than treating every submitted prompt as a durable Work
 requirement.
+
+## Work same-turn safe-boundary briefing
+
+Long foreground turns also evaluate the frozen Work reconciliation policy
+after meaningful tool boundaries. Codex uses `PostToolUse` for canonical
+`Bash`, `apply_patch`, and `Agent` calls. Claude Code uses `PostToolBatch`
+instead of concurrent per-tool hooks, filters the batch to `Bash`, `Edit`,
+`Write`, `NotebookEdit`, and `Agent`, and ignores subagent-internal batches.
+
+The dedicated wrappers discard tool input, tool output, transcript paths,
+prompts, and arbitrary native fields. They send the CLI only documented stable
+session/turn or prompt identity plus opaque tool-use IDs and canonical tool
+names. Missing stable identity, unsupported/read-only batches, unavailable
+executables, and command failures are fail-open and UI-silent. Hooks never
+launch an agent, tmux Team, daemon, scheduler, or provider runtime.
+
+Before resolving the foreground CLI, each wrapper derives the canonical
+per-session cursor path (including the primary Git worktree root) and skips an
+unlinked session. This keeps the default unlinked path to a small local
+identity and file-existence preflight instead of paying a full CLI startup.
+
+Claude Code same-turn batching requires the documented `prompt_id` field
+available in Claude Code 2.1.196 and later. Older payloads are rejected by the
+wrapper before any foreground CLI process is started.
+
+The session cursor keeps a bounded FIFO of SHA-256 boundary IDs so a retried or
+concurrently delivered event increments the meaningful-action counter exactly
+once. Counter, FIFO, and optional `injected_unconfirmed` observation commit in
+one durable lock-scoped cursor mutation. Hidden injection does not reset the
+counter or claim visible delivery; visible confirmation resets the count but
+preserves the FIFO against late retries, while a Work switch resets the whole
+reconciliation state. Tool boundaries use cadence and maximum-silence rules with no synthetic
+resume trigger. Terminal Works may be briefed but are never restarted or
+continued automatically.
+
+Same-turn context has an 8,000-character structural budget and the Codex hook
+sets an explicit positive `additionalContextLimit`. Mandatory retrieval,
+completion, delta, gate, next-action, blocker, and authoritative-pointer fields
+are preserved. A requested full requirement list is all-or-none; when it does
+not fit, the foreground agent must retrieve `work status --json` before the
+visible briefing. The lock wait is bounded, so hook failure remains fail-open
+without weakening the already committed cursor state; the wrapper also bounds
+the foreground CLI child to 35 seconds.
