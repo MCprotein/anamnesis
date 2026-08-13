@@ -54,7 +54,8 @@ describe("formatGettingStartedGuide", () => {
         upgrade  Check or update the installed anamnesis CLI.
 
       Guided Workflows
-        upgrade plan  Read-only package and project apply plan with choices.
+        work brief --work <id> --session <id>  Reconcile requirements, progress, blockers, and next work.
+        upgrade plan                        Read-only package and project apply plan with choices.
         Advanced namespaces such as context, handoff, benchmark, release, migrate, promote, and ontology stay available through diagnostics or \`--help --all\`.
 
       Compatibility

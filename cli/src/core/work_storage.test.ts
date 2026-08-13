@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { sha256 } from "../util/hash.js";
 import {
+	appendCanonicalTypedWorkProgressEvent,
 	migrateLegacyWorkSourceEnvelopeBindings,
 	publishAndAppendCanonicalTypedWorkSourceEvent,
   publishAndAppendWorkSourceEvent,
@@ -35,6 +36,42 @@ function sourceInput(stateRoot: string, body: string | Buffer): WorkSourceEventI
 }
 
 describe("work source storage", () => {
+	it("keeps source-free progress on a canonical Work path and rejects source authority", () => {
+		const root = temporaryDirectory("anamnesis-work-progress-lane-");
+		const baseEvent = {
+			event_id: "progress_01",
+			occurred_at: "2026-08-13T00:00:00.000Z",
+			kind: "work_requirement_transitioned",
+			payload: {
+				schema_version: "anamnesis.work-progress-event.v1",
+				work_id: "wu_01",
+				requirement_id: "req_01",
+				basis_contract_hash: sha256("contract"),
+				status: "in_progress",
+				evidence_refs: [],
+			},
+		};
+		expect(() =>
+			appendCanonicalTypedWorkProgressEvent({
+				stateRoot: root,
+				ledgerPath: path.join(root, "outside.jsonl"),
+				ledgerEvent: baseEvent,
+				expectedHead: null,
+			}),
+		).toThrow("ledger path is not canonical");
+		expect(() =>
+			appendCanonicalTypedWorkProgressEvent({
+				stateRoot: root,
+				ledgerPath: path.join(root, "work-units/wu_01/ledger.jsonl"),
+				ledgerEvent: {
+					...baseEvent,
+					payload: { ...baseEvent.payload, source_event_id: "src_forbidden" },
+				},
+				expectedHead: null,
+			}),
+		).toThrow("cannot contain source references");
+	});
+
   it("preserves exact bytes and durably publishes the body before its envelope", () => {
     const root = temporaryDirectory("anamnesis-work-source-");
     const body = Buffer.from("first\r\n둘째 😀\r\n", "utf8");

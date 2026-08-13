@@ -1936,8 +1936,8 @@ fallback and keeps required parallelism fail-closed after provider exhaustion,
 but does not launch or supervise either runtime. Fresh verification passed
 48/48 targeted tests and 808/808 tests across 82 files, plus typecheck, lint,
 build, and diff checks; independent QA returned `SIGNOFF` and independent code
-review returned `APPROVE`. This does not complete v1.18: automatic briefings,
-delegation/review execution, CLI diagnostics, adapter hooks, handoff/index
+review returned `APPROVE`. This does not complete v1.18: automatic hook
+briefings, delegation/review execution, adapter capture, handoff/index
 integration, benchmarks, optional MCP evaluation, and cross-host coordination
 remain deferred.
 
@@ -1957,9 +1957,25 @@ Pre-binding ledgers require an explicit dedicated migration event; ordinary
 publication cannot mint or override envelope-binding authority. Fresh
 verification passed 120/120 targeted tests and 868/868 tests across 84 files,
 plus typecheck, lint, build, import, and diff checks; independent adversarial
-verification and final code review returned `APPROVE`. Runtime capture, briefing text
-rendering/emission, automatic continuation, review/delegation invocation, and
-final lifecycle transitions remain deferred.
+verification and final code review returned `APPROVE`. Runtime capture,
+automatic hook rendering/emission, automatic continuation,
+review/delegation invocation, and final lifecycle transitions remain deferred.
+
+The first thin Work command slice is implemented. The `work` namespace offers
+`create|amend|transition|status|brief|confirm|switch` with strict draft and
+raw-source boundaries, source-first typed contract mutation, evidence-only
+progress, authoritative ledger refolding, and human/JSON reconciliation.
+Per-session cursors use bounded locks and revision CAS; briefing delivery is
+persisted pending before output and confirmed only after a complete direct-TTY
+human write or an explicit confirmation token. Non-TTY/JSON output, EPIPE, and
+crash seams remain unconfirmed and safely repeatable. A Work keeps its frozen
+policy across ordinary amendments and reports later Agentfile changes as
+drift. Required planning review blocks implementation entry until review
+evidence is modeled, and same-requirement concurrent progress fails closed
+instead of using last-writer-wins. Fresh verification passed 146 targeted Work tests
+and 894/894 tests across 88 files, plus typecheck, lint, build, and diff checks;
+independent code review returned `APPROVE` and adversarial verification
+returned `PASS`.
 
 The storage and responsibility boundaries are:
 
@@ -2055,8 +2071,9 @@ Product and efficiency boundaries:
   or tmux panes. It may require a bounded parallelism assessment, select an
   allowed runtime class through resolved policy, and record the result; the
   current Codex/Claude/OMX runtime owns execution.
-- Reuse `context`, `handoff`, `benchmark`, and diagnostics namespaces instead
-  of adding another top-level command.
+- Keep one compact `work` namespace for Work lifecycle commands, and reuse
+  `context`, `handoff`, `benchmark`, and diagnostics for their existing
+  responsibilities instead of creating parallel command families.
 - Keep repo-local files authoritative. No daemon, remote database, or hosted
   task service is required for the baseline.
 - Resolve one canonical local Work state root per repository instance. Normal
@@ -2069,13 +2086,13 @@ Work plan:
 
 | # | Item | Status | Description |
 |---|---|---|---|
-| 1 | **Thin Work boundary, schema, and lifecycle** | contract foundation implemented; boundary classification/closure deferred | Keep Work as the only durable task-domain object. Typed creation and monotonic contract revision now preserve requirement identity, source provenance, policy snapshots, accepted-boundary state, and explicit replacement lineage. Lifecycle mutation remains intentionally fail-closed until user authority, completion evidence, and reopening/supersession rules are implemented. Foreground is a disposable per-session cursor, never global Work state. |
+| 1 | **Thin Work boundary, schema, and lifecycle** | creation/amend boundary commands implemented; closure deferred | Keep Work as the only durable task-domain object. `work create` requires `new_unit`, `work amend` requires `same_unit`, and interruption is rejected rather than allocated. Typed creation and monotonic contract revision preserve requirement identity, source provenance, frozen policy snapshots, accepted-boundary state, and explicit replacement lineage. Lifecycle closure remains fail-closed until user authority, completion evidence, and reopening/supersession rules are implemented. Foreground is a disposable per-session cursor, never global Work state. |
 | 2 | **Verbatim source-event ledger and projection** | core implemented; adapter capture/index integration deferred | Immutable exact-byte prompt objects, canonical envelopes, hash-linked allocation records, monotonic typed contracts, deterministic projection rebuilds, stable-order multi-source locking, exact envelope-hash binding, torn-tail recovery, and corruption/symlink fail-closed behavior are implemented. Adapter capture and exact-span allocation UI remain planned. |
-| 3 | **Evidence-based progress reporter** | deterministic core implemented; CLI rendering deferred | Projection and briefing snapshots report verified/applicable, pending, in-progress, implemented-unverified, blocked, and waived counts with explicit denominator/weights. Invalid, overflowing, inconsistent, or provenance-free states fail closed. CLI human/JSON presentation and evidence freshness diagnostics remain planned. |
-| 4 | **Automatic reconciliation briefing** | snapshot/due/dedupe core implemented; runtime emission deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation now builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples in session cursors. Safe-hook emission, natural-language rendering, and automatic continuation remain planned. |
+| 3 | **Evidence-based progress reporter** | deterministic core and CLI rendering implemented; evidence freshness diagnostics deferred | Projection, status, and briefing output report verified/applicable, pending, in-progress, implemented-unverified, blocked, and waived counts with explicit denominator/weights. Invalid, overflowing, inconsistent, or provenance-free states fail closed. Human and JSON presentation refold the ledger instead of trusting projection cache; deeper evidence freshness diagnostics remain planned. |
+| 4 | **Automatic reconciliation briefing** | command-boundary briefing implemented; automatic runtime emission deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples. `work brief` renders the ordered requirements/done/remaining/blockers/progress/next contract; safe-hook due evaluation and automatic same-turn emission remain planned. |
 | 5 | **Per-Work automatic delegation and runtime policy** | policy schema/resolver implemented; execution deferred | The pure resolver normalizes `off`, `auto`, `prefer`, and `required` parallelism, maximum agents, native/tmux preferences, fallback order, reassessment triggers, and unavailable behavior. Required parallelism fails closed after provider exhaustion. Dependency-lane assessment, runtime selection records, and actual native/tmux execution remain planned and runtime-owned. |
-| 6 | **User-configurable independent-review gates** | policy schema/resolver implemented; execution deferred | Agentfile v2 and the pure resolver normalize `off`, `advisory`, `strict`, and `custom` planning/completion gates across six policy layers. Required gates merge monotonically; only a current evidenced gate/revision waiver can lower one. Provider order and OMX-to-Codex-native fallback are declarative. Review invocation, evidence recording, invalidation, and protected-transition enforcement remain planned. |
-| 7 | **Multi-session checkpoints and Work boundaries** | cursor/checkpoint core implemented; semantic classifier deferred | Each session has a disposable cursor with exact reconciliation delivery state, while shared truth remains the Work ledger/projection. Canonical roots, linked-worktree sharing, expected-head CAS, atomic writes, symlink rejection, cursor lag recovery, and independent cursor switching are implemented. Same-Work amendment vs related/new/interruption/provisional classification and user-facing switch commands remain planned. |
+| 6 | **User-configurable independent-review gates** | policy schema/resolver and planning fail-closed guard implemented; execution deferred | Agentfile v2 and the pure resolver normalize `off`, `advisory`, `strict`, and `custom` planning/completion gates across six policy layers. Required gates merge monotonically; only a current evidenced gate/revision waiver can lower one. Provider order and OMX-to-Codex-native fallback are declarative. Required planning currently blocks implementation entry because review evidence is not yet modeled; review invocation, evidence recording, invalidation, and completion-gate execution remain planned. |
+| 7 | **Multi-session checkpoints and Work boundaries** | cursor CAS, explicit boundary commands, and switch implemented; automatic semantic classifier deferred | Each session has a disposable revision-CAS cursor with exact reconciliation delivery state, while shared truth remains the Work ledger/projection. Canonical roots, linked-worktree sharing, bounded locking, atomic writes, symlink rejection, cursor lag recovery, independent cursor switching, and explicit new/same/interruption command classification are implemented. Automatic natural-language same-Work versus new-Work classification remains planned. |
 | 8 | **Compaction-aware adapter lifecycle** | research first | Audit each supported client/version using official schema evidence and real-CLI probes before naming native `PreCompact`, `PostCompact`, or compact-resume events. The current anamnesis Codex renderer does not implement a proven compact lifecycle path. Add version-gated native handling only after evidence exists, behind `--allow-exec-adapters`; otherwise keep tested manual, SessionStart, and resume fallbacks. |
 | 9 | **Compact checkpoint digest** | planned | After a shared Work checkpoint or compaction, inject only the cursor-selected Work ID, goal hash/source pointer, revision, lifecycle, verified/applicable count, pending review gates, blockers, next requirement IDs, and the unit path. Keep unconditional per-prompt injection disabled; use the existing prompt gate and fingerprint dedupe before adding any prompt-time reminder. |
 | 10 | **Handoff, resume, index, TTL, and diagnostics integration** | planned | Include the local cursor and latest shared Work checkpoint in handoff/resume output; index authoritative ledger events plus individual requirement and rule pointers; diagnose missing source refs, stale evidence/reviews, verified entries without evidence, cursor revision lag, ledger-head conflicts, and digest/unit divergence. TTL may mark dormant Works stale, exclude digests, and garbage-collect disposable cursors; it never mutates Work meaning. |

@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,7 +6,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { sha256 } from "../util/hash.js";
 import {
 	deleteWorkCursor,
+	newWorkCursor,
+	parseWorkCursor,
 	readWorkCursor,
+	switchWorkCursorAtomic,
+	updateWorkCursorAtomic,
 	type WorkCursor,
 	workCursorPath,
 	worktreeFingerprint,
@@ -39,6 +43,41 @@ function cursor(overrides: Partial<WorkCursor> = {}): WorkCursor {
 		updated_at: "2026-08-13T00:00:00.000Z",
 		...overrides,
 	};
+}
+
+function concurrentCursorWrite(
+	stateRoot: string,
+	value: WorkCursor,
+	expectedCursorRevision: number,
+): Promise<{ code: number | null; stderr: string }> {
+	const modulePath = path.resolve("cli/src/core/work_cursor.ts");
+	const script = `
+		import { writeWorkCursorAtomic } from ${JSON.stringify(modulePath)};
+		const cursor = JSON.parse(process.env.CURSOR_JSON);
+		writeWorkCursorAtomic(process.env.STATE_ROOT, cursor, {
+			expectedCursorRevision: Number(process.env.EXPECTED_REVISION),
+			lockTimeoutMs: 2000,
+			lockRetryMs: 1,
+		});
+	`;
+	return new Promise((resolve) => {
+		const child = spawn(path.resolve("node_modules/.bin/tsx"), ["-e", script], {
+			cwd: path.resolve("."),
+			env: {
+				...process.env,
+				STATE_ROOT: stateRoot,
+				CURSOR_JSON: JSON.stringify(value),
+				EXPECTED_REVISION: String(expectedCursorRevision),
+			},
+			stdio: ["ignore", "ignore", "pipe"],
+		});
+		let stderr = "";
+		child.stderr.setEncoding("utf8");
+		child.stderr.on("data", (chunk) => {
+			stderr += chunk;
+		});
+		child.on("close", (code) => resolve({ code, stderr }));
+	});
 }
 
 describe("Work cursor", () => {
@@ -231,9 +270,19 @@ describe("Work cursor", () => {
 	it("round-trips optional reconciliation state while accepting legacy cursors", () => {
 		const root = temp();
 		const legacy = cursor();
-		writeWorkCursorAtomic(root, legacy);
+		fs.mkdirSync(path.dirname(workCursorPath(root, legacy.cursor_id)), {
+			recursive: true,
+		});
+		fs.writeFileSync(
+			workCursorPath(root, legacy.cursor_id),
+			`schema_version: anamnesis.work-cursor.v1\ncursor_id: cur_test\nclient_session_ref: null\nwork_id: wu_one\nobserved_revision: 1\nlast_event_id: lev_1\nprojection_hash: ${legacy.projection_hash}\nworktree_fingerprint: ${legacy.worktree_fingerprint}\nupdated_at: 2026-08-13T00:00:00.000Z\n`,
+			{ mode: 0o600 },
+		);
 		const legacyRead = readWorkCursor(root, legacy.cursor_id);
-		expect(legacyRead).toMatchObject({ status: "current" });
+		expect(legacyRead).toMatchObject({
+			status: "current",
+			cursor: { cursor_revision: 0 },
+		});
 		if (legacyRead.cursor) {
 			expect("reconciliation" in legacyRead.cursor).toBe(false);
 		}
@@ -258,6 +307,146 @@ describe("Work cursor", () => {
 		expect(readWorkCursor(root, current.cursor_id)).toMatchObject({
 			status: "current",
 			cursor: { reconciliation: current.reconciliation },
+		});
+	});
+
+	it("uses bounded locking and cursor revision CAS so concurrent writers cannot lose updates", async () => {
+		const root = temp();
+		writeWorkCursorAtomic(root, cursor());
+		expect(readWorkCursor(root, "cur_test")).toMatchObject({
+			cursor: { cursor_revision: 1 },
+		});
+
+		const [left, right] = await Promise.all([
+			concurrentCursorWrite(
+				root,
+				cursor({ updated_at: "2026-08-13T00:00:01.000Z" }),
+				1,
+			),
+			concurrentCursorWrite(
+				root,
+				cursor({ updated_at: "2026-08-13T00:00:02.000Z" }),
+				1,
+			),
+		]);
+		expect([left.code, right.code].sort()).toEqual([0, 1]);
+		expect(`${left.stderr}\n${right.stderr}`).toMatch(
+			/stale Work cursor write/,
+		);
+		expect(readWorkCursor(root, "cur_test")).toMatchObject({
+			status: "current",
+			cursor: { cursor_revision: 2 },
+		});
+	});
+
+	it("rejects stale writers while keeping legacy unconditional writes compatible", () => {
+		const root = temp();
+		writeWorkCursorAtomic(root, cursor());
+		writeWorkCursorAtomic(root, cursor(), { expectedCursorRevision: 1 });
+		expect(() =>
+			writeWorkCursorAtomic(root, cursor(), { expectedCursorRevision: 1 }),
+		).toThrow(/stale Work cursor write/);
+		writeWorkCursorAtomic(root, cursor());
+		expect(readWorkCursor(root, "cur_test")).toMatchObject({
+			cursor: { cursor_revision: 3 },
+		});
+	});
+
+	it("switches Work truth and resets only disposable reconciliation state", () => {
+		const root = temp();
+		const workLedger = path.join(root, "work-units", "wu_one", "ledger.jsonl");
+		const handoff = path.join(root, "handoff", "active.md");
+		fs.mkdirSync(path.dirname(workLedger), { recursive: true });
+		fs.mkdirSync(path.dirname(handoff), { recursive: true });
+		fs.writeFileSync(workLedger, "ledger truth\n");
+		fs.writeFileSync(handoff, "handoff truth\n");
+		const current = cursor({
+			reconciliation: {
+				last_reconciled_head: sha256("head"),
+				last_reconciled_revision: 1,
+				last_reconciled_at: "2026-08-13T00:00:00.000Z",
+				meaningful_actions_since_confirmed: 4,
+				pending_delivery: null,
+				confirmed_delivery_fingerprint: sha256("confirmed"),
+			},
+		});
+		writeWorkCursorAtomic(root, current);
+		switchWorkCursorAtomic(
+			root,
+			current,
+			{
+				work_id: "wu_two",
+				revision: 7,
+				last_event_id: "lev_7",
+				projection_hash: sha256("projection-7"),
+			},
+			{ expectedCursorRevision: 1 },
+		);
+		expect(readWorkCursor(root, "cur_test")).toMatchObject({
+			status: "current",
+			cursor: {
+				work_id: "wu_two",
+				observed_revision: 7,
+				last_event_id: "lev_7",
+				projection_hash: sha256("projection-7"),
+				cursor_revision: 2,
+				reconciliation: {
+					last_reconciled_head: null,
+					last_reconciled_revision: null,
+					last_reconciled_at: null,
+					meaningful_actions_since_confirmed: 0,
+					pending_delivery: null,
+					confirmed_delivery_fingerprint: null,
+				},
+			},
+		});
+		expect(fs.readFileSync(workLedger, "utf8")).toBe("ledger truth\n");
+		expect(fs.readFileSync(handoff, "utf8")).toBe("handoff truth\n");
+	});
+
+	it("parses legacy cursor content with revision zero until its next atomic write", () => {
+		const legacy = cursor();
+		const parsed = parseWorkCursor(
+			`schema_version: anamnesis.work-cursor.v1\ncursor_id: ${legacy.cursor_id}\nclient_session_ref: null\nwork_id: ${legacy.work_id}\nobserved_revision: 1\nlast_event_id: lev_1\nprojection_hash: ${legacy.projection_hash}\nworktree_fingerprint: ${legacy.worktree_fingerprint}\nupdated_at: 2026-08-13T00:00:00.000Z\n`,
+		);
+		expect(parsed.cursor_revision).toBe(0);
+	});
+
+	it("offers command-friendly construction and CAS update helpers", () => {
+		const root = temp();
+		const initial = newWorkCursor({
+			cursor_id: "cur_command",
+			client_session_ref: "session-1",
+			worktree_fingerprint: sha256("tree"),
+			updated_at: "2026-08-13T00:00:00.000Z",
+			truth: {
+				work_id: "wu_one",
+				revision: 1,
+				last_event_id: "lev_1",
+				projection_hash: sha256("projection-1"),
+			},
+		});
+		writeWorkCursorAtomic(root, initial, { expectedCursorRevision: null });
+		const stored = readWorkCursor(root, initial.cursor_id);
+		expect(stored).toMatchObject({ cursor: { cursor_revision: 1 } });
+		if (!stored.cursor) throw new Error("expected stored cursor");
+		updateWorkCursorAtomic(
+			root,
+			stored.cursor,
+			{
+				work_id: "wu_one",
+				revision: 2,
+				last_event_id: "lev_2",
+				projection_hash: sha256("projection-2"),
+			},
+			"2026-08-13T00:00:01.000Z",
+		);
+		expect(readWorkCursor(root, initial.cursor_id)).toMatchObject({
+			cursor: {
+				cursor_revision: 2,
+				observed_revision: 2,
+				client_session_ref: "session-1",
+			},
 		});
 	});
 

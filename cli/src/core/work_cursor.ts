@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { isHash } from "../util/hash.js";
+import { withWorkLedgerLock } from "./work_ledger.js";
+import { emptyWorkCursorReconciliationState } from "./work_reconciliation.js";
 import { worktreeFingerprint as storageWorktreeFingerprint } from "./work_storage.js";
 
 export const WORK_CURSOR_SCHEMA_VERSION = "anamnesis.work-cursor.v1" as const;
@@ -16,7 +18,23 @@ export interface WorkCursor {
 	projection_hash: string;
 	worktree_fingerprint: string;
 	updated_at: string;
+	cursor_revision?: number;
 	reconciliation?: WorkCursorReconciliationState;
+}
+
+export interface WorkCursorWriteOptions {
+	/** Undefined preserves the legacy unconditional-write behavior; null requires no prior cursor. */
+	expectedCursorRevision?: number | null;
+	lockTimeoutMs?: number;
+	lockRetryMs?: number;
+}
+
+export interface NewWorkCursorInput {
+	cursor_id: string;
+	client_session_ref: string | null;
+	worktree_fingerprint: string;
+	updated_at: string;
+	truth: WorkCursorTruth;
 }
 
 export interface WorkCursorReconciliationState {
@@ -245,6 +263,7 @@ export function parseWorkCursor(content: string): WorkCursor {
 		"projection_hash",
 		"worktree_fingerprint",
 		"updated_at",
+		"cursor_revision",
 		"reconciliation",
 	]);
 	const unknownCursorField = Object.keys(cursor).find(
@@ -289,6 +308,18 @@ export function parseWorkCursor(content: string): WorkCursor {
 		);
 	}
 	requireIsoTimestamp(cursor.updated_at, "updated_at");
+	if (
+		cursor.cursor_revision !== undefined &&
+		(!Number.isSafeInteger(cursor.cursor_revision) ||
+			(cursor.cursor_revision as number) < 0)
+	) {
+		throw new Error(
+			"invalid Work cursor: cursor_revision must be a non-negative integer",
+		);
+	}
+	// A missing revision is the legacy v1 representation. Materialize its CAS
+	// identity on read without requiring an eager on-disk migration.
+	cursor.cursor_revision ??= 0;
 	if (cursor.reconciliation !== undefined) {
 		cursor.reconciliation = parseReconciliationState(cursor.reconciliation);
 	}
@@ -309,46 +340,160 @@ export function workCursorPath(stateRoot: string, cursorId: string): string {
 export function writeWorkCursorAtomic(
 	stateRoot: string,
 	cursor: WorkCursor,
-	io: WorkCursorFs = defaultFs,
+	ioOrOptions: WorkCursorFs | WorkCursorWriteOptions = defaultFs,
+	maybeOptions: WorkCursorWriteOptions = {},
 ): string {
-	// Validate the exact value before touching the disposable cache on disk.
-	parseWorkCursor(YAML.stringify(cursor));
 	const target = workCursorPath(stateRoot, cursor.cursor_id);
-	const directory = path.dirname(target);
-	assertManagedWritePath(stateRoot, target);
-	io.mkdirSync(directory, { recursive: true });
-	const temporary = `${target}.tmp-${process.pid}-${Math.random().toString(16).slice(2)}`;
-	let file: number | undefined;
-	try {
-		file = io.openSync(
-			temporary,
-			fs.constants.O_WRONLY |
-				fs.constants.O_CREAT |
-				fs.constants.O_EXCL |
-				fs.constants.O_NOFOLLOW,
-			0o600,
-		);
-		io.writeFileSync(file, YAML.stringify(cursor), "utf8");
-		io.fsyncSync(file);
-		io.closeSync(file);
-		file = undefined;
-		io.renameSync(temporary, target);
-		const dir = io.openSync(directory, "r");
-		try {
-			io.fsyncSync(dir);
-		} finally {
-			io.closeSync(dir);
+	const io = isWorkCursorFs(ioOrOptions) ? ioOrOptions : defaultFs;
+	const options = isWorkCursorFs(ioOrOptions) ? maybeOptions : ioOrOptions;
+	return withWorkLedgerLock(target, options, () => {
+		const prior = readPriorCursorForWrite(stateRoot, cursor.cursor_id);
+		const priorRevision = prior?.cursor_revision ?? null;
+		if (
+			options.expectedCursorRevision !== undefined &&
+			options.expectedCursorRevision !== priorRevision
+		) {
+			throw new Error(
+				`stale Work cursor write: expected revision ${String(options.expectedCursorRevision)}, found ${String(priorRevision)}`,
+			);
 		}
-	} catch (error) {
-		if (file !== undefined) io.closeSync(file);
-		try {
-			fs.unlinkSync(temporary);
-		} catch {
-			// Best-effort cleanup; cursor files are explicitly disposable.
+		const nextRevision = (priorRevision ?? 0) + 1;
+		if (
+			cursor.cursor_revision !== undefined &&
+			cursor.cursor_revision !== priorRevision &&
+			cursor.cursor_revision !== nextRevision
+		) {
+			throw new Error(
+				`invalid Work cursor revision: expected next revision ${nextRevision}`,
+			);
 		}
-		throw error;
+		const normalized: WorkCursor = {
+			...cursor,
+			cursor_revision: nextRevision,
+		};
+		// Validate the exact value before touching the disposable cache on disk.
+		parseWorkCursor(YAML.stringify(normalized));
+		const directory = path.dirname(target);
+		assertManagedWritePath(stateRoot, target);
+		io.mkdirSync(directory, { recursive: true });
+		const temporary = `${target}.tmp-${process.pid}-${Math.random().toString(16).slice(2)}`;
+		let file: number | undefined;
+		try {
+			file = io.openSync(
+				temporary,
+				fs.constants.O_WRONLY |
+					fs.constants.O_CREAT |
+					fs.constants.O_EXCL |
+					fs.constants.O_NOFOLLOW,
+				0o600,
+			);
+			io.writeFileSync(file, YAML.stringify(normalized), "utf8");
+			io.fsyncSync(file);
+			io.closeSync(file);
+			file = undefined;
+			io.renameSync(temporary, target);
+			const dir = io.openSync(directory, "r");
+			try {
+				io.fsyncSync(dir);
+			} finally {
+				io.closeSync(dir);
+			}
+		} catch (error) {
+			if (file !== undefined) io.closeSync(file);
+			try {
+				fs.unlinkSync(temporary);
+			} catch {
+				// Best-effort cleanup; cursor files are explicitly disposable.
+			}
+			throw error;
+		}
+		return target;
+	});
+}
+
+export function switchWorkCursorAtomic(
+	stateRoot: string,
+	cursor: WorkCursor,
+	truth: WorkCursorTruth,
+	ioOrOptions: WorkCursorFs | WorkCursorWriteOptions = defaultFs,
+	maybeOptions: WorkCursorWriteOptions = {},
+): string {
+	const options = isWorkCursorFs(ioOrOptions) ? maybeOptions : ioOrOptions;
+	const nextCursor: WorkCursor = {
+		...cursor,
+		work_id: truth.work_id,
+		observed_revision: truth.revision,
+		last_event_id: truth.last_event_id,
+		projection_hash: truth.projection_hash,
+		reconciliation: emptyWorkCursorReconciliationState(),
+		cursor_revision: undefined,
+	};
+	const casOptions = {
+		...options,
+		expectedCursorRevision:
+			options.expectedCursorRevision ?? cursor.cursor_revision ?? 0,
+	};
+	return isWorkCursorFs(ioOrOptions)
+		? writeWorkCursorAtomic(stateRoot, nextCursor, ioOrOptions, casOptions)
+		: writeWorkCursorAtomic(stateRoot, nextCursor, casOptions);
+}
+
+export function newWorkCursor(input: NewWorkCursorInput): WorkCursor {
+	return {
+		schema_version: WORK_CURSOR_SCHEMA_VERSION,
+		cursor_id: input.cursor_id,
+		client_session_ref: input.client_session_ref,
+		work_id: input.truth.work_id,
+		observed_revision: input.truth.revision,
+		last_event_id: input.truth.last_event_id,
+		projection_hash: input.truth.projection_hash,
+		worktree_fingerprint: input.worktree_fingerprint,
+		updated_at: input.updated_at,
+		reconciliation: emptyWorkCursorReconciliationState(),
+	};
+}
+
+export function updateWorkCursorAtomic(
+	stateRoot: string,
+	cursor: WorkCursor,
+	truth: WorkCursorTruth,
+	updatedAt: string,
+	options: WorkCursorWriteOptions = {},
+): string {
+	return writeWorkCursorAtomic(
+		stateRoot,
+		{
+			...cursor,
+			work_id: truth.work_id,
+			observed_revision: truth.revision,
+			last_event_id: truth.last_event_id,
+			projection_hash: truth.projection_hash,
+			updated_at: updatedAt,
+		},
+		{
+			...options,
+			expectedCursorRevision:
+				options.expectedCursorRevision ?? cursor.cursor_revision ?? 0,
+		},
+	);
+}
+
+function isWorkCursorFs(
+	value: WorkCursorFs | WorkCursorWriteOptions,
+): value is WorkCursorFs {
+	return "openSync" in value;
+}
+
+function readPriorCursorForWrite(
+	stateRoot: string,
+	cursorId: string,
+): WorkCursor | null {
+	const result = readWorkCursor(stateRoot, cursorId);
+	if (result.status === "missing") return null;
+	if (result.status === "corrupt") {
+		throw new Error(`cannot overwrite corrupt Work cursor: ${result.error}`);
 	}
-	return target;
+	return result.cursor;
 }
 
 export function readWorkCursor(

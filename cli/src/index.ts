@@ -4,6 +4,7 @@
 //
 // v0.1 implements `init`. `update` and `promote` land in subsequent rounds.
 
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -173,6 +174,20 @@ import {
   type MigrateAgentfileResult,
 } from "./commands/migrate.js";
 import {
+  amendWork,
+  briefWork,
+  confirmWorkBrief,
+  createWork,
+  statusWork,
+  switchWork,
+  transitionWork,
+  type WorkBriefResult,
+  type WorkMutationInput,
+  type WorkMutationResult,
+  type WorkRawSource,
+  type WorkStatusResult,
+} from "./commands/work.js";
+import {
   collectGenerationBoundaryStatus,
   formatBootstrapGenerationBoundaryLines,
   formatGenerationBoundaryLines,
@@ -191,6 +206,13 @@ import {
 } from "./core/workspace_profile.js";
 import type { OntologyLifecycleRecommendation } from "./core/ontology-gaps.js";
 import type { ToolName } from "./core/agentfile.js";
+import {
+  newWorkCursor,
+  readWorkCursor,
+  switchWorkCursorAtomic,
+  writeWorkCursorAtomic,
+} from "./core/work_cursor.js";
+import { deliverWorkBriefing } from "./core/work_delivery.js";
 
 const VERSION = PACKAGE_VERSION;
 const SUPPORTED_TOOLS = ["claude-code", "codex", "cursor"] as const satisfies
@@ -481,6 +503,13 @@ Commands:
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
                                   from project files (Layer A — deterministic)
+  work create                   Create a Work from an exact source + contract draft
+  work amend                    Append a contract revision to an existing Work
+  work transition               Transition one requirement with evidence
+  work status                   Refold and report authoritative Work state
+  work brief                    Prepare a session-scoped continuity briefing
+  work confirm                  Confirm a briefing was actually presented
+  work switch                   Move one session cursor to another Work
 
 Flags (init):
   --project-root <path>         Target directory (default: cwd)
@@ -565,6 +594,19 @@ Flags (release check):
 
 Flags (status):
   --json                        Print structured JSON for CI/tools
+
+Flags (work):
+  --work <id>                   Work identifier (required)
+  --state-root <path>           Override the shared local Work state root
+  --session <id>                Session cursor identifier (brief/confirm/switch)
+  --event-id <id>               Stable ledger event identifier (mutations)
+  --source-event-id <id>        Stable exact-source ID (create/amend/waiver)
+  --occurred-at <ISO>           Stable event time; defaults to now for cursor-only actions
+  --draft <path>                Strict single-document YAML draft (mutations)
+  --source-file <path>          Capture exact user source (create/amend/waiver)
+  --source-stdin                Capture stdin exactly (create/amend/waiver)
+  --delivery-token <hash>       Prepared briefing token (confirm)
+  --json                        Print structured JSON; never implies visible delivery
 
 Flags (hooks summary):
   --project-root <path>         Target directory (default: cwd)
@@ -2453,6 +2495,171 @@ function reportUpgradeChoose(result: UpgradeChooseResult): void {
   reportUpgradeApplyChoice(result.execution);
 }
 
+function requiredWorkFlag(
+  flags: ParsedArgs["flags"],
+  name: string,
+): string {
+  const value = flags[name];
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`--${name} requires a value`);
+  }
+  return value;
+}
+
+function optionalWorkFlag(
+  flags: ParsedArgs["flags"],
+  name: string,
+): string | undefined {
+  const value = flags[name];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`--${name} requires a value`);
+  }
+  return value;
+}
+
+function workTimestamp(
+  flags: ParsedArgs["flags"],
+  required: boolean,
+): string {
+  const value = optionalWorkFlag(flags, "occurred-at");
+  if (!value) {
+    if (required) throw new Error("--occurred-at is required");
+    return new Date().toISOString();
+  }
+  const parsed = new Date(value);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString() !== value
+  ) {
+    throw new Error("--occurred-at must be a canonical UTC ISO timestamp");
+  }
+  return value;
+}
+
+function workMutationInput(
+  flags: ParsedArgs["flags"],
+  subcommand: "create" | "amend" | "transition",
+): WorkMutationInput {
+  const projectRoot =
+    optionalWorkFlag(flags, "project-root") ?? process.cwd();
+  const occurredAt = workTimestamp(flags, true);
+  const sourceFile = optionalWorkFlag(flags, "source-file");
+  const sourceStdin = flags["source-stdin"] === true;
+  const sourceCount = (sourceFile ? 1 : 0) + (sourceStdin ? 1 : 0);
+  if (subcommand !== "transition" && sourceCount !== 1) {
+    throw new Error("exactly one of --source-file or --source-stdin is required");
+  }
+  if (subcommand === "transition" && sourceCount > 1) {
+    throw new Error("at most one of --source-file or --source-stdin is allowed");
+  }
+  const fidelityValue = optionalWorkFlag(flags, "fidelity") ?? "client_exact";
+  if (
+    fidelityValue !== "native_exact" &&
+    fidelityValue !== "client_exact" &&
+    fidelityValue !== "agent_observed"
+  ) {
+    throw new Error(
+      "--fidelity must be native_exact, client_exact, or agent_observed",
+    );
+  }
+  const sourceEventId =
+    sourceCount > 0 ? requiredWorkFlag(flags, "source-event-id") : undefined;
+  const source: WorkRawSource | undefined = sourceEventId
+    ? {
+    event_id: sourceEventId,
+    captured_at: optionalWorkFlag(flags, "captured-at") ?? occurredAt,
+    client: optionalWorkFlag(flags, "client") ?? "anamnesis-cli",
+    content_type:
+      optionalWorkFlag(flags, "content-type") ?? "text/plain; charset=utf-8",
+    fidelity: fidelityValue,
+    allocation_status: "allocated",
+    body: sourceFile
+      ? fs.readFileSync(path.resolve(projectRoot, sourceFile))
+      : fs.readFileSync(0),
+      }
+    : undefined;
+  const draftPath = requiredWorkFlag(flags, "draft");
+  return {
+    project_root: projectRoot,
+    state_root: optionalWorkFlag(flags, "state-root"),
+    work_id: requiredWorkFlag(flags, "work"),
+    event_id: requiredWorkFlag(flags, "event-id"),
+    occurred_at: occurredAt,
+    draft: fs.readFileSync(path.resolve(projectRoot, draftPath)),
+    ...(sourceFile && source
+      ? { source_file: source }
+      : sourceStdin && source
+        ? { source_stdin: source }
+        : {}),
+  };
+}
+
+function reportWorkMutation(result: WorkMutationResult): void {
+  console.log(`Work ${result.work_id}`);
+  console.log(`  revision: ${result.projection.contract_revision}`);
+  console.log(`  lifecycle: ${result.projection.lifecycle}`);
+  console.log(`  progress: ${result.projection.progress.percent}%`);
+  console.log(
+    `  source: ${result.allocation?.source.envelope.event_id ?? "evidence-only transition"}`,
+  );
+}
+
+function reportWorkStatus(result: WorkStatusResult): void {
+  const projection = result.projection;
+  console.log(`${projection.title ?? projection.work_id} (${projection.work_id})`);
+  console.log(`  revision: ${projection.contract_revision}`);
+  console.log(`  lifecycle: ${projection.lifecycle}`);
+  console.log(`  completion contract: ${projection.completion_contract ?? "(none)"}`);
+  console.log(
+    `  configured required gates: ${projection.configured_required_gates.join(", ") || "none"}`,
+  );
+  if (result.policy_drift?.drifted) {
+    console.log("  policy drift: current project policy differs; frozen Work policy retained");
+  }
+  console.log("  requirements:");
+  for (const requirement of projection.requirements) {
+    console.log(
+      `    - ${requirement.id} [${requirement.status}] — ${requirement.summary}`,
+    );
+  }
+  const progressDetail = projection.progress.weighted
+    ? `${projection.progress.verified_weight ?? 0}/${projection.progress.applicable_weight ?? 0} verified weight`
+    : `${projection.progress.verified}/${projection.progress.applicable} verified requirements`;
+  console.log(`  progress: ${projection.progress.percent}% (${progressDetail})`);
+}
+
+function formatWorkBrief(result: WorkBriefResult): string {
+  const lines = [`Work briefing — ${result.briefing.work.title ?? result.work_id}`];
+  for (const section of result.sections) {
+    lines.push("", `${section.label}:`);
+    if (section.values.length === 0) lines.push("  - none");
+    else lines.push(...section.values.map((value) => `  - ${value}`));
+  }
+  lines.push(
+    "",
+    `Delivery: pending (${result.delivery_token})`,
+    "Continue the active Work from the listed next requirements.",
+  );
+  return lines.join("\n");
+}
+
+function writeStdoutFully(value: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onError = (error: Error) => {
+      process.stdout.off("error", onError);
+      reject(error);
+    };
+    process.stdout.once("error", onError);
+    process.stdout.write(value, (error) => {
+      process.stdout.off("error", onError);
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -2775,6 +2982,184 @@ async function main(argv: string[]): Promise<number> {
           return 1;
         }
         throw e;
+      }
+    }
+
+    case "work": {
+      const sub = positional[0];
+      if (sub === undefined) {
+        console.log(formatNamespaceHelp("work"));
+        return 0;
+      }
+      if (
+        sub !== "create" &&
+        sub !== "amend" &&
+        sub !== "transition" &&
+        sub !== "status" &&
+        sub !== "brief" &&
+        sub !== "confirm" &&
+        sub !== "switch"
+      ) {
+        console.error(`error: unknown 'work' subcommand: ${sub}`);
+        console.error("usage: anamnesis work <create|amend|transition|status|brief|confirm|switch> [options]");
+        return 1;
+      }
+      try {
+        if (sub === "create" || sub === "amend" || sub === "transition") {
+          const input = workMutationInput(flags, sub);
+          const result =
+            sub === "create"
+              ? createWork(input)
+              : sub === "amend"
+                ? amendWork(input)
+                : transitionWork(input);
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+          } else {
+            reportWorkMutation(result);
+          }
+          return 0;
+        }
+
+        const projectRoot =
+          optionalWorkFlag(flags, "project-root") ?? process.cwd();
+        const stateRoot = optionalWorkFlag(flags, "state-root");
+        const workId = requiredWorkFlag(flags, "work");
+        if (sub === "status") {
+          const result = statusWork({
+            project_root: projectRoot,
+            state_root: stateRoot,
+            work_id: workId,
+          });
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+          } else {
+            reportWorkStatus(result);
+          }
+          return 0;
+        }
+
+        const cursorId = requiredWorkFlag(flags, "session");
+        if (sub === "brief") {
+          const occurredAt = workTimestamp(flags, false);
+          const result = briefWork({
+            project_root: projectRoot,
+            state_root: stateRoot,
+            work_id: workId,
+            cursor_id: cursorId,
+            client_session_ref:
+              optionalWorkFlag(flags, "client-session-ref") ?? null,
+            occurred_at: occurredAt,
+          });
+          const json = flags.json === true;
+          await deliverWorkBriefing({
+            rendered: `${json ? JSON.stringify(result, null, 2) : formatWorkBrief(result)}\n`,
+            direct_tty: process.stdout.isTTY === true,
+            structured: json,
+            write: writeStdoutFully,
+            confirm: () => {
+              confirmWorkBrief({
+                project_root: projectRoot,
+                state_root: stateRoot,
+                work_id: workId,
+                cursor_id: cursorId,
+                delivery_token: result.delivery_token,
+                confirmed_at: new Date().toISOString(),
+              });
+            },
+          });
+          return 0;
+        }
+
+        if (sub === "confirm") {
+          const result = confirmWorkBrief({
+            project_root: projectRoot,
+            state_root: stateRoot,
+            work_id: workId,
+            cursor_id: cursorId,
+            delivery_token: requiredWorkFlag(flags, "delivery-token"),
+            confirmed_at: workTimestamp(flags, false),
+          });
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+          } else {
+            console.log(`Work briefing confirmed: ${result.delivery_token}`);
+          }
+          return 0;
+        }
+
+        const occurredAt = workTimestamp(flags, false);
+        const result = switchWork(
+          {
+            project_root: projectRoot,
+            state_root: stateRoot,
+            work_id: workId,
+            cursor_id: cursorId,
+            client_session_ref:
+              optionalWorkFlag(flags, "client-session-ref") ?? null,
+            occurred_at: occurredAt,
+          },
+          {
+            switchWork: (input) => {
+              const truth = {
+                work_id: input.work_id,
+                revision: input.projection.contract_revision,
+                last_event_id: input.projection.last_event_id,
+                projection_hash: input.projection.projection_hash,
+              };
+              const read = readWorkCursor(
+                input.state_root,
+                input.cursor_id,
+                undefined,
+                input.worktree_fingerprint,
+              );
+              if (read.status === "corrupt") throw new Error(read.error);
+              if (read.status === "switched") {
+                throw new Error("Work cursor belongs to another worktree");
+              }
+              if (read.cursor) {
+                switchWorkCursorAtomic(
+                  input.state_root,
+                  { ...read.cursor, updated_at: input.occurred_at },
+                  truth,
+                );
+              } else {
+                writeWorkCursorAtomic(
+                  input.state_root,
+                  newWorkCursor({
+                    cursor_id: input.cursor_id,
+                    client_session_ref: input.client_session_ref,
+                    worktree_fingerprint: input.worktree_fingerprint,
+                    updated_at: input.occurred_at,
+                    truth,
+                  }),
+                  { expectedCursorRevision: null },
+                );
+              }
+              const current = readWorkCursor(
+                input.state_root,
+                input.cursor_id,
+                truth,
+                input.worktree_fingerprint,
+              );
+              if (!current.cursor) throw new Error("Work cursor write failed");
+              return {
+                schema_version: "anamnesis.work-switch.v1" as const,
+                work_id: input.work_id,
+                cursor: current.cursor,
+              };
+            },
+          },
+        );
+        if (flags.json === true) {
+          await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+        } else {
+          console.log(`Session ${cursorId} switched to Work ${workId}`);
+        }
+        return 0;
+      } catch (error) {
+        console.error(`error: ${(error as Error).message}`);
+        return 1;
       }
     }
 

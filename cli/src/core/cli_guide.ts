@@ -117,6 +117,10 @@ export function formatCompactHelp(
     ...ui.section("Guided Workflows"),
     ...ui.commandRows([
       {
+        command: "work brief --work <id> --session <id>",
+        description: "Reconcile requirements, progress, blockers, and next work.",
+      },
+      {
         command: "upgrade plan",
         description: "Read-only package and project apply plan with choices.",
       },
@@ -156,7 +160,7 @@ export function formatCompactHelp(
   ].join("\n");
 }
 
-export type HelpNamespace = "context" | "handoff" | "benchmark";
+export type HelpNamespace = "context" | "handoff" | "benchmark" | "work";
 
 export function formatNamespaceHelp(
   namespace: HelpNamespace,
@@ -181,6 +185,8 @@ function namespaceSubtitle(namespace: HelpNamespace): string {
       return "Draft and lifecycle-manage session handoff archives.";
     case "benchmark":
       return "Record deterministic and model-dependent context evidence.";
+    case "work":
+      return "Capture requirements and keep delivery state continuous across sessions.";
   }
 }
 
@@ -210,6 +216,16 @@ function namespaceRows(namespace: HelpNamespace) {
         { command: "benchmark task-series", description: "Roll up repeated full/compact task comparisons." },
         { command: "benchmark subagent-injection", description: "Measure repeated subagent context injection evidence." },
         { command: "benchmark prompt-gate", description: "Decide whether prompt-time context injection is justified." },
+      ];
+    case "work":
+      return [
+        { command: "work create", description: "Create a Work from one exact source prompt and a strict contract draft." },
+        { command: "work amend", description: "Append requirements to the current Work contract." },
+        { command: "work transition", description: "Record one requirement status transition with evidence." },
+        { command: "work status", description: "Refold and report authoritative Work state." },
+        { command: "work brief", description: "Prepare a session-scoped reconciliation briefing." },
+        { command: "work confirm", description: "Acknowledge that a prepared briefing was actually presented." },
+        { command: "work switch", description: "Move one session cursor to another Work without mutating either Work." },
       ];
   }
 }

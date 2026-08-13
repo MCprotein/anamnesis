@@ -124,6 +124,13 @@ export interface PublishedWorkSourceAllocation {
   ledger: AppendWorkLedgerResult;
 }
 
+export interface AppendCanonicalTypedWorkProgressEventInput {
+  stateRoot: string;
+  ledgerPath: string;
+  ledgerEvent: WorkLedgerEvent;
+  expectedHead: string | null;
+}
+
 const DEFAULT_LOCK_TIMEOUT_MS = 2_000;
 const DEFAULT_LOCK_RETRY_MS = 10;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -273,6 +280,50 @@ export function publishAndAppendCanonicalTypedWorkSourceEvent(
 }
 
 /**
+ * Append an evidence-only typed progress event without pretending it is a
+ * user-authored source capture. Waivers and any source-bearing payload must
+ * use the source-first publication API instead.
+ */
+export function appendCanonicalTypedWorkProgressEvent(
+	input: AppendCanonicalTypedWorkProgressEventInput,
+	options: WorkStorageOptions = {},
+): AppendWorkLedgerResult {
+	const event = parseTypedWorkEvent(input.ledgerEvent);
+	if (event.kind !== "work_requirement_transitioned") {
+		throw new Error("source-free typed append only accepts Work progress events");
+	}
+	if (event.payload.status === "waived" || event.payload.waiver) {
+		throw new Error("Work waivers require the canonical source publication API");
+	}
+	if (hasSourceReference(event.payload)) {
+		throw new Error("source-free Work progress event cannot contain source references");
+	}
+	const stateRoot = secureStateRoot(input.stateRoot);
+	const relativeLedger = path.relative(stateRoot, path.resolve(input.ledgerPath));
+	const ledgerParts = relativeLedger.split(path.sep);
+	if (
+		ledgerParts.length !== 3 ||
+		ledgerParts[0] !== "work-units" ||
+		!SAFE_ID.test(ledgerParts[1] ?? "") ||
+		ledgerParts[1] !== event.payload.work_id ||
+		ledgerParts[2] !== "ledger.jsonl"
+	) {
+		throw new Error("source-free Work progress ledger path is not canonical");
+	}
+	const ledgerPath = managedDescendant(stateRoot, relativeLedger);
+	return withWorkLedgerLock(ledgerPath, options, () =>
+		appendPublishedLedgerUnlocked(
+			{
+				ledgerPath,
+				event,
+				expectedHead: input.expectedHead,
+			},
+			stateRoot,
+		),
+	);
+}
+
+/**
  * Explicit TOFU migration for pre-binding ledgers. The operator authorizes the
  * currently published canonical envelopes as the one-time historical baseline.
  */
@@ -390,6 +441,21 @@ function isTypedWorkPayload(payload: Record<string, unknown> | undefined): boole
 		"anamnesis.work-progress-event.v1",
 		"anamnesis.work-lifecycle-event.v1",
 	].includes(String(payload?.schema_version ?? ""));
+}
+
+function hasSourceReference(value: unknown): boolean {
+	if (Array.isArray(value)) return value.some(hasSourceReference);
+	if (!value || typeof value !== "object") return false;
+	return Object.entries(value).some(
+		([key, item]) =>
+			key === "source_event_id" ||
+			key === "source_event_ids" ||
+			key === "source_envelope_hash" ||
+			key === "source_envelope_bindings" ||
+			key === "source_object_hash" ||
+			key === "source_object_path" ||
+			hasSourceReference(item),
+	);
 }
 
 function appendPublishedLedgerUnlocked(

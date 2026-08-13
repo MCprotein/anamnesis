@@ -57,6 +57,23 @@ could include breaking changes.
   Fresh verification passed all 120 targeted tests and all 868 tests across 84
   files, plus typecheck, lint, build, import, and diff checks; independent
   adversarial verification and final code review returned `APPROVE`.
+- Added the first thin, command-boundary Work workflow with
+  `work create|amend|transition|status|brief|confirm|switch`. Contract drafts
+  classify new versus same-Work intent, exact raw source bytes are published
+  before typed contract mutations, and evidence-only progress does not invent
+  user-authored source prompts. Human and JSON briefings refold the validated
+  ledger and report the original requirements, done/remaining work, blockers,
+  progress mode and denominator, next items, and configured review gates.
+  Delivery is prepared in a per-session CAS cursor before rendering; only a
+  complete direct-TTY human write confirms automatically, while JSON,
+  redirected output, and failed writes remain explicitly pending. Concurrent
+  cursor writers cannot silently overwrite each other, different sessions can
+  select different Works, same-requirement progress conflicts fail closed, and
+  live Agentfile changes are reported as drift without rewriting a Work's
+  frozen policy. Fresh verification passed 146 targeted Work tests and all 894
+  tests across 88 files, plus typecheck, lint, build, and diff checks;
+  independent code review returned `APPROVE` and adversarial verification
+  returned `PASS`.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile
