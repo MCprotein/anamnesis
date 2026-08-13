@@ -38,6 +38,10 @@ Two promises drive the roadmap:
    Code, Codex, Cursor, or another adapter should preserve enough context
    for the next agent to continue from the same project state with no
    bespoke "read these files first" prompt from the user.
+3. **Keep work units faithful through compaction** — a large requirement set,
+   its execution and review rules, its evidence-backed completion state, and
+   the remaining work should survive context compression without the user
+   repeatedly asking the agent to recount everything.
 
 This means user-facing parity matters more than identical native UI.
 Adapters may render to different surfaces because the tools expose
@@ -1889,6 +1893,461 @@ Exit criteria:
 - New benchmark visualizations are discoverable from
   `docs/benchmark-evidence/README.md` without turning the top-level README into
   an artifact gallery.
+
+---
+
+## v1.18 — *planned*
+
+> **Theme: evidence-backed work-unit continuity across long agent runs**
+
+Long-running agent work has a different continuity failure from switching
+tools or sessions: the original task may contain dozens or hundreds of
+requirements, and repeated context compaction can gradually erase individual
+constraints even while the agent still remembers the general goal. Users can
+counteract this by periodically asking the agent to restate the requirements,
+completed work, remaining work, and progress. v1.18 should automate that
+reconciliation while using less prompt context than repeated full-task
+restatement. A requirement list alone is not enough: the same durable unit
+must also remember how the user expects the work to be planned, reviewed, and
+allowed to finish. It should also be able to say “brief and continue every few
+minutes/actions” and “use safe parallel agents, preferring or requiring tmux
+for this Work” once, instead of making the user repeat those instructions.
+
+The storage and responsibility boundaries are:
+
+- **Work unit**: the only durable task-domain object: one unit of user intent,
+  lifecycle, review rules, requirements, progress, checkpoints, and source
+  pointers, bounded by one independently completable delivery contract.
+- **Source event**: one immutable user-authored prompt payload plus capture
+  fidelity, content hash, and allocation metadata. It is not agent-cleaned
+  prose and it is not a full conversation transcript.
+- **Task harness**: the stable success contract for a task or task class.
+- **Requirement ledger**: append-only source allocation, interpretation,
+  correction, status, and lineage events for one work unit.
+- **Projection**: the clean current requirement/progress view derived from the
+  ledger. It is operational state, not source provenance.
+- **Evidence**: the proof that supports a status transition.
+- **Handoff**: the session or agent-switch resume pointer.
+- **Session cursor**: a disposable, non-authoritative local pointer to one Work
+  revision/event; it is not a task, checkpoint owner, or execution record.
+- **Context index**: a regenerable lookup surface for those authoritative
+  files, never the source of truth.
+
+Work units are the sole authority for an in-flight task instance. Reusable
+task harnesses remain templates/policy sources whose resolved refs and hashes
+are snapshotted into an accepted Work contract revision. v1.18 must migrate or deprecate legacy
+`current` harnesses so two mutable goals, stop conditions, or scopes cannot
+compete for the same task.
+
+The work-unit identity should remain bounded under
+`.anamnesis/work-units/<id>/unit.yaml`, while exact prompt objects, immutable
+event envelopes, one append-only ledger, the current projection, and disposable
+session cursors use the layout defined in
+[Work Unit and Requirement Ledger Design](WORK-UNIT-DESIGN.md). A single YAML
+file is insufficient once a user keeps adding verbatim requirements for weeks
+or months. Ledger packing/rotation remains deferred until profiling proves it
+necessary and can never change semantic identity.
+
+Work-unit lifecycle stays minimal: `open`, `completed`, `abandoned`, and
+`superseded`. Blocked, stale, review readiness, progress, and foreground are
+derived views, not semantic lifecycle states. A session can switch its local
+foreground cursor without pausing a Work for every other session.
+
+Requirement entries use stable IDs and explicit states: `pending`,
+`in_progress`, `implemented_unverified`, `verified`, `blocked`, and `waived`.
+Each entry preserves the requirement text or an exact source pointer, its
+status, evidence references, and `updated_at`. Optional weights are allowed
+only when the task author explicitly supplies them.
+
+Progress must be reproducible. The default percentage is verified applicable
+requirements divided by all applicable requirements. `waived` entries are
+excluded from the denominator, while `blocked` entries remain applicable;
+`implemented_unverified` is reported separately and does not inflate
+completion. A weighted percentage is valid only when explicit weights exist.
+The agent must not invent a subjective percentage from prose or diff size.
+
+Product and efficiency boundaries:
+
+- Do not inject the full requirement list on every prompt or every tool call.
+- Do not add a timer daemon for periodic briefings. Evaluate time/action
+  thresholds at the next supported safe hook, response, resume, or Work-command
+  boundary, deduplicate by cursor fingerprint, then continue the same turn.
+- Do not store full transcripts or hidden agent/runtime messages. Stage exact
+  user input only long enough to classify it; durably retain raw bodies only
+  when allocated to a work unit or provisionally ambiguous. Pure interruptions
+  and non-requirements discard their bodies by default. Keep retained bodies
+  local-private and out of default injection/index/export surfaces.
+- Do not infer semantic completion from a changed file, commit, or passing
+  command alone. Deterministic tooling can validate evidence references and
+  freshness; an agent must reconcile meaning against the original requirement.
+- Do not let hooks silently mark work verified or finalize the ledger.
+- Keep checkpoint reminders deduplicated by work-unit/evidence/worktree
+  fingerprint.
+- Keep each session's one cursor-selected work-unit digest small and
+  pointer-first; retrieve
+  individual requirements, rules, reviews, or evidence only when needed.
+- Do not silently replace a required independent review with self-review.
+  Resolve configured providers in order; OMX authorization/authority failure
+  falls through to a Codex native subagent when available. A strict protected
+  transition remains blocked from `pending` onward until a current-input review
+  passes or the user explicitly waives it; exhausting providers specifically
+  records `blocked_unavailable`.
+- Do not rely only on a live project preference at resume time. Materialize the
+  resolved rules and their source/hash into the work unit so compaction and
+  later policy edits cannot erase or silently rewrite the accepted contract.
+- Do not use wall-clock TTL to expire a planning or PR/code review. Review
+  validity follows the reviewed input hash; material plan or diff changes make
+  the old review stale immediately.
+- Do not let TTL complete, abandon, supersede, waive, or delete a work unit.
+- Do not add a daemon, scheduler, worker queue, Job/Run/Attempt hierarchy,
+  heartbeat, long-lived lease, or provider retry manager. Agent runtimes execute
+  work and reviewers; anamnesis injects policy, records events/evidence, and
+  validates close conditions.
+- Do not make anamnesis launch, schedule, supervise, or shut down native agents
+  or tmux panes. It may require a bounded parallelism assessment, select an
+  allowed runtime class through resolved policy, and record the result; the
+  current Codex/Claude/OMX runtime owns execution.
+- Reuse `context`, `handoff`, `benchmark`, and diagnostics namespaces instead
+  of adding another top-level command.
+- Keep repo-local files authoritative. No daemon, remote database, or hosted
+  task service is required for the baseline.
+- Resolve one canonical local Work state root per repository instance. Normal
+  checkouts use project `.anamnesis`; linked Git worktrees share the primary
+  worktree's `.anamnesis`. A mismatched/unavailable root blocks Work writes
+  instead of silently forking the ledger. Independent clones and hosts do not
+  claim live synchronization.
+
+Planned work:
+
+| # | Item | Status | Description |
+|---|---|---|---|
+| 1 | **Thin Work boundary, schema, and lifecycle** | planned | Keep Work as the only durable task-domain object. Define it by one user-recognizable acceptance/release/cancel decision with stable boundary reason codes, confidence, related/successor lineage, contract revision, policy/evidence hashes, and bounded completed-unit retention. Foreground is a disposable per-session cursor, never global Work state. Treat separate files/reviewers/deadlines as advisory signals, not boundaries, and store the accepted boundary hash rather than re-inferring membership after compaction. |
+| 2 | **Verbatim source-event ledger and projection** | planned | Capture user-visible prompt payloads as immutable hashed source events when the adapter supports exact capture; declare downgraded fidelity otherwise. Allocate whole events or exact spans to one append-only hash-linked Work ledger, and maintain a separate agent-authored projection for normalized requirements, duplicates, conflicts, status, and progress. Never overwrite raw wording with a summary. Durably publish and `fsync` the source object/envelope before ledger commit. Treat a validated newline-terminated ledger record as the commit point, recover only a torn final tail, fail closed on interior/hash-chain corruption, and rebuild stale manifest/projection caches after crashes. |
+| 3 | **Evidence-based progress reporter** | planned | Report verified/applicable progress, implemented-but-unverified count, blocked requirements, waived requirements, and evidence freshness. JSON output must make the denominator and any weights explicit so two runs over the same ledger produce the same result. |
+| 4 | **Automatic reconciliation briefing** | planned | Make the user's repeated “requirements / done / remaining / percentage, then continue” prompt a Work policy with `off`, `adaptive`, `frequent`, and `custom` presets. Reconcile the complete projection, emit a bounded compact summary or untruncated chunked full briefing, and continue in the same turn. Use safe-boundary time/action thresholds and disposable cursor fingerprints rather than a timer daemon or canonical reminder events. Existing projects default to `off`. |
+| 5 | **Per-Work automatic delegation and runtime policy** | planned | Add `off`, `auto`, `prefer`, and `required` parallelism plus maximum-agent, native-agent, tmux-Team, fallback, and unavailable behavior. Assess dependency-independent read/write/effect scopes once per contract revision and on material scope changes; never invent lanes. The current agent runtime launches and supervises workers. Anamnesis records one bounded assessment/result, and OMX authority failure falls through to allowed Codex-native agents. Existing projects default to `off`. |
+| 6 | **User-configurable independent-review gates** | planned | Ship `off`, `advisory`, `strict`, and `custom` presets across user, project, task-harness, and per-unit scopes. `advisory` and `strict` use the same default checkpoints and differ only in enforcement; `custom` resolves each gate to `off`, `advisory`, or `required`. Resolve capability separately from provider and record provider attempts as ledger evidence. Existing agents execute OMX/Codex-native fallback; anamnesis does not schedule or supervise them. Material input changes invalidate reviews. Existing projects default to `off`. |
+| 7 | **Multi-session checkpoints and Work boundaries** | planned | Give every session a disposable cursor (`work_id`, observed revision, last event), while shared checkpoints remain Work-ledger events. Resolve one canonical state root across a checkout and its linked Git worktrees. Use unique event IDs, a short per-unit file lock, expected-head CAS, and atomic cache rename; never last-writer-wins. Classify new input as same-Work amendment, new related Work, interruption, or provisional ambiguity. Switching a session cursor does not globally pause a Work. Ask only when ownership, cancel/replace intent, completion contract, review waiver, or dirty/external scope is genuinely ambiguous or conflicting. |
+| 8 | **Compaction-aware adapter lifecycle** | research first | Audit each supported client/version using official schema evidence and real-CLI probes before naming native `PreCompact`, `PostCompact`, or compact-resume events. The current anamnesis Codex renderer does not implement a proven compact lifecycle path. Add version-gated native handling only after evidence exists, behind `--allow-exec-adapters`; otherwise keep tested manual, SessionStart, and resume fallbacks. |
+| 9 | **Compact checkpoint digest** | planned | After a shared Work checkpoint or compaction, inject only the cursor-selected Work ID, goal hash/source pointer, revision, lifecycle, verified/applicable count, pending review gates, blockers, next requirement IDs, and the unit path. Keep unconditional per-prompt injection disabled; use the existing prompt gate and fingerprint dedupe before adding any prompt-time reminder. |
+| 10 | **Handoff, resume, index, TTL, and diagnostics integration** | planned | Include the local cursor and latest shared Work checkpoint in handoff/resume output; index authoritative ledger events plus individual requirement and rule pointers; diagnose missing source refs, stale evidence/reviews, verified entries without evidence, cursor revision lag, ledger-head conflicts, and digest/unit divergence. TTL may mark dormant Works stale, exclude digests, and garbage-collect disposable cursors; it never mutates Work meaning. |
+| 11 | **Work-unit continuity and policy benchmark** | planned | Add public-safe long-task fixtures, including a 100-requirement task, briefing and parallelism presets, review presets/provider fallback, task switches, concurrent sessions, and repeated manual/automatic compaction simulations. Measure requirement/rule retention, gate bypasses, false-complete rate, verified-evidence coverage, digest/briefing tokens, retrieval turns, duplicate reminders, safe delegation decisions, and progress reproducibility before making performance claims. |
+| 12 | **Optional MCP export gate** | research first | Keep CLI/files as the baseline. If dogfood proves cross-client file/CLI access is a real bottleneck, prototype a read-mostly MCP resource/tool surface against the stable `2026-07-28` specification and compare latency, prompt tokens, cache hit behavior, trust surface, and maintenance cost before accepting it. |
+
+### Work-unit review policy
+
+The work unit should carry user-configurable action gates, not universal prose
+reminders. Existing projects resolve to preset `off`; users may choose
+`advisory`, `strict`, or `custom` globally, per project, by matched task
+harness, or per unit. Required gates merge monotonically so a weaker lower
+precedence default cannot silently remove a stronger requirement. Current
+explicit user instructions/waivers take precedence, followed by per-unit,
+task-harness, project, user-level, and product defaults. The resolved snapshot
+and all sources are stored in the current accepted contract revision; later policy changes produce
+a diagnostic rather than silently mutating in-flight work.
+
+```yaml
+policy:
+  source_refs:
+    - "AGENTS.md#review-policy"
+  resolved_at: "<ISO-8601 timestamp>"
+  policy_hash: "sha256:..."
+
+review_gates:
+  - id: planning-review
+    enforcement: required
+    protects: implementation_start
+    reviewer:
+      capability: independent_agent
+      role: critic
+      min_count: 1
+      independent: true
+    unavailable: fail_closed
+    state: pending
+    input_hash: null
+    artifact_refs: []
+
+  - id: pr-code-review
+    enforcement: required
+    protects: work_close
+    reviewer:
+      capability: independent_agent
+      role: code-reviewer
+      min_count: 1
+      independent: true
+    unavailable: fail_closed
+    state: pending
+    input_hash: null
+    artifact_refs: []
+
+review_provider_preferences:
+  provider_order: [omx, codex_native, separate_process]
+  fallback_on: [authorization_error, unsupported_authority, unavailable]
+```
+
+Gate states are `pending`, `requested`, `passed`, `changes_requested`,
+`blocked_unavailable`, and `waived`. These are ledger/projection fields, not
+provider-process states. A waiver requires a user decision pointer plus a reason. Planning
+review hashes the accepted task contract and plan. PR/code review hashes the
+reviewed base/head or worktree diff plus required verification evidence. If
+those inputs change materially, the gate returns to `pending`; time alone does
+not invalidate or satisfy it. `changes_requested` keeps the protected action
+unready until the findings are resolved and a fresh independent
+review passes. Under `strict`, every state except an input-hash-matched `passed`
+or evidenced `waived` blocks the protected transition. A provider failure is
+not permission to proceed: OMX authorization or documented-leader-proof errors
+must fall through to Codex native subagents when available, and exhausting all
+providers sets `blocked_unavailable`. `advisory` uses the same default planning
+and completion checkpoints but records unavailability or findings without
+blocking. `custom` normalizes each gate to `off`, `advisory`, or `required`
+enforcement. The current agent runtime, not anamnesis, performs OMX/Codex-native
+fallback; anamnesis injects the preference and records each result as an
+`activity_id`-grouped ledger event. Self-review cannot satisfy an independent
+gate.
+
+Configuration should be preset-first through `anamnesis init
+--review-preset`, a guided `anamnesis context policy configure --scope
+user|project`, and visible resolution in `status`/`doctor`. The user-level
+default belongs in platform/XDG configuration. Project policy belongs in
+Agentfile and needs an explicit schema migration because Agentfile v1 rejects
+unknown fields. Detailed custom rules may be stored in a referenced policy
+file or task harness instead of making users hand-author every gate.
+
+### Automatic briefing and parallel execution policy
+
+Reconciliation is an action on the current Work snapshot, not a conversational
+habit the user must keep prompting. `adaptive` briefs on resume, contract
+revision, compaction recovery, meaningful milestones, and close. `frequent`
+adds a default due threshold of five minutes or five evidence-bearing actions.
+`custom` controls triggers, maximum silence/action count, compact/full detail,
+and compact/chunk targets. A due threshold is checked only at the next
+supported safe hook, response, resume, or Work-command boundary, so it adds no
+daemon and does not interrupt an idle process. The briefing reports the
+goal/invariants, requirements changed since the previous snapshot,
+verified/applicable counts, reproducible percentage, blockers, gates, next
+IDs, and next action, then the agent continues in the same turn. Compact mode
+uses deterministic grouping and pointers when the target is tight; full mode
+enumerates all requirements/invariants in ordered chunks and never silently
+truncates. Its time/fingerprint counters are disposable cursor state, not
+canonical ledger traffic.
+
+Delegation is likewise a resolved Work policy rather than an executor inside
+anamnesis. `parallelism: auto` delegates only when two or more dependency-
+independent lanes have ready inputs and coordination benefit exceeds overhead;
+`prefer` makes safe delegation the default; `required` protects the assessment
+and requires an allowed runtime or waiver when safe lanes exist; `off` remains
+solo apart from separately required review gates. Native-agent and tmux-Team
+preferences each support `never`, `auto`, `prefer`, and `required`, with a
+bounded maximum-agent count, fallback order, and unavailable behavior. Native
+agents fit small same-session fan-out; tmux Team fits durable, long-running, or
+operator-visible coordination. The agent runtime owns launch, worktrees,
+mailboxes, retries, and shutdown. Anamnesis injects the resolved choice and
+records one `parallelism_assessed` event per material contract/policy revision,
+including lane scopes/dependencies, the selected runtime class, and why the
+Work ran parallel, solo, or `not_parallelizable`.
+
+Provider fallback never weakens `parallelism: required`: provider exhaustion
+may fall back to solo only for `auto`/`prefer`. Required parallel work remains
+`blocked_unavailable` until an allowed provider succeeds or the user records a
+waiver; a required tmux surface cannot be satisfied by native agents. `solo` is
+not a provider-order value.
+
+Review, reconciliation, and delegation share the precedence already defined
+above. Existing projects resolve the new behaviors to `off`; guided policy
+configuration and a natural-language per-Work instruction both append the
+resolved policy and source/hash to a new contract revision.
+
+### Requirement ledger and work-unit boundaries
+
+Every prompt allocated to a work unit, or provisionally ambiguous, is retained
+as an immutable source event before the agent normalizes it. Exact source text
+and its hash remain canonical; the clean requirement list is a separate
+projection with stable source event/span refs. Pure interruptions and
+non-requirements discard their raw bodies after staged classification unless
+the user separately opts into full-prompt archival.
+Rambling, duplicate, corrective, or contradictory prompts therefore remain
+faithful in the original chronology while agents and users operate on a clean
+current contract. Corrections and improved interpretations append lineage
+records instead of editing history. Raw prompt bodies stay local-private and
+are excluded from normal SessionStart, context-index snippets, logs,
+telemetry, and MCP resources.
+
+A work unit is bounded by one user-recognizable acceptance/release/cancel
+decision, not by chat session, topic, file set, reviewer, elapsed time, or token
+count. A later requirement stays in the same unit when it contributes to that
+same verdict; the ledger grows and the contract revision advances. Separate
+write scopes, deadlines, reviewers, or verification paths are agent-runtime
+execution signals only. Create another Work only when the result can be
+accepted, shipped, cancelled, or rolled back independently without changing
+the current Work's completion verdict. Persist
+unit/revision/boundary hashes and reason codes so compaction cannot cause
+reclassification drift.
+
+Very long vaguely related sessions keep finite Works connected by bounded
+relations such as `related_to` or `successor_of`; the baseline adds no
+WorkStream container. Boundary ambiguity is captured provisionally first so
+the raw request is not lost, but it cannot authorize repository writes or
+external effects. Ask the user only when multiple completion contracts are
+plausible or ownership/cancel/replace/conflicting effects would materially
+change action. Reclassification preserves old IDs and appends successor
+mappings. See [Work Unit and Requirement Ledger
+Design](WORK-UNIT-DESIGN.md) for the complete contract.
+
+### Multi-session switching, Work closure, and TTL
+
+Default switching policy:
+
+1. A same-completion-contract follow-up appends its exact source event to the
+   current ledger and updates the contract revision without replacing old text.
+2. Implementation, tests, documentation, and review remain events/evidence in
+   the Work unless their result has an independent acceptance decision.
+3. A short read-only question is an interruption and does not replace the
+   foreground unit.
+4. A safe unrelated task appends a shared checkpoint when useful, then changes
+   only the current session's cursor. It does not globally pause the old Work.
+5. An explicitly parallel independently acceptable task gets its own Work.
+   Multiple sessions may point at the same or different Works.
+6. Ask the user when the new request might mean cancel/replace, when dirty
+   write scopes overlap, when external side effects are still in flight, when
+   stale source/git state makes resumption intent uncertain, or when a required
+   gate needs a waiver.
+
+TTL is a retention and attention budget, not task intent. `last_activity_at`
+plus a configurable `stale_after` may mark a unit stale, exclude its digest
+from default SessionStart context, and surface a diagnostic. The canonical
+unit and source pointer remain queryable. Resuming a stale unit revalidates its
+source refs, revision, git/worktree fingerprint, evidence, and review hashes
+before work continues. Cursor TTL may garbage-collect a disposable local
+cursor. No TTL path may auto-complete, abandon, waive, supersede, or delete the
+Work.
+
+Checkpoint flow:
+
+1. At prompt receipt, stage the exact source payload and capture fidelity;
+   create/select a work unit, then retain the immutable event only when it is
+   allocated/provisional, allocate exact event spans, assign stable
+   requirement/review IDs, and snapshot boundary and policy hashes.
+2. After meaningful implementation or verification evidence, reconcile only
+   affected entries and recompute deterministic progress.
+3. Before a protected action such as implementation start or Work close,
+   enforce required planning or completion-review gates against their current
+   input hashes.
+4. Before compaction, append or refresh a shared Work checkpoint if the
+   expected ledger head still matches and emit an
+   advisory if semantic reconciliation is needed; do not guess missing states.
+5. After compaction, or on a compact-resume event, inject the bounded digest
+   and source pointer before the next model request.
+6. On a foreground task switch, checkpoint the old Work when useful and update
+   only the session cursor unless the switch is ambiguous or unsafe.
+7. At Stop or handoff, refresh the pointer, unresolved requirements, pending
+   review gates, and next action without auto-closing the Work.
+
+A Work closes as `completed` only when every applicable requirement is
+verified or explicitly waived, conflicts are resolved, the stop contract is
+satisfied, and required reviews match the current input. Explicit user
+acceptance authorizes closure; a prior prompt may also delegate objective
+closure to the agent. Session stop, handoff, cursor switch, compaction, commit,
+PR creation, tests, inactivity, and TTL never close a Work. Explicit cancel
+intent produces `abandoned`; evidenced replacement produces `superseded`.
+Premature completion appends `completion_revoked` and `reopened`; genuinely new
+scope after valid completion creates a successor Work.
+
+### MCP 2026-07-28 review
+
+The stable MCP `2026-07-28` revision materially changes the shape of a future
+anamnesis export, but it does not require an immediate code migration. The
+current package has no MCP SDK dependency and exposes no MCP client or server;
+the local CLI and files remain the supported continuity interface.
+
+If the optional export gate is later satisfied, the target contract is:
+
+- implement the stateless protocol core, required `server/discover`, and
+  per-request protocol/client capability metadata; do not introduce hidden
+  transport-session state or depend on `Mcp-Session-Id`;
+- expose ontology, handoff, harness, work-unit, and evidence pointers primarily
+  as deterministic resources, with stable ordering, `ttlMs`, project-safe
+  `cacheScope` (`private` by default), source hashes, and `lastModified`
+  metadata;
+- carry any cross-call work-unit selection as an explicit handle so the model
+  can see and replay it;
+- treat the `io.modelcontextprotocol/tasks` extension as an optional transport
+  for genuinely long-running CLI operations, not as the authoritative
+  work-unit state;
+- return the required `resultType`, use `-32602` for a missing resource, and
+  use `subscriptions/listen` only if live invalidation proves worth its runtime
+  cost;
+- avoid new reliance on deprecated Roots, Sampling, Logging, or legacy
+  HTTP+SSE behavior.
+
+Official references: [MCP 2026-07-28 release overview](https://blog.modelcontextprotocol.io/posts/2026-07-28/)
+and [specification changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog).
+
+Exit criteria:
+
+- A 100-requirement fixture retains every stable ID and source pointer across
+  at least three compaction/resume cycles.
+- The same fixture can receive additional prompts in the same unit; exact
+  source events retain their content hashes while the clean projection evolves.
+- Required planning and PR/code-review gates survive the same cycles, block
+  protected actions until an input-hash-matched review passes or is
+  explicitly waived, fall back from OMX authorization failure to Codex native
+  review, record `blocked_unavailable` when all providers fail, and require a
+  new review after their input hash changes.
+- Every `verified` entry has readable evidence; missing or stale evidence
+  downgrades diagnostics and never counts as verified progress silently.
+- Recomputing progress from an unchanged ledger produces identical totals and
+  percentages, with the denominator and weighting policy visible.
+- `adaptive`, `frequent`, and `custom` briefing fixtures reconcile the complete
+  projection, show requirements/done/remaining/reproducible progress at their
+  supported safe boundaries, deduplicate an unchanged snapshot, distinguish
+  injected from confirmed delivery, and continue without a permission handoff.
+- Parallelism fixtures delegate at least two ready dependency-independent
+  lanes under `prefer`/`required`, serialize shared write/effect scopes, obey
+  maximum-agent and native/tmux requirements, and pass every child a bounded
+  Work contract. Delegation results do not count as verified until the leader
+  integrates evidence.
+- An unchanged provider-failure fingerprint is not relaunched. OMX/tmux
+  unavailability follows the configured next-provider/ask/fail-closed path.
+  Provider exhaustion permits solo only for `auto`/`prefer`; required safe
+  lanes remain blocked without a waiver.
+- The default compact digest stays at or below 300 estimated tokens and at
+  least 90% smaller than injecting the full 100-requirement ledger.
+- No checkpoint reminder repeats for the same work-unit/evidence/worktree
+  fingerprint.
+- A safe task switch changes only the current session cursor and preserves a
+  shared checkpoint without changing another session's selection or the old
+  Work's lifecycle.
+- Two sessions appending to one Work preserve both events and cannot overwrite
+  a newer ledger head or projection. Deleting every cursor loses no Work truth.
+- Recovery truncates only one torn final ledger tail to its last validated
+  newline under lock; an invalid interior record or hash-chain mismatch fails
+  closed. Context-index entries derived from caches resolve to an exact
+  authoritative ledger event and record hash.
+- Crash ordering guarantees the source object/envelope is durably published
+  before its allocation record commits. A source-event lock prevents new
+  allocations during `purge_pending`; interrupted multi-Work purge resumes
+  idempotently and deletes the body only after every referrer is tombstoned.
+- A normal checkout and two linked Git worktrees resolve the same Work ledger
+  while retaining distinct worktree fingerprints. A separate clone is reported
+  as a separate local repository instance rather than pretending live sync.
+- A months-long synthetic session keeps one evolving deliverable through
+  contract revisions, separates independently completable results into linked
+  Works, and creates no time-based unit split or WorkStream object.
+- Work start/end fixtures prove that durable independent acceptance creates a
+  Work, amendments/interruption do not, and session/TTL/commit/PR/test signals
+  never close it.
+- TTL changes only freshness/injection behavior. It never changes semantic
+  lifecycle, review state, or user waiver state and never deletes a unit.
+- Benchmark runs report requirement omissions, false completion, duplicate or
+  missed briefings, unnecessary delegation, provider fallback, and tmux startup
+  overhead separately from token and latency savings.
+- For each client/version, official schema evidence or a real-CLI probe records
+  whether native compact events exist. Proven events restore the ledger digest
+  before continuation; unproven/unsupported adapters retain tested
+  manual/SessionStart/resume fallbacks without portable-hook claims.
+- MCP remains dependency-free and disabled unless the export benchmark proves
+  a material advantage over CLI/files. If accepted later, conformance and
+  backward-version negotiation tests are required before release.
 
 ---
 

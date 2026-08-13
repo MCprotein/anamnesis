@@ -450,6 +450,7 @@ used for deterministic README score claims.
 | **v1.15** | Subagent context contract and injection-success evidence | shipped 2026-07-09 |
 | **v1.16** | Command UX consolidation, grouped help, and terminal UI polish | shipped 2026-07-09 |
 | **v1.17** | Ontology source management and document graph diagnostics | shipped 2026-07-10; latest patch 1.17.0 |
+| **v1.18** | Thin Work ledger, automatic continuity briefings, Work-level agent/tmux policy, and multi-session safety | planned |
 
 Detailed plan: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
@@ -473,6 +474,9 @@ Monorepo application guide: [`docs/MONOREPO.md`](docs/MONOREPO.md).
   public fragment authoring guide, review checklist, versioning, and compatibility rules
 - [`docs/TASK-HARNESS-DESIGN.md`](docs/TASK-HARNESS-DESIGN.md) —
   v1.7 retrieval-only task harness capability and lifecycle design
+- [`docs/WORK-UNIT-DESIGN.md`](docs/WORK-UNIT-DESIGN.md) —
+  v1.18 thin Work ledger, automatic briefing/delegation policy, multi-session
+  checkpoint, and boundary design
 - [`docs/HANDOFF-LIFECYCLE.md`](docs/HANDOFF-LIFECYCLE.md) —
   hot/warm/cold/deprecated handoff lifecycle design and retention policy
   follow-up

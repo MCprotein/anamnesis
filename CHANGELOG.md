@@ -7,6 +7,22 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added the v1.18 roadmap and detailed design for a thin completion-contract
+  Work overlay: immutable verbatim user-prompt events, append-only requirement
+  ledgers with separate clean projections, conflict-safe shared checkpoints and
+  disposable per-session cursors, explicit Work start/end boundaries,
+  evidence-backed progress, automatic “requirements/done/remaining/progress,
+  then continue” briefings, Work-level native-agent/tmux parallelism policy,
+  and user-configurable independent-review rules with OMX-to-Codex-native
+  fallback. The design explicitly excludes execution-harness machinery such as
+  Job/Run state, schedulers, daemons, heartbeats, and leases.
+- Reviewed the stable MCP `2026-07-28` revision against the current codebase.
+  No migration is required because anamnesis has no MCP implementation; the
+  roadmap now records a stateless, deterministic, cacheable resource profile
+  and an evidence gate for any future optional export.
+
 ### Fixed
 
 - Fixed release-branch cleanup to delete the remote branch before the local

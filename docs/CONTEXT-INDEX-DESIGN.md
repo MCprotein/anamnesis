@@ -1,6 +1,7 @@
 # Context Index Design
 
-Status: v1.17 document graph retrieval baseline; MCP/API export deferred.
+Status: v1.17 document graph retrieval baseline; MCP/API export deferred with
+a v1.18 evaluation profile for MCP `2026-07-28`.
 
 v1.7 extends the same local index with task harness retrieval targets under
 `.anamnesis/task-harnesses/`.
@@ -9,6 +10,15 @@ v1.8 uses the same regenerable index direction for handoff lifecycle
 retrieval. Source markdown under `.anamnesis/handoff/` remains authoritative;
 configurable retention policy is project settings plus explicit CLI overrides,
 not a separate storage backend.
+
+v1.18 plans the same pointer-first treatment for Work ledgers and bounded
+manifests under the canonical local Work state root (normally
+`.anamnesis/work-units/*/`). Immutable raw prompt bodies remain local-private
+provenance and are never copied into index snippets. The Work ledger remains
+authoritative for membership and lineage; `unit.yaml` and `projection.yaml`
+are regenerable views, and disposable per-session cursors are resume hints
+only. The index exposes only stable unit/requirement/event/checkpoint pointers,
+hashes, classifications, and freshness.
 
 ## Goal
 
@@ -31,6 +41,14 @@ Index these public/local project sources first:
   tier metadata. Closed/cold history remains indexed but is eligible only for
   explicitly historical queries.
 - `.anamnesis/task-harnesses/*.yaml` for bounded task contracts.
+- Future canonical Work-state-root `work-units/*/ledger.jsonl` as authority,
+  plus `unit.yaml` and projection files as regenerable inputs for
+  open/terminal Work, requirement, boundary, review-gate, checkpoint, policy,
+  and lifecycle lookup once v1.18 implements the schema. Every entry derived
+  from a manifest or projection must resolve to the exact ledger event stable
+  ref and record hash that authorizes it. Raw prompt object bodies under the
+  Work state root's `work-inputs/` are excluded; only safe event IDs and hashes
+  may be indexed.
 - `.anamnesis/manifest.json` for installed fragment/render state.
 - `.anamnesis/evidence/events.jsonl` for latest runtime evidence summaries.
 - Selected docs under `docs/`, especially roadmap, benchmark, design, and
@@ -145,6 +163,18 @@ Cross-session continuity stays intentionally simple:
 
 Revisit MCP only if repeated dogfood shows CLI/file access is materially
 blocking supported agent workflows.
+
+The 2026-08-13 review of the stable MCP `2026-07-28` revision does not change
+that decision: anamnesis currently has no MCP SDK dependency and implements no
+MCP server or client, so there is no wire-protocol migration to perform. It
+does narrow a future prototype contract. Any accepted export should use the
+stateless core and `server/discover`, expose deterministic cacheable resources
+with explicit private/public cache scope, carry cross-call state through
+visible server-minted handles, and keep repo-local source files authoritative.
+The MCP Tasks extension may represent a long-running operation, but it must not
+replace work-unit source files or handoff as project task state. See the
+[MCP 2026-07-28 changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog)
+and the v1.18 roadmap gate before adding an SDK dependency or server surface.
 
 ## Diagnostics
 
