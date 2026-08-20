@@ -8,216 +8,205 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  init,
-  InitError,
-  summarizeChanges,
-  type InitResult,
-} from "./commands/init.js";
-import {
-  update,
-  UpdateError,
-  type UpdateResult,
-} from "./commands/update.js";
-import {
-  upgrade,
-  UpgradeError,
-  type UpgradeResult,
-} from "./commands/upgrade.js";
-import {
-  upgradePlan,
-  type UpgradePlanResult,
-} from "./commands/upgrade_plan.js";
-import {
-  upgradeApplyChoice,
-  UpgradeApplyChoiceError,
-  type UpgradeApplyChoiceResult,
-} from "./commands/upgrade_apply_choice.js";
-import {
-  upgradeChoose,
-  UpgradeChooseError,
-  type UpgradeChooseResult,
-} from "./commands/upgrade_choose.js";
-import {
-  detectUpgradeProjectGuidance,
-  formatUpgradeProjectGuidance,
-} from "./commands/upgrade_project_guidance.js";
-import {
-  promote,
-  PromoteError,
-  type PromoteResult,
-  type PromotableType,
-} from "./commands/promote.js";
-import {
-  status,
-  StatusError,
-  type StatusResult,
-} from "./commands/status.js";
-import {
-  doctor,
-  DoctorError,
-  type DoctorResult,
-} from "./commands/doctor.js";
-import {
-  releaseCheck,
-  type ReleaseCheckResult,
-} from "./commands/release_check.js";
-import {
-  bootstrap,
-  OntologyBootstrapError,
-  type BootstrapResult,
-} from "./commands/ontology.js";
-import {
-  dogfoodCheck,
-  DogfoodError,
-  type DogfoodResult,
-} from "./commands/dogfood.js";
-import {
-  hookSummary,
-  HookSummaryError,
-  type HookSummaryResult,
-} from "./commands/hooks.js";
-import {
-  benchmarkCompare,
-  benchmarkReport,
-  BenchmarkError,
   type BenchmarkCompareResult,
+	BenchmarkError,
   type BenchmarkResult,
+	benchmarkCompare,
+	benchmarkReport,
 } from "./commands/benchmark.js";
 import {
-  benchmarkTraceRollup,
-  BenchmarkTraceError,
-  type BenchmarkTraceRollupResult,
-} from "./commands/benchmark_trace.js";
-import {
-  upgradeBenchmark,
-  UpgradeBenchmarkError,
-  type UpgradeBenchmarkResult,
-} from "./commands/benchmark_upgrade.js";
-import {
-  benchmarkGallery,
   BenchmarkGalleryError,
   type BenchmarkGalleryResult,
+	benchmarkGallery,
 } from "./commands/benchmark_gallery.js";
 import {
+	PromptDeltaGateError,
+	type PromptDeltaGateResult,
+	promptDeltaGate,
+} from "./commands/benchmark_prompt_gate.js";
+import {
+	RetrievalBenchmarkError,
+	type RetrievalBenchmarkResult,
+	retrievalBenchmark,
+} from "./commands/benchmark_retrieval.js";
+import {
+	SessionContextBenchmarkError,
+	type SessionContextBenchmarkResult,
+	sessionContextBenchmark,
+} from "./commands/benchmark_session_context.js";
+import {
+	SubagentInjectionBenchmarkError,
+	type SubagentInjectionBenchmarkResult,
+	subagentInjectionBenchmark,
+} from "./commands/benchmark_subagent_injection.js";
+import {
+	type AgentTaskBenchmarkCompareResult,
+	AgentTaskBenchmarkError,
+	type AgentTaskBenchmarkResult,
   agentTaskBenchmark,
   agentTaskBenchmarkCompare,
   agentTaskBenchmarkCompareTemplate,
   agentTaskBenchmarkTemplate,
-  AgentTaskBenchmarkError,
-  type AgentTaskBenchmarkCompareResult,
-  type AgentTaskBenchmarkResult,
 } from "./commands/benchmark_task.js";
 import {
-  agentTaskBenchmarkSeries,
   AgentTaskBenchmarkSeriesError,
   type AgentTaskBenchmarkSeriesResult,
+	agentTaskBenchmarkSeries,
 } from "./commands/benchmark_task_series.js";
 import {
-  contextIndex,
-  contextQuery,
+	BenchmarkTraceError,
+	type BenchmarkTraceRollupResult,
+	benchmarkTraceRollup,
+} from "./commands/benchmark_trace.js";
+import {
+	UpgradeBenchmarkError,
+	type UpgradeBenchmarkResult,
+	upgradeBenchmark,
+} from "./commands/benchmark_upgrade.js";
+import {
+	type ContextDiagnosticsResult,
+	contextDiagnostics,
+} from "./commands/context_diagnostics.js";
+import {
+	type ContextDocsResult,
+	contextDocs,
+} from "./commands/context_docs.js";
+import {
   ContextIndexError,
   type ContextIndexKind,
   type ContextIndexResult,
   type ContextQueryResult,
+	contextIndex,
+	contextQuery,
 } from "./commands/context_index.js";
 import {
-  contextDocs,
-  type ContextDocsResult,
-} from "./commands/context_docs.js";
-import {
-  contextDiagnostics,
-  type ContextDiagnosticsResult,
-} from "./commands/context_diagnostics.js";
-import {
+	type ContextResumeResult,
+	type ContextSubagentPreambleResult,
   contextResume,
   contextSubagentPreamble,
-  type ContextSubagentPreambleResult,
-  type ContextResumeResult,
 } from "./commands/context_resume.js";
+import { DoctorError, type DoctorResult, doctor } from "./commands/doctor.js";
 import {
-  handoffAction,
+	DogfoodError,
+	type DogfoodResult,
+	dogfoodCheck,
+} from "./commands/dogfood.js";
+import { GcError, type GcResult, gc } from "./commands/gc.js";
+import {
   HandoffActionError,
   type HandoffActionResult,
+	handoffAction,
 } from "./commands/handoff_action.js";
 import {
-  handoffDraft,
   type HandoffDraftResult,
+	handoffDraft,
 } from "./commands/handoff_draft.js";
 import {
-  gc,
-  GcError,
-  type GcResult,
-} from "./commands/gc.js";
+	HookSummaryError,
+	type HookSummaryResult,
+	hookSummary,
+} from "./commands/hooks.js";
 import {
-  promptDeltaGate,
-  PromptDeltaGateError,
-  type PromptDeltaGateResult,
-} from "./commands/benchmark_prompt_gate.js";
+	InitError,
+	type InitResult,
+	init,
+	summarizeChanges,
+} from "./commands/init.js";
 import {
-  sessionContextBenchmark,
-  SessionContextBenchmarkError,
-  type SessionContextBenchmarkResult,
-} from "./commands/benchmark_session_context.js";
-import {
-  retrievalBenchmark,
-  RetrievalBenchmarkError,
-  type RetrievalBenchmarkResult,
-} from "./commands/benchmark_retrieval.js";
-import {
-  subagentInjectionBenchmark,
-  SubagentInjectionBenchmarkError,
-  type SubagentInjectionBenchmarkResult,
-} from "./commands/benchmark_subagent_injection.js";
-import {
-  migrateAgentfile,
-  MigrateError,
-  type MigrateAgentfileResult,
+	type MigrateAgentfileResult,
+	MigrateError,
+	migrateAgentfile,
 } from "./commands/migrate.js";
+import {
+	type BootstrapResult,
+	bootstrap,
+	OntologyBootstrapError,
+} from "./commands/ontology.js";
+import {
+	type PromotableType,
+	PromoteError,
+	type PromoteResult,
+	promote,
+} from "./commands/promote.js";
+import {
+	type ReleaseCheckResult,
+	releaseCheck,
+} from "./commands/release_check.js";
+import { StatusError, type StatusResult, status } from "./commands/status.js";
+import { UpdateError, type UpdateResult, update } from "./commands/update.js";
+import {
+	UpgradeError,
+	type UpgradeResult,
+	upgrade,
+} from "./commands/upgrade.js";
+import {
+	UpgradeApplyChoiceError,
+	type UpgradeApplyChoiceResult,
+	upgradeApplyChoice,
+} from "./commands/upgrade_apply_choice.js";
+import {
+	UpgradeChooseError,
+	type UpgradeChooseResult,
+	upgradeChoose,
+} from "./commands/upgrade_choose.js";
+import {
+	type UpgradePlanResult,
+	upgradePlan,
+} from "./commands/upgrade_plan.js";
+import {
+	detectUpgradeProjectGuidance,
+	formatUpgradeProjectGuidance,
+} from "./commands/upgrade_project_guidance.js";
 import {
   allocateStagedPromptToNewWork,
   allocateStagedPromptToSameWork,
   amendWork,
+	assessWorkDelegation,
   briefWork,
   confirmWorkBrief,
   createWork,
   discardStagedPrompt,
 	gcStagedWorkPromptEntries,
+	publicWorkExecutionMutation,
 	publicWorkPromptResolution,
+	readinessWork,
+	recordWorkDelegation,
+	recordWorkReview,
+	requestWorkReview,
   retainStagedPromptProvisional,
   statusWork,
   switchWork,
   transitionWork,
   type WorkBriefResult,
+	type WorkEvidenceMutationInput,
   type WorkMutationInput,
   type WorkMutationResult,
   type WorkPromptResolutionResult,
   type WorkRawSource,
   type WorkStatusResult,
+	waiveWorkDelegation,
 } from "./commands/work.js";
 import {
   handleWorkPostToolBoundary,
   handleWorkUserPromptSubmit,
   type WorkHookClient,
 } from "./commands/work_hook.js";
-import {
-  collectGenerationBoundaryStatus,
-  formatBootstrapGenerationBoundaryLines,
-  formatGenerationBoundaryLines,
-} from "./core/generation-boundary.js";
+import type { ToolName } from "./core/agentfile.js";
 import {
   formatCompactHelp,
   formatGettingStartedGuide,
   formatNamespaceHelp,
 } from "./core/cli_guide.js";
+import {
+	collectGenerationBoundaryStatus,
+	formatBootstrapGenerationBoundaryLines,
+	formatGenerationBoundaryLines,
+} from "./core/generation-boundary.js";
 import { formatInitNextStepLines } from "./core/init_next_steps.js";
+import type { OntologyLifecycleRecommendation } from "./core/ontology-gaps.js";
 import { createTui, type TuiTone } from "./core/tui.js";
 import { PACKAGE_VERSION } from "./core/version.js";
-import {
-  detectWorkspaceProfile,
-  formatWorkspaceProfileLines,
-} from "./core/workspace_profile.js";
-import type { OntologyLifecycleRecommendation } from "./core/ontology-gaps.js";
-import type { ToolName } from "./core/agentfile.js";
+import { parseSingleWorkDraft } from "./core/work_command_draft.js";
 import {
   newWorkCursor,
   readWorkCursor,
@@ -225,10 +214,18 @@ import {
   writeWorkCursorAtomic,
 } from "./core/work_cursor.js";
 import { deliverWorkBriefing } from "./core/work_delivery.js";
+import { workExecutionInputsSchema } from "./core/work_execution_inputs.js";
+import {
+	detectWorkspaceProfile,
+	formatWorkspaceProfileLines,
+} from "./core/workspace_profile.js";
 
 const VERSION = PACKAGE_VERSION;
-const SUPPORTED_TOOLS = ["claude-code", "codex", "cursor"] as const satisfies
-  readonly ToolName[];
+const SUPPORTED_TOOLS = [
+	"claude-code",
+	"codex",
+	"cursor",
+] as const satisfies readonly ToolName[];
 
 // ---------------------------------------------------------------------------
 // Arg parsing — tiny, deliberate, no dependency.
@@ -274,7 +271,9 @@ function parseArgs(argv: string[]): ParsedArgs {
   return { command, positional, flags };
 }
 
-function parseToolsFlag(value: string | boolean | undefined): ToolName[] | undefined {
+function parseToolsFlag(
+	value: string | boolean | undefined,
+): ToolName[] | undefined {
   if (value === undefined || value === false) return undefined;
   if (value === true) {
     throw new InitError("--tools requires a comma-separated list or 'all'");
@@ -301,7 +300,9 @@ function parseToolsFlag(value: string | boolean | undefined): ToolName[] | undef
   return tools;
 }
 
-function parseCommaListFlag(value: string | boolean | undefined): string[] | undefined {
+function parseCommaListFlag(
+	value: string | boolean | undefined,
+): string[] | undefined {
   if (value === undefined || value === false) return undefined;
   if (value === true) return undefined;
   const parts = value
@@ -518,6 +519,10 @@ Commands:
   work create                   Create a Work from an exact source + contract draft
   work amend                    Append a contract revision to an existing Work
   work transition               Transition one requirement with evidence
+  work review request|record    Prepare or record bounded review evidence
+  work delegation assess|record|waive
+                                Record parallelism/delegation evidence
+  work readiness                Evaluate protected-action obligations read-only
   work status                   Refold and report authoritative Work state
   work brief                    Prepare a session-scoped continuity briefing
   work confirm                  Confirm a briefing was actually presented
@@ -615,6 +620,12 @@ Flags (work):
   --source-event-id <id>        Stable exact-source ID (create/amend/waiver)
   --occurred-at <ISO>           Stable event time; defaults to now for cursor-only actions
   --draft <path>                Strict single-document YAML draft (mutations)
+  --expected-head <hash>        Required CAS head for every existing-Work mutation
+  --inputs <path>               Strict execution-input YAML/JSON (readiness)
+  --gate <planning|completion>  Review gate (review request)
+  --activity-id <id>            Review activity identifier (review request)
+  --action <implementation-entry|completion>
+                                Protected action (readiness)
   --source-file <path>          Capture exact user source (create/amend/waiver)
   --source-stdin                Capture stdin exactly (create/amend/waiver)
   --delivery-token <hash>       Prepared briefing token (confirm)
@@ -880,7 +891,8 @@ function reportWorkspaceProfile(projectRoot: string): void {
 function reportInit(result: InitResult, projectRoot: string): void {
   const ui = createTui();
   const s = summarizeChanges(result.changes);
-  const fragIds = result.selectedFragments.map((f) => f.id).join(", ") || "(none)";
+	const fragIds =
+		result.selectedFragments.map((f) => f.id).join(", ") || "(none)";
   printLines([
     ...ui.title("anamnesis init", result.agentfile.project.name),
     ...ui.keyValues([
@@ -891,17 +903,24 @@ function reportInit(result: InitResult, projectRoot: string): void {
       },
       { key: "tools", value: result.agentfile.tools.join(", ") },
       { key: "fragments (root)", value: fragIds },
-      { key: "changes", value: changeSummaryLine(s), tone: countTone(s.blocked) },
+			{
+				key: "changes",
+				value: changeSummaryLine(s),
+				tone: countTone(s.blocked),
+			},
     ]),
   ]);
   if (result.monorepoDetection?.isMonorepo) {
     const det = result.monorepoDetection;
     printLines([
       ...ui.section("Workspace Profile"),
-      ui.note(`monorepo detected via ${det.declaredVia}: ${det.scopes.length} scope(s)`),
+			ui.note(
+				`monorepo detected via ${det.declaredVia}: ${det.scopes.length} scope(s)`,
+			),
     ]);
     for (const scope of det.scopes) {
-      const ids = scope.matchedRules.map((r) => r.suggest).join(", ") || "(none)";
+			const ids =
+				scope.matchedRules.map((r) => r.suggest).join(", ") || "(none)";
       console.log(`    ${scope.path.padEnd(20)} ${ids}`);
     }
     if (det.emptyScopes.length > 0) {
@@ -962,9 +981,7 @@ function reportInit(result: InitResult, projectRoot: string): void {
       conflict.outcome === "planned-preserve"
         ? "planned surface preserve"
         : "preserved surface";
-    console.log(
-      `  ${label}: ${conflict.path} -> ${conflict.preservedAs}`,
-    );
+		console.log(`  ${label}: ${conflict.path} -> ${conflict.preservedAs}`);
   }
   if (result.writtenToDisk && result.evidencePath) {
     console.log(`  evidence: ${result.evidencePath}`);
@@ -1000,7 +1017,11 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   printLines([
     ...ui.title("anamnesis status", agentfile.project.name),
     ...ui.keyValues([
-      { key: "verdict", value: ok ? "ready" : "attention needed", tone: verdictTone(ok) },
+			{
+				key: "verdict",
+				value: ok ? "ready" : "attention needed",
+				tone: verdictTone(ok),
+			},
       { key: "tools", value: agentfile.tools.join(", ") },
       {
         key: "managed entries",
@@ -1032,9 +1053,7 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
       const drifted = scope.entries.filter((e) => e.drift !== "clean");
       for (const e of drifted) {
         const tgt =
-          e.target === "region"
-            ? `${e.file} [region:${e.regionId}]`
-            : e.path;
+					e.target === "region" ? `${e.file} [region:${e.regionId}]` : e.path;
         console.log(`      ${e.drift.padEnd(15)} ${tgt}`);
       }
     }
@@ -1051,9 +1070,7 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
       console.log(`  drift:`);
       for (const e of drifted) {
         const tgt =
-          e.target === "region"
-            ? `${e.file} [region:${e.regionId}]`
-            : e.path;
+					e.target === "region" ? `${e.file} [region:${e.regionId}]` : e.path;
         console.log(`    ${e.drift.padEnd(15)} ${tgt}`);
       }
     }
@@ -1077,7 +1094,9 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   }
 
   if (result.partialAdoptions.length > 0) {
-    printLines(ui.section(`Partial Upgrades (${result.partialAdoptions.length})`));
+		printLines(
+			ui.section(`Partial Upgrades (${result.partialAdoptions.length})`),
+		);
     for (const partial of result.partialAdoptions) {
       const reasons = partial.reasons.join(", ");
       console.log(
@@ -1093,7 +1112,9 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
   }
 
   if (!result.dependencies.ready) {
-    console.log(`  dependencies: issues (${result.dependencies.summary.total})`);
+		console.log(
+			`  dependencies: issues (${result.dependencies.summary.total})`,
+		);
     for (const problem of result.dependencies.problems.slice(0, 5)) {
       if (problem.kind === "cycle") {
         console.log(
@@ -1199,7 +1220,9 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
     `  documents: ${documents.summary.pages} page(s), ${documents.summary.headings} heading(s), ` +
       `${documents.summary.brokenLinks} broken link(s), ` +
       `${documents.summary.missingOntologyRefs} missing ontology ref(s)` +
-      (documents.catalogPath ? ` [${documents.catalogPath}]` : " [default roots]"),
+			(documents.catalogPath
+				? ` [${documents.catalogPath}]`
+				: " [default roots]"),
   );
   const contextDiagnostics = result.contextDiagnostics;
   const contextInfo =
@@ -1287,7 +1310,10 @@ function reportDoctor(result: DoctorResult): void {
       {
         key: "issues",
         value: `${result.summary.errors} error(s), ${result.summary.warnings} warning(s), ${result.summary.info} info`,
-        tone: result.summary.errors > 0 || result.summary.warnings > 0 ? "warning" : "success",
+				tone:
+					result.summary.errors > 0 || result.summary.warnings > 0
+						? "warning"
+						: "success",
       },
     ]),
   ]);
@@ -1308,9 +1334,7 @@ function reportDoctor(result: DoctorResult): void {
   for (const issue of result.issues) {
     const scope = issue.scopePath ? ` [${issue.scopePath}]` : "";
     const target = issue.target ? ` ${issue.target}` : "";
-    console.log(
-      `  ${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`,
-    );
+		console.log(`  ${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`);
     console.log(`    ${issue.message}`);
     if (issue.repair) {
       console.log(`    repair: ${issue.repair}`);
@@ -1400,9 +1424,13 @@ function reportHookSummary(result: HookSummaryResult): void {
   reportAppendEvidence(result.appendedPath, result.evidencePath);
 }
 
-function formatFragmentLine(
-  f: { id: string; installedVersion: number; libraryVersion: number | null; pinned: boolean; status: string },
-): string {
+function formatFragmentLine(f: {
+	id: string;
+	installedVersion: number;
+	libraryVersion: number | null;
+	pinned: boolean;
+	status: string;
+}): string {
   let tag: string;
   switch (f.status) {
     case "in-sync":
@@ -1446,9 +1474,7 @@ function reportBootstrap(result: BootstrapResult): void {
       suffix = ` → ${e.path}`;
     }
     const scope =
-      e.scopePath === "." || e.scopePath === ""
-        ? ""
-        : ` [${e.scopePath}]`;
+			e.scopePath === "." || e.scopePath === "" ? "" : ` [${e.scopePath}]`;
     console.log(`  ${e.fragmentId.padEnd(20)} ${e.outcome}${scope}${suffix}`);
   }
   if (!result.writtenToDisk) {
@@ -1487,7 +1513,9 @@ function reportDogfood(result: DogfoodResult): void {
     `anamnesis dogfood check — ${result.status.agentfile.project.name}`,
   );
   const previous =
-    result.score.previous === null ? "no previous score" : `${result.score.previous}/5`;
+		result.score.previous === null
+			? "no previous score"
+			: `${result.score.previous}/5`;
   console.log(
     `  continuity readiness: ${result.score.passed}/${result.score.total} (${result.score.trend}; ${previous})`,
   );
@@ -1541,7 +1569,9 @@ function reportContextIndex(result: ContextIndexResult): void {
 
 function reportContextDocs(result: ContextDocsResult): void {
   console.log("anamnesis context docs");
-  console.log(`  pages: ${result.summary.pages} (${result.summary.canonicalPages} canonical)`);
+	console.log(
+		`  pages: ${result.summary.pages} (${result.summary.canonicalPages} canonical)`,
+	);
   console.log(`  headings: ${result.summary.headings}`);
   console.log(
     `  links: ${result.summary.links} ` +
@@ -1560,7 +1590,9 @@ function reportContextDocs(result: ContextDocsResult): void {
   if (canonical.length > 0) {
     console.log("  canonical docs:");
     for (const page of canonical.slice(0, 8)) {
-      console.log(`    - ${page.source_path} (${page.heading_count} heading(s))`);
+			console.log(
+				`    - ${page.source_path} (${page.heading_count} heading(s))`,
+			);
     }
   }
   const broken = result.links.filter(
@@ -1574,7 +1606,9 @@ function reportContextDocs(result: ContextDocsResult): void {
       );
     }
   }
-  const missingOntologyRefs = result.ontology_refs.filter((ref) => ref.status === "missing");
+	const missingOntologyRefs = result.ontology_refs.filter(
+		(ref) => ref.status === "missing",
+	);
   if (missingOntologyRefs.length > 0) {
     console.log("  missing ontology refs:");
     for (const ref of missingOntologyRefs.slice(0, 8)) {
@@ -1766,7 +1800,9 @@ function reportBenchmark(result: BenchmarkResult): void {
     `anamnesis benchmark report — ${result.status.agentfile.project.name}`,
   );
   console.log(`  tools: ${result.status.agentfile.tools.join(", ")}`);
-  console.log(`  ready layers: ${result.summary.ready}/${result.summary.total}`);
+	console.log(
+		`  ready layers: ${result.summary.ready}/${result.summary.total}`,
+	);
   console.log(
     `  continuity: ${result.scorecard.continuity.passed}/${result.scorecard.continuity.total}`,
   );
@@ -1914,7 +1950,9 @@ function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
     `  agent/model: ${result.input.run.agent} / ${result.input.run.model}`,
   );
   if (result.input.run.session_context_mode) {
-    console.log(`  session context mode: ${result.input.run.session_context_mode}`);
+		console.log(
+			`  session context mode: ${result.input.run.session_context_mode}`,
+		);
   }
   console.log(`  context state: ${result.input.run.context_state}`);
   console.log(`  score: ${result.score.points}/${result.score.total}`);
@@ -1946,7 +1984,9 @@ function reportAgentTaskBenchmarkCompare(
 ): void {
   console.log(`anamnesis benchmark task-compare — ${result.full.project.name}`);
   console.log(`  task: ${result.full.task.id}`);
-  console.log(`  agent/model: ${result.full.run.agent} / ${result.full.run.model}`);
+	console.log(
+		`  agent/model: ${result.full.run.agent} / ${result.full.run.model}`,
+	);
   console.log(`  full run: ${result.full.run.id}`);
   console.log(`  compact run: ${result.compact.run.id}`);
   console.log(
@@ -2062,9 +2102,7 @@ function reportPromptDeltaGate(result: PromptDeltaGateResult): void {
   );
   for (const signal of result.signals) {
     const assessment = formatPromptDeltaSignalAssessment(signal.status);
-    console.log(
-      `  ${assessment.padEnd(5)} ${signal.label}: ${signal.detail}`,
-    );
+		console.log(`  ${assessment.padEnd(5)} ${signal.label}: ${signal.detail}`);
   }
   if (result.appendedPath) {
     console.log(`  appended: ${result.appendedPath}`);
@@ -2170,7 +2208,8 @@ function reportSubagentInjectionBenchmark(
         : ""),
   );
   for (const lane of result.lanes) {
-    const rate = lane.injectionRatePct !== null
+		const rate =
+			lane.injectionRatePct !== null
       ? `${lane.injectionRatePct}% injection`
       : lane.contractPassRatePct !== null
         ? `${lane.contractPassRatePct}% contract`
@@ -2254,7 +2293,8 @@ function reportUpdate(
   const ui = createTui();
   const commandName = opts.commandName ?? "update";
   const s = summarizeChanges(result.changes);
-  const fragIds = result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
+	const fragIds =
+		result.agentfile.fragments.map((f) => f.id).join(", ") || "(none)";
   const pending = s.create + s.update + s.blocked + s.userModified;
   const mode = result.writtenToDisk
     ? "applied"
@@ -2264,9 +2304,17 @@ function reportUpdate(
   printLines([
     ...ui.title(`anamnesis ${commandName}`, result.agentfile.project.name),
     ...ui.keyValues([
-      { key: "mode", value: mode, tone: result.writtenToDisk ? "success" : "accent" },
+			{
+				key: "mode",
+				value: mode,
+				tone: result.writtenToDisk ? "success" : "accent",
+			},
       { key: "fragments", value: fragIds },
-      { key: "changes", value: changeSummaryLine(s), tone: countTone(s.blocked) },
+			{
+				key: "changes",
+				value: changeSummaryLine(s),
+				tone: countTone(s.blocked),
+			},
     ]),
   ]);
   if (result.suggested.length > 0) {
@@ -2274,7 +2322,9 @@ function reportUpdate(
     printLines([
       ...ui.section("Suggested"),
       ui.note(ids),
-      ui.note("add to Agentfile.fragments[] and re-run, or list under 'declined' to silence"),
+			ui.note(
+				"add to Agentfile.fragments[] and re-run, or list under 'declined' to silence",
+			),
     ]);
   }
   if (s.userModified > 0) {
@@ -2298,9 +2348,7 @@ function reportUpdate(
       conflict.outcome === "planned-preserve"
         ? "planned surface preserve"
         : "preserved surface";
-    console.log(
-      `  ${label}: ${conflict.path} -> ${conflict.preservedAs}`,
-    );
+		console.log(`  ${label}: ${conflict.path} -> ${conflict.preservedAs}`);
   }
   const showOntologyRecommendation =
     result.ontologyRecommendation.action !== "none" &&
@@ -2325,7 +2373,9 @@ function reportUpdate(
       reportWorkspaceProfile(opts.projectRoot);
     }
     if (commandName === "apply") {
-      console.log(ui.note("dry-run: re-run without --dry-run to actually write"));
+			console.log(
+				ui.note("dry-run: re-run without --dry-run to actually write"),
+			);
     } else {
       console.log(
         ui.note(
@@ -2336,13 +2386,19 @@ function reportUpdate(
   }
 }
 
-function reportUpgrade(result: UpgradeResult, projectRoot: string = process.cwd()): void {
+function reportUpgrade(
+	result: UpgradeResult,
+	projectRoot: string = process.cwd(),
+): void {
   const ui = createTui();
   printLines([
     ...ui.title("anamnesis upgrade", result.packageName),
     ...ui.keyValues([
       { key: "registry", value: result.registry },
-      { key: "version", value: `${result.currentVersion} -> ${result.latestVersion}` },
+			{
+				key: "version",
+				value: `${result.currentVersion} -> ${result.latestVersion}`,
+			},
       {
         key: "status",
         value: result.status,
@@ -2356,11 +2412,18 @@ function reportUpgrade(result: UpgradeResult, projectRoot: string = process.cwd(
       console.log(ui.note("dry-run: re-run with --apply to install"));
     }
   } else if (result.status === "local-ahead") {
-    console.log(ui.note("local package.json is ahead of the registry; no downgrade run"));
+		console.log(
+			ui.note("local package.json is ahead of the registry; no downgrade run"),
+		);
   } else if (result.status === "up-to-date") {
     console.log(ui.note("already up to date", "success"));
   } else {
-    console.log(ui.note("could not compare versions; inspect the registry result before applying", "warning"));
+		console.log(
+			ui.note(
+				"could not compare versions; inspect the registry result before applying",
+				"warning",
+			),
+		);
   }
   for (const line of formatUpgradeProjectGuidance(
     result,
@@ -2399,7 +2462,9 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
   if (project.schema) {
     console.log(
       `    schema: ${project.schema.currentVersion} -> ${project.schema.supportedVersion}` +
-        (project.schema.migrationRequired ? " (migration required)" : " (supported)"),
+				(project.schema.migrationRequired
+					? " (migration required)"
+					: " (supported)"),
     );
   }
   if (project.settingsPolicy) {
@@ -2440,7 +2505,9 @@ function reportUpgradePlan(result: UpgradePlanResult): void {
   if (project.gates.length > 0) {
     printLines(ui.section("Gates"));
     for (const gate of project.gates) {
-      console.log(`    ${gate.severity.padEnd(7)} ${gate.kind}: ${gate.message}`);
+			console.log(
+				`    ${gate.severity.padEnd(7)} ${gate.kind}: ${gate.message}`,
+			);
       console.log(`      next: ${gate.next}`);
     }
   } else {
@@ -2507,10 +2574,7 @@ function reportUpgradeChoose(result: UpgradeChooseResult): void {
   reportUpgradeApplyChoice(result.execution);
 }
 
-function requiredWorkFlag(
-  flags: ParsedArgs["flags"],
-  name: string,
-): string {
+function requiredWorkFlag(flags: ParsedArgs["flags"], name: string): string {
   const value = flags[name];
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`--${name} requires a value`);
@@ -2549,10 +2613,7 @@ function workHookClient(flags: ParsedArgs["flags"]): WorkHookClient {
   throw new Error("--client must be codex or claude-code");
 }
 
-function workTimestamp(
-  flags: ParsedArgs["flags"],
-  required: boolean,
-): string {
+function workTimestamp(flags: ParsedArgs["flags"], required: boolean): string {
   const value = optionalWorkFlag(flags, "occurred-at");
   if (!value) {
     if (required) throw new Error("--occurred-at is required");
@@ -2573,17 +2634,20 @@ function workMutationInput(
   flags: ParsedArgs["flags"],
   subcommand: "create" | "amend" | "transition",
 ): WorkMutationInput {
-  const projectRoot =
-    optionalWorkFlag(flags, "project-root") ?? process.cwd();
+	const projectRoot = optionalWorkFlag(flags, "project-root") ?? process.cwd();
   const occurredAt = workTimestamp(flags, true);
   const sourceFile = optionalWorkFlag(flags, "source-file");
   const sourceStdin = flags["source-stdin"] === true;
   const sourceCount = (sourceFile ? 1 : 0) + (sourceStdin ? 1 : 0);
   if (subcommand !== "transition" && sourceCount !== 1) {
-    throw new Error("exactly one of --source-file or --source-stdin is required");
+		throw new Error(
+			"exactly one of --source-file or --source-stdin is required",
+		);
   }
   if (subcommand === "transition" && sourceCount > 1) {
-    throw new Error("at most one of --source-file or --source-stdin is allowed");
+		throw new Error(
+			"at most one of --source-file or --source-stdin is allowed",
+		);
   }
   const fidelityValue = optionalWorkFlag(flags, "fidelity") ?? "client_exact";
   if (
@@ -2603,7 +2667,8 @@ function workMutationInput(
     captured_at: optionalWorkFlag(flags, "captured-at") ?? occurredAt,
     client: optionalWorkFlag(flags, "client") ?? "anamnesis-cli",
     content_type:
-      optionalWorkFlag(flags, "content-type") ?? "text/plain; charset=utf-8",
+					optionalWorkFlag(flags, "content-type") ??
+					"text/plain; charset=utf-8",
     fidelity: fidelityValue,
     allocation_status: "allocated",
     body: sourceFile
@@ -2619,12 +2684,58 @@ function workMutationInput(
     event_id: requiredWorkFlag(flags, "event-id"),
     occurred_at: occurredAt,
     draft: fs.readFileSync(path.resolve(projectRoot, draftPath)),
+		expected_head:
+			subcommand === "create" ? null : requiredWorkFlag(flags, "expected-head"),
     ...(sourceFile && source
       ? { source_file: source }
       : sourceStdin && source
         ? { source_stdin: source }
         : {}),
   };
+}
+
+function workEvidenceMutationInput(
+	flags: ParsedArgs["flags"],
+): WorkEvidenceMutationInput {
+	const projectRoot = optionalWorkFlag(flags, "project-root") ?? process.cwd();
+	return {
+		project_root: projectRoot,
+		state_root: optionalWorkFlag(flags, "state-root"),
+		work_id: requiredWorkFlag(flags, "work"),
+		event_id: requiredWorkFlag(flags, "event-id"),
+		occurred_at: workTimestamp(flags, true),
+		expected_head: requiredWorkFlag(flags, "expected-head"),
+		draft: fs.readFileSync(
+			path.resolve(projectRoot, requiredWorkFlag(flags, "draft")),
+		),
+	};
+}
+
+function workEvidenceSource(
+	flags: ParsedArgs["flags"],
+	projectRoot: string,
+	occurredAt: string,
+): { source_file?: WorkRawSource; source_stdin?: WorkRawSource } {
+	const sourceFile = optionalWorkFlag(flags, "source-file");
+	const sourceStdin = flags["source-stdin"] === true;
+	if ((sourceFile ? 1 : 0) + (sourceStdin ? 1 : 0) !== 1) {
+		throw new Error(
+			"exactly one of --source-file or --source-stdin is required",
+		);
+	}
+	const source: WorkRawSource = {
+		event_id: requiredWorkFlag(flags, "source-event-id"),
+		captured_at: optionalWorkFlag(flags, "captured-at") ?? occurredAt,
+		client: optionalWorkFlag(flags, "client") ?? "anamnesis-cli",
+		content_type:
+			optionalWorkFlag(flags, "content-type") ?? "text/plain; charset=utf-8",
+		fidelity: "client_exact",
+		allocation_status: "allocated",
+		body: sourceFile
+			? fs.readFileSync(path.resolve(projectRoot, sourceFile))
+			: fs.readFileSync(0),
+	};
+	return sourceFile ? { source_file: source } : { source_stdin: source };
 }
 
 function reportWorkMutation(result: WorkMutationResult): void {
@@ -2635,6 +2746,32 @@ function reportWorkMutation(result: WorkMutationResult): void {
   console.log(
     `  source: ${result.allocation?.source.envelope.event_id ?? "evidence-only transition"}`,
   );
+}
+
+function reportWorkExecutionMutation(result: WorkMutationResult): void {
+	const output = publicWorkExecutionMutation(result);
+	const contract = output.execution_contract;
+	console.log(`Work ${output.work_id}`);
+	console.log(`  ledger head: ${output.ledger_head ?? "(none)"}`);
+	console.log(`  contract: ${contract.kind}`);
+	for (const [key, value] of Object.entries(contract)) {
+		if (key === "kind") continue;
+		if (Array.isArray(value)) {
+			console.log(`  ${key}: ${value.length > 0 ? value.join(", ") : "none"}`);
+		} else if (typeof value === "object" && value !== null) {
+			const ref = value as { provider?: string; ref?: string };
+			console.log(
+				`  ${key}: ${ref.provider ?? "unknown"}:${ref.ref ?? "unknown"}`,
+			);
+		} else {
+			console.log(`  ${key}: ${String(value)}`);
+		}
+	}
+	if (output.readiness) {
+		console.log(
+			`  readiness: ${output.readiness.allowed ? "allowed" : "blocked"}`,
+		);
+	}
 }
 
 function reportWorkPromptResolution(result: WorkPromptResolutionResult): void {
@@ -2650,15 +2787,33 @@ function reportWorkPromptResolution(result: WorkPromptResolutionResult): void {
 
 function reportWorkStatus(result: WorkStatusResult): void {
   const projection = result.projection;
-  console.log(`${projection.title ?? projection.work_id} (${projection.work_id})`);
+	console.log(
+		`${projection.title ?? projection.work_id} (${projection.work_id})`,
+	);
   console.log(`  revision: ${projection.contract_revision}`);
   console.log(`  lifecycle: ${projection.lifecycle}`);
-  console.log(`  completion contract: ${projection.completion_contract ?? "(none)"}`);
+	console.log(
+		`  completion contract: ${projection.completion_contract ?? "(none)"}`,
+	);
   console.log(
     `  configured required gates: ${projection.configured_required_gates.join(", ") || "none"}`,
   );
+	for (const gate of projection.review_gates) {
+		if (gate.enforcement === "off") continue;
+		console.log(
+			`  review ${gate.gate}: ${gate.state}; next=${gate.next_provider ?? "none"}; reviewers=${gate.passing_reviewer_refs.map((item) => `${item.provider}:${item.ref}`).join(",") || "none"}; findings=${gate.finding_refs.join(",") || "none"}; failures=${gate.failure_refs.join(",") || "none"}`,
+		);
+	}
+	if (projection.parallelism.mode !== "off") {
+		console.log(
+			`  delegation: ${projection.parallelism.recorded_state}; assessment=${projection.parallelism.assessment_id ?? "none"}; next=${projection.parallelism.next_provider ?? "none"}; failures=${projection.parallelism.failure_refs.join(",") || "none"}`,
+		);
+	}
+	if (result.readiness) console.log(`  readiness: ${result.readiness}`);
   if (result.policy_drift?.drifted) {
-    console.log("  policy drift: current project policy differs; frozen Work policy retained");
+		console.log(
+			"  policy drift: current project policy differs; frozen Work policy retained",
+		);
   }
   console.log("  requirements:");
   for (const requirement of projection.requirements) {
@@ -2669,16 +2824,39 @@ function reportWorkStatus(result: WorkStatusResult): void {
   const progressDetail = projection.progress.weighted
     ? `${projection.progress.verified_weight ?? 0}/${projection.progress.applicable_weight ?? 0} verified weight`
     : `${projection.progress.verified}/${projection.progress.applicable} verified requirements`;
-  console.log(`  progress: ${projection.progress.percent}% (${progressDetail})`);
+	console.log(
+		`  progress: ${projection.progress.percent}% (${progressDetail})`,
+	);
 }
 
 function formatWorkBrief(result: WorkBriefResult): string {
-  const lines = [`Work briefing — ${result.briefing.work.title ?? result.work_id}`];
+	const lines = [
+		`Work briefing — ${result.briefing.work.title ?? result.work_id}`,
+	];
   for (const section of result.sections) {
     lines.push("", `${section.label}:`);
     if (section.values.length === 0) lines.push("  - none");
     else lines.push(...section.values.map((value) => `  - ${value}`));
   }
+	for (const gate of result.projection.review_gates) {
+		if (gate.enforcement === "off") continue;
+		lines.push(
+			"",
+			`Review ${gate.gate}: ${gate.state}`,
+			`  refs: ${gate.passing_reviewer_refs.map((item) => `${item.provider}:${item.ref}`).join(", ") || "none"}`,
+			`  findings: ${gate.finding_refs.join(", ") || "none"}`,
+			`  failures: ${gate.failure_refs.join(", ") || "none"}`,
+		);
+	}
+	if (result.projection.parallelism.mode !== "off") {
+		lines.push(
+			"",
+			`Delegation: ${result.projection.parallelism.recorded_state}`,
+			`  assessment: ${result.projection.parallelism.assessment_id ?? "none"}`,
+			`  failures: ${result.projection.parallelism.failure_refs.join(", ") || "none"}`,
+		);
+	}
+	if (result.readiness) lines.push("", `Readiness: ${result.readiness}`);
   lines.push(
     "",
     `Delivery: pending (${result.delivery_token})`,
@@ -2965,9 +3143,7 @@ async function main(argv: string[]): Promise<number> {
     case "hooks": {
       const sub = positional[0];
       if (sub !== "summary") {
-        console.error(
-          `error: unknown 'hooks' subcommand: ${sub ?? "(none)"}`,
-        );
+				console.error(`error: unknown 'hooks' subcommand: ${sub ?? "(none)"}`);
         console.error(
           `usage: anamnesis hooks summary [--json] [--append] [--output=<path>] [--source=<path>]`,
         );
@@ -3037,6 +3213,9 @@ async function main(argv: string[]): Promise<number> {
         sub !== "create" &&
         sub !== "amend" &&
         sub !== "transition" &&
+				sub !== "review" &&
+				sub !== "delegation" &&
+				sub !== "readiness" &&
         sub !== "status" &&
         sub !== "brief" &&
         sub !== "confirm" &&
@@ -3046,7 +3225,9 @@ async function main(argv: string[]): Promise<number> {
         sub !== "hook-post-tool-use"
       ) {
         console.error(`error: unknown 'work' subcommand: ${sub}`);
-        console.error("usage: anamnesis work <create|amend|transition|status|brief|confirm|switch> [options]");
+				console.error(
+					"usage: anamnesis work <create|amend|transition|review|delegation|readiness|status|brief|confirm|switch> [options]",
+				);
         return 1;
       }
       try {
@@ -3075,11 +3256,15 @@ async function main(argv: string[]): Promise<number> {
 			if (flags.json === true) {
 				await writeStdoutFully(`${JSON.stringify(gcResult, null, 2)}\n`);
 			} else {
-				console.log(`Work prompt GC removed ${gcResult.removed.length} stage(s)`);
+							console.log(
+								`Work prompt GC removed ${gcResult.removed.length} stage(s)`,
+							);
 				if (gcResult.skipped_locked.length > 0)
 					console.log(`  locked: ${gcResult.skipped_locked.length}`);
 				if (gcResult.skipped_indeterminate.length > 0)
-					console.log(`  indeterminate: ${gcResult.skipped_indeterminate.length}`);
+								console.log(
+									`  indeterminate: ${gcResult.skipped_indeterminate.length}`,
+								);
 			}
 			return 0;
 		  }
@@ -3180,6 +3365,101 @@ async function main(argv: string[]): Promise<number> {
           }
           return 0;
         }
+
+				if (sub === "review" || sub === "delegation") {
+					const action = positional[1];
+					if (sub === "review" && action !== "request" && action !== "record") {
+						throw new Error("work review requires request or record");
+					}
+					if (
+						sub === "delegation" &&
+						action !== "assess" &&
+						action !== "record" &&
+						action !== "waive"
+					) {
+						throw new Error(
+							"work delegation requires assess, record, or waive",
+						);
+					}
+					const evidenceInput = workEvidenceMutationInput(flags);
+					const result =
+						sub === "review" && action === "request"
+							? (() => {
+									const gate = requiredWorkFlag(flags, "gate");
+									if (gate !== "planning" && gate !== "completion") {
+										throw new Error("--gate must be planning or completion");
+									}
+									return requestWorkReview({
+										...evidenceInput,
+										gate,
+										activity_id: requiredWorkFlag(flags, "activity-id"),
+									});
+								})()
+							: sub === "review"
+								? recordWorkReview(evidenceInput)
+								: action === "assess"
+									? assessWorkDelegation(evidenceInput)
+									: action === "record"
+										? recordWorkDelegation(evidenceInput)
+										: waiveWorkDelegation({
+												...evidenceInput,
+												...workEvidenceSource(
+													flags,
+													evidenceInput.project_root,
+													evidenceInput.occurred_at,
+												),
+											});
+					if (flags.json === true) {
+						await writeStdoutFully(
+							`${JSON.stringify(publicWorkExecutionMutation(result), null, 2)}\n`,
+						);
+					} else {
+						reportWorkExecutionMutation(result);
+					}
+					return 0;
+				}
+
+				if (sub === "readiness") {
+					const projectRoot =
+						optionalWorkFlag(flags, "project-root") ?? process.cwd();
+					const action = requiredWorkFlag(flags, "action");
+					if (action !== "implementation-entry" && action !== "completion") {
+						throw new Error(
+							"--action must be implementation-entry or completion",
+						);
+					}
+					const inputsPath = optionalWorkFlag(flags, "inputs");
+					const parsed = inputsPath
+						? parseSingleWorkDraft(
+								fs.readFileSync(path.resolve(projectRoot, inputsPath)),
+								workExecutionInputsSchema,
+							)
+						: undefined;
+					const result = readinessWork({
+						project_root: projectRoot,
+						state_root: optionalWorkFlag(flags, "state-root"),
+						work_id: requiredWorkFlag(flags, "work"),
+						action:
+							action === "implementation-entry"
+								? "implementation_entry"
+								: "completion",
+						execution_inputs: parsed,
+					});
+					if (flags.json === true) {
+						await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+					} else {
+						console.log(
+							`Work readiness: ${result.allowed ? "allowed" : "blocked"}`,
+						);
+						console.log(`  review: ${result.contextual_state.review}`);
+						console.log(
+							`  parallelism: ${result.contextual_state.parallelism}`,
+						);
+						for (const reason of result.reason_codes)
+							console.log(`  reason: ${reason}`);
+					}
+					return result.allowed ? 0 : 1;
+				}
 
         if (sub === "create" || sub === "amend" || sub === "transition") {
           const input = workMutationInput(flags, sub);
@@ -3365,9 +3645,7 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis context query [--kind=<kind>] [--limit=<n>] [--index=<path>] <query>`,
         );
-        console.error(
-          `       anamnesis context diagnose [--json]`,
-        );
+				console.error(`       anamnesis context diagnose [--json]`);
         console.error(
           `       anamnesis context resume [--json] [--write] [--output=<path>]`,
         );
@@ -3635,9 +3913,7 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis benchmark task-compare --full <path> --compact <path> [--json] [--append] [--output=<path>]`,
         );
-        console.error(
-          `       anamnesis benchmark task-compare --template`,
-        );
+				console.error(`       anamnesis benchmark task-compare --template`);
         console.error(
           `       anamnesis benchmark task-series [--json] [--write] [--source=<path>] [--output=<dir>]`,
         );
@@ -3717,7 +3993,9 @@ async function main(argv: string[]): Promise<number> {
             append: flags["append"] === true,
             outputPath: flags["output"] as string | undefined,
             sources: parseCommaListFlag(flags["source"]),
-            ...(maxTokens !== undefined ? { maxPromptDeltaTokens: maxTokens } : {}),
+						...(maxTokens !== undefined
+							? { maxPromptDeltaTokens: maxTokens }
+							: {}),
           });
           if (flags["json"] === true) {
             console.log(JSON.stringify(result, null, 2));
@@ -3737,9 +4015,7 @@ async function main(argv: string[]): Promise<number> {
             console.error(
               `usage: anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
             );
-            console.error(
-              `       anamnesis benchmark task --template`,
-            );
+						console.error(`       anamnesis benchmark task --template`);
             return 1;
           }
           const result = agentTaskBenchmark({
@@ -3759,7 +4035,9 @@ async function main(argv: string[]): Promise<number> {
 
         if (sub === "task-compare") {
           if (flags["template"] === true) {
-            console.log(JSON.stringify(agentTaskBenchmarkCompareTemplate(), null, 2));
+						console.log(
+							JSON.stringify(agentTaskBenchmarkCompareTemplate(), null, 2),
+						);
             return 0;
           }
           const fullInputPath = flags["full"];
@@ -3771,9 +4049,7 @@ async function main(argv: string[]): Promise<number> {
             console.error(
               `usage: anamnesis benchmark task-compare --full <path> --compact <path> [--json] [--append] [--output=<path>]`,
             );
-            console.error(
-              `       anamnesis benchmark task-compare --template`,
-            );
+						console.error(`       anamnesis benchmark task-compare --template`);
             return 1;
           }
           const result = agentTaskBenchmarkCompare({
@@ -3861,7 +4137,10 @@ async function main(argv: string[]): Promise<number> {
         if (sub === "compare") {
           const baselinePath = flags["baseline"];
           const afterPath = flags["after"];
-          if (typeof baselinePath !== "string" || typeof afterPath !== "string") {
+					if (
+						typeof baselinePath !== "string" ||
+						typeof afterPath !== "string"
+					) {
             console.error(
               `usage: anamnesis benchmark compare --baseline <path> --after <path> [--json] [--append] [--output=<path>]`,
             );
@@ -3954,7 +4233,9 @@ async function main(argv: string[]): Promise<number> {
       const source = (positional[0] as string | undefined) ?? "";
       const fragmentId = flags["as"] as string | undefined;
       if (!source) {
-        console.error("error: promote requires a source path positional argument.");
+				console.error(
+					"error: promote requires a source path positional argument.",
+				);
         console.error(
           "usage: anamnesis promote <source> --as=<fragment-id> [--type=<capability>]",
         );

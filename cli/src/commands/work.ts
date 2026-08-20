@@ -1,18 +1,32 @@
 import * as path from "node:path";
+import { z } from "zod";
 
 import { findAgentfile, readAgentfile } from "../core/agentfile.js";
 import {
-	parseWorkContractDraft,
+	parseSingleWorkDraft,
 	parseStagedWorkContractDraft,
+	parseWorkContractDraft,
 	parseWorkPromptRetainDraft,
-	parseWorkTransitionDraft,
 	type WorkContractDraft,
+	workTransitionDraftSchema,
 } from "../core/work_command_draft.js";
 import {
 	calculateWorkContractHash,
+	calculateWorkDelegationContractHash,
+	calculateWorkDelegationFailureFingerprint,
+	childContractSchema,
 	parseTypedWorkEvent,
+	providerFailureInputSchema,
+	type SourceFreeWorkEvidenceEvent,
 	type TypedWorkEvent,
+	WORK_EXECUTION_LIMITS,
 	type WorkContractDefinition,
+	type WorkDelegationOutcomePayload,
+	type WorkInstanceRef,
+	type WorkReviewAttemptPayload,
+	workArtifactRefSchema,
+	workInstanceRefSchema,
+	workParallelLaneSchema,
 } from "../core/work_contract.js";
 import {
 	newWorkCursor,
@@ -21,6 +35,17 @@ import {
 	type WorkCursor,
 	writeWorkCursorAtomic,
 } from "../core/work_cursor.js";
+import {
+	evaluateWorkProtectedAction,
+	selectDelegationProvider,
+	type WorkExecutionStateView,
+	type WorkProtectedActionReadiness,
+} from "../core/work_execution_contract.js";
+import {
+	resolveWorkExecutionInputs,
+	type WorkExecutionInputs,
+	workExecutionInputsSchema,
+} from "../core/work_execution_inputs.js";
 import { readWorkLedger } from "../core/work_ledger.js";
 import {
 	compareWorkPolicySnapshots,
@@ -29,20 +54,14 @@ import {
 	type WorkPolicyLayer,
 	type WorkPolicySnapshotComparison,
 } from "../core/work_policy.js";
-import { normalizeWorkPromptCapturePolicy } from "../core/work_prompt_policy.js";
 import {
 	foldWorkProjection,
+	type ProjectedParallelism,
+	type ProjectedReviewGate,
 	rebuildWorkProjection,
 	type WorkProjection,
 } from "../core/work_projection.js";
-import {
-	buildWorkBriefingSnapshot,
-	confirmReconciliationDelivery,
-	emptyWorkCursorReconciliationState,
-	prepareReconciliationDelivery,
-	type ReconciliationDeliveryBinding,
-	type WorkBriefingSnapshot,
-} from "../core/work_reconciliation.js";
+import { normalizeWorkPromptCapturePolicy } from "../core/work_prompt_policy.js";
 import {
 	allocateStagedWorkPromptToTypedWork,
 	bindRetainedProvisionalPromptToTypedWork,
@@ -54,9 +73,19 @@ import {
 	type WorkPromptStageOutcome,
 } from "../core/work_prompt_stage.js";
 import {
-	type PublishedWorkSourceAllocation,
+	buildWorkBriefingSnapshot,
+	confirmReconciliationDelivery,
+	emptyWorkCursorReconciliationState,
+	prepareReconciliationDelivery,
+	type ReconciliationDeliveryBinding,
+	type WorkBriefingSnapshot,
+} from "../core/work_reconciliation.js";
+import {
+	appendCanonicalTypedWorkEvidenceEvent,
 	appendCanonicalTypedWorkProgressEvent,
+	type PublishedWorkSourceAllocation,
 	publishAndAppendCanonicalTypedWorkSourceEvent,
+	publishWorkSourceEvent,
 	resolveWorkStateRoot,
 	type WorkCaptureFidelity,
 	type WorkSourceAllocationStatus,
@@ -65,6 +94,133 @@ import {
 import { sha256 } from "../util/hash.js";
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const boundedDraftRef = z
+	.string()
+	.trim()
+	.min(1)
+	.refine(
+		(value) =>
+			Buffer.byteLength(value, "utf8") <= WORK_EXECUTION_LIMITS.maxRefUtf8Bytes,
+		"reference exceeds the Work execution limit",
+	);
+const boundedDraftRefs = (maximum: number) =>
+	z.array(boundedDraftRef).max(maximum);
+const reviewRequestDraftSchema = z
+	.object({
+		execution_inputs: workExecutionInputsSchema,
+	})
+	.strict();
+const reviewRecordDraftSchema = z.discriminatedUnion("outcome", [
+	z
+		.object({
+			gate: z.enum(["planning", "completion"]),
+			activity_id: boundedDraftRef,
+			attempt_id: boundedDraftRef,
+			provider: z.enum(["omx", "codex_native", "separate_process"]),
+			role: boundedDraftRef,
+			outcome: z.enum(["passed", "changes_requested"]),
+			reviewer_instance_ref: workInstanceRefSchema,
+			author_instance_refs: z
+				.array(workInstanceRefSchema)
+				.min(1)
+				.max(WORK_EXECUTION_LIMITS.maxEvidenceRefs),
+			independence_assurance: z.literal("runtime_attested"),
+			independence_evidence_refs: boundedDraftRefs(
+				WORK_EXECUTION_LIMITS.maxEvidenceRefs,
+			).min(1),
+			finding_refs: boundedDraftRefs(WORK_EXECUTION_LIMITS.maxFindingRefs),
+		})
+		.strict(),
+	z
+		.object({
+			gate: z.enum(["planning", "completion"]),
+			activity_id: boundedDraftRef,
+			attempt_id: boundedDraftRef,
+			provider: z.enum(["omx", "codex_native", "separate_process"]),
+			role: boundedDraftRef,
+			outcome: z.enum([
+				"authorization_error",
+				"unsupported_authority",
+				"unavailable",
+			]),
+			failure_input: providerFailureInputSchema,
+			failure_refs: boundedDraftRefs(WORK_EXECUTION_LIMITS.maxFailureRefs).min(
+				1,
+			),
+		})
+		.strict(),
+]);
+const delegationAssessDraftSchema = z
+	.object({
+		execution_inputs: workExecutionInputsSchema,
+		assessment_id: boundedDraftRef,
+		decision: z.enum(["parallel", "solo", "not_parallelizable"]),
+		lanes: z
+			.array(workParallelLaneSchema)
+			.min(1)
+			.max(WORK_EXECUTION_LIMITS.maxChildContracts),
+		selected_provider: z.enum(["native_agents", "tmux_team"]).nullable(),
+		rationale_codes: boundedDraftRefs(
+			WORK_EXECUTION_LIMITS.maxEvidenceRefs,
+		).min(1),
+		evidence_refs: boundedDraftRefs(WORK_EXECUTION_LIMITS.maxEvidenceRefs).min(
+			1,
+		),
+	})
+	.strict();
+const delegationRecordDraftSchema = z.discriminatedUnion("outcome", [
+	z
+		.object({
+			assessment_id: boundedDraftRef,
+			provider: z.enum(["native_agents", "tmux_team"]),
+			outcome: z.enum([
+				"authorization_error",
+				"unsupported_authority",
+				"unavailable",
+				"runtime_incompatible",
+			]),
+			failure_input: providerFailureInputSchema,
+			failure_refs: boundedDraftRefs(WORK_EXECUTION_LIMITS.maxFailureRefs).min(
+				1,
+			),
+		})
+		.strict(),
+	z
+		.object({
+			assessment_id: boundedDraftRef,
+			provider: z.enum(["native_agents", "tmux_team"]),
+			outcome: z.literal("delegated"),
+			child_contracts: z
+				.array(childContractSchema)
+				.min(1)
+				.max(WORK_EXECUTION_LIMITS.maxChildContracts),
+		})
+		.strict(),
+	z
+		.object({
+			assessment_id: boundedDraftRef,
+			provider: z.enum(["native_agents", "tmux_team"]),
+			outcome: z.literal("results_recorded"),
+			delegation_contract_hash: boundedDraftRef,
+			result_refs: boundedDraftRefs(WORK_EXECUTION_LIMITS.maxEvidenceRefs).min(
+				1,
+			),
+		})
+		.strict(),
+]);
+const delegationWaiveDraftSchema = z
+	.object({
+		assessment_id: boundedDraftRef,
+		reason: boundedDraftRef,
+		authority_ref: boundedDraftRef,
+		evidence_refs: boundedDraftRefs(WORK_EXECUTION_LIMITS.maxEvidenceRefs).min(
+			1,
+		),
+	})
+	.strict();
+const transitionWithExecutionInputsSchema = workTransitionDraftSchema.extend({
+	execution_inputs: workExecutionInputsSchema.optional(),
+});
 
 export interface WorkRawSource {
 	event_id: string;
@@ -89,6 +245,7 @@ export interface WorkMutationInput extends WorkCommandSourceSelection {
 	event_id: string;
 	occurred_at: string;
 	draft: Buffer;
+	expected_head: string | null;
 }
 
 export interface WorkMutationResult {
@@ -98,6 +255,75 @@ export interface WorkMutationResult {
 	projection_path: string;
 	allocation: PublishedWorkSourceAllocation | null;
 	projection: WorkProjection;
+	readiness?: WorkProtectedActionReadiness;
+	execution_contract?: WorkExecutionCommandContract;
+}
+
+export type WorkExecutionCommandContract =
+	| {
+			kind: "review_request";
+			gate: "planning" | "completion";
+			review_input_hash: string;
+			capability: "independent_agent";
+			role: string;
+			minimum_reviewers: number;
+			provider_order: Array<"omx" | "codex_native" | "separate_process">;
+			next_provider: "omx" | "codex_native" | "separate_process" | null;
+			evidence_requirements: [
+				"runtime_attested_unequal_provider_namespaced_refs",
+			];
+			blocking: boolean;
+	  }
+	| {
+			kind: "review_record";
+			gate: "planning" | "completion";
+			outcome: WorkReviewAttemptPayload["outcome"];
+			provider: WorkReviewAttemptPayload["provider"];
+			state: ProjectedReviewGate["state"];
+			next_provider: ProjectedReviewGate["next_provider"];
+			independence_assurance?: "runtime_attested";
+			reviewer_instance_ref?: WorkInstanceRef;
+			finding_refs?: string[];
+			failure_refs?: string[];
+	  }
+	| {
+			kind: "delegation_assessment" | "delegation_waiver";
+			assessment_id: string | null;
+			state: ProjectedParallelism["recorded_state"];
+			next_provider: ProjectedParallelism["next_provider"];
+	  }
+	| {
+			kind: "delegation_record";
+			assessment_id: string | null;
+			outcome: WorkDelegationOutcomePayload["outcome"];
+			provider: WorkDelegationOutcomePayload["provider"];
+			state: ProjectedParallelism["recorded_state"];
+			next_provider: ProjectedParallelism["next_provider"];
+			delegation_contract_hash?: string;
+			failure_refs?: string[];
+			result_refs?: string[];
+	  };
+
+export interface PublicWorkExecutionMutationResult {
+	schema_version: "anamnesis.work-execution-command-result.v1";
+	work_id: string;
+	ledger_head: string | null;
+	execution_contract: WorkExecutionCommandContract;
+	readiness?: WorkProtectedActionReadiness;
+}
+
+export function publicWorkExecutionMutation(
+	result: WorkMutationResult,
+): PublicWorkExecutionMutationResult {
+	if (!result.execution_contract)
+		throw new Error("Work execution command contract is unavailable");
+	return {
+		schema_version: "anamnesis.work-execution-command-result.v1",
+		work_id: result.work_id,
+		ledger_head: result.projection.ledger_head,
+		execution_contract: result.execution_contract,
+		...(result.readiness ? { readiness: result.readiness } : {}),
+	};
 }
 
 export interface StagedWorkAllocationInput extends WorkReadInput {
@@ -207,6 +433,28 @@ export interface WorkStatusResult {
 	ledger_path: string;
 	projection: WorkProjection;
 	policy_drift: WorkPolicySnapshotComparison | null;
+	readiness?: "current_inputs_required";
+}
+
+export interface WorkEvidenceMutationInput extends WorkReadInput {
+	event_id: string;
+	occurred_at: string;
+	expected_head: string;
+	draft: Buffer;
+}
+
+export interface WorkReviewRequestInput extends WorkEvidenceMutationInput {
+	gate: "planning" | "completion";
+	activity_id: string;
+}
+
+export interface WorkDelegationWaiveInput
+	extends WorkEvidenceMutationInput,
+		WorkCommandSourceSelection {}
+
+export interface WorkReadinessInput extends WorkReadInput {
+	action: "implementation_entry" | "completion";
+	execution_inputs?: WorkExecutionInputs;
 }
 
 export interface WorkBriefSection {
@@ -272,6 +520,9 @@ export interface WorkSwitchInput extends WorkReadInput {
 }
 
 export function createWork(input: WorkMutationInput): WorkMutationResult {
+	if (input.expected_head !== undefined && input.expected_head !== null) {
+		throw new Error("work create requires expected_head=null");
+	}
 	assertSafeId(input.work_id, "work ID");
 	const draft = parseWorkContractDraft(input.draft);
 	assertBoundaryClassification(draft, "new_unit", "create");
@@ -310,6 +561,9 @@ export function createWork(input: WorkMutationInput): WorkMutationResult {
 }
 
 export function amendWork(input: WorkMutationInput): WorkMutationResult {
+	if (input.expected_head === undefined || input.expected_head === null) {
+		throw new Error("work amend requires an explicit expected_head");
+	}
 	assertSafeId(input.work_id, "work ID");
 	const draft = parseWorkContractDraft(input.draft);
 	assertBoundaryClassification(draft, "same_unit", "amend");
@@ -342,7 +596,7 @@ export function amendWork(input: WorkMutationInput): WorkMutationResult {
 			revision,
 			previousRevision,
 			previousHash,
-			ledger.head,
+			input.expected_head,
 		);
 	}
 	const projection = foldWorkProjection(ledger.records);
@@ -357,7 +611,7 @@ export function amendWork(input: WorkMutationInput): WorkMutationResult {
 		projection.contract_revision + 1,
 		projection.contract_revision,
 		projection.contract_hash,
-		ledger.head,
+		input.expected_head,
 	);
 }
 
@@ -433,7 +687,8 @@ export function gcStagedWorkPromptEntries(
 			: undefined,
 	);
 	const now = input.now === undefined ? Date.now() : Date.parse(input.now);
-	if (!Number.isFinite(now)) throw new Error("invalid Work prompt GC timestamp");
+	if (!Number.isFinite(now))
+		throw new Error("invalid Work prompt GC timestamp");
 	return {
 		schema_version: "anamnesis.work-prompt-gc.v1",
 		...gcStagedWorkPrompts(state.state_root, policy, now),
@@ -441,28 +696,88 @@ export function gcStagedWorkPromptEntries(
 }
 
 export function transitionWork(input: WorkMutationInput): WorkMutationResult {
+	if (input.expected_head === undefined || input.expected_head === null) {
+		throw new Error("work transition requires an explicit expected_head");
+	}
 	assertSafeId(input.work_id, "work ID");
-	const draft = parseWorkTransitionDraft(input.draft);
+	const draft = parseSingleWorkDraft(
+		input.draft,
+		transitionWithExecutionInputsSchema,
+	);
 	const locations = workLocations(input);
-	let ledger = readWorkLedger(locations.ledgerPath);
-	let projection = foldWorkProjection(ledger.records);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const projection = foldWorkProjection(ledger.records);
 	if (projection.work_id !== input.work_id || !projection.contract_hash) {
 		throw new Error(
 			`Work ${input.work_id} has no typed contract to transition`,
 		);
 	}
+	const retry =
+		draft.status === "waived"
+			? null
+			: exactStoredRetry(
+					{
+						event_id: input.event_id,
+						occurred_at: input.occurred_at,
+						expected_head: input.expected_head,
+					},
+					{ locations, ledger, projection },
+					"work_requirement_transitioned",
+					(event) =>
+						event.kind === "work_requirement_transitioned" &&
+						event.payload.requirement_id === draft.requirement_id &&
+						event.payload.status === draft.status &&
+						JSON.stringify(event.payload.evidence_refs) ===
+							JSON.stringify(draft.evidence_refs) &&
+						JSON.stringify(event.payload.waiver ?? null) ===
+							JSON.stringify(draft.waiver ?? null),
+				);
+	if (retry) return retry;
+	if (draft.status === "waived") {
+		const stored = ledger.records.find(
+			(record) => record.event_id === input.event_id,
+		);
+		if (stored) {
+			const event = parseTypedWorkEvent(stored);
+			if (
+				event.kind !== "work_requirement_transitioned" ||
+				event.occurred_at !== input.occurred_at ||
+				stored.previous_hash !== input.expected_head ||
+				event.payload.requirement_id !== draft.requirement_id ||
+				event.payload.status !== draft.status ||
+				JSON.stringify(event.payload.evidence_refs) !==
+					JSON.stringify(draft.evidence_refs) ||
+				JSON.stringify(event.payload.waiver ?? null) !==
+					JSON.stringify(draft.waiver ?? null)
+			)
+				throw new Error(`work ledger event ID collision: ${input.event_id}`);
+			const source = selectedSource(input);
+			return publishMutation(
+				locations,
+				source.value,
+				event,
+				input.expected_head,
+			);
+		}
+	}
 	if (currentBoundaryState(ledger.records) !== "accepted") {
 		throw new Error("Work progress requires an accepted boundary");
 	}
+	let readiness: WorkProtectedActionReadiness | undefined;
 	if (
-		projection.configured_required_gates.includes("planning") &&
-		["in_progress", "implemented_unverified", "verified"].includes(
-			draft.status,
-		)
+		["in_progress", "implemented_unverified", "verified"].includes(draft.status)
 	) {
-		throw new Error(
-			"required planning review evidence is not yet modeled; implementation transition is blocked",
+		readiness = readinessForProjection(
+			input,
+			projection,
+			"implementation_entry",
+			draft.execution_inputs,
 		);
+		if (!readiness.allowed) {
+			throw new Error(
+				`Work implementation entry is blocked: ${readiness.blockers.join(", ")}`,
+			);
+		}
 	}
 	if (draft.status === "verified" && draft.evidence_refs.length === 0) {
 		throw new Error("verified Work requirement transition requires evidence");
@@ -476,8 +791,13 @@ export function transitionWork(input: WorkMutationInput): WorkMutationResult {
 				"waiver source_event_id must be the current source event",
 			);
 		}
-		const event = progressEvent(input, draft, projection.contract_hash, source.eventId);
-		return publishMutation(locations, source.value, event, ledger.head);
+		const event = progressEvent(
+			input,
+			draft,
+			projection.contract_hash,
+			source.eventId,
+		);
+		return publishMutation(locations, source.value, event, input.expected_head);
 	} else if (draft.waiver) {
 		throw new Error("waiver metadata is only valid for a waived transition");
 	}
@@ -487,47 +807,566 @@ export function transitionWork(input: WorkMutationInput): WorkMutationResult {
 		);
 	}
 	const basisContractHash = projection.contract_hash;
-	for (let attempt = 0; attempt < 3; attempt += 1) {
-		const priorRecordCount = ledger.records.length;
-		const event = progressEvent(input, draft, basisContractHash);
-		try {
-			appendCanonicalTypedWorkProgressEvent({
-				stateRoot: locations.stateRoot,
-				ledgerPath: locations.ledgerPath,
-				ledgerEvent: event,
-				expectedHead: ledger.head,
+	const event = progressEvent(input, draft, basisContractHash);
+	appendCanonicalTypedWorkProgressEvent({
+		stateRoot: locations.stateRoot,
+		ledgerPath: locations.ledgerPath,
+		ledgerEvent: event,
+		expectedHead: input.expected_head,
+	});
+	const nextProjection = rebuildWorkProjection(
+		locations.ledgerPath,
+		locations.projectionPath,
+	);
+	return {
+		schema_version: "anamnesis.work-command-result.v1",
+		work_id: nextProjection.work_id,
+		ledger_path: locations.ledgerPath,
+		projection_path: locations.projectionPath,
+		allocation: null,
+		projection: nextProjection,
+		...(readiness ? { readiness } : {}),
+	};
+}
+
+export function requestWorkReview(
+	input: WorkReviewRequestInput,
+): WorkMutationResult {
+	const draft = parseSingleWorkDraft(input.draft, reviewRequestDraftSchema);
+	const context = executionMutationContext(input);
+	const parsedInputs = workExecutionInputsSchema.parse(draft.execution_inputs);
+	const gateInputs: WorkExecutionInputs =
+		input.gate === "planning"
+			? parsedInputs.planning_review_inputs
+				? { planning_review_inputs: parsedInputs.planning_review_inputs }
+				: {}
+			: parsedInputs.completion_review_inputs
+				? { completion_review_inputs: parsedInputs.completion_review_inputs }
+				: {};
+	const retry = exactStoredRetry(
+		input,
+		context,
+		"work_review_requested",
+		(event) => {
+			if (
+				event.kind !== "work_review_requested" ||
+				event.payload.gate !== input.gate ||
+				event.payload.activity_id !== input.activity_id
+			)
+				return false;
+			const canonical = resolveWorkExecutionInputs({
+				repositoryRoot: input.project_root,
+				stateRoot: input.state_root,
+				workId: event.payload.work_id,
+				contractRevision: event.payload.basis_contract_revision,
+				contractHash: event.payload.basis_contract_hash,
+				policyHash: event.payload.policy_hash,
+				executionInputs: gateInputs,
 			});
-			const nextProjection = rebuildWorkProjection(
-				locations.ledgerPath,
-				locations.projectionPath,
+			const candidate =
+				input.gate === "planning"
+					? canonical.planning_review
+					: canonical.completion_review;
+			return (
+				!!candidate &&
+				!("unavailable" in candidate) &&
+				candidate.review_input_hash === event.payload.review_input_hash
 			);
-			return {
-				schema_version: "anamnesis.work-command-result.v1",
-				work_id: nextProjection.work_id,
-				ledger_path: locations.ledgerPath,
-				projection_path: locations.projectionPath,
-				allocation: null,
-				projection: nextProjection,
-			};
-		} catch (error) {
-			if (!String((error as Error).message).includes("ledger head conflict")) {
-				throw error;
-			}
-			const refreshed = readWorkLedger(locations.ledgerPath);
-			assertProgressRetryIsAppendCompatible(
-				refreshed.records.slice(priorRecordCount),
-				draft.requirement_id,
-				event.event_id,
-			);
-			ledger = refreshed;
-			projection = foldWorkProjection(refreshed.records);
-			if (projection.contract_hash !== event.payload.basis_contract_hash) {
-				throw new Error("Work contract changed during progress transition");
-			}
-			if (attempt === 2) throw error;
-		}
+		},
+	);
+	if (retry) {
+		const stored = parseTypedWorkEvent(
+			context.ledger.records.find((item) => item.event_id === input.event_id)!,
+		);
+		if (stored.kind !== "work_review_requested")
+			throw new Error("invalid stored review request");
+		retry.execution_contract = {
+			kind: "review_request",
+			gate: stored.payload.gate,
+			review_input_hash: stored.payload.review_input_hash,
+			capability: "independent_agent",
+			role: stored.payload.role_hint,
+			minimum_reviewers: stored.payload.minimum_reviewers,
+			provider_order: stored.payload.provider_order,
+			next_provider:
+				retry.projection.review_gates.find(
+					(item) => item.gate === stored.payload.gate,
+				)?.next_provider ?? null,
+			evidence_requirements: [
+				"runtime_attested_unequal_provider_namespaced_refs",
+			],
+			blocking:
+				requiredReviewGate(retry.projection, stored.payload.gate)
+					.enforcement === "required",
+		};
+		return retry;
 	}
-	throw new Error("Work progress transition retry exhausted");
+	const canonical = resolveCanonicalInputs(
+		input,
+		context.projection,
+		gateInputs,
+	);
+	const gate = requiredReviewGate(context.projection, input.gate);
+	let reviewInputHash: string;
+	let artifactRefs: Array<{ ref: string; hash: string }>;
+	if (input.gate === "planning") {
+		const current = canonical.planning_review;
+		if (!current)
+			throw new Error("current planning review inputs are unavailable");
+		reviewInputHash = current.review_input_hash;
+		artifactRefs = current.artifacts.map(({ ref, hash }) => ({ ref, hash }));
+	} else {
+		const current = canonical.completion_review;
+		if (!current || "unavailable" in current)
+			throw new Error("current completion review inputs are unavailable");
+		reviewInputHash = current.review_input_hash;
+		artifactRefs = [
+			{
+				ref: `git-base:${current.base_ref}`,
+				hash: sha256(current.base_object),
+			},
+			{
+				ref: `git-head:${current.head_ref}`,
+				hash: sha256(current.head_object),
+			},
+			{ ref: "git-diff", hash: current.diff_hash },
+			{ ref: "verification", hash: current.verification_hash },
+		];
+	}
+	const event: SourceFreeWorkEvidenceEvent = {
+		event_id: input.event_id,
+		occurred_at: input.occurred_at,
+		kind: "work_review_requested",
+		payload: {
+			schema_version: "anamnesis.work-review-request-event.v1",
+			...executionBasis(context.projection),
+			gate: input.gate,
+			activity_id: input.activity_id,
+			review_input_hash: reviewInputHash,
+			artifact_refs: workArtifactRefSchema.array().parse(artifactRefs),
+			provider_order: gate.provider_order,
+			role_hint: gate.role_hint,
+			minimum_reviewers: gate.minimum_reviewers,
+		},
+	};
+	const result = appendEvidenceMutation(input, context, event);
+	result.execution_contract = {
+		kind: "review_request",
+		gate: input.gate,
+		review_input_hash: reviewInputHash,
+		capability: "independent_agent",
+		role: gate.role_hint,
+		minimum_reviewers: gate.minimum_reviewers,
+		provider_order: [...gate.provider_order],
+		next_provider: gate.provider_order[0] ?? null,
+		evidence_requirements: [
+			"runtime_attested_unequal_provider_namespaced_refs",
+		],
+		blocking: gate.enforcement === "required",
+	};
+	return result;
+}
+
+function reviewRecordContract(
+	projection: WorkProjection,
+	payload: WorkReviewAttemptPayload,
+): WorkExecutionCommandContract {
+	const gate = projection.review_gates.find(
+		(item) => item.gate === payload.gate,
+	);
+	if (!gate) throw new Error(`missing projected ${payload.gate} review gate`);
+	return {
+		kind: "review_record",
+		gate: payload.gate,
+		outcome: payload.outcome,
+		provider: payload.provider,
+		state: gate.state,
+		next_provider: gate.next_provider,
+		...("reviewer_instance_ref" in payload
+			? {
+					independence_assurance: payload.independence_assurance,
+					reviewer_instance_ref: payload.reviewer_instance_ref,
+					finding_refs: [...payload.finding_refs],
+				}
+			: { failure_refs: [...payload.failure_refs] }),
+	};
+}
+
+export function recordWorkReview(
+	input: WorkEvidenceMutationInput,
+): WorkMutationResult {
+	const draft = parseSingleWorkDraft(input.draft, reviewRecordDraftSchema);
+	const context = executionMutationContext(input);
+	const retry = exactStoredRetry(
+		input,
+		context,
+		"work_review_attempt_recorded",
+		(event) => {
+			if (event.kind !== "work_review_attempt_recorded") return false;
+			const payload = event.payload as Record<string, unknown>;
+			const candidate = draft as Record<string, unknown>;
+			return Object.entries(candidate).every(
+				([key, value]) =>
+					JSON.stringify(payload[key]) === JSON.stringify(value),
+			);
+		},
+	);
+	if (retry) {
+		const stored = parseTypedWorkEvent(
+			context.ledger.records.find((item) => item.event_id === input.event_id)!,
+		);
+		if (stored.kind !== "work_review_attempt_recorded")
+			throw new Error("invalid stored review record");
+		retry.execution_contract = reviewRecordContract(
+			retry.projection,
+			stored.payload,
+		);
+		return retry;
+	}
+	const request = latestReviewRequest(context.ledger.records, draft.gate);
+	if (!request) throw new Error(`no current ${draft.gate} review request`);
+	let outcomeFields: Record<string, unknown>;
+	if ("failure_input" in draft) {
+		outcomeFields = {
+			failure_input: draft.failure_input,
+			failure_refs: draft.failure_refs,
+		};
+	} else {
+		outcomeFields = {
+			reviewer_instance_ref: draft.reviewer_instance_ref,
+			author_instance_refs: draft.author_instance_refs,
+			independence_assurance: draft.independence_assurance,
+			independence_evidence_refs: draft.independence_evidence_refs,
+			artifact_refs: request.payload.artifact_refs,
+			finding_refs: draft.finding_refs,
+		};
+	}
+	const payload = {
+		schema_version: "anamnesis.work-review-attempt-event.v1" as const,
+		...executionBasis(context.projection),
+		gate: draft.gate,
+		activity_id: draft.activity_id,
+		attempt_id: draft.attempt_id,
+		review_input_hash: request.payload.review_input_hash,
+		provider: draft.provider,
+		role: draft.role,
+		outcome: draft.outcome,
+		...outcomeFields,
+	};
+	const result = appendEvidenceMutation(input, context, {
+		event_id: input.event_id,
+		occurred_at: input.occurred_at,
+		kind: "work_review_attempt_recorded",
+		payload,
+	} as SourceFreeWorkEvidenceEvent);
+	result.execution_contract = reviewRecordContract(
+		result.projection,
+		payload as WorkReviewAttemptPayload,
+	);
+	return result;
+}
+
+export function assessWorkDelegation(
+	input: WorkEvidenceMutationInput,
+): WorkMutationResult {
+	const draft = parseSingleWorkDraft(input.draft, delegationAssessDraftSchema);
+	const context = executionMutationContext(input);
+	const retry = exactStoredRetry(
+		input,
+		context,
+		"work_parallelism_assessed",
+		(event) => {
+			if (event.kind !== "work_parallelism_assessed") return false;
+			const canonical = resolveWorkExecutionInputs({
+				repositoryRoot: input.project_root,
+				stateRoot: input.state_root,
+				workId: event.payload.work_id,
+				contractRevision: event.payload.basis_contract_revision,
+				contractHash: event.payload.basis_contract_hash,
+				policyHash: event.payload.policy_hash,
+				executionInputs: draft.execution_inputs,
+			});
+			return (
+				canonical.parallelism?.assessment_input_hash ===
+					event.payload.assessment_input_hash &&
+				event.payload.assessment_id === draft.assessment_id &&
+				event.payload.decision === draft.decision &&
+				JSON.stringify(event.payload.lanes) === JSON.stringify(draft.lanes) &&
+				event.payload.selected_provider === draft.selected_provider &&
+				JSON.stringify(event.payload.rationale_codes) ===
+					JSON.stringify(draft.rationale_codes) &&
+				JSON.stringify(event.payload.evidence_refs) ===
+					JSON.stringify(draft.evidence_refs)
+			);
+		},
+	);
+	if (retry) {
+		retry.readiness = readinessForProjection(
+			input,
+			retry.projection,
+			"implementation_entry",
+			draft.execution_inputs,
+		);
+		retry.execution_contract = {
+			kind: "delegation_assessment",
+			assessment_id: retry.projection.parallelism.assessment_id,
+			state: retry.projection.parallelism.recorded_state,
+			next_provider: retry.projection.parallelism.next_provider,
+		};
+		return retry;
+	}
+	const canonical = resolveCanonicalInputs(
+		input,
+		context.projection,
+		draft.execution_inputs,
+	);
+	if (!canonical.parallelism)
+		throw new Error("current parallelism inputs are required");
+	const policy = context.projection.policy_snapshot!.policy.delegation;
+	const selectedProvider = selectDelegationProvider(
+		policy,
+		canonical.parallelism.runtime_capability,
+		draft.lanes.length,
+	);
+	if (
+		draft.decision === "parallel" &&
+		draft.selected_provider !== selectedProvider
+	) {
+		throw new Error(
+			"parallel assessment selected_provider does not match current runtime capacity",
+		);
+	}
+	if (draft.decision !== "parallel" && draft.selected_provider !== null) {
+		throw new Error("non-parallel assessment cannot select a provider");
+	}
+	const event: SourceFreeWorkEvidenceEvent = {
+		event_id: input.event_id,
+		occurred_at: input.occurred_at,
+		kind: "work_parallelism_assessed",
+		payload: {
+			schema_version: "anamnesis.work-parallelism-assessment-event.v1",
+			...executionBasis(context.projection),
+			assessment_id: draft.assessment_id,
+			assessment_input_hash: canonical.parallelism.assessment_input_hash,
+			decision: draft.decision,
+			lanes: draft.lanes,
+			selected_provider: draft.selected_provider,
+			rationale_codes: draft.rationale_codes,
+			evidence_refs: draft.evidence_refs,
+		},
+	};
+	const result = appendEvidenceMutation(input, context, event);
+	result.readiness = readinessForProjection(
+		input,
+		result.projection,
+		"implementation_entry",
+		draft.execution_inputs,
+	);
+	result.execution_contract = {
+		kind: "delegation_assessment",
+		assessment_id: result.projection.parallelism.assessment_id,
+		state: result.projection.parallelism.recorded_state,
+		next_provider: result.projection.parallelism.next_provider,
+	};
+	return result;
+}
+
+function delegationRecordContract(
+	projection: WorkProjection,
+	payload: WorkDelegationOutcomePayload,
+): WorkExecutionCommandContract {
+	return {
+		kind: "delegation_record",
+		assessment_id: payload.assessment_id,
+		outcome: payload.outcome,
+		provider: payload.provider,
+		state: projection.parallelism.recorded_state,
+		next_provider: projection.parallelism.next_provider,
+		...(payload.outcome === "delegated" ||
+		payload.outcome === "results_recorded"
+			? { delegation_contract_hash: payload.delegation_contract_hash }
+			: { failure_refs: [...payload.failure_refs] }),
+		...(payload.outcome === "results_recorded"
+			? { result_refs: [...payload.result_refs] }
+			: {}),
+	};
+}
+
+export function recordWorkDelegation(
+	input: WorkEvidenceMutationInput,
+): WorkMutationResult {
+	const draft = parseSingleWorkDraft(input.draft, delegationRecordDraftSchema);
+	const context = executionMutationContext(input);
+	const retry = exactStoredRetry(
+		input,
+		context,
+		"work_delegation_outcome_recorded",
+		(event) => {
+			if (event.kind !== "work_delegation_outcome_recorded") return false;
+			const payload = event.payload as Record<string, unknown>;
+			const candidate = draft as Record<string, unknown>;
+			return Object.entries(candidate).every(
+				([key, value]) =>
+					JSON.stringify(payload[key]) === JSON.stringify(value),
+			);
+		},
+	);
+	if (retry) {
+		const stored = parseTypedWorkEvent(
+			context.ledger.records.find((item) => item.event_id === input.event_id)!,
+		);
+		if (stored.kind !== "work_delegation_outcome_recorded")
+			throw new Error("invalid stored delegation record");
+		retry.execution_contract = delegationRecordContract(
+			retry.projection,
+			stored.payload,
+		);
+		return retry;
+	}
+	const assessment = latestParallelismAssessment(context.ledger.records);
+	if (!assessment || assessment.payload.assessment_id !== draft.assessment_id) {
+		throw new Error("delegation record requires the current assessment");
+	}
+	const common = {
+		schema_version: "anamnesis.work-delegation-outcome-event.v1" as const,
+		...executionBasis(context.projection),
+		assessment_id: assessment.payload.assessment_id,
+		assessment_input_hash: assessment.payload.assessment_input_hash,
+		provider: draft.provider,
+	};
+	let payload: SourceFreeWorkEvidenceEvent["payload"];
+	if (draft.outcome === "delegated") {
+		const partial = {
+			...common,
+			outcome: draft.outcome,
+			child_contracts: draft.child_contracts,
+		};
+		payload = {
+			...partial,
+			delegation_contract_hash: calculateWorkDelegationContractHash(partial),
+		};
+	} else if (draft.outcome === "results_recorded") {
+		payload = {
+			...common,
+			outcome: draft.outcome,
+			delegation_contract_hash: draft.delegation_contract_hash,
+			result_refs: draft.result_refs,
+		};
+	} else {
+		const partial = {
+			...common,
+			outcome: draft.outcome,
+			failure_input: draft.failure_input,
+			failure_refs: draft.failure_refs,
+		};
+		payload = {
+			...partial,
+			failure_fingerprint: calculateWorkDelegationFailureFingerprint(
+				partial,
+				assessment.payload.lanes,
+			),
+		};
+	}
+	const result = appendEvidenceMutation(input, context, {
+		event_id: input.event_id,
+		occurred_at: input.occurred_at,
+		kind: "work_delegation_outcome_recorded",
+		payload,
+	} as SourceFreeWorkEvidenceEvent);
+	result.execution_contract = delegationRecordContract(
+		result.projection,
+		payload as WorkDelegationOutcomePayload,
+	);
+	return result;
+}
+
+export function waiveWorkDelegation(
+	input: WorkDelegationWaiveInput,
+): WorkMutationResult {
+	const draft = parseSingleWorkDraft(input.draft, delegationWaiveDraftSchema);
+	const context = executionMutationContext(input);
+	const source = selectedSource(input);
+	const retry = exactStoredRetry(
+		input,
+		context,
+		"work_delegation_waived",
+		(event) => {
+			if (event.kind !== "work_delegation_waived") return false;
+			return (
+				event.payload.assessment_id === draft.assessment_id &&
+				event.payload.reason === draft.reason &&
+				event.payload.authority_ref === draft.authority_ref &&
+				event.payload.source_event_id === source.eventId &&
+				JSON.stringify(event.payload.evidence_refs) ===
+					JSON.stringify(draft.evidence_refs)
+			);
+		},
+	);
+	if (retry) {
+		publishWorkSourceEvent(source.value);
+		retry.execution_contract = {
+			kind: "delegation_waiver",
+			assessment_id: retry.projection.parallelism.assessment_id,
+			state: retry.projection.parallelism.recorded_state,
+			next_provider: retry.projection.parallelism.next_provider,
+		};
+		return retry;
+	}
+	const event = {
+		event_id: input.event_id,
+		occurred_at: input.occurred_at,
+		kind: "work_delegation_waived",
+		payload: {
+			schema_version: "anamnesis.work-delegation-waiver-event.v1",
+			...executionBasis(context.projection),
+			assessment_id: draft.assessment_id,
+			reason: draft.reason,
+			authority_ref: draft.authority_ref,
+			source_event_id: source.eventId,
+			evidence_refs: draft.evidence_refs,
+		},
+	};
+	const allocation = publishAndAppendCanonicalTypedWorkSourceEvent({
+		source: source.value,
+		ledgerPath: context.locations.ledgerPath,
+		ledgerEvent: event,
+		expectedHead: input.expected_head,
+	});
+	const projection = rebuildWorkProjection(
+		context.locations.ledgerPath,
+		context.locations.projectionPath,
+	);
+	return {
+		schema_version: "anamnesis.work-command-result.v1",
+		work_id: projection.work_id,
+		ledger_path: context.locations.ledgerPath,
+		projection_path: context.locations.projectionPath,
+		allocation,
+		projection,
+		execution_contract: {
+			kind: "delegation_waiver",
+			assessment_id: projection.parallelism.assessment_id,
+			state: projection.parallelism.recorded_state,
+			next_provider: projection.parallelism.next_provider,
+		},
+	};
+}
+
+export function readinessWork(
+	input: WorkReadinessInput,
+): WorkProtectedActionReadiness {
+	const locations = workLocations(input);
+	const projection = foldWorkProjection(
+		readWorkLedger(locations.ledgerPath).records,
+	);
+	if (projection.work_id !== input.work_id)
+		throw new Error(`Work not found: ${input.work_id}`);
+	return readinessForProjection(
+		input,
+		projection,
+		input.action,
+		input.execution_inputs,
+	);
 }
 
 export function statusWork(input: WorkReadInput): WorkStatusResult {
@@ -537,12 +1376,19 @@ export function statusWork(input: WorkReadInput): WorkStatusResult {
 	);
 	if (projection.work_id !== input.work_id)
 		throw new Error(`Work not found: ${input.work_id}`);
+	const currentInputsRequired =
+		projection.policy_snapshot?.policy.review.gates.some(
+			(gate) => gate.enforcement !== "off",
+		) === true || projection.parallelism.mode !== "off";
 	return {
 		schema_version: "anamnesis.work-status.v1",
 		work_id: input.work_id,
 		ledger_path: locations.ledgerPath,
 		projection,
 		policy_drift: detectPolicyDrift(input.project_root, projection),
+		...(currentInputsRequired
+			? { readiness: "current_inputs_required" as const }
+			: {}),
 	};
 }
 
@@ -600,10 +1446,10 @@ export function briefWork(input: WorkBriefInput): WorkBriefResult {
 	if (input.cursor_id) {
 		if (!input.occurred_at)
 			throw new Error("occurred_at is required with cursor_id");
-			const truth = projectionTruth(status.projection);
-			if (cursor) {
-				const reconciliation = prepareReconciliationDelivery(
-					cursor.reconciliation ?? emptyWorkCursorReconciliationState(),
+		const truth = projectionTruth(status.projection);
+		if (cursor) {
+			const reconciliation = prepareReconciliationDelivery(
+				cursor.reconciliation ?? emptyWorkCursorReconciliationState(),
 				delivery,
 			);
 			updateWorkCursorAtomic(
@@ -742,12 +1588,16 @@ function allocateStagedPrompt(
 	if (existing) {
 		if (
 			(decision === "allocate_new" && existing.kind !== "work_created") ||
-			(decision === "allocate_same" && existing.kind !== "work_contract_revised")
+			(decision === "allocate_same" &&
+				existing.kind !== "work_contract_revised")
 		) {
 			throw new Error(`work ledger event ID collision: ${eventId}`);
 		}
 		const parsed = parseTypedWorkEvent(existing);
-		if (parsed.kind !== "work_created" && parsed.kind !== "work_contract_revised") {
+		if (
+			parsed.kind !== "work_created" &&
+			parsed.kind !== "work_contract_revised"
+		) {
 			throw new Error(`invalid stored staged Work allocation: ${eventId}`);
 		}
 		revision = parsed.payload.contract_revision;
@@ -790,12 +1640,17 @@ function allocateStagedPrompt(
 			projection.contract_hash !== input.expected_contract_hash ||
 			!projection.policy_snapshot
 		) {
-			throw new Error("staged Work allocation observed stale Work contract truth");
+			throw new Error(
+				"staged Work allocation observed stale Work contract truth",
+			);
 		}
 		revision = projection.contract_revision + 1;
 		previousRevision = projection.contract_revision;
 		previousHash = projection.contract_hash;
-		policy = createWorkPolicySnapshot(revision, projection.policy_snapshot.policy);
+		policy = createWorkPolicySnapshot(
+			revision,
+			projection.policy_snapshot.policy,
+		);
 	}
 
 	if (decision === "allocate_same") {
@@ -804,7 +1659,9 @@ function allocateStagedPrompt(
 			input.expected_contract_revision !== previousRevision ||
 			input.expected_contract_hash !== previousHash
 		) {
-			throw new Error("staged Work allocation assertion does not match prior contract");
+			throw new Error(
+				"staged Work allocation assertion does not match prior contract",
+			);
 		}
 	}
 	const contract: WorkContractDefinition = {
@@ -815,7 +1672,8 @@ function allocateStagedPrompt(
 	const event: TypedWorkEvent = {
 		event_id: eventId,
 		occurred_at: occurredAt,
-		kind: decision === "allocate_new" ? "work_created" : "work_contract_revised",
+		kind:
+			decision === "allocate_new" ? "work_created" : "work_contract_revised",
 		payload: {
 			schema_version: "anamnesis.work-contract-event.v1",
 			work_id: input.work_id,
@@ -896,7 +1754,9 @@ function appendContract(
 	expectedHead: string | null,
 ): WorkMutationResult {
 	const records = readWorkLedger(locations.ledgerPath).records;
-	const storedEvent = records.find((record) => record.event_id === input.event_id);
+	const storedEvent = records.find(
+		(record) => record.event_id === input.event_id,
+	);
 	const storedPolicy = storedEvent
 		? parseStoredContractPolicy(storedEvent)
 		: null;
@@ -936,11 +1796,15 @@ function appendContract(
 function parseStoredContractPolicy(
 	record: ReturnType<typeof readWorkLedger>["records"][number],
 ): NonNullable<WorkProjection["policy_snapshot"]> | null {
-	if (record.kind !== "work_created" && record.kind !== "work_contract_revised") {
+	if (
+		record.kind !== "work_created" &&
+		record.kind !== "work_contract_revised"
+	) {
 		return null;
 	}
 	const parsed = parseTypedWorkEvent(record);
-	return parsed.kind === "work_created" || parsed.kind === "work_contract_revised"
+	return parsed.kind === "work_created" ||
+		parsed.kind === "work_contract_revised"
 		? parsed.payload.contract.policy_snapshot
 		: null;
 }
@@ -950,11 +1814,17 @@ function currentBoundaryState(
 ): WorkContractDefinition["boundary"]["state"] | null {
 	for (let index = records.length - 1; index >= 0; index -= 1) {
 		const record = records[index]!;
-		if (record.kind !== "work_created" && record.kind !== "work_contract_revised") {
+		if (
+			record.kind !== "work_created" &&
+			record.kind !== "work_contract_revised"
+		) {
 			continue;
 		}
 		const parsed = parseTypedWorkEvent(record);
-		if (parsed.kind === "work_created" || parsed.kind === "work_contract_revised") {
+		if (
+			parsed.kind === "work_created" ||
+			parsed.kind === "work_contract_revised"
+		) {
 			return parsed.payload.contract.boundary.state;
 		}
 	}
@@ -970,7 +1840,8 @@ function publishMutation(
 	const existing = readWorkLedger(locations.ledgerPath).records.find(
 		(record) => record.event_id === event.event_id,
 	);
-	if (existing) assertIdempotentMutationCandidate(existing, event, source.eventId);
+	if (existing)
+		assertIdempotentMutationCandidate(existing, event, source.eventId);
 	const allocation = publishAndAppendCanonicalTypedWorkSourceEvent({
 		source,
 		ledgerPath: locations.ledgerPath,
@@ -1007,9 +1878,10 @@ function assertIdempotentMutationCandidate(
 				existing.payload.contract_revision ===
 					candidate.payload.contract_revision
 			: candidate.kind === "work_requirement_transitioned"
-				? existing.payload.requirement_id === candidate.payload.requirement_id &&
+				? existing.payload.requirement_id ===
+						candidate.payload.requirement_id &&
 					existing.payload.basis_contract_hash ===
-					candidate.payload.basis_contract_hash &&
+						candidate.payload.basis_contract_hash &&
 					existing.payload.status === candidate.payload.status &&
 					JSON.stringify(existing.payload.evidence_refs) ===
 						JSON.stringify(candidate.payload.evidence_refs) &&
@@ -1041,7 +1913,7 @@ function resolveCommandPolicy(input: Pick<WorkMutationInput, "project_root">) {
 
 function progressEvent(
 	input: WorkMutationInput,
-	draft: ReturnType<typeof parseWorkTransitionDraft>,
+	draft: z.infer<typeof transitionWithExecutionInputsSchema>,
 	basisContractHash: string,
 	sourceEventId?: string,
 ): Extract<TypedWorkEvent, { kind: "work_requirement_transitioned" }> {
@@ -1094,7 +1966,9 @@ function detectPolicyDrift(
 }
 
 export function assertProgressRetryIsAppendCompatible(
-	interveningRecords: readonly ReturnType<typeof readWorkLedger>["records"][number][],
+	interveningRecords: readonly ReturnType<
+		typeof readWorkLedger
+	>["records"][number][],
 	requirementId: string,
 	candidateEventId: string,
 ): void {
@@ -1126,7 +2000,250 @@ function assertCurrentSourceReferenced(
 		throw new Error("contract draft must reference the current source event");
 }
 
-function selectedSource(input: WorkMutationInput): {
+type ExecutionMutationContext = {
+	locations: WorkLocations;
+	ledger: ReturnType<typeof readWorkLedger>;
+	projection: WorkProjection;
+};
+
+function executionMutationContext(
+	input: WorkReadInput,
+): ExecutionMutationContext {
+	const locations = workLocations(input);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const projection = foldWorkProjection(ledger.records);
+	if (
+		!projection.contract_hash ||
+		!projection.policy_hash ||
+		!projection.policy_snapshot
+	) {
+		throw new Error(`Work ${input.work_id} has no typed execution contract`);
+	}
+	return { locations, ledger, projection };
+}
+
+function executionBasis(projection: WorkProjection) {
+	if (!projection.contract_hash || !projection.policy_hash)
+		throw new Error("Work execution basis is unavailable");
+	return {
+		work_id: projection.work_id,
+		basis_contract_revision: projection.contract_revision,
+		basis_contract_hash: projection.contract_hash,
+		policy_hash: projection.policy_hash,
+	};
+}
+
+function resolveCanonicalInputs(
+	input: WorkReadInput,
+	projection: WorkProjection,
+	executionInputs?: WorkExecutionInputs,
+) {
+	if (!projection.contract_hash || !projection.policy_hash)
+		throw new Error("Work execution basis is unavailable");
+	return resolveWorkExecutionInputs({
+		repositoryRoot: input.project_root,
+		stateRoot: input.state_root,
+		workId: projection.work_id,
+		contractRevision: projection.contract_revision,
+		contractHash: projection.contract_hash,
+		policyHash: projection.policy_hash,
+		executionInputs,
+	});
+}
+
+function requiredReviewGate(
+	projection: WorkProjection,
+	gate: "planning" | "completion",
+) {
+	const configured = projection.policy_snapshot?.policy.review.gates.find(
+		(item) => item.gate === gate,
+	);
+	if (!configured || configured.enforcement === "off")
+		throw new Error(`${gate} review is not configured for this Work`);
+	return configured;
+}
+
+function latestReviewRequest(
+	records: ReturnType<typeof readWorkLedger>["records"],
+	gate: "planning" | "completion",
+) {
+	for (let index = records.length - 1; index >= 0; index -= 1) {
+		const record = records[index]!;
+		if (record.kind !== "work_review_requested") continue;
+		const event = parseTypedWorkEvent(record);
+		if (event.kind === "work_review_requested" && event.payload.gate === gate)
+			return event;
+	}
+	return null;
+}
+
+function latestParallelismAssessment(
+	records: ReturnType<typeof readWorkLedger>["records"],
+) {
+	for (let index = records.length - 1; index >= 0; index -= 1) {
+		const record = records[index]!;
+		if (record.kind !== "work_parallelism_assessed") continue;
+		const event = parseTypedWorkEvent(record);
+		if (event.kind === "work_parallelism_assessed") return event;
+	}
+	return null;
+}
+
+function appendEvidenceMutation(
+	input: WorkEvidenceMutationInput,
+	context: ExecutionMutationContext,
+	event: SourceFreeWorkEvidenceEvent,
+): WorkMutationResult {
+	appendCanonicalTypedWorkEvidenceEvent({
+		stateRoot: context.locations.stateRoot,
+		ledgerPath: context.locations.ledgerPath,
+		ledgerEvent: event,
+		expectedHead: input.expected_head,
+	});
+	const projection = rebuildWorkProjection(
+		context.locations.ledgerPath,
+		context.locations.projectionPath,
+	);
+	return {
+		schema_version: "anamnesis.work-command-result.v1",
+		work_id: projection.work_id,
+		ledger_path: context.locations.ledgerPath,
+		projection_path: context.locations.projectionPath,
+		allocation: null,
+		projection,
+	};
+}
+
+function mutationResultFromContext(
+	context: ExecutionMutationContext,
+): WorkMutationResult {
+	return {
+		schema_version: "anamnesis.work-command-result.v1",
+		work_id: context.projection.work_id,
+		ledger_path: context.locations.ledgerPath,
+		projection_path: context.locations.projectionPath,
+		allocation: null,
+		projection: context.projection,
+	};
+}
+
+function exactStoredRetry(
+	input: Pick<
+		WorkEvidenceMutationInput,
+		"event_id" | "occurred_at" | "expected_head"
+	>,
+	context: ExecutionMutationContext,
+	kind: TypedWorkEvent["kind"],
+	matches: (event: TypedWorkEvent) => boolean,
+): WorkMutationResult | null {
+	const record = context.ledger.records.find(
+		(item) => item.event_id === input.event_id,
+	);
+	if (!record) return null;
+	const event = parseTypedWorkEvent(record);
+	if (
+		event.kind !== kind ||
+		event.occurred_at !== input.occurred_at ||
+		record.previous_hash !== input.expected_head ||
+		!matches(event)
+	) {
+		throw new Error(`work ledger event ID collision: ${input.event_id}`);
+	}
+	return mutationResultFromContext(context);
+}
+
+function executionStateView(
+	projection: WorkProjection,
+): WorkExecutionStateView {
+	if (!projection.contract_hash || !projection.policy_hash)
+		throw new Error("Work execution state is unavailable");
+	const review: WorkExecutionStateView["review"] = {};
+	for (const gate of projection.review_gates) {
+		if (
+			gate.recorded_input_hash &&
+			gate.state !== "off" &&
+			gate.state !== "pending"
+		) {
+			review[gate.gate] = {
+				gate: gate.gate,
+				review_input_hash: gate.recorded_input_hash,
+				state: gate.state,
+				passing_reviewer_refs: gate.passing_reviewer_refs,
+				next_provider: gate.next_provider,
+			};
+		}
+	}
+	const stored = projection.parallelism;
+	const parallelism: WorkExecutionStateView["parallelism"] =
+		stored.assessment_id &&
+		stored.recorded_assessment_input_hash &&
+		stored.decision &&
+		stored.required_agents !== null &&
+		stored.recorded_state !== "off"
+			? {
+					assessment_id: stored.assessment_id,
+					assessment_input_hash: stored.recorded_assessment_input_hash,
+					decision: stored.decision,
+					state: stored.recorded_state,
+					selected_provider: stored.selected_provider,
+					next_provider: stored.next_provider,
+					required_agents: stored.required_agents,
+					waiver_assessment_id:
+						stored.recorded_state === "continue_solo"
+							? stored.assessment_id
+							: null,
+					waiver_assessment_input_hash:
+						stored.recorded_state === "continue_solo"
+							? stored.recorded_assessment_input_hash
+							: null,
+				}
+			: null;
+	return {
+		work_id: projection.work_id,
+		contract_revision: projection.contract_revision,
+		contract_hash: projection.contract_hash,
+		policy_hash: projection.policy_hash,
+		review,
+		parallelism,
+	};
+}
+
+function readinessForProjection(
+	input: WorkReadInput,
+	projection: WorkProjection,
+	action: "implementation_entry" | "completion",
+	executionInputs?: WorkExecutionInputs,
+): WorkProtectedActionReadiness {
+	const policy = projection.policy_snapshot?.policy;
+	if (!policy) throw new Error("Work policy snapshot is unavailable");
+	const gateName =
+		action === "implementation_entry" ? "planning" : "completion";
+	const gate = policy.review.gates.find((item) => item.gate === gateName);
+	if (!gate) throw new Error(`Work ${gateName} review gate is unavailable`);
+	const parsedInputs = workExecutionInputsSchema.parse(executionInputs ?? {});
+	const actionInputs: WorkExecutionInputs =
+		action === "implementation_entry"
+			? {
+					...(parsedInputs.planning_review_inputs
+						? { planning_review_inputs: parsedInputs.planning_review_inputs }
+						: {}),
+					...(parsedInputs.parallelism_inputs
+						? { parallelism_inputs: parsedInputs.parallelism_inputs }
+						: {}),
+				}
+			: parsedInputs.completion_review_inputs
+				? { completion_review_inputs: parsedInputs.completion_review_inputs }
+				: {};
+	return evaluateWorkProtectedAction({
+		execution_state: executionStateView(projection),
+		action,
+		canonical_inputs: resolveCanonicalInputs(input, projection, actionInputs),
+		review_gate: gate,
+		delegation_policy: policy.delegation,
+	});
+}
+
+function selectedSource(input: WorkReadInput & WorkCommandSourceSelection): {
 	eventId: string;
 	value: WorkSourceEventInput;
 } {

@@ -454,6 +454,10 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			mutation(root, {
 				event_id: "evt_compact_amend",
 				occurred_at: "2026-08-13T00:01:00.000Z",
+				expected_head: statusWork({
+					project_root: root,
+					work_id: "wu_hook",
+				}).projection.ledger_head,
 				draft: draft("src_compact_amend", "same_unit", true),
 				source_stdin: {
 					...mutation(root).source_stdin!,
@@ -672,6 +676,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			mutation(root, {
 				event_id: "evt_amend",
 				occurred_at: "2026-08-13T00:01:00.000Z",
+				expected_head: created.projection.ledger_head,
 				draft: draft("src_amend", "same_unit", true),
 				source_stdin: {
 					...mutation(root).source_stdin!,

@@ -118,7 +118,8 @@ export function formatCompactHelp(
     ...ui.commandRows([
       {
         command: "work brief --work <id> --session <id>",
-        description: "Reconcile requirements, progress, blockers, and next work.",
+				description:
+					"Reconcile requirements, progress, blockers, and next work.",
       },
       {
         command: "upgrade plan",
@@ -139,7 +140,8 @@ export function formatCompactHelp(
     ...ui.commandRows([
       {
         command: "--project-root <path>",
-        description: "Target directory; defaults to the current working directory.",
+				description:
+					"Target directory; defaults to the current working directory.",
       },
       {
         command: "--library <path>",
@@ -147,7 +149,8 @@ export function formatCompactHelp(
       },
       {
         command: "--allow-exec-adapters",
-        description: "Permit hooks, commands, skills, Cursor rules, and Codex wrappers.",
+				description:
+					"Permit hooks, commands, skills, Cursor rules, and Codex wrappers.",
       },
       {
         command: "--json",
@@ -155,7 +158,9 @@ export function formatCompactHelp(
       },
     ]),
     "",
-    ui.note("Use `anamnesis --help --all` for the full maintainer command and flag catalog."),
+		ui.note(
+			"Use `anamnesis --help --all` for the full maintainer command and flag catalog.",
+		),
     "Docs: https://github.com/MCprotein/anamnesis",
   ].join("\n");
 }
@@ -194,39 +199,137 @@ function namespaceRows(namespace: HelpNamespace) {
   switch (namespace) {
     case "context":
       return [
-        { command: "context index", description: "Build a local source-pointer index." },
-        { command: "context docs", description: "Summarize Markdown pages, links, backlinks, and ontology refs." },
-        { command: "context query <query>", description: "Search indexed context and print exact source pointers." },
-        { command: "context diagnose", description: "Report stale handoff, ontology, docs, and evidence issues." },
-        { command: "context resume", description: "Print or write a compact resume bundle." },
-        { command: "context subagent-preamble", description: "Print launcher-wrapper context for external subagents." },
+				{
+					command: "context index",
+					description: "Build a local source-pointer index.",
+				},
+				{
+					command: "context docs",
+					description:
+						"Summarize Markdown pages, links, backlinks, and ontology refs.",
+				},
+				{
+					command: "context query <query>",
+					description:
+						"Search indexed context and print exact source pointers.",
+				},
+				{
+					command: "context diagnose",
+					description:
+						"Report stale handoff, ontology, docs, and evidence issues.",
+				},
+				{
+					command: "context resume",
+					description: "Print or write a compact resume bundle.",
+				},
+				{
+					command: "context subagent-preamble",
+					description: "Print launcher-wrapper context for external subagents.",
+				},
       ];
     case "handoff":
       return [
-        { command: "handoff draft", description: "Draft a handoff from git status, evidence, and active pointers." },
-        { command: "handoff close", description: "Close a finalized archive and clean matching active entries." },
-        { command: "handoff deprecate", description: "Mark an archive deprecated or superseded." },
+				{
+					command: "handoff draft",
+					description:
+						"Draft a handoff from git status, evidence, and active pointers.",
+				},
+				{
+					command: "handoff close",
+					description:
+						"Close a finalized archive and clean matching active entries.",
+				},
+				{
+					command: "handoff deprecate",
+					description: "Mark an archive deprecated or superseded.",
+				},
       ];
     case "benchmark":
       return [
-        { command: "benchmark report", description: "Generate the deterministic context-quality scorecard." },
-        { command: "benchmark retrieval", description: "Measure source-pointer query ranking over public-safe fixtures." },
-        { command: "benchmark upgrade", description: "Run sanitized upgrade fixtures and graph evidence." },
-        { command: "benchmark task", description: "Record a model-dependent task benchmark run." },
-        { command: "benchmark task-series", description: "Roll up repeated full/compact task comparisons." },
-        { command: "benchmark subagent-injection", description: "Measure repeated subagent context injection evidence." },
-        { command: "benchmark prompt-gate", description: "Decide whether prompt-time context injection is justified." },
+				{
+					command: "benchmark report",
+					description: "Generate the deterministic context-quality scorecard.",
+				},
+				{
+					command: "benchmark retrieval",
+					description:
+						"Measure source-pointer query ranking over public-safe fixtures.",
+				},
+				{
+					command: "benchmark upgrade",
+					description: "Run sanitized upgrade fixtures and graph evidence.",
+				},
+				{
+					command: "benchmark task",
+					description: "Record a model-dependent task benchmark run.",
+				},
+				{
+					command: "benchmark task-series",
+					description: "Roll up repeated full/compact task comparisons.",
+				},
+				{
+					command: "benchmark subagent-injection",
+					description: "Measure repeated subagent context injection evidence.",
+				},
+				{
+					command: "benchmark prompt-gate",
+					description:
+						"Decide whether prompt-time context injection is justified.",
+				},
       ];
     case "work":
       return [
-        { command: "work create", description: "Create a Work from one exact source prompt and a strict contract draft." },
-        { command: "work amend", description: "Append requirements to the current Work contract." },
-        { command: "work transition", description: "Record one requirement status transition with evidence." },
-        { command: "work prompt", description: "Classify, allocate, or garbage-collect privately staged user prompts." },
-        { command: "work status", description: "Refold and report authoritative Work state." },
-        { command: "work brief", description: "Prepare a session-scoped reconciliation briefing." },
-        { command: "work confirm", description: "Acknowledge that a prepared briefing was actually presented." },
-        { command: "work switch", description: "Move one session cursor to another Work without mutating either Work." },
+				{
+					command: "work create",
+					description:
+						"Create a Work from one exact source prompt and a strict contract draft.",
+				},
+				{
+					command: "work amend",
+					description: "Append requirements to the current Work contract.",
+				},
+				{
+					command: "work transition",
+					description:
+						"Record one requirement status transition with evidence.",
+				},
+				{
+					command: "work review request|record --expected-head <hash>",
+					description: "Prepare or record bounded independent-review evidence.",
+				},
+				{
+					command: "work delegation assess|record|waive --expected-head <hash>",
+					description:
+						"Record runtime-neutral parallelism and delegation evidence.",
+				},
+				{
+					command: "work readiness --action <action> [--inputs <path>]",
+					description:
+						"Evaluate current protected-action obligations without mutation.",
+				},
+				{
+					command: "work prompt",
+					description:
+						"Classify, allocate, or garbage-collect privately staged user prompts.",
+				},
+				{
+					command: "work status",
+					description: "Refold and report authoritative Work state.",
+				},
+				{
+					command: "work brief",
+					description: "Prepare a session-scoped reconciliation briefing.",
+				},
+				{
+					command: "work confirm",
+					description:
+						"Acknowledge that a prepared briefing was actually presented.",
+				},
+				{
+					command: "work switch",
+					description:
+						"Move one session cursor to another Work without mutating either Work.",
+				},
       ];
   }
 }

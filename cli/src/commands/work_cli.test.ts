@@ -101,6 +101,161 @@ function runAsync(root: string, args: string[], input: Buffer) {
 }
 
 describe("anamnesis work CLI", () => {
+	it("exposes bounded nested review and readiness JSON without provider lifecycle output", () => {
+		const root = project();
+		fs.writeFileSync(
+			path.join(root, "Agentfile"),
+			YAML.stringify({
+				version: 2,
+				project: { name: "strict-review-cli" },
+				tools: ["codex"],
+				fragments: [],
+				settings: { work_policy: { review: { preset: "strict" } } },
+			}),
+		);
+		writeDraft(root, "src_review_cli");
+		const created = run(
+			root,
+			[
+				"create",
+				"--work",
+				"wu_review_cli",
+				"--event-id",
+				"evt_create",
+				"--source-event-id",
+				"src_review_cli",
+				"--occurred-at",
+				"2026-08-14T01:00:00.000Z",
+				"--draft",
+				"draft.yaml",
+				"--source-stdin",
+				"--json",
+			],
+			Buffer.from("private source body"),
+		);
+		expect(created.status, created.stderr).toBe(0);
+		const head = JSON.parse(created.stdout).projection.ledger_head;
+		const executionInputs = {
+			planning_review_inputs: {
+				artifacts: [
+					{
+						kind: "runtime_attested_inline",
+						ref: "plan:cli",
+						content: "review this bounded plan",
+						assurance: "runtime_attested",
+					},
+				],
+			},
+		};
+		fs.writeFileSync(
+			path.join(root, "review.yaml"),
+			YAML.stringify({ execution_inputs: executionInputs }),
+		);
+		fs.writeFileSync(
+			path.join(root, "inputs.yaml"),
+			YAML.stringify(executionInputs),
+		);
+		const requested = run(root, [
+			"review",
+			"request",
+			"--work",
+			"wu_review_cli",
+			"--event-id",
+			"review_request",
+			"--activity-id",
+			"activity_cli",
+			"--gate",
+			"planning",
+			"--expected-head",
+			head,
+			"--occurred-at",
+			"2026-08-14T01:01:00.000Z",
+			"--draft",
+			"review.yaml",
+			"--json",
+		]);
+		expect(requested.status, requested.stderr).toBe(0);
+		const result = JSON.parse(requested.stdout);
+		expect(Object.keys(result).sort()).toEqual([
+			"execution_contract",
+			"ledger_head",
+			"schema_version",
+			"work_id",
+		]);
+		expect(result.execution_contract).toMatchObject({
+			kind: "review_request",
+			gate: "planning",
+			next_provider: "omx",
+			blocking: true,
+		});
+		expect(requested.stdout).not.toContain("private source body");
+		expect(requested.stdout).not.toContain("projection");
+		expect(requested.stdout).not.toContain("tmux");
+		fs.writeFileSync(
+			path.join(root, "review-record.yaml"),
+			YAML.stringify({
+				gate: "planning",
+				activity_id: "activity_cli",
+				attempt_id: "attempt_cli",
+				provider: "omx",
+				role: result.execution_contract.role,
+				outcome: "passed",
+				reviewer_instance_ref: { provider: "omx", ref: "reviewer:one" },
+				author_instance_refs: [{ provider: "codex_native", ref: "author:one" }],
+				independence_assurance: "runtime_attested",
+				independence_evidence_refs: ["runtime:separate_instance"],
+				finding_refs: ["finding:approved"],
+			}),
+		);
+		const recorded = run(root, [
+			"review",
+			"record",
+			"--work",
+			"wu_review_cli",
+			"--event-id",
+			"review_record",
+			"--expected-head",
+			result.ledger_head,
+			"--occurred-at",
+			"2026-08-14T01:01:30.000Z",
+			"--draft",
+			"review-record.yaml",
+		]);
+		expect(recorded.status, recorded.stderr).toBe(0);
+		expect(recorded.stdout).toContain(
+			"independence_assurance: runtime_attested",
+		);
+		expect(recorded.stdout).toContain(
+			"reviewer_instance_ref: omx:reviewer:one",
+		);
+		expect(recorded.stdout).toContain("finding_refs: finding:approved");
+		expect(recorded.stdout).not.toContain("review this bounded plan");
+		expect(recorded.stdout).not.toContain("private source body");
+		const status = run(root, ["status", "--work", "wu_review_cli"]);
+		expect(status.status, status.stderr).toBe(0);
+		expect(status.stdout).toContain("review planning: passed");
+		expect(status.stdout).toContain("reviewers=omx:reviewer:one");
+		expect(status.stdout).toContain("readiness: current_inputs_required");
+		expect(status.stdout).not.toContain("review this bounded plan");
+		expect(status.stdout).not.toContain("private source body");
+
+		const readiness = run(root, [
+			"readiness",
+			"--work",
+			"wu_review_cli",
+			"--action",
+			"implementation-entry",
+			"--inputs",
+			"inputs.yaml",
+			"--json",
+		]);
+		expect(readiness.status).toBe(0);
+		expect(JSON.parse(readiness.stdout)).toMatchObject({
+			allowed: true,
+			contextual_state: { review: "passed", parallelism: "off" },
+		});
+	}, 20_000);
+
 	it("stages UserPromptSubmit and allocates it through the explicit prompt command", () => {
 		const root = project();
 		fs.writeFileSync(
@@ -207,7 +362,9 @@ describe("anamnesis work CLI", () => {
 		const missingStableId = run(
 			root,
 			["hook-user-prompt", "--client", "codex"],
-			Buffer.from(JSON.stringify({ session_id: "session-hook", prompt: "secret" })),
+			Buffer.from(
+				JSON.stringify({ session_id: "session-hook", prompt: "secret" }),
+			),
 		);
 		expect(missingStableId.status, missingStableId.stderr).toBe(0);
 		expect(missingStableId.stdout).toBe("");
@@ -348,27 +505,27 @@ describe("anamnesis work CLI", () => {
 	it("records evidence-only progress without manufacturing a user source", () => {
 		const root = project();
 		writeDraft(root, "src_progress");
-		expect(
-			run(
-				root,
-				[
-					"create",
-					"--work",
-					"wu_progress",
-					"--event-id",
-					"evt_create",
-					"--source-event-id",
-					"src_progress",
-					"--occurred-at",
-					"2026-08-13T13:10:00.000Z",
-					"--draft",
-					"draft.yaml",
-					"--source-stdin",
-					"--json",
-				],
-				Buffer.from("user requirement"),
-			).status,
-		).toBe(0);
+		const created = run(
+			root,
+			[
+				"create",
+				"--work",
+				"wu_progress",
+				"--event-id",
+				"evt_create",
+				"--source-event-id",
+				"src_progress",
+				"--occurred-at",
+				"2026-08-13T13:10:00.000Z",
+				"--draft",
+				"draft.yaml",
+				"--source-stdin",
+				"--json",
+			],
+			Buffer.from("user requirement"),
+		);
+		expect(created.status, created.stderr).toBe(0);
+		const expectedHead = JSON.parse(created.stdout).projection.ledger_head;
 		fs.writeFileSync(
 			path.join(root, "transition.yaml"),
 			YAML.stringify({
@@ -387,6 +544,8 @@ describe("anamnesis work CLI", () => {
 			"2026-08-13T13:11:00.000Z",
 			"--draft",
 			"transition.yaml",
+			"--expected-head",
+			expectedHead,
 			"--json",
 		]);
 		expect(transitioned.status, transitioned.stderr).toBe(0);
@@ -664,8 +823,8 @@ describe("anamnesis work CLI", () => {
 			cursorId,
 		).cursor?.reconciliation;
 		expect(finalReconciliation?.meaningful_actions_since_confirmed).toBe(67);
-		expect(finalReconciliation?.recent_meaningful_action_boundary_ids).toHaveLength(
-			64,
-		);
+		expect(
+			finalReconciliation?.recent_meaningful_action_boundary_ids,
+		).toHaveLength(64);
 	}, 60_000);
 });
