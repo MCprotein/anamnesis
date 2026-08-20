@@ -123,6 +123,24 @@ could include breaking changes.
   `anamnesis work prompt gc` enforces TTL without a daemon and recovers expired
   terminal-cleanup, partial-publication, corrupt-stage, and stale-temp residue.
   Public JSON resolution output excludes prompt-derived and assertion hashes.
+- Implemented the runtime-neutral Work review/delegation evidence and readiness
+  slice. Four source-free typed event families record review requests, review
+  attempts, parallelism assessments, and delegation outcomes; a fifth,
+  source-bound event records an explicit user delegation waiver. Projection
+  stores only bounded durable ledger facts, while `work readiness` combines
+  those facts with policy-conditional current inputs through a pure evaluator.
+  A bounded adapter hashes safe repo-local artifacts and allowlisted read-only
+  Git facts without invoking a shell or provider. Nested
+  `work review request|record`, `work delegation assess|record|waive`, and
+  `work readiness` commands expose the contract. Every existing-Work mutation
+  requires an explicit `expected_head`; only an exact event retry is
+  idempotent, and stale new events are never auto-rebased. Required review and
+  parallelism remain fail-closed; configured OMX authorization or unsupported
+  authority fallback may select Codex native evidence, but anamnesis does not
+  launch or supervise providers, native agents, or tmux panes. Reviewer
+  identity is explicitly `runtime_attested`, not host-authenticated. Fresh
+  verification passed the targeted and full test suites, typecheck, lint,
+  build, dogfood, and diff checks.
 - Reviewed the stable MCP `2026-07-28` revision against the current codebase.
   No migration is required because anamnesis has no MCP implementation; the
   roadmap now records a stateless, deterministic, cacheable resource profile

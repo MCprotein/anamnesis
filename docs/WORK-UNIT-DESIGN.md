@@ -1,8 +1,9 @@
 # Work Unit and Requirement Ledger Design
 
 Status: v1.18 target design with storage, typed contract, policy resolution,
-projection, session cursor, thin CLI commands, bounded prompt staging, and
-prompt/safe-tool reconciliation hooks implemented. Review/delegation execution,
+projection, session cursor, thin CLI commands, bounded prompt staging,
+prompt/safe-tool reconciliation hooks, and runtime-neutral review/delegation
+evidence plus contextual readiness implemented. Provider orchestration,
 compaction-native triggers, and closure orchestration remain unshipped.
 
 ## Goal
@@ -421,27 +422,62 @@ review_provider_preferences:
 ```
 
 OMX, Codex native subagents, Claude native subagents, or a separate process are
-execution providers owned by the current agent runtime, not by anamnesis. A
-reviewer counts as independent only when its agent
-instance did not author the reviewed artifact; shared source context does not
-by itself violate independence.
+execution providers owned by the current agent runtime, not by anamnesis. The
+runtime must attest that the reviewer instance did not author the reviewed
+artifact; shared source context does not by itself violate independence.
 
 An OMX authorization failure, including unsupported documented leader proof,
-automatically falls through to a Codex native subagent when available. Provider
-fallback does not weaken gate enforcement. Under `strict`, `pending`,
+selects Codex native as the next provider only when that provider is allowed by
+the frozen policy and current runtime capability. Provider fallback does not
+weaken gate enforcement. Under `strict`, `pending`,
 `requested`, `changes_requested`, and `blocked_unavailable` all block the
 protected transition; only `passed` for the current input hash or an evidenced
 `waived` permits it. Exhausting providers changes the state to
 `blocked_unavailable`, while reviewer findings use `changes_requested` until a
 fresh matching review passes. Advisory mode records the attempts/findings and
 does not protect the transition. Anamnesis injects the resolved rule, records
-evidence, and refuses a strict Work close when evidence is missing; it does not
-schedule, supervise, or retry reviewer processes. Each attempt is a ledger
+evidence, and blocks a strict protected action when evidence is missing; it
+does not schedule, supervise, or retry reviewer processes. Each attempt is a ledger
 event with an `activity_id`, provider, agent instance, role, outcome, reviewed
 input hash, artifact refs, and findings. No Job or Run object is created.
 Material plan/contract changes invalidate planning review; material
 diff/base/head or verification changes invalidate completion review regardless
 of provider.
+
+The implemented evidence contract uses five typed event families:
+
+- `work_review_requested`, `work_review_attempt_recorded`,
+  `work_parallelism_assessed`, and `work_delegation_outcome_recorded` are
+  source-free runtime evidence;
+- `work_delegation_waived` is source-bound user authority and must pass through
+  the canonical source-first publication boundary.
+
+The projection folds only bounded durable ledger facts: recorded gate state,
+input hashes, provider fallback, assessment/delegation state, evidence refs,
+and bounded stale evidence. It never accepts caller-current plan, diff,
+verification, scope, or runtime-capability inputs and therefore never claims
+authoritative current readiness. `work readiness` is the contextual boundary:
+it combines the byte-identical durable projection with a canonical current
+input snapshot and evaluates protected-action blockers, advisories, and
+obligations through a pure function.
+
+Current-input canonicalization is bounded and read-only. Repo-local artifact
+reads reject unsafe paths and symlinks. Completion inputs resolve allowlisted
+Git object/diff facts with argument-array subprocess calls, bounded output, no
+shell interpolation, and no write-capable Git or provider command. Runtime
+content, capability, and reviewer identity claims remain explicitly
+`runtime_attested`. The review identity guarantee is only exact inequality
+between the provider-namespaced opaque author and reviewer refs supplied by the
+runtime; anamnesis does not authenticate those refs, infer cross-provider
+identity, or claim that undisclosed self-review is impossible.
+
+The nested CLI surface is `work review request|record`,
+`work delegation assess|record|waive`, and the read-only `work readiness`.
+Every mutation against an existing Work requires an explicit `expected_head`.
+An exact event-ID/body retry with its original head remains idempotent; a new
+or different event at a stale head appends nothing and is never semantically
+auto-rebased. The caller must refold and explicitly resubmit against the new
+head.
 
 ## Automatic reconciliation briefing
 
@@ -603,9 +639,10 @@ Runtime selection remains declarative:
   `prefer` biases selection without inventing unsafe lanes, while `never` and
   `required` exclude or require that surface respectively;
 - follow `fallback_order` on authorization, capability, startup, or runtime
-  incompatibility. In particular, OMX authorization/leader-proof failure falls
-  through to Codex native agents when allowed. `fallback` means try the next
-  allowed provider; after exhaustion, `auto`/`prefer` may record the failure and
+  incompatibility. In particular, OMX authorization/leader-proof failure may
+  select Codex native agents when that fallback is configured and currently
+  allowed. `fallback` means select the next allowed provider; after exhaustion,
+  `auto`/`prefer` may record the failure and
   continue solo, while `required` becomes `blocked_unavailable` until an
   allowed provider succeeds or the user waives it. `ask` requests that decision
   and `fail_closed` blocks without a waiver.
@@ -665,10 +702,12 @@ updated_at: "<ISO-8601 timestamp>"
 
 Before a same-Work write, a session reads the current ledger head and submits
 that expected head under a short file lock. If another session advanced the
-head, append-compatible input is re-read and retried against the new head.
-Conflicting requirement ownership, status, completion, or review decisions
-append a conflict/provisional record and require reconciliation; they never use
-last-writer-wins. The lock exists only for the local append/manifest update.
+head, a new or different event fails without append; the caller must refold and
+explicitly resubmit against the new head. Only the exact same event ID and body
+is an idempotent retry with its original expected head. Conflicting requirement
+ownership, status, completion, or review decisions require reconciliation;
+they never use last-writer-wins or semantic auto-rebase. The lock exists only
+for the local append/manifest update.
 It carries an owner nonce, PID, and process-start evidence. A leftover lock is
 reclaimed only when the original process is proven gone; age alone does not
 authorize takeover. A repeated `event_id` with the same payload/hash is an
@@ -819,15 +858,17 @@ an explicit privileged read to return a raw body.
   `frequent` Work produces a deterministic requirements/done/remaining/
   progress briefing at supported due boundaries, deduplicates an unchanged
   snapshot, and continues the same turn unless a genuine decision is blocked.
-- Parallel-policy fixtures serialize dependency or write/effect conflicts,
-  delegate at least two safe ready lanes under `prefer`/`required`, respect the
-  maximum agent count, and never treat delegation completion as verification.
+- Parallel-policy fixtures reject unsafe dependency or write/effect conflicts,
+  record at least two safe ready lanes under `prefer`/`required`, respect the
+  maximum agent count, and never treat recorded delegation results as
+  verification. The external runtime, not anamnesis, launches those lanes.
 - Native/tmux runtime preference and unavailable behavior resolve
   deterministically. A repeated failure fingerprint is not relaunched until an
   input changes, and every delegated child receives a bounded Work contract
   even when it has no SessionStart injection.
-- Under `strict`, OMX authorization failure followed by a successful Codex
-  native review passes the gate. The protected transition remains blocked
+- Under `strict`, configured OMX authorization fallback followed by a
+  successful runtime-attested Codex native review for the current input hash
+  passes the gate. The protected transition remains blocked
   until a current-input-hash review passes or is explicitly waived; exhausting
   all providers records `blocked_unavailable`.
 - Raw prompt bodies never appear in compact digests, context-index snippets,

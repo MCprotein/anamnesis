@@ -1936,10 +1936,9 @@ fallback and keeps required parallelism fail-closed after provider exhaustion,
 but does not launch or supervise either runtime. Fresh verification passed
 48/48 targeted tests and 808/808 tests across 82 files, plus typecheck, lint,
 build, and diff checks; independent QA returned `SIGNOFF` and independent code
-review returned `APPROVE`. This does not complete v1.18: delegation/review
-execution, handoff/index
-integration, benchmarks, optional MCP evaluation, and cross-host coordination
-remain deferred.
+review returned `APPROVE`. This does not complete v1.18: provider
+orchestration, handoff/index integration, benchmarks, optional MCP export, and
+cross-host coordination remain deferred.
 
 The typed Work-contract and reconciliation foundation is now implemented as
 well. Canonical contract revisions preserve prior requirements unless an
@@ -1957,8 +1956,9 @@ Pre-binding ledgers require an explicit dedicated migration event; ordinary
 publication cannot mint or override envelope-binding authority. Fresh
 verification passed 120/120 targeted tests and 868/868 tests across 84 files,
 plus typecheck, lint, build, import, and diff checks; independent adversarial
-verification and final code review returned `APPROVE`. Review/delegation
-invocation and final lifecycle transitions remain deferred.
+verification and final code review returned `APPROVE`. Runtime-neutral
+review/delegation evidence is implemented in the later slice below; provider
+orchestration and final lifecycle transitions remain deferred.
 
 The first thin Work command slice is implemented. The `work` namespace offers
 `create|amend|transition|status|brief|confirm|switch` with strict draft and
@@ -1969,9 +1969,9 @@ persisted pending before output and confirmed only after a complete direct-TTY
 human write or an explicit confirmation token. Non-TTY/JSON output, EPIPE, and
 crash seams remain unconfirmed and safely repeatable. A Work keeps its frozen
 policy across ordinary amendments and reports later Agentfile changes as
-drift. Required planning review blocks implementation entry until review
-evidence is modeled, and same-requirement concurrent progress fails closed
-instead of using last-writer-wins. Fresh verification passed 146 targeted Work tests
+drift. Required planning review blocks implementation entry until current,
+input-hash-matched review evidence is recorded, and same-requirement concurrent
+progress fails closed instead of using last-writer-wins. Fresh verification passed 146 targeted Work tests
 and 894/894 tests across 88 files, plus typecheck, lint, build, and diff checks;
 independent code review returned `APPROVE` and adversarial verification
 returned `PASS`.
@@ -2009,6 +2009,25 @@ mutation, discarded entries commit content-free receipts before cleanup, and
 bounded GC shares the stage locks. Explicit `work prompt gc` enforces TTL and
 repairs expired partial/temp residue without a daemon. Stage/source/Work lock order and deterministic
 events make crash retries recoverable while keeping the design daemon-free.
+
+Runtime-neutral review/delegation evidence and contextual readiness are now
+implemented. Four source-free typed event families record review requests,
+review attempts, parallelism assessments, and delegation outcomes; an explicit
+user delegation waiver is the fifth, source-bound family. Projection stores
+only bounded durable evidence, while a pure evaluator derives current
+protected-action readiness from policy-conditional inputs canonicalized by a
+bounded repo-file and allowlisted read-only Git adapter. Nested
+`work review request|record`, `work delegation assess|record|waive`, and
+`work readiness` commands expose the contract. Existing-Work mutations require
+an explicit `expected_head`; exact retries remain idempotent, but stale new
+events append nothing and are never auto-rebased. Required review and
+parallelism stay fail-closed. OMX authorization or unsupported-authority
+outcomes may select Codex native only when allowed by the frozen policy and
+current capability. Identity remains visibly `runtime_attested`, and anamnesis
+does not launch, supervise, retry, or shut down any provider, native-agent, or
+tmux lifecycle. Fresh verification passed the targeted and full test suites,
+typecheck, lint, build, dogfood, and diff checks without relying on a brittle
+test-count claim.
 
 The storage and responsibility boundaries are:
 
@@ -2085,7 +2104,8 @@ Product and efficiency boundaries:
   individual requirements, rules, reviews, or evidence only when needed.
 - Do not silently replace a required independent review with self-review.
   Resolve configured providers in order; OMX authorization/authority failure
-  falls through to a Codex native subagent when available. A strict protected
+  selects Codex native as the next provider only when configured and allowed.
+  A strict protected
   transition remains blocked from `pending` onward until a current-input review
   passes or the user explicitly waives it; exhausting providers specifically
   records `blocked_unavailable`.
@@ -2123,14 +2143,14 @@ Work plan:
 | 2 | **Verbatim source-event ledger and projection** | bounded native prompt staging/allocation implemented; exact-span UI deferred | Immutable exact-byte prompt objects, canonical envelopes, hash-linked allocation records, monotonic typed contracts, deterministic projection rebuilds, stable-order multi-source locking, exact envelope-hash binding, torn-tail recovery, and corruption/symlink fail-closed behavior are implemented. Agentfile v2 bounds and user-local environment consent jointly enable private UserPrompt staging; Codex/Claude adapters preserve `client_exact` UTF-8 bytes and expose an opaque four-way same/new/provisional/discard allocation contract. Explicit GC enforces TTL and repairs partial/temp crash residue without a daemon. Raw paths remain outside Git, backups, context index, logs, hook context, and default MCP. Exact sub-prompt span allocation remains planned. |
 | 3 | **Evidence-based progress reporter** | deterministic core and CLI rendering implemented; evidence freshness diagnostics deferred | Projection, status, and briefing output report verified/applicable, pending, in-progress, implemented-unverified, blocked, and waived counts with explicit denominator/weights. Invalid, overflowing, inconsistent, or provenance-free states fail closed. Human and JSON presentation refold the ledger instead of trusting projection cache; deeper evidence freshness diagnostics remain planned. |
 | 4 | **Automatic reconciliation briefing** | prompt and same-turn safe-hook emission plus prompt classification control implemented; compaction/close triggers deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples. `work brief` renders the ordered requirements/done/remaining/blockers/progress/next contract. Dedicated Claude Code and Codex `UserPromptSubmit` adapters handle foreground prompt boundaries and, when bounded capture is enabled, combine the due briefing with an opaque explicit allocation obligation. Codex `PostToolUse` and Claude Code batch-level `PostToolBatch` evaluate meaningful-action and silence cadence during a long turn without a daemon. Wrappers discard tool payloads, one durable lock-scoped cursor mutation deduplicates stable boundary IDs, and hidden context remains `injected_unconfirmed`. Compaction-specific and close-specific native triggers remain research-first. |
-| 5 | **Per-Work automatic delegation and runtime policy** | policy schema/resolver implemented; execution deferred | The pure resolver normalizes `off`, `auto`, `prefer`, and `required` parallelism, maximum agents, native/tmux preferences, fallback order, reassessment triggers, and unavailable behavior. Required parallelism fails closed after provider exhaustion. Dependency-lane assessment, runtime selection records, and actual native/tmux execution remain planned and runtime-owned. |
-| 6 | **User-configurable independent-review gates** | policy schema/resolver and planning fail-closed guard implemented; execution deferred | Agentfile v2 and the pure resolver normalize `off`, `advisory`, `strict`, and `custom` planning/completion gates across six policy layers. Required gates merge monotonically; only a current evidenced gate/revision waiver can lower one. Provider order and OMX-to-Codex-native fallback are declarative. Required planning currently blocks implementation entry because review evidence is not yet modeled; review invocation, evidence recording, invalidation, and completion-gate execution remain planned. |
+| 5 | **Per-Work automatic delegation and runtime policy** | evidence, contextual readiness, and CLI implemented; provider execution deferred | The resolver normalizes `off`, `auto`, `prefer`, and `required` parallelism, maximum agents, native/tmux preferences, fallback order, reassessment triggers, and unavailable behavior. Typed assessments and delegation outcomes preserve structured lanes, child contracts, failures, results, and source-bound user waivers; changed scope/capability invalidates contextual readiness by hash. Required parallelism fails closed after provider exhaustion. `work delegation assess|record|waive` records runtime-neutral evidence, but actual native/tmux launch, supervision, retry, mailbox, worktree, and shutdown remain runtime-owned and deferred. |
+| 6 | **User-configurable independent-review gates** | evidence, contextual readiness, and CLI implemented; provider execution deferred | Agentfile v2 and the resolver normalize `off`, `advisory`, `strict`, and `custom` planning/completion gates across six policy layers. Required gates merge monotonically; only a current evidenced gate/revision waiver can lower one. Typed request/attempt evidence, current-input hashing, minimum distinct reviewer counts, invalidation, provider fallback, and `work review request|record` plus `work readiness` are implemented. Required gates fail closed. OMX failure may select Codex native only when configured; anamnesis records `runtime_attested` opaque identity inequality but does not launch reviewers or claim host-authenticated independence. |
 | 7 | **Multi-session checkpoints and Work boundaries** | cursor CAS, explicit boundary commands, and switch implemented; automatic semantic classifier deferred | Each session has a disposable revision-CAS cursor with exact reconciliation delivery state, while shared truth remains the Work ledger/projection. Canonical roots, linked-worktree sharing, bounded locking, atomic writes, symlink rejection, cursor lag recovery, independent cursor switching, and explicit new/same/interruption command classification are implemented. Automatic natural-language same-Work versus new-Work classification remains planned. |
 | 8 | **Compaction-aware adapter lifecycle** | prompt-boundary path implemented; compact lifecycle research first | Claude Code and Codex `UserPromptSubmit` payloads are handled through dedicated fail-open wrappers using stable session/turn identity where documented. Continue to audit each supported client/version before naming native `PreCompact`, `PostCompact`, or compact-resume events. The current renderer does not claim a proven compact lifecycle path. Add version-gated native handling only after evidence exists, behind `--allow-exec-adapters`; otherwise keep tested prompt, manual, SessionStart, and resume fallbacks. |
 | 9 | **Compact checkpoint digest** | planned | After a shared Work checkpoint or compaction, inject only the cursor-selected Work ID, goal hash/source pointer, revision, lifecycle, verified/applicable count, pending review gates, blockers, next requirement IDs, and the unit path. Keep unconditional per-prompt injection disabled; use the existing prompt gate and fingerprint dedupe before adding any prompt-time reminder. |
 | 10 | **Handoff, resume, index, TTL, and diagnostics integration** | planned | Include the local cursor and latest shared Work checkpoint in handoff/resume output; index authoritative ledger events plus individual requirement and rule pointers; diagnose missing source refs, stale evidence/reviews, verified entries without evidence, cursor revision lag, ledger-head conflicts, and digest/unit divergence. TTL may mark dormant Works stale, exclude digests, and garbage-collect disposable cursors; it never mutates Work meaning. |
 | 11 | **Work-unit continuity and policy benchmark** | planned | Add public-safe long-task fixtures, including a 100-requirement task, briefing and parallelism presets, review presets/provider fallback, task switches, concurrent sessions, and repeated manual/automatic compaction simulations. Measure requirement/rule retention, gate bypasses, false-complete rate, verified-evidence coverage, digest/briefing tokens, retrieval turns, duplicate reminders, safe delegation decisions, and progress reproducibility before making performance claims. |
-| 12 | **Optional MCP export gate** | research first | Keep CLI/files as the baseline. If dogfood proves cross-client file/CLI access is a real bottleneck, prototype a read-mostly MCP resource/tool surface against the stable `2026-07-28` specification and compare latency, prompt tokens, cache hit behavior, trust surface, and maintenance cost before accepting it. |
+| 12 | **Optional MCP export gate** | 2026-07-28 spec audit complete; prototype deferred | Keep CLI/files as the baseline. The stable `2026-07-28` specification requires no migration because anamnesis currently implements no MCP surface. If dogfood proves cross-client file/CLI access is a real bottleneck, prototype a read-mostly resource/tool surface and compare latency, prompt tokens, cache hit behavior, trust surface, and maintenance cost before accepting it. |
 
 ### Work-unit review policy
 
