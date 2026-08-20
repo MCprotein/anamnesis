@@ -69,6 +69,11 @@ import {
 	workContinuityBenchmark,
 } from "./commands/benchmark_work.js";
 import {
+	WorkAgentBenchmarkError,
+	type WorkAgentBenchmarkResult,
+	workAgentBenchmark,
+} from "./commands/benchmark_work_agent.js";
+import {
 	type ContextDiagnosticsResult,
 	contextDiagnostics,
 } from "./commands/context_diagnostics.js";
@@ -523,6 +528,8 @@ Commands:
                                   and optionally write JSON/SVG evidence
   benchmark work-continuity    Compare one compaction/resume scenario with
                                   Work continuity disabled and enabled
+  benchmark work-agent-ab     Run repeated real Codex disabled/enabled Work
+                                  continuity scenarios with token accounting
   benchmark task               Record a model-dependent agent task benchmark
                                   separately from deterministic scorecards
   benchmark task-compare       Compare paired full/compact agent task
@@ -791,6 +798,15 @@ Flags (benchmark work-continuity):
   --write                       Write JSON and markdown evidence under
                                   docs/benchmark-evidence/work-continuity
   --append                      Record runtime evidence
+  --output <path>               Override artifact output directory
+
+Flags (benchmark work-agent-ab):
+  --project-root <path>         Target directory (default: cwd)
+  --runs <n>                    Repetitions per scenario (minimum/default: 3)
+  --model <id>                  Codex model (default: gpt-5.6-luna)
+  --json                        Print structured JSON
+  --write                       Write aggregate-only JSON and markdown under
+                                  docs/benchmark-evidence/work-agent-ab
   --output <path>               Override artifact output directory
 
 Flags (benchmark task):
@@ -2005,6 +2021,25 @@ function reportWorkContinuityBenchmark(
 	if (result.artifacts.outputDir)
 		console.log(`  output: ${result.artifacts.outputDir}`);
 	if (result.evidencePath) console.log(`  evidence: ${result.evidencePath}`);
+}
+
+function reportWorkAgentBenchmark(result: WorkAgentBenchmarkResult): void {
+	console.log("anamnesis benchmark work-agent-ab");
+	console.log(
+		`  model=${result.model}, runs/scenario=${result.runs_per_scenario}, invocations=${result.planned_invocations}`,
+	);
+	console.log(
+		`  tokens: disabled=${result.summary.disabled.total_tokens}, enabled=${result.summary.enabled.total_tokens}, delta=${result.summary.delta.total_tokens_pct}%`,
+	);
+	console.log(
+		`  recall: requirements ${result.summary.disabled.requirement_recall_pct}% -> ${result.summary.enabled.requirement_recall_pct}%, status ${result.summary.disabled.status_recall_pct}% -> ${result.summary.enabled.status_recall_pct}%`,
+	);
+	console.log(
+		`  completion/gates: ${result.summary.enabled.completion_correct_pct}%/${result.summary.enabled.gate_correct_pct}%`,
+	);
+	console.log(`  contract: ${result.ok ? "PASS" : "FAIL"}`);
+	if (result.artifacts.output_dir)
+		console.log(`  output: ${result.artifacts.output_dir}`);
 }
 
 function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
@@ -3947,6 +3982,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "trace" &&
         sub !== "upgrade" &&
         sub !== "work-continuity" &&
+		sub !== "work-agent-ab" &&
         sub !== "task" &&
         sub !== "task-compare" &&
         sub !== "task-series" &&
@@ -3976,6 +4012,9 @@ async function main(argv: string[]): Promise<number> {
         console.error(
           `       anamnesis benchmark work-continuity [--json] [--write] [--append] [--runs=<n>] [--requirements=<n>] [--compact-window=<n>] [--output=<dir>]`,
         );
+		console.error(
+			`       anamnesis benchmark work-agent-ab [--json] [--write] [--runs=<n>] [--model=<id>] [--output=<dir>]`,
+		);
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
         );
@@ -4211,6 +4250,30 @@ async function main(argv: string[]): Promise<number> {
 			return result.ok ? 0 : 1;
 		}
 
+		if (sub === "work-agent-ab") {
+			const result = workAgentBenchmark({
+				projectRoot:
+					(flags["project-root"] as string | undefined) ?? process.cwd(),
+				runs: parseWorkContinuityBenchmarkFlag(flags["runs"], "--runs"),
+				model: flags["model"] as string | undefined,
+				write: flags["write"] === true,
+				outputPath: flags["output"] as string | undefined,
+				onPlan: ({ runs, scenarios, invocations }) => {
+					if (flags["json"] !== true) {
+						console.error(
+							`planning ${invocations} Codex invocations (${scenarios} scenarios x ${runs} runs x 2 conditions)`,
+						);
+					}
+				},
+			});
+			if (flags["json"] === true) {
+				console.log(JSON.stringify(result, null, 2));
+			} else {
+				reportWorkAgentBenchmark(result);
+			}
+			return result.ok ? 0 : 1;
+		}
+
         if (sub === "gallery") {
           const result = benchmarkGallery({
             projectRoot:
@@ -4277,6 +4340,7 @@ async function main(argv: string[]): Promise<number> {
           e instanceof BenchmarkTraceError ||
           e instanceof UpgradeBenchmarkError ||
 			e instanceof WorkContinuityBenchmarkError ||
+			e instanceof WorkAgentBenchmarkError ||
           e instanceof AgentTaskBenchmarkError ||
           e instanceof AgentTaskBenchmarkSeriesError ||
           e instanceof PromptDeltaGateError ||

@@ -701,6 +701,16 @@ export function renderWorkBriefingContext(
 	const nextRequirement = briefing.requirements.find(
 		(requirement) => requirement.id === briefing.next_requirement_ids[0],
 	);
+	const fullBlock =
+		detail === "full"
+			? [
+					"Current requirements:",
+					...briefing.requirements.map(
+						(requirement) =>
+							`- ${requirement.id} [${requirement.status}]: ${requirement.summary}`,
+					),
+				].join("\n")
+			: null;
 	// The mandatory skeleton is deliberately capped field-by-field. Optional
 	// detail then consumes the one remaining shared budget; nothing is blindly
 	// sliced after assembly.
@@ -710,7 +720,9 @@ export function renderWorkBriefingContext(
 		autoContinue
 			? "Before continuing, read the complete authoritative Work status, visibly brief the requirements, done, remaining, blockers, and progress, then continue the same task in this turn."
 			: "Visibly brief the requirements, done, remaining, blockers, and progress. This Work is terminal; do not continue or restart it automatically.",
-		`Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; compact context never replaces the complete projection.`,
+		fullBlock === null
+			? `Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; compact context never replaces the complete projection.`
+			: "Authoritative completeness: the full current requirement enumeration is included below; do not retrieve the same status again unless source or evidence details are needed.",
 		`Completion contract: ${boundedSemanticField(briefing.work.completion_contract ?? "not recorded", 700)}`,
 		`Progress: ${briefing.progress.percent}% (${briefing.progress.verified}/${briefing.progress.denominator} verified/applicable)`,
 		`Contract delta: baseline=${briefing.baseline_available ? "confirmed" : "unavailable"}; added=${boundedIds(briefing.delta.added_requirement_ids, 250)}; status_changed=${boundedStatusChanges(briefing.delta.status_changed, 250)}; superseded=${boundedSuperseded(briefing.delta.superseded, 250)}; conflicts_added=${boundedIds(briefing.delta.conflicts_added, 250)}; conflicts_resolved=${boundedIds(briefing.delta.conflicts_resolved, 250)}`,
@@ -736,22 +748,19 @@ export function renderWorkBriefingContext(
 		`Work: ${boundedSemanticField(briefing.work_id, 256)} — ${boundedSemanticField(briefing.work.title ?? "untitled", 512)} (contract revision ${briefing.contract_revision}, lifecycle ${briefing.lifecycle})`,
 		`Counts: pending=${counts.pending.length}, in_progress=${counts.in_progress.length}, implemented_unverified=${counts.implemented_unverified.length}, verified=${counts.verified.length}, blocked=${counts.blocked.length}, waived=${counts.waived.length}`,
 	];
-	for (const line of optionalLines) appendOptional(line);
-
-	if (detail === "full") {
-		const requirementLines = briefing.requirements.map(
-			(requirement) =>
-				`- ${requirement.id} [${requirement.status}]: ${requirement.summary}`,
-		);
-		const fullBlock = ["Current requirements:", ...requirementLines].join("\n");
+	if (fullBlock !== null) {
 		if (appendOptional(fullBlock)) {
 			// Full is deliberately one atomic block: never a partial enumeration.
 		} else {
+			const retrievalIndex = 3;
+			lines[retrievalIndex] =
+				`Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; the complete projection did not fit in this hook context.`;
 			appendOptional(
 				`Full requirement enumeration unavailable in one hook context (${briefing.requirements.length} requirements, ${fullBlock.length} characters). The required authoritative status retrieval above remains mandatory.`,
 			);
 		}
 	}
+	for (const line of optionalLines) appendOptional(line);
 	return lines.join("\n");
 }
 

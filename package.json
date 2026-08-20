@@ -59,6 +59,7 @@
     "benchmark:retrieval": "tsx cli/src/index.ts benchmark retrieval --write",
     "benchmark:upgrade": "tsx cli/src/index.ts benchmark upgrade --write",
     "benchmark:work-continuity": "tsx cli/src/index.ts benchmark work-continuity --write",
+    "benchmark:work-agent-ab": "tsx cli/src/index.ts benchmark work-agent-ab --runs 3 --write",
     "dogfood": "tsx cli/src/index.ts dogfood check --append",
     "dogfood:check": "tsx cli/src/index.ts dogfood check",
     "doctor:check": "tsx cli/src/index.ts doctor",

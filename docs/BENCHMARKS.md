@@ -22,6 +22,7 @@ anamnesis benchmark trace --append
 anamnesis benchmark prompt-gate
 anamnesis benchmark session-context --write
 anamnesis benchmark work-continuity --runs 5 --write
+anamnesis benchmark work-agent-ab --runs 3 --write
 anamnesis context subagent-preamble
 anamnesis benchmark subagent-injection --attempts 20 --write --append
 anamnesis benchmark task-compare --template
@@ -84,6 +85,27 @@ quality separate from local runtime/storage overhead and writes evidence under
 These deterministic results do not measure model intelligence; actual task
 success and token deltas still require repeated paired runs through
 `benchmark task-compare` and `benchmark task-series`.
+
+Use `benchmark work-agent-ab --runs <n> --write` for the corresponding
+model-dependent same-scenario comparison. It runs six sanitized paired
+scenarios with Work disabled and enabled: complete handoff, bounded context
+loss, stale status, multi-session handoff, pending delegation/review gates, and
+100-requirement scale. Condition order alternates. A deterministic oracle
+scores exact requirement/status reconstruction and gate/completion decisions;
+an incorrect first response receives one bounded correction, and all correction
+tokens and elapsed time remain charged to that condition. The evaluator keeps
+equal-information and resilience scenarios labeled separately and stores no
+prompts, model answers, fixture bodies, stderr, or host paths.
+
+The checked-in 2026-08-20 `gpt-5.6-luna` evidence used three repetitions per
+scenario (36 initial and 52 total invocations including corrections). Work
+reduced average total tokens from 106,587.5 to 80,854.78 (-24.14%) and elapsed
+time from 43,792.87ms to 30,265.02ms (-30.89%), improved status accuracy from
+73.33% to 100%, and reduced correction rounds from 0.78 to 0.11 per run while
+both conditions reached 100% final completion and gate correctness. These are
+model-dependent repeated-run results, not a universal cost guarantee. Evidence
+lives under
+[`docs/benchmark-evidence/work-agent-ab/`](benchmark-evidence/work-agent-ab/).
 
 The checked-in evidence contains both the equal-facts default and a separately
 labeled [`retention-stress`](benchmark-evidence/work-continuity/retention-stress/)

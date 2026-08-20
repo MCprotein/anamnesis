@@ -589,6 +589,22 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		}
 	});
 
+	it("does not repeat authoritative status retrieval when a full briefing fits", () => {
+		const root = projectRoot();
+		seed(root, "codex", "full-inline-session");
+		const briefing = buildWorkBriefingSnapshot({
+			projection: statusWork({
+				project_root: root,
+				work_id: "wu_hook",
+			}).projection,
+		});
+		const context = renderWorkBriefingContext(briefing, "full", true);
+
+		expect(context).toContain("Authoritative completeness:");
+		expect(context).toContain("Current requirements:");
+		expect(context).not.toContain("Required retrieval:");
+	});
+
 	it("allows the same fingerprint after the meaningful-action cadence", () => {
 		const root = projectRoot();
 		const cursorId = seed(root, "codex", "action-session");

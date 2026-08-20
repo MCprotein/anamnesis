@@ -1376,6 +1376,14 @@ export function statusWork(input: WorkReadInput): WorkStatusResult {
 	);
 	if (projection.work_id !== input.work_id)
 		throw new Error(`Work not found: ${input.work_id}`);
+	return statusResultFromProjection(input, locations.ledgerPath, projection);
+}
+
+function statusResultFromProjection(
+	input: WorkReadInput,
+	ledgerPath: string,
+	projection: WorkProjection,
+): WorkStatusResult {
 	const currentInputsRequired =
 		projection.policy_snapshot?.policy.review.gates.some(
 			(gate) => gate.enforcement !== "off",
@@ -1383,7 +1391,7 @@ export function statusWork(input: WorkReadInput): WorkStatusResult {
 	return {
 		schema_version: "anamnesis.work-status.v1",
 		work_id: input.work_id,
-		ledger_path: locations.ledgerPath,
+		ledger_path: ledgerPath,
 		projection,
 		policy_drift: detectPolicyDrift(input.project_root, projection),
 		...(currentInputsRequired
@@ -1395,16 +1403,25 @@ export function statusWork(input: WorkReadInput): WorkStatusResult {
 export function briefWork(input: WorkBriefInput): WorkBriefResult {
 	const locations = workLocations(input);
 	const ledger = readWorkLedger(locations.ledgerPath);
-	const status = statusWork(input);
+	const projection = foldWorkProjection(ledger.records);
+	if (projection.work_id !== input.work_id)
+		throw new Error(`Work not found: ${input.work_id}`);
+	const status = statusResultFromProjection(
+		input,
+		locations.ledgerPath,
+		projection,
+	);
 	let previousConfirmed: WorkBriefingSnapshot | null = null;
-	const state = resolveWorkStateRoot(input.project_root, input.state_root);
+	const state = input.cursor_id
+		? resolveWorkStateRoot(input.project_root, input.state_root)
+		: null;
 	let cursor: WorkCursor | null = null;
 	if (input.cursor_id) {
 		const read = readWorkCursor(
-			state.state_root,
+			state!.state_root,
 			input.cursor_id,
 			undefined,
-			state.worktree_fingerprint,
+			state!.worktree_fingerprint,
 		);
 		if (read.status === "corrupt") throw new Error(read.error);
 		if (read.status === "switched") {
@@ -1453,7 +1470,7 @@ export function briefWork(input: WorkBriefInput): WorkBriefResult {
 				delivery,
 			);
 			updateWorkCursorAtomic(
-				state.state_root,
+				state!.state_root,
 				{ ...cursor, reconciliation },
 				truth,
 				input.occurred_at,
@@ -1462,7 +1479,7 @@ export function briefWork(input: WorkBriefInput): WorkBriefResult {
 			const fresh = newWorkCursor({
 				cursor_id: input.cursor_id,
 				client_session_ref: input.client_session_ref ?? null,
-				worktree_fingerprint: state.worktree_fingerprint,
+				worktree_fingerprint: state!.worktree_fingerprint,
 				updated_at: input.occurred_at,
 				truth,
 			});
@@ -1470,7 +1487,7 @@ export function briefWork(input: WorkBriefInput): WorkBriefResult {
 				fresh.reconciliation!,
 				delivery,
 			);
-			writeWorkCursorAtomic(state.state_root, fresh, {
+			writeWorkCursorAtomic(state!.state_root, fresh, {
 				expectedCursorRevision: null,
 			});
 		}

@@ -1,6 +1,6 @@
 # Work Continuity Before/After Benchmark
 
-Generated: 2026-08-20T05:59:12.834Z
+Generated: 2026-08-20T06:59:04.089Z
 
 Same sanitized scenario: 20 requirements, 10 verified transitions, then a compaction/resume boundary retaining 20 recent facts when Work continuity is disabled.
 Comparison mode: equal-facts. The default keeps all current facts in both conditions; a smaller explicit compact window is a retention-stress experiment, not an attributable before/after quality claim.
@@ -10,8 +10,8 @@ Comparison mode: equal-facts. The default keeps all current facts in both condit
 | Requirement recall | 100% | 100% | 0 pp |
 | Status accuracy | 100% | 100% | 0 pp |
 | Progress error | 0 pp | 0 pp | 0 pp |
-| Resume latency | 0.05 ms | 27.76 ms | +27.71 ms |
-| Resume latency p50/p95 | 0.04/0.1 ms | 28.06/29.65 ms | — |
+| Resume latency | 0.14 ms | 15.92 ms | +15.78 ms |
+| Resume latency p50/p95 | 0.12/0.21 ms | 15.74/18.65 ms | — |
 | Resume payload | 1651 B | 7190 B | +5539 B |
 | Durable storage | 1651 B | 18743 B | +17092 B |
 

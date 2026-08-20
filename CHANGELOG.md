@@ -9,6 +9,19 @@ could include breaking changes.
 
 ### Added
 
+- Added a repeated real-Codex `benchmark work-agent-ab` evaluator for six
+  paired Work-disabled/Work-enabled continuity scenarios. It alternates
+  condition order, applies deterministic oracle corrections, accounts for all
+  correction tokens and elapsed time, and stores aggregate-only public-safe
+  evidence. The first 3-run-per-scenario `gpt-5.6-luna` result passed: Work
+  reduced average total tokens by 24.14% and elapsed time by 30.89%, raised
+  status accuracy from 73.33% to 100%, and reduced correction rounds from 0.78
+  to 0.11 per run while preserving 100% final completion and gate correctness.
+- Optimized Work briefing by folding the ledger once, skipping cursor/state
+  resolution when no cursor is requested, and avoiding duplicate authoritative
+  status retrieval when a complete full briefing already fits. The equal-facts
+  deterministic 20-requirement resume p95 fell from 33.06ms to 18.65ms while
+  preserving 100% requirement/status accuracy.
 - Added a deterministic same-scenario Work continuity before/after benchmark
   that reports requirement/status recovery, progress error, resume latency,
   payload size, and durable storage overhead without conflating them with
