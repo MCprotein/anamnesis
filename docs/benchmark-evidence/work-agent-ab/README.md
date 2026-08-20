@@ -39,4 +39,42 @@ overall contract passes because the full suite improves correctness and total
 cost, but this scenario should be re-measured with more pairs before claiming a
 universal per-scenario reduction.
 
+## Why two scenarios cost more
+
+These are not accuracy regressions: both conditions reached `100%` requirement
+and status accuracy in both scenarios. They are different kinds of cost signal.
+
+### Multi-session handoff: correction-turn variance dominated three pairs
+
+The disabled and enabled conditions each needed two correction turns across the
+three pairs, but the corrections landed in different pairs. In enabled pairs 2
+and 3, the extra turn raised total usage to roughly `125.8k` and `126.2k`
+tokens. In pair 1, where enabled needed no correction, it used `62.8k` tokens
+versus disabled's `104.3k`.
+
+That distribution means the reported `+15.88%` is not evidence that Work has a
+stable multi-session tax. It shows that one correction can dominate a
+three-pair mean and that this scenario needs more repetitions, paired medians,
+and confidence intervals before a directional claim. The product still has an
+optimization target here: make the authoritative multi-session state obvious
+enough that the model never asks for the extra verification turn.
+
+### Delegation/review: fixed safety metadata with no sampled quality gain
+
+The legacy condition described the missing delegation and review gates in one
+short prose sentence. The Work condition supplied the same conclusion through
+structured completion-contract, gate, policy, and authoritative retrieval
+metadata. All six runs were correct on the first response, so there was no
+correction cost for Work to eliminate.
+
+The remaining `+5.83%` token and `+20.31%` elapsed deltas are therefore best
+read as the fixed cost of stronger machine-checkable safety context in a small
+case where concise prose happened to be sufficient. This is an equal-information
+overhead measurement, not a quality win. Future optimization should compact the
+gate payload and avoid unnecessary retrieval while preserving fail-closed gate
+decisions.
+
+The benchmark deliberately keeps both regressions visible. Aggregate savings
+must not be used to imply universal per-scenario savings.
+
 The evaluator stores aggregate metrics only. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.
