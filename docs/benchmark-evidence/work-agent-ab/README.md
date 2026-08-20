@@ -9,6 +9,8 @@
 - Resilience scenarios: bounded-loss, stale-conflict, multi-session-handoff
 - Contract: PASS
 
+![Work continuity real Codex A/B summary](work-agent-ab-summary.svg)
+
 | Metric | Disabled | Enabled | Delta |
 | --- | ---: | ---: | ---: |
 | Total tokens (average/run) | 106587.5 | 80854.78 | -24.14% |

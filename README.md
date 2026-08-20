@@ -205,6 +205,7 @@ anamnesis benchmark task-compare --full full.json --compact compact.json --appen
 anamnesis benchmark task-series --write  # roll up repeated task-compare evidence with graphs
 anamnesis benchmark subagent-injection --attempts 20 --write --append  # count subagent context injection and contract evidence
 anamnesis benchmark prompt-gate  # decide using scorecard, session-context, and retrieval evidence
+anamnesis benchmark work-agent-ab --runs 3 --write  # paired real-Codex Work continuity cost and correctness
 anamnesis promote   # lift a project-local file into the library as a reusable fragment
 ```
 
@@ -318,6 +319,28 @@ Generated benchmark datasets, reports, and SVG visualizations live under
 [`docs/benchmark-evidence/`](docs/benchmark-evidence/). This README keeps only
 the current headline numbers and links to the evidence index instead of
 embedding generated chart galleries.
+
+### Work continuity agent A/B
+
+The model-dependent Work benchmark runs the same sanitized continuity
+scenarios with Work disabled and enabled, alternates condition order, and
+charges deterministic correction rounds to the condition that needed them.
+
+![Work continuity real Codex A/B summary](docs/benchmark-evidence/work-agent-ab/work-agent-ab-summary.svg)
+
+Current `gpt-5.6-luna` run (six scenarios, three paired repetitions):
+
+- Average total tokens: `106,587.5 → 80,854.78` (`-24.14%`).
+- Average elapsed time: `43.79s → 30.27s` (`-30.89%`).
+- Status accuracy: `73.33% → 100%`; completion and gate decisions stayed at
+  `100%`.
+- Correction rounds per run: `0.78 → 0.11`; re-explained requirements:
+  `5.33 → 0`.
+- Multi-session handoff remained a sampled cost regression (`+15.88%` tokens),
+  so the result is not a universal per-scenario reduction claim.
+
+Detailed aggregate-only evidence is in
+[`docs/benchmark-evidence/work-agent-ab/`](docs/benchmark-evidence/work-agent-ab/).
 
 ### Session context benchmark
 

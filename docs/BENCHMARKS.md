@@ -107,6 +107,8 @@ model-dependent repeated-run results, not a universal cost guarantee. Evidence
 lives under
 [`docs/benchmark-evidence/work-agent-ab/`](benchmark-evidence/work-agent-ab/).
 
+![Work continuity real Codex A/B summary](benchmark-evidence/work-agent-ab/work-agent-ab-summary.svg)
+
 The checked-in evidence contains both the equal-facts default and a separately
 labeled [`retention-stress`](benchmark-evidence/work-continuity/retention-stress/)
 run with an eight-fact legacy window. Only the equal-facts result is a fair
