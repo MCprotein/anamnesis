@@ -7,6 +7,16 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Tightened the real-Codex Work A/B evaluator with nine-pair strict gates,
+  paired median/p95/MAD/bootstrap reporting, scenario filtering, exact summary
+  scoring, and hallucinated/duplicate requirement rejection. Full Work
+  briefings now preserve requirement summaries losslessly or require
+  authoritative retrieval, and required review/delegation contexts avoid the
+  shared-prefix compression that caused correction turns in diagnostic runs.
+  Fresh nine-pair evidence remains a separate, explicitly paid validation step.
+
 ## [1.18.0] — 2026-08-20
 
 ### Added

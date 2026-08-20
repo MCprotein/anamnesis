@@ -107,6 +107,28 @@ describe("CLI entrypoint", () => {
     }
   });
 
+	it("rejects a bare paid benchmark scenarios flag before execution", () => {
+		const result = spawnSync(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				indexPath,
+				"benchmark",
+				"work-agent-ab",
+				"--scenarios",
+			],
+			{
+				cwd: repoRoot,
+				encoding: "utf8",
+			},
+		);
+
+		expect(result.status).toBe(1);
+		expect(result.stdout).toBe("");
+		expect(result.stderr).toContain("--scenarios requires a value");
+	});
+
   it("prints context docs JSON from the CLI", () => {
     const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-docs-"));
     writeFile(project, "README.md", "# Fixture\n\nSee [Guide](docs/guide.md).\n");

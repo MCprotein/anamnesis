@@ -28,28 +28,26 @@ preserving user-authored content.
 - **Evidence-backed claims.** Public benchmarks use sanitized fixtures and keep
   raw prompts and model answers out of committed artifacts.
 
-## Measured Work continuity result
+## Measured Work continuity
 
-The current real-Codex A/B suite runs six continuity scenarios with Work disabled
-and enabled, alternating execution order and charging correction turns to the
-condition that required them.
+The latest published real-Codex diagnostic compares Work disabled and enabled
+across six continuity scenarios. Correction turns are charged to the condition
+that needed them.
 
 ![Work continuity real Codex A/B summary](docs/benchmark-evidence/work-agent-ab/work-agent-ab-summary.svg)
 
-| Metric | Work disabled | Work enabled | Change |
-| --- | ---: | ---: | ---: |
-| Average total tokens/run | 106,587.5 | 80,854.78 | **-24.14%** |
-| Average elapsed time/run | 43.79s | 30.27s | **-30.89%** |
-| Status accuracy | 73.33% | 100% | **+26.67pp** |
-| Correction rounds/run | 0.78 | 0.11 | **-0.67** |
-| Re-explained requirements/run | 5.33 | 0 | **-5.33** |
+| Published 3-pair diagnostic | Change with Work |
+| --- | ---: |
+| Average total tokens/run | **-24.14%** |
+| Average elapsed time/run | **-30.89%** |
+| Status accuracy | **73.33% → 100%** |
+| Re-explained requirements/run | **5.33 → 0** |
 
-This is an aggregate result, not a claim that every scenario gets cheaper.
-`multi-session handoff` regressed in this three-pair sample because two enabled
-runs needed an expensive correction turn; `delegation/review` was already solved
-correctly by both conditions, leaving Work's structured safety metadata as net
-overhead. See the [scenario-level interpretation](docs/benchmark-evidence/work-agent-ab/README.md)
-and [benchmark methodology](docs/AGENT-TASK-BENCHMARKS.md).
+Both conditions retained 100% completion and gate correctness. This small run
+is directional, not a universal cost claim; the stronger nine-pair evaluator is
+implemented but its fresh paid run is still pending. See the
+[scenario evidence](docs/benchmark-evidence/work-agent-ab/README.md) and
+[methodology](docs/AGENT-TASK-BENCHMARKS.md).
 
 ## Quickstart
 

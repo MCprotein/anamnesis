@@ -87,7 +87,9 @@ success and token deltas still require repeated paired runs through
 `benchmark task-compare` and `benchmark task-series`.
 
 Use `benchmark work-agent-ab --runs <n> --write` for the corresponding
-model-dependent same-scenario comparison. It runs six sanitized paired
+model-dependent same-scenario comparison, or
+`npm run benchmark:work-agent-ab:strict` for the release-quality nine-pair
+contract. It runs six sanitized paired
 scenarios with Work disabled and enabled: complete handoff, bounded context
 loss, stale status, multi-session handoff, pending delegation/review gates, and
 100-requirement scale. Condition order alternates. A deterministic oracle
@@ -97,14 +99,22 @@ tokens and elapsed time remain charged to that condition. The evaluator keeps
 equal-information and resilience scenarios labeled separately and stores no
 prompts, model answers, fixture bodies, stderr, or host paths.
 
-The checked-in 2026-08-20 `gpt-5.6-luna` evidence used three repetitions per
-scenario (36 initial and 52 total invocations including corrections). Work
-reduced average total tokens from 106,587.5 to 80,854.78 (-24.14%) and elapsed
-time from 43,792.87ms to 30,265.02ms (-30.89%), improved status accuracy from
-73.33% to 100%, and reduced correction rounds from 0.78 to 0.11 per run while
-both conditions reached 100% final completion and gate correctness. These are
-model-dependent repeated-run results, not a universal cost guarantee. Evidence
-lives under
+The checked-in 2026-08-20 `gpt-5.6-luna` evidence is the last published
+three-repetition diagnostic (36 initial and 52 total invocations including
+corrections). Work reduced average total tokens by 24.14% and elapsed time by
+30.89%, improved status accuracy from 73.33% to 100%, and retained 100%
+completion and gate correctness. Its multi-session and delegation/review
+samples were regressions, so it remains directional evidence rather than a
+universal cost claim.
+
+The evaluator now additionally requires exact summaries, rejects unexpected or
+duplicate requirements, separates comparison classes, and applies paired
+bootstrap regression gates. Diagnostic reruns after the briefing fix removed
+the two sampled regressions, but those partial runs are not published as release
+evidence. A fresh nine-pair strict run is intentionally pending because it makes
+108 initial paid model calls before corrections. Until that run passes, the
+checked-in three-pair artifact and visualization remain the public baseline.
+Evidence lives under
 [`docs/benchmark-evidence/work-agent-ab/`](benchmark-evidence/work-agent-ab/).
 
 ![Work continuity real Codex A/B summary](benchmark-evidence/work-agent-ab/work-agent-ab-summary.svg)

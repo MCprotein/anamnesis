@@ -1,5 +1,11 @@
 # Work agent A/B benchmark
 
+> **Published baseline:** this directory intentionally retains the last passing
+> three-pair diagnostic. The evaluator has since been strengthened with exact
+> summary, hallucination/duplicate, comparison-class, and bootstrap gates. A
+> fresh nine-pair paid run is still pending, so no post-fix strict numbers are
+> claimed here yet.
+
 - Generated: 2026-08-20T07:21:58.500Z
 - Model: gpt-5.6-luna
 - Repetitions per scenario: 3
@@ -34,7 +40,7 @@
 | Delegation/review | Equal information | +5.83% | +20.31% | 100% → 100% | 0.00 → 0.00 |
 | 100 requirements | Equal information | -30.08% | -45.11% | 100% → 100% | 1.00 → 0.00 |
 
-The multi-session case is the remaining cost regression in this sample. The
+The multi-session case is a cost regression in this sample. The
 overall contract passes because the full suite improves correctness and total
 cost, but this scenario should be re-measured with more pairs before claiming a
 universal per-scenario reduction.
@@ -74,7 +80,9 @@ overhead measurement, not a quality win. Future optimization should compact the
 gate payload and avoid unnecessary retrieval while preserving fail-closed gate
 decisions.
 
-The benchmark deliberately keeps both regressions visible. Aggregate savings
-must not be used to imply universal per-scenario savings.
+The benchmark deliberately keeps both sampled regressions visible. Aggregate
+savings must not be used to imply universal per-scenario savings. Post-fix
+diagnostics are encouraging, but only a fresh strict run may replace this
+published baseline.
 
 The evaluator stores aggregate metrics only. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.

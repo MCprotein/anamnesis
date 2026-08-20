@@ -8,7 +8,7 @@ import { renderWorkBriefingContext } from "./work_hook.js";
 import { briefWork, createWork, transitionWork } from "./work.js";
 
 export const WORK_AGENT_AB_BENCHMARK_SCHEMA_VERSION =
-	"anamnesis.work_agent_ab_benchmark.v1";
+	"anamnesis.work_agent_ab_benchmark.v2";
 export const WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR =
 	"docs/benchmark-evidence/work-agent-ab";
 export const DEFAULT_WORK_AGENT_AB_MODEL = "gpt-5.6-luna";
@@ -70,6 +70,7 @@ export interface WorkAgentAnswer {
 	requirements: Array<{
 		id: string;
 		status: "verified" | "pending";
+		summary: string;
 	}>;
 	reminder_or_reexplanation_requests: number;
 }
@@ -95,6 +96,10 @@ export interface WorkAgentConditionRun {
 	reminders_or_reexplanations: number;
 	reexplained_requirements: number;
 	missed_requirements: number;
+	hallucinated_requirements: number;
+	duplicate_requirement_ids: number;
+	summaries_correct: number;
+	summary_recall_pct: number;
 	error?: string;
 }
 
@@ -123,6 +128,42 @@ export interface WorkAgentAggregateMetrics {
 	reminders_or_reexplanations: number;
 	reexplained_requirements: number;
 	missed_requirements: number;
+	hallucinated_requirements: number;
+	duplicate_requirement_ids: number;
+	summary_recall_pct: number;
+}
+
+export interface WorkAgentDistribution {
+	average: number;
+	p50: number;
+	p95: number;
+	min: number;
+	max: number;
+	mad: number;
+	bootstrap_90_ci: { low: number; high: number };
+}
+
+export interface WorkAgentPairedAnalysis {
+	token_delta_pct: WorkAgentDistribution;
+	elapsed_delta_pct: WorkAgentDistribution;
+	token_pair_wins: number;
+	elapsed_pair_wins: number;
+	pairs: number;
+}
+
+export interface WorkAgentScenarioAnalysis {
+	id: WorkAgentScenarioId;
+	class: WorkAgentScenarioClass;
+	disabled: WorkAgentAggregateMetrics;
+	enabled: WorkAgentAggregateMetrics;
+	paired: WorkAgentPairedAnalysis;
+}
+
+export interface WorkAgentClassAnalysis {
+	class: WorkAgentScenarioClass;
+	disabled: WorkAgentAggregateMetrics;
+	enabled: WorkAgentAggregateMetrics;
+	paired: WorkAgentPairedAnalysis;
 }
 
 export interface WorkAgentContract {
@@ -137,6 +178,8 @@ export interface WorkAgentContract {
 	limits: {
 		enabled_total_tokens_ratio: number;
 		enabled_elapsed_ratio: number;
+		strict_minimum_pairs: number;
+		strict_regression_token_median_pct: number;
 	};
 }
 
@@ -164,6 +207,13 @@ export interface WorkAgentBenchmarkResult {
 			reminders_or_reexplanations: number;
 		};
 	};
+	analysis: {
+		overall: WorkAgentPairedAnalysis;
+		classes: WorkAgentClassAnalysis[];
+		scenarios: WorkAgentScenarioAnalysis[];
+		excluded_model_failures: 0;
+	};
+	strict: boolean;
 	contract: WorkAgentContract;
 	ok: boolean;
 	artifacts: {
@@ -182,6 +232,8 @@ export interface WorkAgentBenchmarkOptions {
 	outputPath?: string;
 	now?: () => Date;
 	runner?: WorkAgentRunner;
+	strict?: boolean;
+	scenarios?: WorkAgentScenarioId[];
 	onPlan?: (plan: { runs: number; scenarios: number; invocations: number }) => void;
 }
 
@@ -192,7 +244,18 @@ export class WorkAgentBenchmarkError extends Error {
 	}
 }
 
-const PROMPT = `Resume this sanitized project from the context files in the current directory. Reconstruct the authoritative current task state. Prefer context explicitly marked current or authoritative when sources conflict. Return only the required structured JSON. Include every requirement you can recover, its current status, whether the overall task is complete, whether a required completion gate blocks completion, and how many reminders or re-explanations you would need before continuing. Do not modify files, use the network, or reveal file contents verbatim.`;
+const PROMPT = `Read CONTEXT.md first and reconstruct the authoritative current task state. The required structured JSON is the visible briefing for this benchmark; do not execute any stated next action or add prose. When CONTEXT says "Authoritative completeness", its requirement list is complete: do not inspect Agentfile or .anamnesis and do not run the status command. When it says "Required retrieval", run only that read-only command. Prefer explicitly current facts when legacy sources conflict. Return every requirement exactly once with its exact ID, status, and summary, plus overall completion, required-gate blocking, and reminder count. Do not modify files, use the network, or reveal unrelated file contents verbatim.`;
+
+const WORK_AGENT_SCENARIO_DEFINITIONS: Array<
+	readonly [WorkAgentScenarioId, number, number, WorkAgentScenarioClass]
+> = [
+	["perfect-handoff", 20, 10, "equal_information"],
+	["bounded-loss", 20, 12, "resilience"],
+	["stale-conflict", 20, 10, "resilience"],
+	["multi-session-handoff", 20, 15, "resilience"],
+	["delegation-review", 20, 20, "equal_information"],
+	["requirement-scale-100", 100, 50, "equal_information"],
+];
 
 const ANSWER_SCHEMA = {
 	$schema: "https://json-schema.org/draft/2020-12/schema",
@@ -212,10 +275,11 @@ const ANSWER_SCHEMA = {
 			items: {
 				type: "object",
 				additionalProperties: false,
-				required: ["id", "status"],
+				required: ["id", "status", "summary"],
 				properties: {
 					id: { type: "string" },
 					status: { enum: ["verified", "pending"] },
+					summary: { type: "string" },
 				},
 			},
 		},
@@ -231,6 +295,9 @@ export function workAgentBenchmark(
 ): WorkAgentBenchmarkResult {
 	const projectRoot = path.resolve(opts.projectRoot);
 	const runsPerScenario = minimumInteger(opts.runs ?? 3, 3, "--runs");
+	if (opts.strict === true && runsPerScenario < 9) {
+		throw new WorkAgentBenchmarkError("--strict requires at least 9 runs");
+	}
 	const model = nonempty(opts.model ?? DEFAULT_WORK_AGENT_AB_MODEL, "--model");
 	const runner = opts.runner ?? runCodexExec;
 	const tempRoot = fs.mkdtempSync(
@@ -242,7 +309,12 @@ export function workAgentBenchmark(
 			"built CLI is required; run npm run build before benchmark work-agent-ab",
 		);
 	}
-	const scenarios = buildScenarios(tempRoot, cliPath);
+	const scenarios = buildScenarios(
+		tempRoot,
+		cliPath,
+		opts.scenarios,
+		opts.strict === true,
+	);
 	const plannedInvocations = runsPerScenario * scenarios.length * 2;
 	opts.onPlan?.({
 		runs: runsPerScenario,
@@ -314,7 +386,9 @@ export function workAgentBenchmark(
 	}
 
 	const summary = aggregateWorkAgentRuns(runs);
-	const contract = evaluateWorkAgentContract(summary);
+	const analysis = analyzePairedRuns(runs);
+	const strict = opts.strict === true;
+	const contract = evaluateWorkAgentContract(summary, analysis, strict);
 	const result: WorkAgentBenchmarkResult = {
 		schema_version: WORK_AGENT_AB_BENCHMARK_SCHEMA_VERSION,
 		generated_at: (opts.now ?? (() => new Date()))().toISOString(),
@@ -342,6 +416,8 @@ export function workAgentBenchmark(
 			),
 		runs,
 		summary,
+		analysis,
+		strict,
 		contract,
 		ok: contract.ok,
 		artifacts: {},
@@ -427,19 +503,57 @@ export function aggregateWorkAgentRuns(
 			),
 			missed_requirements:
 				enabled.missed_requirements - disabled.missed_requirements,
-			reminders_or_reexplanations:
+			reminders_or_reexplanations: round(
 				enabled.reminders_or_reexplanations -
-				disabled.reminders_or_reexplanations,
+					disabled.reminders_or_reexplanations,
+			),
 		},
+	};
+}
+
+export function analyzePairedRuns(
+	runs: WorkAgentScenarioRun[],
+): WorkAgentBenchmarkResult["analysis"] {
+	return {
+		overall: pairedAnalysis(runs),
+		classes: (["equal_information", "resilience"] as const).flatMap(
+			(scenarioClass) => {
+				const classRuns = runs.filter(
+					(run) => run.scenario_class === scenarioClass,
+				);
+				if (classRuns.length === 0) return [];
+				return [{
+					class: scenarioClass,
+					disabled: aggregateCondition(classRuns.map((run) => run.disabled)),
+					enabled: aggregateCondition(classRuns.map((run) => run.enabled)),
+					paired: pairedAnalysis(classRuns),
+				}];
+			},
+		),
+		scenarios: uniqueScenarioIds(runs).map((id) => {
+			const scenarioRuns = runs.filter((run) => run.scenario === id);
+			return {
+				id,
+				class: scenarioRuns[0]?.scenario_class ?? "equal_information",
+				disabled: aggregateCondition(scenarioRuns.map((run) => run.disabled)),
+				enabled: aggregateCondition(scenarioRuns.map((run) => run.enabled)),
+				paired: pairedAnalysis(scenarioRuns),
+			};
+		}),
+		excluded_model_failures: 0,
 	};
 }
 
 export function evaluateWorkAgentContract(
 	summary: WorkAgentBenchmarkResult["summary"],
+	analysis?: WorkAgentBenchmarkResult["analysis"],
+	strict = false,
 ): WorkAgentContract {
 	const limits = {
 		enabled_total_tokens_ratio: 1.1,
 		enabled_elapsed_ratio: 1.25,
+		strict_minimum_pairs: 9,
+		strict_regression_token_median_pct: 0.1,
 	};
 	const checks: WorkAgentContract["checks"] = [
 		check("enabled-execution-success", summary.enabled.execution_success_pct, 100, "gte"),
@@ -447,6 +561,19 @@ export function evaluateWorkAgentContract(
 		check("enabled-gate-correct", summary.enabled.gate_correct_pct, 100, "gte"),
 		check("enabled-requirement-recall", summary.enabled.requirement_recall_pct, 100, "gte"),
 		check("enabled-status-recall", summary.enabled.status_recall_pct, 100, "gte"),
+		check("enabled-summary-recall", summary.enabled.summary_recall_pct, 100, "gte"),
+		check(
+			"enabled-hallucinated-requirements",
+			summary.enabled.hallucinated_requirements,
+			0,
+			"lte",
+		),
+		check(
+			"enabled-duplicate-requirement-ids",
+			summary.enabled.duplicate_requirement_ids,
+			0,
+			"lte",
+		),
 		check(
 			"requirement-recall-noninferiority",
 			summary.enabled.requirement_recall_pct,
@@ -457,6 +584,12 @@ export function evaluateWorkAgentContract(
 			"status-recall-noninferiority",
 			summary.enabled.status_recall_pct,
 			summary.disabled.status_recall_pct,
+			"gte",
+		),
+		check(
+			"summary-recall-noninferiority",
+			summary.enabled.summary_recall_pct,
+			summary.disabled.summary_recall_pct,
 			"gte",
 		),
 		check(
@@ -478,6 +611,94 @@ export function evaluateWorkAgentContract(
 			"lte",
 		),
 	];
+	if (strict) {
+		if (!analysis) {
+			throw new WorkAgentBenchmarkError(
+				"strict Work A/B evaluation requires paired analysis",
+			);
+		}
+		const requiredScenarioIds = WORK_AGENT_SCENARIO_DEFINITIONS.map(
+			([id]) => id,
+		);
+		const actualScenarioIds = new Set(
+			analysis.scenarios.map((scenario) => scenario.id),
+		);
+		const hasExactScenarioCoverage =
+			actualScenarioIds.size === requiredScenarioIds.length &&
+			requiredScenarioIds.every((id) => actualScenarioIds.has(id));
+		const requiredScenarios = requiredScenarioIds
+			.map((id) => analysis.scenarios.find((scenario) => scenario.id === id))
+			.filter((scenario): scenario is WorkAgentScenarioAnalysis => scenario !== undefined);
+		checks.push(
+			check(
+				"strict-scenario-coverage",
+				hasExactScenarioCoverage ? 1 : 0,
+				1,
+				"gte",
+			),
+			check(
+				"strict-pairs-per-scenario",
+				requiredScenarios.length === requiredScenarioIds.length
+					? Math.min(...requiredScenarios.map((scenario) => scenario.paired.pairs))
+					: 0,
+				limits.strict_minimum_pairs,
+				"gte",
+			),
+			check(
+				"strict-overall-token-median",
+				analysis.overall.token_delta_pct.p50,
+				0,
+				"lte",
+			),
+			check(
+				"strict-overall-elapsed-median",
+				analysis.overall.elapsed_delta_pct.p50,
+				0,
+				"lte",
+			),
+		);
+		for (const scenario of analysis.scenarios) {
+			checks.push(
+				check(
+					`strict-${scenario.id}-corrections`,
+					scenario.enabled.reminders_or_reexplanations,
+					scenario.disabled.reminders_or_reexplanations,
+					"lte",
+				),
+			);
+		}
+		for (const id of [
+			"multi-session-handoff",
+			"delegation-review",
+		] as const) {
+			const scenario = analysis.scenarios.find((item) => item.id === id);
+			if (!scenario) {
+				checks.push(
+					check(
+						`strict-${id}-token-median`,
+						limits.strict_regression_token_median_pct + 1,
+						limits.strict_regression_token_median_pct,
+						"lte",
+					),
+				);
+				continue;
+			}
+			checks.push(
+				check(
+					`strict-${id}-token-median`,
+					scenario.paired.token_delta_pct.p50,
+					limits.strict_regression_token_median_pct,
+					"lte",
+				),
+				check(
+					`strict-${id}-token-bootstrap-high`,
+					scenario.paired.token_delta_pct.bootstrap_90_ci.high,
+					limits.strict_regression_token_median_pct,
+					"lte",
+				),
+			);
+		}
+	}
 	return { ok: checks.every((item) => item.ok), checks, limits };
 }
 
@@ -603,33 +824,56 @@ function scoreAnswer(
 		| "requirement_recall_pct"
 		| "statuses_correct"
 		| "status_recall_pct"
+		| "summaries_correct"
+		| "summary_recall_pct"
 		| "missed_requirements"
+		| "hallucinated_requirements"
+		| "duplicate_requirement_ids"
 	>;
 } {
 	const expected = new Map(
-		input.expected.map((requirement) => [requirement.id, requirement.status]),
+		input.expected.map((requirement) => [requirement.id, requirement]),
 	);
-	const recovered = new Map(
-		answer.requirements
-			.filter((requirement) => expected.has(requirement.id))
-			.map((requirement) => [requirement.id, requirement.status]),
-	);
+	const recovered = new Map<string, WorkAgentAnswer["requirements"][number]>();
+	const seen = new Set<string>();
+	let duplicateRequirementIds = 0;
+	let hallucinatedRequirements = 0;
+	for (const requirement of answer.requirements) {
+		if (seen.has(requirement.id)) duplicateRequirementIds += 1;
+		seen.add(requirement.id);
+		if (!expected.has(requirement.id)) {
+			hallucinatedRequirements += 1;
+			continue;
+		}
+		if (!recovered.has(requirement.id)) recovered.set(requirement.id, requirement);
+	}
 	let statusesCorrect = 0;
+	let summariesCorrect = 0;
 	const incorrectRequirementIds: string[] = [];
-	for (const [id, status] of expected) {
-		if (recovered.get(id) === status) statusesCorrect += 1;
-		else incorrectRequirementIds.push(id);
+	for (const [id, requirement] of expected) {
+		const actual = recovered.get(id);
+		if (actual?.status === requirement.status) statusesCorrect += 1;
+		if (actual?.summary === requirement.summary) summariesCorrect += 1;
+		if (
+			actual?.status !== requirement.status ||
+			actual.summary !== requirement.summary
+		) {
+			incorrectRequirementIds.push(id);
+		}
 	}
 	const requirementsRecovered = recovered.size;
 	const completionCorrect =
 		(answer.completion_status === "complete") === input.expectedComplete;
 	const gateCorrect = answer.gate_blocked === input.expectedGateBlocked;
 	return {
-		exact:
+			exact:
 			completionCorrect &&
 			gateCorrect &&
 			requirementsRecovered === input.expected.length &&
-			statusesCorrect === input.expected.length,
+			statusesCorrect === input.expected.length &&
+			summariesCorrect === input.expected.length &&
+			hallucinatedRequirements === 0 &&
+			duplicateRequirementIds === 0,
 		incorrectRequirementIds,
 		metrics: {
 			completion_correct: completionCorrect,
@@ -641,7 +885,11 @@ function scoreAnswer(
 			),
 			statuses_correct: statusesCorrect,
 			status_recall_pct: percentage(statusesCorrect, input.expected.length),
+			summaries_correct: summariesCorrect,
+			summary_recall_pct: percentage(summariesCorrect, input.expected.length),
 			missed_requirements: input.expected.length - requirementsRecovered,
+			hallucinated_requirements: hallucinatedRequirements,
+			duplicate_requirement_ids: duplicateRequirementIds,
 		},
 	};
 }
@@ -693,15 +941,37 @@ function runCodexExec(request: WorkAgentRunnerRequest): WorkAgentRunnerResponse 
 	};
 }
 
-function buildScenarios(tempRoot: string, cliPath: string): Scenario[] {
-	return [
-		buildScenario(tempRoot, cliPath, "perfect-handoff", 20, 10, "equal_information"),
-		buildScenario(tempRoot, cliPath, "bounded-loss", 20, 12, "resilience"),
-		buildScenario(tempRoot, cliPath, "stale-conflict", 20, 10, "resilience"),
-		buildScenario(tempRoot, cliPath, "multi-session-handoff", 20, 15, "resilience"),
-		buildScenario(tempRoot, cliPath, "delegation-review", 20, 20, "equal_information"),
-		buildScenario(tempRoot, cliPath, "requirement-scale-100", 100, 50, "equal_information"),
-	];
+function buildScenarios(
+	tempRoot: string,
+	cliPath: string,
+	requested: WorkAgentScenarioId[] | undefined,
+	strict: boolean,
+): Scenario[] {
+	if (strict && requested !== undefined) {
+		throw new WorkAgentBenchmarkError(
+			"--strict evaluates every scenario; --scenarios is diagnostic-only",
+		);
+	}
+	if (requested === undefined) {
+		return WORK_AGENT_SCENARIO_DEFINITIONS.map(([id, count, verified, scenarioClass]) =>
+			buildScenario(tempRoot, cliPath, id, count, verified, scenarioClass),
+		);
+	}
+	if (requested.length === 0) {
+		throw new WorkAgentBenchmarkError("--scenarios requires at least one scenario");
+	}
+	const unique = [...new Set(requested)];
+	if (unique.length !== requested.length) {
+		throw new WorkAgentBenchmarkError("--scenarios contains duplicates");
+	}
+	const known = new Map(
+		WORK_AGENT_SCENARIO_DEFINITIONS.map((definition) => [definition[0], definition]),
+	);
+	return unique.map((id) => {
+		const definition = known.get(id);
+		if (!definition) throw new WorkAgentBenchmarkError(`unknown scenario: ${id}`);
+		return buildScenario(tempRoot, cliPath, ...definition);
+	});
 }
 
 function buildScenario(
@@ -805,7 +1075,7 @@ function renderProductWorkContext(
 								{ gate: "completion", enforcement: "required" },
 							],
 						},
-						delegation: { parallelism: "off" },
+						delegation: { parallelism: "prefer" },
 					}
 					: {
 						review: { preset: "off" },
@@ -827,7 +1097,7 @@ function renderProductWorkContext(
 				work: {
 					title: "Sanitized agent resume benchmark",
 					completion_contract: gatePending
-						? "Every requirement is verified, required independent completion review is recorded, and required delegation evidence is recorded."
+						? "All requirements must be verified. Completion is blocked: delegation evidence is missing and independent review is not recorded."
 						: "Every requirement is verified and every configured completion gate is satisfied.",
 				},
 				boundary: {
@@ -928,9 +1198,12 @@ function aggregateCondition(
 			gate_correct_pct: 0,
 			requirement_recall_pct: 0,
 			status_recall_pct: 0,
+			summary_recall_pct: 0,
 			reminders_or_reexplanations: 0,
 			reexplained_requirements: 0,
 			missed_requirements: 0,
+			hallucinated_requirements: 0,
+			duplicate_requirement_ids: 0,
 		};
 	}
 	return {
@@ -958,6 +1231,7 @@ function aggregateCondition(
 			runs.map((run) => run.requirement_recall_pct),
 		),
 		status_recall_pct: average(runs.map((run) => run.status_recall_pct)),
+		summary_recall_pct: average(runs.map((run) => run.summary_recall_pct)),
 		reminders_or_reexplanations: average(
 			runs.map((run) => run.reminders_or_reexplanations),
 		),
@@ -967,7 +1241,93 @@ function aggregateCondition(
 		missed_requirements: average(
 			runs.map((run) => run.missed_requirements),
 		),
+		hallucinated_requirements: average(
+			runs.map((run) => run.hallucinated_requirements),
+		),
+		duplicate_requirement_ids: average(
+			runs.map((run) => run.duplicate_requirement_ids),
+		),
 	};
+}
+
+function uniqueScenarioIds(runs: WorkAgentScenarioRun[]): WorkAgentScenarioId[] {
+	return [...new Set(runs.map((run) => run.scenario))];
+}
+
+function pairedAnalysis(runs: WorkAgentScenarioRun[]): WorkAgentPairedAnalysis {
+	const tokenDeltas = runs.map((run) =>
+		percentDelta(run.disabled.tokens.total_tokens, run.enabled.tokens.total_tokens),
+	);
+	const elapsedDeltas = runs.map((run) =>
+		percentDelta(run.disabled.elapsed_ms, run.enabled.elapsed_ms),
+	);
+	return {
+		token_delta_pct: distribution(tokenDeltas),
+		elapsed_delta_pct: distribution(elapsedDeltas),
+		token_pair_wins: tokenDeltas.filter((value) => value <= 0).length,
+		elapsed_pair_wins: elapsedDeltas.filter((value) => value <= 0).length,
+		pairs: runs.length,
+	};
+}
+
+function distribution(values: number[]): WorkAgentDistribution {
+	if (values.length === 0) {
+		throw new WorkAgentBenchmarkError("paired distribution requires values");
+	}
+	const sorted = [...values].sort((left, right) => left - right);
+	const p50 = percentile(sorted, 0.5);
+	const deviations = sorted
+		.map((value) => Math.abs(value - p50))
+		.sort((left, right) => left - right);
+	const bootstrap = bootstrapMedian90(sorted);
+	return {
+		average: average(sorted),
+		p50,
+		p95: percentile(sorted, 0.95),
+		min: round(sorted[0]!),
+		max: round(sorted.at(-1)!),
+		mad: percentile(deviations, 0.5),
+		bootstrap_90_ci: bootstrap,
+	};
+}
+
+function percentile(sorted: number[], quantile: number): number {
+	const position = (sorted.length - 1) * quantile;
+	const lower = Math.floor(position);
+	const upper = Math.ceil(position);
+	if (lower === upper) return round(sorted[lower]!);
+	const weight = position - lower;
+	return round(sorted[lower]! * (1 - weight) + sorted[upper]! * weight);
+}
+
+function bootstrapMedian90(sorted: number[]): { low: number; high: number } {
+	let state = bootstrapSeed(sorted);
+	const medians: number[] = [];
+	for (let iteration = 0; iteration < 2_000; iteration += 1) {
+		const sample: number[] = [];
+		for (let index = 0; index < sorted.length; index += 1) {
+			state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
+			sample.push(sorted[state % sorted.length]!);
+		}
+		sample.sort((left, right) => left - right);
+		medians.push(percentile(sample, 0.5));
+	}
+	medians.sort((left, right) => left - right);
+	return {
+		low: percentile(medians, 0.05),
+		high: percentile(medians, 0.95),
+	};
+}
+
+function bootstrapSeed(values: number[]): number {
+	let seed = 2_166_136_261;
+	for (const value of values) {
+		for (const character of String(value)) {
+			seed ^= character.charCodeAt(0);
+			seed = Math.imul(seed, 16_777_619) >>> 0;
+		}
+	}
+	return seed || 1;
 }
 
 function failedCondition(
@@ -988,9 +1348,13 @@ function failedCondition(
 		requirement_recall_pct: 0,
 		statuses_correct: 0,
 		status_recall_pct: 0,
+		summaries_correct: 0,
+		summary_recall_pct: 0,
 		reminders_or_reexplanations: 0,
 		reexplained_requirements: 0,
 		missed_requirements: expectedRequirements,
+		hallucinated_requirements: 0,
+		duplicate_requirement_ids: 0,
 		error,
 	};
 }
@@ -1025,12 +1389,13 @@ function parseAnswer(text: string): WorkAgentAnswer {
 		if (
 			!isRecord(item) ||
 			typeof item.id !== "string" ||
+			typeof item.summary !== "string" ||
 			(item.status !== "verified" && item.status !== "pending")
 		) {
 			throw new WorkAgentBenchmarkError("agent requirement row was invalid");
 		}
 		const status: "verified" | "pending" = item.status;
-		return { id: item.id, status };
+		return { id: item.id, status, summary: item.summary };
 	});
 	if (
 		typeof value.reminder_or_reexplanation_requests !== "number" ||
@@ -1054,13 +1419,14 @@ function renderWorkAgentBenchmarkMarkdown(
 	result: WorkAgentBenchmarkResult,
 ): string {
 	const { disabled, enabled, delta } = result.summary;
-	const scenarioRows = result.scenarios.map((scenario) => {
-		const runs = result.runs.filter((run) => run.scenario === scenario);
-		const scenarioDisabled = aggregateCondition(runs.map((run) => run.disabled));
-		const scenarioEnabled = aggregateCondition(runs.map((run) => run.enabled));
-		return `| ${scenario} | ${runs[0]?.scenario_class ?? "unknown"} | ${percentDelta(scenarioDisabled.total_tokens, scenarioEnabled.total_tokens)}% | ${percentDelta(scenarioDisabled.elapsed_ms, scenarioEnabled.elapsed_ms)}% | ${scenarioDisabled.status_recall_pct}% → ${scenarioEnabled.status_recall_pct}% | ${scenarioDisabled.reminders_or_reexplanations} → ${scenarioEnabled.reminders_or_reexplanations} |`;
+	const scenarioRows = result.analysis.scenarios.map((scenario) => {
+		return `| ${scenario.id} | ${scenario.class} | ${scenario.paired.token_delta_pct.p50}% (${scenario.paired.token_delta_pct.p95}%) | ${scenario.paired.elapsed_delta_pct.p50}% (${scenario.paired.elapsed_delta_pct.p95}%) | ${scenario.paired.token_pair_wins}/${scenario.paired.pairs} | ${scenario.disabled.status_recall_pct}% → ${scenario.enabled.status_recall_pct}% | ${scenario.disabled.reminders_or_reexplanations} → ${scenario.enabled.reminders_or_reexplanations} |`;
 	});
-	return `# Work agent A/B benchmark\n\n- Generated: ${result.generated_at}\n- Model: ${result.model}\n- Repetitions per scenario: ${result.runs_per_scenario}\n- Planned initial Codex invocations: ${result.planned_invocations}\n- Actual invocations including oracle corrections: ${result.actual_invocations}\n- Equal-information scenarios: ${result.scenario_classes.equal_information.join(", ")}\n- Resilience scenarios: ${result.scenario_classes.resilience.join(", ")}\n- Contract: ${result.ok ? "PASS" : "FAIL"}\n\n| Metric | Disabled | Enabled | Delta |\n| --- | ---: | ---: | ---: |\n| Total tokens (average/run) | ${disabled.total_tokens} | ${enabled.total_tokens} | ${delta.total_tokens_pct}% |\n| Elapsed ms (average/run) | ${disabled.elapsed_ms} | ${enabled.elapsed_ms} | ${delta.elapsed_pct}% |\n| Completion correctness | ${disabled.completion_correct_pct}% | ${enabled.completion_correct_pct}% | ${delta.completion_correct_points}pp |\n| Gate correctness | ${disabled.gate_correct_pct}% | ${enabled.gate_correct_pct}% | — |\n| Requirement recall | ${disabled.requirement_recall_pct}% | ${enabled.requirement_recall_pct}% | ${delta.requirement_recall_points}pp |\n| Status recall | ${disabled.status_recall_pct}% | ${enabled.status_recall_pct}% | ${delta.status_recall_points}pp |\n| Missed requirements (average/run) | ${disabled.missed_requirements} | ${enabled.missed_requirements} | ${delta.missed_requirements} |\n| Actual correction rounds (average/run) | ${disabled.reminders_or_reexplanations} | ${enabled.reminders_or_reexplanations} | ${delta.reminders_or_reexplanations} |\n| Re-explained requirements (average/run) | ${disabled.reexplained_requirements} | ${enabled.reexplained_requirements} | — |\n\n## Scenario breakdown\n\n| Scenario | Class | Token delta | Elapsed delta | Disabled → enabled status accuracy | Disabled → enabled correction rounds/run |\n| --- | --- | ---: | ---: | ---: | ---: |\n${scenarioRows.join("\n")}\n\nThe evaluator stores aggregate metrics only. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.\n`;
+	const classRows = result.analysis.classes.map((analysis) => {
+		return `| ${analysis.class} | ${analysis.paired.token_delta_pct.p50}% (${analysis.paired.token_delta_pct.bootstrap_90_ci.low}% to ${analysis.paired.token_delta_pct.bootstrap_90_ci.high}%) | ${analysis.paired.elapsed_delta_pct.p50}% (${analysis.paired.elapsed_delta_pct.bootstrap_90_ci.low}% to ${analysis.paired.elapsed_delta_pct.bootstrap_90_ci.high}%) | ${analysis.paired.token_pair_wins}/${analysis.paired.pairs} |`;
+	});
+	const overall = result.analysis.overall;
+	return `# Work agent A/B benchmark\n\n- Generated: ${result.generated_at}\n- Model: ${result.model}\n- Repetitions per scenario: ${result.runs_per_scenario}\n- Strict contract: ${result.strict ? "enabled" : "disabled"}\n- Planned initial Codex invocations: ${result.planned_invocations}\n- Actual invocations including oracle corrections: ${result.actual_invocations}\n- Equal-information scenarios: ${result.scenario_classes.equal_information.join(", ")}\n- Resilience scenarios: ${result.scenario_classes.resilience.join(", ")}\n- Excluded model failures: ${result.analysis.excluded_model_failures}\n- Contract: ${result.ok ? "PASS" : "FAIL"}\n\n| Metric | Disabled | Enabled | Delta |\n| --- | ---: | ---: | ---: |\n| Total tokens (average/run) | ${disabled.total_tokens} | ${enabled.total_tokens} | ${delta.total_tokens_pct}% |\n| Elapsed ms (average/run) | ${disabled.elapsed_ms} | ${enabled.elapsed_ms} | ${delta.elapsed_pct}% |\n| Paired token delta | — | — | p50 ${overall.token_delta_pct.p50}%, p95 ${overall.token_delta_pct.p95}%, MAD ${overall.token_delta_pct.mad}% |\n| Paired elapsed delta | — | — | p50 ${overall.elapsed_delta_pct.p50}%, p95 ${overall.elapsed_delta_pct.p95}%, MAD ${overall.elapsed_delta_pct.mad}% |\n| Completion correctness | ${disabled.completion_correct_pct}% | ${enabled.completion_correct_pct}% | ${delta.completion_correct_points}pp |\n| Gate correctness | ${disabled.gate_correct_pct}% | ${enabled.gate_correct_pct}% | — |\n| Requirement recall | ${disabled.requirement_recall_pct}% | ${enabled.requirement_recall_pct}% | ${delta.requirement_recall_points}pp |\n| Status recall | ${disabled.status_recall_pct}% | ${enabled.status_recall_pct}% | ${delta.status_recall_points}pp |\n| Summary recall | ${disabled.summary_recall_pct}% | ${enabled.summary_recall_pct}% | — |\n| Hallucinated requirements (average/run) | ${disabled.hallucinated_requirements} | ${enabled.hallucinated_requirements} | — |\n| Duplicate requirement IDs (average/run) | ${disabled.duplicate_requirement_ids} | ${enabled.duplicate_requirement_ids} | — |\n| Missed requirements (average/run) | ${disabled.missed_requirements} | ${enabled.missed_requirements} | ${delta.missed_requirements} |\n| Actual correction rounds (average/run) | ${disabled.reminders_or_reexplanations} | ${enabled.reminders_or_reexplanations} | ${delta.reminders_or_reexplanations} |\n| Re-explained requirements (average/run) | ${disabled.reexplained_requirements} | ${enabled.reexplained_requirements} | — |\n\n## Comparison classes\n\n| Class | Token p50 (90% bootstrap CI) | Elapsed p50 (90% bootstrap CI) | Token wins |\n| --- | ---: | ---: | ---: |\n${classRows.join("\n")}\n\n## Scenario breakdown\n\n| Scenario | Class | Token p50 (p95) | Elapsed p50 (p95) | Token wins | Disabled → enabled status accuracy | Disabled → enabled corrections/run |\n| --- | --- | ---: | ---: | ---: | ---: | ---: |\n${scenarioRows.join("\n")}\n\nEvery accepted answer contains each expected requirement exactly once with an exact ID, status, and summary; hallucinated or duplicate rows trigger deterministic correction. Each paired distribution also records min, max, MAD, and a deterministic 90% bootstrap interval in the JSON artifact. Model failures are scored, never excluded. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.\n`;
 }
 
 function writeArtifacts(

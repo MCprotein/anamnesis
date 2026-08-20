@@ -733,13 +733,24 @@ export function renderWorkBriefingContext(
 	const nextRequirement = briefing.requirements.find(
 		(requirement) => requirement.id === briefing.next_requirement_ids[0],
 	);
+	const sharedSummaryPrefix = commonPrefix(
+		briefing.requirements.map((requirement) => requirement.summary),
+	);
+	const factoredSummaryPrefix =
+		briefing.configured_required_gates.length === 0 &&
+		sharedSummaryPrefix.length >= 16
+			? sharedSummaryPrefix
+			: "";
 	const fullBlock =
 		detail === "full"
 			? [
 					"Current requirements:",
+					...(factoredSummaryPrefix
+						? [`Shared summary prefix: ${JSON.stringify(factoredSummaryPrefix)}`]
+						: []),
 					...briefing.requirements.map(
 						(requirement) =>
-							`- ${requirement.id} [${requirement.status}]: ${requirement.summary}`,
+							`${requirement.id}|${requirement.status}|${JSON.stringify(requirement.summary.slice(factoredSummaryPrefix.length))}`,
 					),
 				].join("\n")
 			: null;
@@ -747,27 +758,36 @@ export function renderWorkBriefingContext(
 	// detail then consumes the one remaining shared budget; nothing is blindly
 	// sliced after assembly.
 	const lines = [
-		"Anamnesis Work briefing is due at this foreground boundary.",
-		"Delivery observation: injected_unconfirmed. Hidden context injection does not prove the user saw a briefing.",
+		`Anamnesis Work briefing: ${boundedSemanticField(briefing.work.title ?? briefing.work_id, 512)} (${boundedSemanticField(briefing.work_id, 128)}; r${briefing.contract_revision}; ${briefing.lifecycle}).`,
+		"Delivery: injected_unconfirmed (not visible).",
 		autoContinue
-			? "Before continuing, read the complete authoritative Work status, visibly brief the requirements, done, remaining, blockers, and progress, then continue the same task in this turn."
+			? "Action: visibly brief the requirements, done/remaining/blockers/progress; then continue the same task."
 			: "Visibly brief the requirements, done, remaining, blockers, and progress. This Work is terminal; do not continue or restart it automatically.",
 		fullBlock === null
 			? `Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; compact context never replaces the complete projection.`
-			: "Authoritative completeness: the full current requirement enumeration is included below; do not retrieve the same status again unless source or evidence details are needed.",
+			: "Authoritative completeness: all current requirements follow; no retrieval needed.",
 		`Completion contract: ${boundedSemanticField(briefing.work.completion_contract ?? "not recorded", 700)}`,
 		`Progress: ${briefing.progress.percent}% (${briefing.progress.verified}/${briefing.progress.denominator} verified/applicable)`,
-		`Contract delta: baseline=${briefing.baseline_available ? "confirmed" : "unavailable"}; added=${boundedIds(briefing.delta.added_requirement_ids, 250)}; status_changed=${boundedStatusChanges(briefing.delta.status_changed, 250)}; superseded=${boundedSuperseded(briefing.delta.superseded, 250)}; conflicts_added=${boundedIds(briefing.delta.conflicts_added, 250)}; conflicts_resolved=${boundedIds(briefing.delta.conflicts_resolved, 250)}`,
+		...(briefing.baseline_available || fullBlock === null
+			? [
+					briefing.baseline_available
+						? `Contract delta: added=${boundedIds(briefing.delta.added_requirement_ids, 250)}; status_changed=${boundedStatusChanges(briefing.delta.status_changed, 250)}; superseded=${boundedSuperseded(briefing.delta.superseded, 250)}; conflicts_added=${boundedIds(briefing.delta.conflicts_added, 250)}; conflicts_resolved=${boundedIds(briefing.delta.conflicts_resolved, 250)}`
+						: "Contract delta: no confirmed baseline; current state is authoritative.",
+				]
+			: []),
 		`Configured required review gates (not proof of satisfaction): ${boundedIds(briefing.configured_required_gates, 400)}`,
-		`Changed requirements: ${boundedRequirements(changedRequirements, 500)}`,
-		`At-risk requirements: ${boundedRequirements(atRiskRequirements, 500)}`,
-		`Next requirement IDs: ${boundedIds(briefing.next_requirement_ids, 500)}`,
-		`Next action: ${nextRequirement ? formatRequirement(nextRequirement, 128, 640) : autoContinue ? "reconcile the completion contract and configured review gates before claiming completion" : "none; report the terminal state only"}`,
-		`Blocker IDs: ${boundedIds(
-			[...briefing.blockers.requirement_ids, ...briefing.blockers.conflict_ids],
-			650,
-		)}`,
-		`Complete authoritative pointer: Work ${boundedSemanticField(briefing.work_id, 128)}, semantic fingerprint ${briefing.semantic_fingerprint}.`,
+		...(fullBlock !== null && !briefing.baseline_available
+			? []
+			: [`Changed requirements: ${boundedRequirements(changedRequirements, 500)}`]),
+		...(atRiskRequirements.length === 0
+			? []
+			: [`At-risk requirements: ${boundedRequirements(atRiskRequirements, 500)}`]),
+		...(briefing.next_requirement_ids.length === 0
+			? []
+			: [`Next requirement IDs: ${boundedIds(briefing.next_requirement_ids, 500)}`]),
+		`Next action: ${nextRequirement ? formatRequirement(nextRequirement, 128, 640) : autoContinue ? "reconcile completion contract and gates" : "none; report terminal state"}`,
+		`Blocker IDs: ${boundedIds([...briefing.blockers.requirement_ids, ...briefing.blockers.conflict_ids], 650)}`,
+		`Complete authoritative pointer: Work ${boundedSemanticField(briefing.work_id, 128)}.`,
 	];
 	const appendOptional = (line: string): boolean => {
 		const used = lines.reduce((total, item) => total + item.length + 1, 0);
@@ -776,10 +796,12 @@ export function renderWorkBriefingContext(
 		return true;
 	};
 
-	const optionalLines = [
-		`Work: ${boundedSemanticField(briefing.work_id, 256)} — ${boundedSemanticField(briefing.work.title ?? "untitled", 512)} (contract revision ${briefing.contract_revision}, lifecycle ${briefing.lifecycle})`,
-		`Counts: pending=${counts.pending.length}, in_progress=${counts.in_progress.length}, implemented_unverified=${counts.implemented_unverified.length}, verified=${counts.verified.length}, blocked=${counts.blocked.length}, waived=${counts.waived.length}`,
-	];
+	const optionalLines =
+		fullBlock === null
+			? [
+					`Counts: pending=${counts.pending.length}, in_progress=${counts.in_progress.length}, implemented_unverified=${counts.implemented_unverified.length}, verified=${counts.verified.length}, blocked=${counts.blocked.length}, waived=${counts.waived.length}`,
+				]
+			: [];
 	if (fullBlock !== null) {
 		if (appendOptional(fullBlock)) {
 			// Full is deliberately one atomic block: never a partial enumeration.
@@ -838,6 +860,24 @@ function boundedSemanticField(value: string, maxLength: number): string {
 	return compact.length <= maxLength
 		? compact
 		: `[omitted ${compact.length}-character value; retrieve authoritative status]`;
+}
+
+function commonPrefix(values: readonly string[]): string {
+	if (values.length < 2) return "";
+	let prefix = values[0] ?? "";
+	for (const value of values.slice(1)) {
+		let index = 0;
+		const limit = Math.min(prefix.length, value.length);
+		while (index < limit && prefix[index] === value[index]) index += 1;
+		if (index > 0 && isHighSurrogate(prefix.charCodeAt(index - 1))) index -= 1;
+		prefix = prefix.slice(0, index);
+		if (prefix.length < 16) return "";
+	}
+	return prefix;
+}
+
+function isHighSurrogate(codeUnit: number): boolean {
+	return codeUnit >= 0xd800 && codeUnit <= 0xdbff;
 }
 
 function formatRequirement(

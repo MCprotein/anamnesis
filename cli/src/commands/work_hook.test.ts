@@ -605,6 +605,51 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		expect(context).not.toContain("Required retrieval:");
 	});
 
+	it("keeps long and multiline requirement summaries lossless or requires retrieval", () => {
+		const root = projectRoot();
+		seed(root, "codex", "full-lossless-session");
+		const briefing = buildWorkBriefingSnapshot({
+			projection: statusWork({
+				project_root: root,
+				work_id: "wu_hook",
+			}).projection,
+		});
+		const prefix = `${"shared context ".repeat(40)}\n`;
+		const requirements = [
+			{
+				...briefing.requirements[0]!,
+				id: "req_long_a",
+				summary: `${prefix}alpha  tail`,
+			},
+			{
+				...briefing.requirements[0]!,
+				id: "req_long_b",
+				summary: `${prefix}beta\t tail`,
+			},
+		];
+		const context = renderWorkBriefingContext(
+			{
+				...briefing,
+				requirements,
+				next_requirement_ids: [],
+				configured_required_gates: ["completion"],
+			},
+			"full",
+			true,
+		);
+
+		expect(context).toContain("Authoritative completeness:");
+		expect(context).not.toContain("Required retrieval:");
+		expect(context).not.toContain("[omitted");
+		expect(context).not.toContain("Shared summary prefix:");
+		expect(context).toContain(
+			`req_long_a|pending|${JSON.stringify(`${prefix}alpha  tail`)}`,
+		);
+		expect(context).toContain(
+			`req_long_b|pending|${JSON.stringify(`${prefix}beta\t tail`)}`,
+		);
+	});
+
 	it("allows the same fingerprint after the meaningful-action cadence", () => {
 		const root = projectRoot();
 		const cursorId = seed(root, "codex", "action-session");

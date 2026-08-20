@@ -22,6 +22,8 @@ anamnesis benchmark task-compare --full full-run.json --compact compact-run.json
 anamnesis benchmark task-compare --full full-run.json --compact compact-run.json --append
 anamnesis benchmark task-series
 anamnesis benchmark task-series --write
+npm run benchmark:work-agent-ab:diagnostic
+npm run benchmark:work-agent-ab:strict
 ```
 
 Append runs write markdown here and an `agent-task-benchmark` record to
@@ -132,6 +134,15 @@ source-citation rate, missed invariants, hallucinated facts, unnecessary
 context reads, protected-file edit attempts, handoff refresh success, matched
 task-harness use, elapsed time, and token usage. A single pair is diagnostic
 only. Public claims need repeated public-safe runs.
+
+The Work-specific A/B evaluator uses six fixed scenarios and a deterministic
+oracle rather than model self-scoring. The diagnostic command runs a smaller
+subset for iteration. The strict command runs nine alternating pairs per
+scenario, charges correction turns to the condition that needed them, requires
+100% enabled requirement/status/completion/gate correctness, and checks paired
+token and elapsed medians. Equal-information and resilience scenarios remain
+separate in the artifact; prompts, model answers, fixture bodies, stderr, and
+host paths are not committed.
 
 `benchmark task-compare` reports:
 

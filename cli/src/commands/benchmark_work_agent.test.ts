@@ -4,10 +4,12 @@ import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	aggregateWorkAgentRuns,
+	analyzePairedRuns,
 	evaluateWorkAgentContract,
 	parseCodexJsonl,
 	type WorkAgentAnswer,
 	type WorkAgentRunner,
+	type WorkAgentScenarioRun,
 	workAgentBenchmark,
 } from "./benchmark_work_agent.js";
 
@@ -45,15 +47,37 @@ function jsonl(answer: WorkAgentAnswer, totalTokens = 100): string {
 	].join("\n");
 }
 
-function fakeRunner(prompts: string[]): WorkAgentRunner {
+function fakeRunner(
+	prompts: string[],
+	contexts: Array<{ cwd: string; content: string }> = [],
+): WorkAgentRunner {
 	return (request) => {
 		prompts.push(request.prompt);
 		const context = fs.readFileSync(path.join(request.cwd, "CONTEXT.md"), "utf8");
-		const rows = new Map<string, "verified" | "pending">();
+		contexts.push({ cwd: request.cwd, content: context });
+		const rows = new Map<
+			string,
+			{ status: "verified" | "pending"; summary: string }
+		>();
 		for (const match of context.matchAll(
-			/(REQ-[A-Z0-9]+)[^\n]*(verified|pending)/gu,
+			/Requirement (REQ-[A-Z0-9]+): (.*?)\. Current status: (verified|pending)\./gu,
 		)) {
-			rows.set(match[1]!, match[2] as "verified" | "pending");
+			rows.set(match[1]!, {
+				summary: match[2]!,
+				status: match[3] as "verified" | "pending",
+			});
+		}
+		const sharedPrefixMatch = context.match(/^Shared summary prefix: (.+)$/mu);
+		const sharedPrefix = sharedPrefixMatch
+			? (JSON.parse(sharedPrefixMatch[1]!) as string)
+			: "";
+		for (const match of context.matchAll(
+			/^(REQ-[A-Z0-9]+)\|(verified|pending)\|(.+)$/gmu,
+		)) {
+			rows.set(match[1]!, {
+				status: match[2] as "verified" | "pending",
+				summary: sharedPrefix + (JSON.parse(match[3]!) as string),
+			});
 		}
 		const enabled = request.cwd.endsWith("-enabled");
 		if (enabled) {
@@ -69,7 +93,10 @@ function fakeRunner(prompts: string[]): WorkAgentRunner {
 				{
 					completion_status: "incomplete",
 					gate_blocked: gateBlocked,
-					requirements: [...rows].map(([id, status]) => ({ id, status })),
+					requirements: [...rows].map(([id, requirement]) => ({
+						id,
+						...requirement,
+					})),
 					reminder_or_reexplanation_requests: enabled ? 0 : 1,
 				},
 				enabled ? 95 : 100,
@@ -86,7 +113,9 @@ describe("Work agent A/B benchmark", () => {
 			jsonl({
 				completion_status: "incomplete",
 				gate_blocked: true,
-				requirements: [{ id: "REQ-X", status: "pending" }],
+				requirements: [
+					{ id: "REQ-X", status: "pending", summary: "requirement x" },
+				],
 				reminder_or_reexplanation_requests: 2,
 			}),
 		);
@@ -95,7 +124,9 @@ describe("Work agent A/B benchmark", () => {
 			answer: {
 				completion_status: "incomplete",
 				gate_blocked: true,
-				requirements: [{ id: "REQ-X", status: "pending" }],
+				requirements: [
+					{ id: "REQ-X", status: "pending", summary: "requirement x" },
+				],
 				reminder_or_reexplanation_requests: 2,
 			},
 			usage: {
@@ -109,12 +140,13 @@ describe("Work agent A/B benchmark", () => {
 
 	it("aggregates paired metrics and alternates condition order", () => {
 		const prompts: string[] = [];
+		const contexts: Array<{ cwd: string; content: string }> = [];
 		const plans: Array<{ runs: number; scenarios: number; invocations: number }> = [];
 		const result = workAgentBenchmark({
 			projectRoot: root(),
 			runs: 3,
 			model: "test-model",
-			runner: fakeRunner(prompts),
+			runner: fakeRunner(prompts, contexts),
 			onPlan: (plan) => plans.push(plan),
 			write: true,
 			outputPath: "evidence",
@@ -165,6 +197,19 @@ describe("Work agent A/B benchmark", () => {
 		});
 		expect(artifact).not.toContain("Resume this sanitized project");
 		expect(artifact).not.toContain("CONTEXT.md");
+		const enabledMultiSession = contexts.find((item) =>
+			item.cwd.includes("multi-session-handoff-1-enabled"),
+		);
+		expect(enabledMultiSession?.content).toContain(
+			"Authoritative completeness: all current requirements follow",
+		);
+		expect(enabledMultiSession?.content).toContain(
+			'Shared summary prefix: "sanitized acceptance condition 0"',
+		);
+		expect(enabledMultiSession?.content).toMatch(
+			/REQ-[A-Z0-9]+\|(verified|pending)\|"\d{2}"/u,
+		);
+		expect(enabledMultiSession?.content.length).toBeLessThan(4_000);
 	}, 30_000);
 
 	it("fails the evaluator when enabled token cost breaches the contract", () => {
@@ -180,8 +225,12 @@ describe("Work agent A/B benchmark", () => {
 			gate_correct_pct: 100,
 			requirement_recall_pct: 100,
 			status_recall_pct: 100,
+			summary_recall_pct: 100,
 			reminders_or_reexplanations: 0,
+			reexplained_requirements: 0,
 			missed_requirements: 0,
+			hallucinated_requirements: 0,
+			duplicate_requirement_ids: 0,
 		};
 		const summary = {
 			disabled: condition,
@@ -215,4 +264,172 @@ describe("Work agent A/B benchmark", () => {
 			workAgentBenchmark({ projectRoot, runs: 2, runner: fakeRunner([]) }),
 		).toThrow("at least 3");
 	});
+
+	it("rejects undersized strict runs before planning or paid model calls", () => {
+		const projectRoot = root();
+		let planned = false;
+		let invoked = false;
+		expect(() =>
+			workAgentBenchmark({
+				projectRoot,
+				runs: 3,
+				strict: true,
+				onPlan: () => {
+					planned = true;
+				},
+				runner: () => {
+					invoked = true;
+					throw new Error("runner must not be called");
+				},
+			}),
+		).toThrow("--strict requires at least 9 runs");
+		expect(planned).toBe(false);
+		expect(invoked).toBe(false);
+	});
+
+	it("rejects hallucinated and duplicate requirement rows before accepting a correction", () => {
+		const baseRunner = fakeRunner([]);
+		const runner: WorkAgentRunner = (request) => {
+			const response = baseRunner(request);
+			if (request.prompt.startsWith("A deterministic oracle rejected")) {
+				return response;
+			}
+			const events = response.stdout.split("\n").map((line) => JSON.parse(line));
+			const message = events.find(
+				(event) => event.type === "item.completed",
+			);
+			const answer = JSON.parse(message.item.text) as WorkAgentAnswer;
+			answer.requirements.push(answer.requirements[0]!);
+			answer.requirements.push({
+				id: "REQ-HALLUCINATED",
+				status: "verified",
+				summary: "not in the authoritative task",
+			});
+			message.item.text = JSON.stringify(answer);
+			return { ...response, stdout: events.map(JSON.stringify).join("\n") };
+		};
+		const result = workAgentBenchmark({
+			projectRoot: root(),
+			runs: 3,
+			scenarios: ["perfect-handoff"],
+			runner,
+		});
+
+		expect(result.actual_invocations).toBe(12);
+		expect(result.summary.disabled.reminders_or_reexplanations).toBe(1);
+		expect(result.summary.enabled.reminders_or_reexplanations).toBe(1);
+		expect(result.summary.enabled.hallucinated_requirements).toBe(0);
+		expect(result.summary.enabled.duplicate_requirement_ids).toBe(0);
+	});
+
+	it("uses paired distributions and strict per-scenario regression gates", () => {
+		const runs = [
+			...pairedRuns("multi-session-handoff", [-10, -8, -6, -4, -2, 0, 2, 4, 6]),
+			...pairedRuns("delegation-review", [-5, -4, -3, -2, -1, 0, 1, 2, 3]),
+		];
+		const summary = aggregateWorkAgentRuns(runs);
+		const analysis = analyzePairedRuns(runs);
+
+		expect(analysis.excluded_model_failures).toBe(0);
+		expect(analysis.overall.token_delta_pct).toMatchObject({
+			p50: -1.5,
+			min: -10,
+			max: 6,
+		});
+		expect(analysis.scenarios[0]?.paired).toMatchObject({
+			token_pair_wins: 6,
+			pairs: 9,
+		});
+		expect(evaluateWorkAgentContract(summary, analysis, true).ok).toBe(false);
+		expect(
+			evaluateWorkAgentContract(summary, analysis, true).checks,
+		).toContainEqual(
+			expect.objectContaining({ id: "strict-scenario-coverage", ok: false }),
+		);
+
+		const strictRuns = (
+			[
+				"perfect-handoff",
+				"bounded-loss",
+				"stale-conflict",
+				"multi-session-handoff",
+				"delegation-review",
+				"requirement-scale-100",
+			] as const
+		).flatMap((scenario) =>
+			pairedRuns(scenario, [-9, -8, -7, -6, -5, -4, -3, -2, -1]),
+		);
+		expect(
+			evaluateWorkAgentContract(
+				aggregateWorkAgentRuns(strictRuns),
+				analyzePairedRuns(strictRuns),
+				true,
+			).ok,
+		).toBe(true);
+
+		const regressed = pairedRuns(
+			"delegation-review",
+			[1, 2, 3, 4, 5, 6, 7, 8, 9],
+		);
+		const failedRuns = [...runs.slice(0, 9), ...regressed];
+		const failed = evaluateWorkAgentContract(
+			aggregateWorkAgentRuns(failedRuns),
+			analyzePairedRuns(failedRuns),
+			true,
+		);
+		expect(failed.ok).toBe(false);
+		expect(failed.checks).toContainEqual(
+			expect.objectContaining({
+				id: "strict-delegation-review-token-median",
+				ok: false,
+			}),
+		);
+	});
 });
+
+function pairedRuns(
+	scenario: WorkAgentScenarioRun["scenario"],
+	tokenDeltas: number[],
+): WorkAgentScenarioRun[] {
+	return tokenDeltas.map((delta, index) => ({
+		iteration: index + 1,
+		scenario,
+		scenario_class:
+			scenario === "delegation-review" ? "equal_information" : "resilience",
+		requirements: 20,
+		order: index % 2 === 0 ? ["disabled", "enabled"] : ["enabled", "disabled"],
+		disabled: condition("disabled", 100, 100),
+		enabled: condition("enabled", 100 + delta, 100 + delta),
+	}));
+}
+
+function condition(
+	conditionName: "disabled" | "enabled",
+	totalTokens: number,
+	elapsedMs: number,
+) {
+	return {
+		condition: conditionName,
+		execution_ok: true,
+		elapsed_ms: elapsedMs,
+		tokens: {
+			input_tokens: totalTokens - 20,
+			cached_input_tokens: 10,
+			output_tokens: 20,
+			total_tokens: totalTokens,
+		},
+		completion_correct: true,
+		gate_correct: true,
+		requirements_recovered: 20,
+		requirement_recall_pct: 100,
+		statuses_correct: 20,
+		status_recall_pct: 100,
+		summaries_correct: 20,
+		summary_recall_pct: 100,
+		reminders_or_reexplanations: 0,
+		reexplained_requirements: 0,
+		missed_requirements: 0,
+		hallucinated_requirements: 0,
+		duplicate_requirement_ids: 0,
+	};
+}

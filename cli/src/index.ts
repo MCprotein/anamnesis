@@ -71,6 +71,7 @@ import {
 import {
 	WorkAgentBenchmarkError,
 	type WorkAgentBenchmarkResult,
+	type WorkAgentScenarioId,
 	workAgentBenchmark,
 } from "./commands/benchmark_work_agent.js";
 import {
@@ -320,6 +321,20 @@ function parseCommaListFlag(
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
   return parts.length > 0 ? parts : undefined;
+}
+
+function optionalRequiredCommaListFlag(
+	flags: ParsedArgs["flags"],
+	name: string,
+): string[] | undefined {
+	const value = optionalWorkFlag(flags, name);
+	if (value === undefined) return undefined;
+	const parts = value
+		.split(",")
+		.map((part) => part.trim())
+		.filter((part) => part.length > 0);
+	if (parts.length === 0) throw new Error(`--${name} requires a value`);
+	return parts;
 }
 
 function parsePositiveIntFlag(
@@ -804,6 +819,11 @@ Flags (benchmark work-agent-ab):
   --project-root <path>         Target directory (default: cwd)
   --runs <n>                    Repetitions per scenario (minimum/default: 3)
   --model <id>                  Codex model (default: gpt-5.6-luna)
+  --scenarios <ids>             Diagnostic subset (comma-separated; incompatible
+                                  with --strict)
+  --strict                      Require >=9 pairs, per-scenario correction
+                                  noninferiority, and <=0.1% practical median token
+                                  noninferiority for multi-session and delegation/review
   --json                        Print structured JSON
   --write                       Write aggregate-only JSON and markdown under
                                   docs/benchmark-evidence/work-agent-ab
@@ -2037,6 +2057,14 @@ function reportWorkAgentBenchmark(result: WorkAgentBenchmarkResult): void {
 	console.log(
 		`  completion/gates: ${result.summary.enabled.completion_correct_pct}%/${result.summary.enabled.gate_correct_pct}%`,
 	);
+	console.log(
+		`  paired overall: tokens p50=${result.analysis.overall.token_delta_pct.p50}% p95=${result.analysis.overall.token_delta_pct.p95}%, elapsed p50=${result.analysis.overall.elapsed_delta_pct.p50}% p95=${result.analysis.overall.elapsed_delta_pct.p95}%`,
+	);
+	for (const scenario of result.analysis.scenarios) {
+		console.log(
+			`  ${scenario.id}: tokens p50=${scenario.paired.token_delta_pct.p50}% p95=${scenario.paired.token_delta_pct.p95}% wins=${scenario.paired.token_pair_wins}/${scenario.paired.pairs}; corrections ${scenario.disabled.reminders_or_reexplanations}->${scenario.enabled.reminders_or_reexplanations}`,
+		);
+	}
 	console.log(`  contract: ${result.ok ? "PASS" : "FAIL"}`);
 	if (result.artifacts.output_dir)
 		console.log(`  output: ${result.artifacts.output_dir}`);
@@ -4256,6 +4284,10 @@ async function main(argv: string[]): Promise<number> {
 					(flags["project-root"] as string | undefined) ?? process.cwd(),
 				runs: parseWorkContinuityBenchmarkFlag(flags["runs"], "--runs"),
 				model: flags["model"] as string | undefined,
+				strict: flags["strict"] === true,
+				scenarios: optionalRequiredCommaListFlag(flags, "scenarios") as
+					| WorkAgentScenarioId[]
+					| undefined,
 				write: flags["write"] === true,
 				outputPath: flags["output"] as string | undefined,
 				onPlan: ({ runs, scenarios, invocations }) => {
