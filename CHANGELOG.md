@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-08-20
+
 ### Added
 
 - Added a repeated real-Codex `benchmark work-agent-ab` evaluator for six
