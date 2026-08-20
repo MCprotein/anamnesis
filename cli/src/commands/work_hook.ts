@@ -6,7 +6,7 @@ import {
 	type WorkCursor,
 	type WorkCursorReconciliationState,
 } from "../core/work_cursor.js";
-import { readWorkLedger } from "../core/work_ledger.js";
+import { readWorkLedger, type WorkLedgerRecord } from "../core/work_ledger.js";
 import {
 	foldWorkProjection,
 	type WorkProjection,
@@ -284,12 +284,48 @@ export function handleWorkPostToolBoundary(
 	const now = input.now ?? new Date().toISOString();
 
 	try {
+		const cursorRead = readWorkCursor(state.state_root, cursorId);
+		const initialCursor = cursorRead.cursor;
+		if (
+			!initialCursor ||
+			initialCursor.worktree_fingerprint !== state.worktree_fingerprint
+		) {
+			return unavailable("cursor_unavailable", cursorId, aggregateBoundaryId);
+		}
+		const initialRecent =
+			initialCursor.reconciliation?.recent_meaningful_action_boundary_ids ?? [];
+		if (
+			parsed.value.meaningfulBoundaryIds.every((id) =>
+				initialRecent.includes(id),
+			)
+		) {
+			return result(
+				"not_due",
+				"duplicate_boundary",
+				cursorId,
+				aggregateBoundaryId,
+			);
+		}
+		const status = statusWork({
+			project_root: input.project_root,
+			state_root: input.state_root,
+			work_id: initialCursor.work_id,
+		});
+		const projection = status.projection;
+		const policy = projection.policy_snapshot?.policy;
+		if (!policy) {
+			throw new Error("Work policy unavailable");
+		}
+		const ledgerRecords = readWorkLedger(status.ledger_path).records;
 		const mutation = mutateWorkCursorAtomic(
 			state.state_root,
 			cursorId,
 			(cursor) => {
 				if (cursor.worktree_fingerprint !== state.worktree_fingerprint) {
 					throw new Error("Work cursor belongs to a different worktree");
+				}
+				if (cursor.work_id !== projection.work_id) {
+					throw new Error("Work cursor changed while preparing hook context");
 				}
 				const reconciliation =
 					cursor.reconciliation ?? emptyWorkCursorReconciliationState();
@@ -309,16 +345,6 @@ export function handleWorkPostToolBoundary(
 						),
 					};
 				}
-			const status = statusWork({
-				project_root: input.project_root,
-				state_root: input.state_root,
-				work_id: cursor.work_id,
-			});
-			const projection = status.projection;
-			const policy = projection.policy_snapshot?.policy;
-			if (!policy) {
-				throw new Error("Work policy unavailable");
-			}
 			if (policy.reconciliation.preset === "off") {
 				return {
 					next_cursor: null,
@@ -330,7 +356,12 @@ export function handleWorkPostToolBoundary(
 					),
 				};
 			}
-			const briefing = buildBriefing(status.ledger_path, projection, cursor);
+			const briefing = buildBriefing(
+				status.ledger_path,
+				projection,
+				cursor,
+				ledgerRecords,
+			);
 			const nextCount =
 				reconciliation.meaningful_actions_since_confirmed + novel.length;
 			if (!Number.isSafeInteger(nextCount)) {
@@ -644,17 +675,18 @@ function buildBriefing(
 	ledgerPath: string,
 	projection: WorkProjection,
 	cursor: WorkCursor,
+	ledgerRecords?: WorkLedgerRecord[],
 ): WorkBriefingSnapshot {
-	const ledger = readWorkLedger(ledgerPath);
+	const records = ledgerRecords ?? readWorkLedger(ledgerPath).records;
 	let previousConfirmed: WorkBriefingSnapshot | null = null;
 	const baselineHead = cursor.reconciliation?.last_reconciled_head ?? null;
 	if (baselineHead) {
-		const index = ledger.records.findIndex(
+		const index = records.findIndex(
 			(record) => record.record_hash === baselineHead,
 		);
 		if (index >= 0) {
 			previousConfirmed = buildWorkBriefingSnapshot({
-				projection: foldWorkProjection(ledger.records.slice(0, index + 1)),
+				projection: foldWorkProjection(records.slice(0, index + 1)),
 			});
 		}
 	}
