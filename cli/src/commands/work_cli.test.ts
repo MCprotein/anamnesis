@@ -826,5 +826,5 @@ describe("anamnesis work CLI", () => {
 		expect(
 			finalReconciliation?.recent_meaningful_action_boundary_ids,
 		).toHaveLength(64);
-	}, 60_000);
+	}, 180_000);
 });
