@@ -9,6 +9,10 @@ could include breaking changes.
 
 ### Added
 
+- Added a deterministic same-scenario Work continuity before/after benchmark
+  that reports requirement/status recovery, progress error, resume latency,
+  payload size, and durable storage overhead without conflating them with
+  model-dependent task performance.
 - Added the v1.18 roadmap and detailed design for a thin completion-contract
   Work overlay: immutable verbatim user-prompt events, append-only requirement
   ledgers with separate clean projections, conflict-safe shared checkpoints and

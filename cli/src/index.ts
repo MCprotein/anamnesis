@@ -64,6 +64,11 @@ import {
 	upgradeBenchmark,
 } from "./commands/benchmark_upgrade.js";
 import {
+	WorkContinuityBenchmarkError,
+	type WorkContinuityBenchmarkResult,
+	workContinuityBenchmark,
+} from "./commands/benchmark_work.js";
+import {
 	type ContextDiagnosticsResult,
 	contextDiagnostics,
 } from "./commands/context_diagnostics.js";
@@ -356,6 +361,25 @@ function parseBenchmarkRunsFlag(
   return parsed;
 }
 
+function parseWorkContinuityBenchmarkFlag(
+	value: string | boolean | undefined,
+	flagName: string,
+): number | undefined {
+	if (value === undefined || value === false) return undefined;
+	if (value === true) {
+		throw new WorkContinuityBenchmarkError(
+			`${flagName} requires a positive integer`,
+		);
+	}
+	const parsed = Number(value);
+	if (!Number.isInteger(parsed) || parsed < 1) {
+		throw new WorkContinuityBenchmarkError(
+			`${flagName} requires a positive integer`,
+		);
+	}
+	return parsed;
+}
+
 function parseBenchmarkAttemptsFlag(
   value: string | boolean | undefined,
 ): number | undefined {
@@ -497,6 +521,8 @@ Commands:
                                   record runtime evidence
   benchmark upgrade            Run deterministic sanitized upgrade fixtures
                                   and optionally write JSON/SVG evidence
+  benchmark work-continuity    Compare one compaction/resume scenario with
+                                  Work continuity disabled and enabled
   benchmark task               Record a model-dependent agent task benchmark
                                   separately from deterministic scorecards
   benchmark task-compare       Compare paired full/compact agent task
@@ -752,6 +778,18 @@ Flags (benchmark upgrade):
   --json                        Print structured JSON
   --write                       Write JSON, markdown, and SVG charts under
                                   docs/benchmark-evidence/upgrade
+  --append                      Record runtime evidence
+  --output <path>               Override artifact output directory
+
+Flags (benchmark work-continuity):
+  --project-root <path>         Target directory (default: cwd)
+  --runs <n>                    Repetitions (default: 5)
+  --requirements <n>            Requirements in the scenario (default: 20)
+  --compact-window <n>          Facts retained without Work (default: all;
+                                  smaller values are retention stress only)
+  --json                        Print structured JSON
+  --write                       Write JSON and markdown evidence under
+                                  docs/benchmark-evidence/work-continuity
   --append                      Record runtime evidence
   --output <path>               Override artifact output directory
 
@@ -1940,6 +1978,33 @@ function reportUpgradeBenchmark(result: UpgradeBenchmarkResult): void {
   if (result.evidencePath) {
     console.log(`  evidence: ${result.evidencePath}`);
   }
+}
+
+function reportWorkContinuityBenchmark(
+	result: WorkContinuityBenchmarkResult,
+): void {
+	console.log("anamnesis benchmark work-continuity");
+	console.log(
+		`  scenario: requirements=${result.summary.requirements}, verified=${result.summary.verified_requirements}, compact_window=${result.summary.compact_fact_window}, runs=${result.summary.runs}`,
+	);
+	console.log(
+		`  requirement recall: disabled=${result.summary.disabled.requirement_recall_pct}%, enabled=${result.summary.enabled.requirement_recall_pct}%, delta=${result.summary.delta.requirement_recall_points}pp`,
+	);
+	console.log(
+		`  status accuracy: disabled=${result.summary.disabled.status_accuracy_pct}%, enabled=${result.summary.enabled.status_accuracy_pct}%, delta=${result.summary.delta.status_accuracy_points}pp`,
+	);
+	console.log(
+		`  progress error: disabled=${result.summary.disabled.progress_error_points}pp, enabled=${result.summary.enabled.progress_error_points}pp`,
+	);
+	console.log(
+		`  resume: disabled=${result.summary.disabled.resume_ms}ms/${result.summary.disabled.resume_payload_bytes}B, enabled=${result.summary.enabled.resume_ms}ms/${result.summary.enabled.resume_payload_bytes}B`,
+	);
+	console.log(
+		`  enabled durable storage: ${result.summary.enabled.storage_bytes}B`,
+	);
+	if (result.artifacts.outputDir)
+		console.log(`  output: ${result.artifacts.outputDir}`);
+	if (result.evidencePath) console.log(`  evidence: ${result.evidencePath}`);
 }
 
 function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
@@ -3881,6 +3946,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "gallery" &&
         sub !== "trace" &&
         sub !== "upgrade" &&
+        sub !== "work-continuity" &&
         sub !== "task" &&
         sub !== "task-compare" &&
         sub !== "task-series" &&
@@ -3906,6 +3972,9 @@ async function main(argv: string[]): Promise<number> {
         );
         console.error(
           `       anamnesis benchmark upgrade [--json] [--write] [--append] [--runs=<n>] [--output=<dir>]`,
+        );
+        console.error(
+          `       anamnesis benchmark work-continuity [--json] [--write] [--append] [--runs=<n>] [--requirements=<n>] [--compact-window=<n>] [--output=<dir>]`,
         );
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
@@ -4117,6 +4186,31 @@ async function main(argv: string[]): Promise<number> {
           return result.ok ? 0 : 1;
         }
 
+		if (sub === "work-continuity") {
+			const result = workContinuityBenchmark({
+				projectRoot:
+					(flags["project-root"] as string | undefined) ?? process.cwd(),
+				runs: parseWorkContinuityBenchmarkFlag(flags["runs"], "--runs"),
+				requirements: parseWorkContinuityBenchmarkFlag(
+					flags["requirements"],
+					"--requirements",
+				),
+				compactFactWindow: parseWorkContinuityBenchmarkFlag(
+					flags["compact-window"],
+					"--compact-window",
+				),
+				write: flags["write"] === true,
+				append: flags["append"] === true,
+				outputPath: flags["output"] as string | undefined,
+			});
+			if (flags["json"] === true) {
+				console.log(JSON.stringify(result, null, 2));
+			} else {
+				reportWorkContinuityBenchmark(result);
+			}
+			return result.ok ? 0 : 1;
+		}
+
         if (sub === "gallery") {
           const result = benchmarkGallery({
             projectRoot:
@@ -4182,6 +4276,7 @@ async function main(argv: string[]): Promise<number> {
           e instanceof BenchmarkGalleryError ||
           e instanceof BenchmarkTraceError ||
           e instanceof UpgradeBenchmarkError ||
+			e instanceof WorkContinuityBenchmarkError ||
           e instanceof AgentTaskBenchmarkError ||
           e instanceof AgentTaskBenchmarkSeriesError ||
           e instanceof PromptDeltaGateError ||

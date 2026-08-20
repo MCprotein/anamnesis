@@ -21,6 +21,7 @@ anamnesis benchmark gallery --validate
 anamnesis benchmark trace --append
 anamnesis benchmark prompt-gate
 anamnesis benchmark session-context --write
+anamnesis benchmark work-continuity --runs 5 --write
 anamnesis context subagent-preamble
 anamnesis benchmark subagent-injection --attempts 20 --write --append
 anamnesis benchmark task-compare --template
@@ -69,6 +70,26 @@ or `risk`. Machine-readable evidence keeps the stable `pass` / `warn` /
 Use `benchmark compare` for before/after adoption evidence. It reads two
 `benchmark report --json` files and reports raw scorecard deltas rather than
 collapsing the result into a single opaque score.
+
+Use `benchmark work-continuity --runs <n> --write` for a same-scenario
+before/after comparison of the Work continuity layer. The sanitized fixture
+creates 20 requirements, verifies half, then crosses a compaction/resume
+boundary. By default both conditions receive the same complete current facts:
+the disabled condition reopens a persisted JSON handoff, while the enabled
+condition refolds the authoritative Work ledger and builds a briefing. An
+explicit smaller `--compact-window` is reported only as retention stress, not
+as attributable before/after improvement. The report keeps structural recovery
+quality separate from local runtime/storage overhead and writes evidence under
+[`docs/benchmark-evidence/work-continuity/`](benchmark-evidence/work-continuity/).
+These deterministic results do not measure model intelligence; actual task
+success and token deltas still require repeated paired runs through
+`benchmark task-compare` and `benchmark task-series`.
+
+The checked-in evidence contains both the equal-facts default and a separately
+labeled [`retention-stress`](benchmark-evidence/work-continuity/retention-stress/)
+run with an eight-fact legacy window. Only the equal-facts result is a fair
+runtime/storage before/after comparison; the stress result shows sensitivity
+to information loss and is not an attributable product-effect claim.
 
 Use `benchmark session-context --write` for the v1.5 startup-context budget
 check. It compares full SessionStart file injection with compact invariant

@@ -18,6 +18,7 @@ export type EvidenceKind =
   | "benchmark-compare"
   | "benchmark-trace-rollup"
   | "upgrade-benchmark"
+  | "work-continuity-benchmark"
   | "retrieval-benchmark"
   | "subagent-injection-benchmark"
   | "agent-task-benchmark"
@@ -151,6 +152,7 @@ function isEvidenceRecord(value: unknown): value is RuntimeEvidenceRecord {
       record.kind === "benchmark-compare" ||
       record.kind === "benchmark-trace-rollup" ||
       record.kind === "upgrade-benchmark" ||
+      record.kind === "work-continuity-benchmark" ||
       record.kind === "retrieval-benchmark" ||
       record.kind === "subagent-injection-benchmark" ||
       record.kind === "agent-task-benchmark" ||
