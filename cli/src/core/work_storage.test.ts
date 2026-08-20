@@ -6,6 +6,18 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { sha256 } from "../util/hash.js";
 import {
+	calculateWorkContractHash,
+	calculateWorkDelegationFailureFingerprint,
+	parseTypedWorkEvent,
+	WORK_EXECUTION_LIMITS,
+	type WorkContractDefinition,
+} from "./work_contract.js";
+import { readWorkLedger } from "./work_ledger.js";
+import { createWorkPolicySnapshot, resolveWorkPolicy } from "./work_policy.js";
+import { foldWorkProjection } from "./work_projection.js";
+import {
+	appendCanonicalTypedWorkEventWithPublishedSource,
+	appendCanonicalTypedWorkEvidenceEvent,
 	appendCanonicalTypedWorkProgressEvent,
 	migrateLegacyWorkSourceEnvelopeBindings,
 	publishAndAppendCanonicalTypedWorkSourceEvent,
@@ -16,7 +28,6 @@ import {
   type WorkStoragePublicationPhase,
   withWorkSourceEventLock,
 } from "./work_storage.js";
-import { readWorkLedger } from "./work_ledger.js";
 
 function temporaryDirectory(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -35,7 +46,833 @@ function sourceInput(stateRoot: string, body: string | Buffer): WorkSourceEventI
   };
 }
 
+function createTypedExecutionWork(root: string) {
+	const policy = createWorkPolicySnapshot(
+		1,
+		resolveWorkPolicy([
+			{
+				kind: "project",
+				source_refs: [{ source: "Agentfile", ref: "work_policy" }],
+				config: {
+					review: { preset: "strict" },
+					delegation: {
+						parallelism: "required",
+						max_agents: 2,
+						native_agents: "auto",
+						tmux_team: "auto",
+						fallback_order: ["tmux_team", "native_agents"],
+						unavailable: "fallback",
+					},
+				},
+			},
+		]),
+	);
+	const definition: WorkContractDefinition = {
+		work: {
+			id: "wu_exec",
+			title: "execution",
+			completion_contract: "verified",
+		},
+		boundary: {
+			state: "accepted",
+			classification: "same_unit",
+			reason_codes: ["same_completion_contract"],
+			confidence: "high",
+		},
+		policy_snapshot: policy,
+		requirements: [
+			{ id: "req_a", summary: "a", source_event_ids: ["evt_01test"] },
+			{ id: "req_b", summary: "b", source_event_ids: ["evt_01test"] },
+		],
+		open_conflicts: [],
+	};
+	const contractHash = calculateWorkContractHash(definition);
+	const ledgerPath = path.join(root, "work-units/wu_exec/ledger.jsonl");
+	const created = publishAndAppendCanonicalTypedWorkSourceEvent({
+		source: sourceInput(root, "create execution work"),
+		ledgerPath,
+		expectedHead: null,
+		ledgerEvent: {
+			event_id: "create_exec",
+			occurred_at: "2026-08-13T00:00:00.000Z",
+			kind: "work_created",
+			payload: {
+				schema_version: "anamnesis.work-contract-event.v1",
+				work_id: "wu_exec",
+				contract_revision: 1,
+				previous_contract_revision: null,
+				previous_contract_hash: null,
+				contract_hash: contractHash,
+				contract: definition,
+			},
+		},
+	});
+	return {
+		policy,
+		contractHash,
+		ledgerPath,
+		head: created.ledger.head,
+		basis: {
+			work_id: "wu_exec",
+			basis_contract_revision: 1,
+			basis_contract_hash: contractHash,
+			policy_hash: policy.policy_hash,
+		},
+	};
+}
 describe("work source storage", () => {
+	it("rejects aggregate evidence limit+1 before committing the candidate record", () => {
+		const root = temporaryDirectory("anamnesis-work-evidence-bound-");
+		const fixture = createTypedExecutionWork(root);
+		const gate = fixture.policy.policy.review.gates.find(
+			(item) => item.gate === "planning",
+		)!;
+		const reviewHash = sha256("bounded-review");
+		const artifacts = [{ ref: "plan", hash: sha256("plan") }];
+		const request = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: fixture.head,
+			ledgerEvent: {
+				event_id: "bounded_request",
+				occurred_at: "2026-08-13T00:00:01.000Z",
+				kind: "work_review_requested",
+				payload: {
+					schema_version: "anamnesis.work-review-request-event.v1",
+					...fixture.basis,
+					gate: "planning",
+					activity_id: "bounded_activity",
+					review_input_hash: reviewHash,
+					artifact_refs: artifacts,
+					provider_order: gate.provider_order,
+					role_hint: gate.role_hint,
+					minimum_reviewers: gate.minimum_reviewers,
+				},
+			},
+		});
+		const attemptPayload = {
+			schema_version: "anamnesis.work-review-attempt-event.v1" as const,
+			...fixture.basis,
+			gate: "planning" as const,
+			activity_id: "bounded_activity",
+			review_input_hash: reviewHash,
+			provider: gate.provider_order[0]!,
+			role: gate.role_hint,
+			reviewer_instance_ref: {
+				provider: gate.provider_order[0]!,
+				ref: "reviewer",
+			},
+			author_instance_refs: [
+				{ provider: "codex_native" as const, ref: "author" },
+			],
+			independence_assurance: "runtime_attested" as const,
+			independence_evidence_refs: ["independence"],
+			artifact_refs: artifacts,
+		};
+		const exact = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: request.head,
+			ledgerEvent: {
+				event_id: "bounded_exact",
+				occurred_at: "2026-08-13T00:00:02.000Z",
+				kind: "work_review_attempt_recorded",
+				payload: {
+					...attemptPayload,
+					attempt_id: "bounded_exact",
+					outcome: "passed",
+					finding_refs: Array.from(
+						{ length: WORK_EXECUTION_LIMITS.maxFindingRefs },
+						(_, index) => `finding:${index}`,
+					),
+				},
+			},
+		});
+		const before = readWorkLedger(fixture.ledgerPath);
+		expect(() =>
+			appendCanonicalTypedWorkEvidenceEvent({
+				stateRoot: root,
+				ledgerPath: fixture.ledgerPath,
+				expectedHead: exact.head,
+				ledgerEvent: {
+					event_id: "bounded_overflow",
+					occurred_at: "2026-08-13T00:00:03.000Z",
+					kind: "work_review_attempt_recorded",
+					payload: {
+						...attemptPayload,
+						attempt_id: "bounded_overflow",
+						outcome: "changes_requested",
+						finding_refs: ["finding:overflow"],
+					},
+				},
+			}),
+		).toThrow(/finding refs limit exceeded/);
+		expect(readWorkLedger(fixture.ledgerPath)).toEqual(before);
+	});
+	it("rejects aggregate review failure refs before committing the candidate record", () => {
+		const root = temporaryDirectory("anamnesis-work-failure-bound-");
+		const fixture = createTypedExecutionWork(root);
+		const gate = fixture.policy.policy.review.gates.find(
+			(item) => item.gate === "planning",
+		)!;
+		const reviewHash = sha256("failure-bounded-review");
+		const artifacts = [{ ref: "plan", hash: sha256("failure-plan") }];
+		const request = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: fixture.head,
+			ledgerEvent: {
+				event_id: "failure_bounded_request",
+				occurred_at: "2026-08-13T00:00:01.000Z",
+				kind: "work_review_requested",
+				payload: {
+					schema_version: "anamnesis.work-review-request-event.v1",
+					...fixture.basis,
+					gate: "planning",
+					activity_id: "failure_bounded_activity",
+					review_input_hash: reviewHash,
+					artifact_refs: artifacts,
+					provider_order: gate.provider_order,
+					role_hint: gate.role_hint,
+					minimum_reviewers: gate.minimum_reviewers,
+				},
+			},
+		});
+		const failurePayload = (
+			provider: (typeof gate.provider_order)[number],
+		) => ({
+			schema_version: "anamnesis.work-review-attempt-event.v1" as const,
+			...fixture.basis,
+			gate: "planning" as const,
+			activity_id: "failure_bounded_activity",
+			review_input_hash: reviewHash,
+			provider,
+			role: gate.role_hint,
+			outcome: "unsupported_authority" as const,
+			failure_input: { capability_ref: `cap:${provider}` },
+		});
+		const exact = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: request.head,
+			ledgerEvent: {
+				event_id: "failure_bounded_exact",
+				occurred_at: "2026-08-13T00:00:02.000Z",
+				kind: "work_review_attempt_recorded",
+				payload: {
+					...failurePayload(gate.provider_order[0]!),
+					attempt_id: "failure_bounded_exact",
+					failure_refs: Array.from(
+						{ length: WORK_EXECUTION_LIMITS.maxFailureRefs },
+						(_, index) => `failure:${index}`,
+					),
+				},
+			},
+		});
+		const before = readWorkLedger(fixture.ledgerPath);
+		expect(() =>
+			appendCanonicalTypedWorkEvidenceEvent({
+				stateRoot: root,
+				ledgerPath: fixture.ledgerPath,
+				expectedHead: exact.head,
+				ledgerEvent: {
+					event_id: "failure_bounded_overflow",
+					occurred_at: "2026-08-13T00:00:03.000Z",
+					kind: "work_review_attempt_recorded",
+					payload: {
+						...failurePayload(gate.provider_order[1]!),
+						attempt_id: "failure_bounded_overflow",
+						failure_refs: ["failure:overflow"],
+					},
+				},
+			}),
+		).toThrow(/failure refs limit exceeded/);
+		expect(readWorkLedger(fixture.ledgerPath)).toEqual(before);
+	});
+
+	it("rejects stale aggregate ref overflow before committing a superseding request", () => {
+		const root = temporaryDirectory("anamnesis-work-stale-bound-");
+		const fixture = createTypedExecutionWork(root);
+		const gate = fixture.policy.policy.review.gates.find(
+			(item) => item.gate === "planning",
+		)!;
+		const artifacts = [{ ref: "plan", hash: sha256("stale-plan") }];
+		const requestEvent = (id: string, inputHash: string) => ({
+			event_id: id,
+			occurred_at: "2026-08-13T00:00:01.000Z",
+			kind: "work_review_requested" as const,
+			payload: {
+				schema_version: "anamnesis.work-review-request-event.v1" as const,
+				...fixture.basis,
+				gate: "planning" as const,
+				activity_id: id,
+				review_input_hash: inputHash,
+				artifact_refs: artifacts,
+				provider_order: gate.provider_order,
+				role_hint: gate.role_hint,
+				minimum_reviewers: gate.minimum_reviewers,
+			},
+		});
+		const passEvent = (
+			id: string,
+			inputHash: string,
+			findingRefs: string[],
+		) => ({
+			event_id: id,
+			occurred_at: "2026-08-13T00:00:02.000Z",
+			kind: "work_review_attempt_recorded" as const,
+			payload: {
+				schema_version: "anamnesis.work-review-attempt-event.v1" as const,
+				...fixture.basis,
+				gate: "planning" as const,
+				activity_id:
+					inputHash === firstHash ? "stale_request_one" : "stale_request_two",
+				attempt_id: id,
+				review_input_hash: inputHash,
+				provider: gate.provider_order[0]!,
+				role: gate.role_hint,
+				outcome: "passed" as const,
+				reviewer_instance_ref: { provider: gate.provider_order[0]!, ref: id },
+				author_instance_refs: [
+					{ provider: "codex_native" as const, ref: `author:${id}` },
+				],
+				independence_assurance: "runtime_attested" as const,
+				independence_evidence_refs: [`independence:${id}`],
+				artifact_refs: artifacts,
+				finding_refs: findingRefs,
+			},
+		});
+		const firstHash = sha256("stale-review-one");
+		const secondHash = sha256("stale-review-two");
+		const firstRequest = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: fixture.head,
+			ledgerEvent: requestEvent("stale_request_one", firstHash),
+		});
+		const firstPass = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: firstRequest.head,
+			ledgerEvent: passEvent(
+				"stale_pass_one",
+				firstHash,
+				Array.from(
+					{ length: WORK_EXECUTION_LIMITS.maxFindingRefs - 1 },
+					(_, index) => `stale:finding:${index}`,
+				),
+			),
+		});
+		const secondRequest = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: firstPass.head,
+			ledgerEvent: requestEvent("stale_request_two", secondHash),
+		});
+		const secondPass = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: secondRequest.head,
+			ledgerEvent: passEvent("stale_pass_two", secondHash, [
+				"stale:finding:extra-one",
+				"stale:finding:extra-two",
+			]),
+		});
+		const before = readWorkLedger(fixture.ledgerPath);
+		expect(() =>
+			appendCanonicalTypedWorkEvidenceEvent({
+				stateRoot: root,
+				ledgerPath: fixture.ledgerPath,
+				expectedHead: secondPass.head,
+				ledgerEvent: requestEvent(
+					"stale_request_three",
+					sha256("stale-review-three"),
+				),
+			}),
+		).toThrow(/stale finding refs limit exceeded/);
+		expect(readWorkLedger(fixture.ledgerPath)).toEqual(before);
+	});
+	it("appends only the four source-free evidence kinds with CAS and exact retry semantics", () => {
+		const root = temporaryDirectory("anamnesis-work-evidence-api-");
+		const fixture = createTypedExecutionWork(root);
+		const gate = fixture.policy.policy.review.gates.find(
+			(item) => item.gate === "planning",
+		)!;
+		const request = {
+			event_id: "review_request",
+			occurred_at: "2026-08-13T00:00:01.000Z",
+			kind: "work_review_requested" as const,
+			payload: {
+				schema_version: "anamnesis.work-review-request-event.v1" as const,
+				...fixture.basis,
+				gate: "planning" as const,
+				activity_id: "review_activity",
+				review_input_hash: sha256("review"),
+				artifact_refs: [{ ref: "plan", hash: sha256("plan") }],
+				provider_order: gate.provider_order,
+				role_hint: gate.role_hint,
+				minimum_reviewers: gate.minimum_reviewers,
+			},
+		};
+		const first = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			ledgerEvent: request,
+			expectedHead: fixture.head,
+		});
+		const duplicate = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			ledgerEvent: request,
+			expectedHead: fixture.head,
+		});
+		expect(first.idempotent).toBe(false);
+		expect(duplicate.idempotent).toBe(true);
+		expect(
+			foldWorkProjection(readWorkLedger(fixture.ledgerPath).records).review_gates.find(
+				(item) => item.gate === "planning",
+			),
+		).toMatchObject({
+			state: "requested",
+			evidence_event_ids: ["review_request"],
+			stale_evidence: [],
+		});
+		const attempt = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: first.head,
+			ledgerEvent: {
+				event_id: "review_attempt",
+				occurred_at: "2026-08-13T00:00:02.000Z",
+				kind: "work_review_attempt_recorded",
+				payload: {
+					schema_version: "anamnesis.work-review-attempt-event.v1",
+					...fixture.basis,
+					gate: "planning",
+					activity_id: "review_activity",
+					attempt_id: "attempt_one",
+					review_input_hash: request.payload.review_input_hash,
+					provider: gate.provider_order[0],
+					role: gate.role_hint,
+					outcome: "passed",
+					reviewer_instance_ref: {
+						provider: gate.provider_order[0],
+						ref: "reviewer",
+					},
+					author_instance_refs: [{ provider: "codex_native", ref: "author" }],
+					independence_assurance: "runtime_attested",
+					independence_evidence_refs: ["independence"],
+					artifact_refs: request.payload.artifact_refs,
+					finding_refs: [],
+				},
+			},
+		});
+		const lanes = [
+			{
+				lane_id: "lane_a",
+				requirement_ids: ["req_a"],
+				repository_scopes: [
+					{
+						kind: "tree" as const,
+						path: "cli/src/a",
+						access: "write" as const,
+					},
+				],
+				external_effects: [],
+				depends_on: [],
+				verification_owner: "leader" as const,
+			},
+			{
+				lane_id: "lane_b",
+				requirement_ids: ["req_b"],
+				repository_scopes: [
+					{
+						kind: "tree" as const,
+						path: "cli/src/b",
+						access: "write" as const,
+					},
+				],
+				external_effects: [],
+				depends_on: [],
+				verification_owner: "leader" as const,
+			},
+		];
+		const assessmentHash = sha256("assessment-routing");
+		const assessment = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: attempt.head,
+			ledgerEvent: {
+				event_id: "assessment_routing",
+				occurred_at: "2026-08-13T00:00:03.000Z",
+				kind: "work_parallelism_assessed",
+				payload: {
+					schema_version: "anamnesis.work-parallelism-assessment-event.v1",
+					...fixture.basis,
+					assessment_id: "assessment_routing",
+					assessment_input_hash: assessmentHash,
+					decision: "parallel",
+					lanes,
+					selected_provider: "tmux_team",
+					rationale_codes: ["parallel"],
+					evidence_refs: ["assessment"],
+				},
+			},
+		});
+		const failureDraft = {
+			...fixture.basis,
+			assessment_id: "assessment_routing",
+			assessment_input_hash: assessmentHash,
+			provider: "tmux_team" as const,
+			outcome: "unsupported_authority" as const,
+			failure_input: { capability_ref: "capability" },
+			failure_refs: ["failure"],
+		};
+		appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: assessment.head,
+			ledgerEvent: {
+				event_id: "delegation_outcome",
+				occurred_at: "2026-08-13T00:00:04.000Z",
+				kind: "work_delegation_outcome_recorded",
+				payload: {
+					schema_version: "anamnesis.work-delegation-outcome-event.v1",
+					...failureDraft,
+					failure_fingerprint: calculateWorkDelegationFailureFingerprint(
+						failureDraft,
+						lanes,
+					),
+				},
+			},
+		});
+		expect(
+			readWorkLedger(fixture.ledgerPath)
+				.records.slice(1)
+				.map((item) => item.kind),
+		).toEqual([
+			"work_review_requested",
+			"work_review_attempt_recorded",
+			"work_parallelism_assessed",
+			"work_delegation_outcome_recorded",
+		]);
+		expect(() =>
+			appendCanonicalTypedWorkEvidenceEvent({
+				stateRoot: root,
+				ledgerPath: fixture.ledgerPath,
+				ledgerEvent: { ...request, event_id: "review_request_stale" },
+				expectedHead: fixture.head,
+			}),
+		).toThrow(/head conflict/);
+		expect(() =>
+			appendCanonicalTypedWorkEvidenceEvent({
+				stateRoot: root,
+				ledgerPath: fixture.ledgerPath,
+				ledgerEvent: {
+					event_id: "waiver_forbidden",
+					occurred_at: "2026-08-13T00:00:02.000Z",
+					kind: "work_delegation_waived",
+					payload: {
+						schema_version: "anamnesis.work-delegation-waiver-event.v1",
+						...fixture.basis,
+						assessment_id: "assessment",
+						assessment_input_hash: sha256("assessment"),
+						reason: "reason",
+						authority_ref: "user",
+						source_event_id: "source",
+						evidence_refs: ["evidence"],
+					},
+				} as never,
+				expectedHead: first.head,
+			}),
+		).toThrow(/exactly four|waiver/i);
+	});
+
+	it("binds a previously published waiver source to the current assessment under lock", () => {
+		const root = temporaryDirectory("anamnesis-work-bound-waiver-");
+		const fixture = createTypedExecutionWork(root);
+		const lanes = [
+			{
+				lane_id: "lane_a",
+				requirement_ids: ["req_a"],
+				repository_scopes: [
+					{
+						kind: "tree" as const,
+						path: "cli/src/a",
+						access: "write" as const,
+					},
+				],
+				external_effects: [],
+				depends_on: [],
+				verification_owner: "leader" as const,
+			},
+			{
+				lane_id: "lane_b",
+				requirement_ids: ["req_b"],
+				repository_scopes: [
+					{
+						kind: "tree" as const,
+						path: "cli/src/b",
+						access: "write" as const,
+					},
+				],
+				external_effects: [],
+				depends_on: [],
+				verification_owner: "leader" as const,
+			},
+		];
+		const assessmentHash = sha256("bound-waiver-assessment");
+		const assessment = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: fixture.head,
+			ledgerEvent: {
+				event_id: "bound_waiver_assessment",
+				occurred_at: "2026-08-13T00:00:01.000Z",
+				kind: "work_parallelism_assessed",
+				payload: {
+					schema_version: "anamnesis.work-parallelism-assessment-event.v1",
+					...fixture.basis,
+					assessment_id: "bound_waiver_assessment",
+					assessment_input_hash: assessmentHash,
+					decision: "parallel",
+					lanes,
+					selected_provider: "tmux_team",
+					rationale_codes: ["parallel"],
+					evidence_refs: ["assessment:evidence"],
+				},
+			},
+		});
+		publishWorkSourceEvent({
+			...sourceInput(root, "approve bound waiver"),
+			eventId: "src_bound_waiver",
+		});
+		const bound = appendCanonicalTypedWorkEventWithPublishedSource({
+			stateRoot: root,
+			sourceEventId: "src_bound_waiver",
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: assessment.head,
+			ledgerEvent: {
+				event_id: "bound_waiver",
+				occurred_at: "2026-08-13T00:00:02.000Z",
+				kind: "work_delegation_waived",
+				payload: {
+					schema_version: "anamnesis.work-delegation-waiver-event.v1",
+					...fixture.basis,
+					assessment_id: "bound_waiver_assessment",
+					reason: "operator approved solo continuation",
+					authority_ref: "user:operator",
+					source_event_id: "src_bound_waiver",
+					evidence_refs: ["waiver:evidence"],
+				},
+			},
+		});
+		const event = parseTypedWorkEvent(bound.ledger.record);
+		expect(event.kind).toBe("work_delegation_waived");
+		if (event.kind !== "work_delegation_waived")
+			throw new Error("unexpected event");
+		expect(event.payload.assessment_input_hash).toBe(assessmentHash);
+	});
+
+	it("binds waiver assessment hashes under lock and preserves exact retry after reassessment", () => {
+		const root = temporaryDirectory("anamnesis-work-waiver-api-");
+		const fixture = createTypedExecutionWork(root);
+		const beforeAssessmentDraft = {
+			event_id: "waiver_too_early",
+			occurred_at: "2026-08-13T00:00:00.500Z",
+			kind: "work_delegation_waived",
+			payload: {
+				schema_version: "anamnesis.work-delegation-waiver-event.v1",
+				...fixture.basis,
+				assessment_id: "missing_assessment",
+				reason: "too early",
+				authority_ref: "user:operator",
+				source_event_id: "src_too_early",
+				evidence_refs: ["waiver:evidence"],
+			},
+		};
+		expect(() =>
+			publishAndAppendCanonicalTypedWorkSourceEvent({
+				source: {
+					...sourceInput(root, "too early"),
+					eventId: "src_too_early",
+				},
+				ledgerPath: fixture.ledgerPath,
+				ledgerEvent: beforeAssessmentDraft,
+				expectedHead: fixture.head,
+			}),
+		).toThrow(/current parallelism assessment/);
+		const lanes = [
+			{
+				lane_id: "lane_a",
+				requirement_ids: ["req_a"],
+				repository_scopes: [
+					{
+						kind: "tree" as const,
+						path: "cli/src/a",
+						access: "write" as const,
+					},
+				],
+				external_effects: [],
+				depends_on: [],
+				verification_owner: "leader" as const,
+			},
+			{
+				lane_id: "lane_b",
+				requirement_ids: ["req_b"],
+				repository_scopes: [
+					{
+						kind: "tree" as const,
+						path: "cli/src/b",
+						access: "write" as const,
+					},
+				],
+				external_effects: [],
+				depends_on: [],
+				verification_owner: "leader" as const,
+			},
+		];
+		const assessmentHash = sha256("assessment-one");
+		const assessment = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: fixture.head,
+			ledgerEvent: {
+				event_id: "assessment_one",
+				occurred_at: "2026-08-13T00:00:01.000Z",
+				kind: "work_parallelism_assessed",
+				payload: {
+					schema_version: "anamnesis.work-parallelism-assessment-event.v1",
+					...fixture.basis,
+					assessment_id: "assessment_one",
+					assessment_input_hash: assessmentHash,
+					decision: "parallel",
+					lanes,
+					selected_provider: "tmux_team",
+					rationale_codes: ["two_disjoint_write_scopes"],
+					evidence_refs: ["assessment:evidence"],
+				},
+			},
+		});
+		const waiverDraft = {
+			event_id: "waiver_one",
+			occurred_at: "2026-08-13T00:00:02.000Z",
+			kind: "work_delegation_waived",
+			payload: {
+				schema_version: "anamnesis.work-delegation-waiver-event.v1",
+				...fixture.basis,
+				assessment_id: "assessment_one",
+				reason: "operator approved solo continuation",
+				authority_ref: "user:operator",
+				source_event_id: "src_waiver",
+				evidence_refs: ["waiver:evidence"],
+			},
+		};
+		expect(() =>
+			publishAndAppendCanonicalTypedWorkSourceEvent({
+				source: {
+					...sourceInput(root, "caller hash"),
+					eventId: "src_caller_hash",
+				},
+				ledgerPath: fixture.ledgerPath,
+				ledgerEvent: {
+					...waiverDraft,
+					event_id: "waiver_caller_hash",
+					payload: {
+						...waiverDraft.payload,
+						source_event_id: "src_caller_hash",
+						assessment_input_hash: assessmentHash,
+					},
+				},
+				expectedHead: assessment.head,
+			}),
+		).toThrow(/resolved by core/);
+		expect(() =>
+			publishAndAppendCanonicalTypedWorkSourceEvent({
+				source: {
+					...sourceInput(root, "mismatch"),
+					eventId: "src_actual",
+				},
+				ledgerPath: fixture.ledgerPath,
+				ledgerEvent: {
+					...waiverDraft,
+					event_id: "waiver_mismatch",
+					payload: {
+						...waiverDraft.payload,
+						source_event_id: "src_declared",
+					},
+				},
+				expectedHead: assessment.head,
+			}),
+		).toThrow(/must match the published source/);
+		const waiver = publishAndAppendCanonicalTypedWorkSourceEvent({
+			source: { ...sourceInput(root, "approve waiver"), eventId: "src_waiver" },
+			ledgerPath: fixture.ledgerPath,
+			ledgerEvent: waiverDraft,
+			expectedHead: assessment.head,
+		});
+		const committedWaiver = parseTypedWorkEvent(waiver.ledger.record);
+		expect(committedWaiver.kind).toBe("work_delegation_waived");
+		if (committedWaiver.kind !== "work_delegation_waived")
+			throw new Error("unexpected event");
+		expect(committedWaiver.payload.assessment_input_hash).toBe(assessmentHash);
+		expect(
+			foldWorkProjection(readWorkLedger(fixture.ledgerPath).records)
+				.parallelism,
+		).toMatchObject({
+			recorded_state: "continue_solo",
+			assessment_id: "assessment_one",
+			evidence_event_ids: ["assessment_one", "waiver_one"],
+		});
+		const reassessment = appendCanonicalTypedWorkEvidenceEvent({
+			stateRoot: root,
+			ledgerPath: fixture.ledgerPath,
+			expectedHead: waiver.ledger.head,
+			ledgerEvent: {
+				event_id: "assessment_two",
+				occurred_at: "2026-08-13T00:00:03.000Z",
+				kind: "work_parallelism_assessed",
+				payload: {
+					schema_version: "anamnesis.work-parallelism-assessment-event.v1",
+					...fixture.basis,
+					assessment_id: "assessment_two",
+					assessment_input_hash: sha256("assessment-two"),
+					decision: "parallel",
+					lanes,
+					selected_provider: "tmux_team",
+					rationale_codes: ["material_scope_change"],
+					evidence_refs: ["assessment:evidence:two"],
+				},
+			},
+		});
+		expect(reassessment.idempotent).toBe(false);
+		expect(() =>
+			publishAndAppendCanonicalTypedWorkSourceEvent({
+				source: {
+					...sourceInput(root, "stale waiver"),
+					eventId: "src_stale_waiver",
+				},
+				ledgerPath: fixture.ledgerPath,
+				ledgerEvent: {
+					...waiverDraft,
+					event_id: "waiver_stale",
+					payload: {
+						...waiverDraft.payload,
+						source_event_id: "src_stale_waiver",
+					},
+				},
+				expectedHead: reassessment.head,
+			}),
+		).toThrow(/current parallelism assessment/);
+		const retry = publishAndAppendCanonicalTypedWorkSourceEvent({
+			source: { ...sourceInput(root, "approve waiver"), eventId: "src_waiver" },
+			ledgerPath: fixture.ledgerPath,
+			ledgerEvent: waiverDraft,
+			expectedHead: assessment.head,
+		});
+		expect(retry.ledger.idempotent).toBe(true);
+		expect(readWorkLedger(fixture.ledgerPath).records).toHaveLength(4);
+	});
 	it("keeps source-free progress on a canonical Work path and rejects source authority", () => {
 		const root = temporaryDirectory("anamnesis-work-progress-lane-");
 		const baseEvent = {

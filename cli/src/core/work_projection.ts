@@ -5,9 +5,14 @@ import { isHash, sha256 } from "../util/hash.js";
 import {
 	parseTypedWorkEvent,
 	validateWorkLedgerSemantics,
+	WORK_EXECUTION_LIMITS,
+	type WorkDelegationProvider,
+	type WorkInstanceRef,
+	type WorkReviewProvider,
 } from "./work_contract.js";
 import {
 	readWorkLedger,
+	WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS,
 	type WorkLedgerRecord,
 	withWorkLedgerLock,
 } from "./work_ledger.js";
@@ -53,6 +58,64 @@ export interface WorkProjectionProgress {
 	applicable_weight?: number;
 }
 
+export interface ProjectedStaleReviewEvidence {
+	event_id: string;
+	input_hash: string;
+	reason: string;
+	finding_refs: string[];
+	failure_refs: string[];
+}
+
+export interface ProjectedReviewGate {
+	gate: ReviewGateName;
+	enforcement: "off" | "advisory" | "required";
+	state:
+		| "off"
+		| "pending"
+		| "requested"
+		| "changes_requested"
+		| "passed"
+		| "ask"
+		| "blocked_unavailable"
+		| "waived";
+	recorded_input_hash: string | null;
+	activity_id: string | null;
+	passing_reviewer_refs: WorkInstanceRef[];
+	next_provider: WorkReviewProvider | null;
+	finding_refs: string[];
+	failure_refs: string[];
+	evidence_event_ids: string[];
+	stale_evidence: ProjectedStaleReviewEvidence[];
+}
+
+export interface ProjectedStaleParallelismEvidence {
+	event_id: string;
+	input_hash: string;
+	reason: string;
+	failure_refs: string[];
+}
+
+export interface ProjectedParallelism {
+	mode: "off" | "auto" | "prefer" | "required";
+	recorded_state:
+		| "off"
+		| "assessed"
+		| "delegated"
+		| "results_recorded"
+		| "continue_solo"
+		| "ask"
+		| "blocked_unavailable";
+	assessment_id: string | null;
+	recorded_assessment_input_hash: string | null;
+	decision: "parallel" | "solo" | "not_parallelizable" | null;
+	selected_provider: WorkDelegationProvider | null;
+	next_provider: WorkDelegationProvider | null;
+	required_agents: number | null;
+	failure_refs: string[];
+	evidence_event_ids: string[];
+	stale_evidence: ProjectedStaleParallelismEvidence[];
+}
+
 export interface WorkProjection {
 	schema_version: typeof WORK_PROJECTION_SCHEMA_VERSION;
 	work_id: string;
@@ -65,6 +128,8 @@ export interface WorkProjection {
 	policy_hash: string | null;
 	policy_snapshot: WorkPolicySnapshot | null;
 	configured_required_gates: ReviewGateName[];
+	review_gates: ProjectedReviewGate[];
+	parallelism: ProjectedParallelism;
 	ledger_head: string | null;
 	last_event_id: string | null;
 	requirements: ProjectedRequirement[];
@@ -158,8 +223,16 @@ export function foldWorkProjection(
 				if (typed.kind === "work_contract_revised")
 					assertCreated(created, typed.kind);
 				workId = typed.payload.work_id;
-				title = boundedText(typed.payload.contract.work.title, "Work title", limits.maxSummaryUtf8Bytes);
-				completionContract = boundedText(typed.payload.contract.work.completion_contract, "Work completion contract", limits.maxSummaryUtf8Bytes);
+				title = boundedText(
+					typed.payload.contract.work.title,
+					"Work title",
+					limits.maxSummaryUtf8Bytes,
+				);
+				completionContract = boundedText(
+					typed.payload.contract.work.completion_contract,
+					"Work completion contract",
+					limits.maxSummaryUtf8Bytes,
+				);
 				created = true;
 				contractRevision = typed.payload.contract_revision;
 				contractHash = typed.payload.contract_hash;
@@ -169,7 +242,8 @@ export function foldWorkProjection(
 				typedBoundaryState = typed.payload.contract.boundary.state;
 				const supersededBy = new Map<string, string>();
 				for (const definition of typed.payload.contract.requirements) {
-					for (const target of definition.supersedes ?? []) supersededBy.set(target, definition.id);
+					for (const target of definition.supersedes ?? [])
+						supersededBy.set(target, definition.id);
 				}
 				const nextRequirements = new Map<string, ProjectedRequirement>();
 				for (const definition of typed.payload.contract.requirements) {
@@ -177,17 +251,22 @@ export function foldWorkProjection(
 					nextRequirements.set(definition.id, {
 						id: definition.id,
 						summary: definition.summary,
-						status: definition.superseded_by || supersededBy.has(definition.id)
-							? "waived"
-							: (previous?.status ?? "pending"),
+						status:
+							definition.superseded_by || supersededBy.has(definition.id)
+								? "waived"
+								: (previous?.status ?? "pending"),
 						source_event_ids: [...definition.source_event_ids],
 						evidence_refs: [...(previous?.evidence_refs ?? [])],
 						...(definition.weight === undefined
 							? {}
 							: { weight: definition.weight }),
-						...((definition.superseded_by ?? supersededBy.get(definition.id)) === undefined
+						...((definition.superseded_by ??
+							supersededBy.get(definition.id)) === undefined
 							? {}
-							: { superseded_by: definition.superseded_by ?? supersededBy.get(definition.id) }),
+							: {
+									superseded_by:
+										definition.superseded_by ?? supersededBy.get(definition.id),
+								}),
 						updated_at: record.occurred_at,
 					});
 				}
@@ -375,6 +454,13 @@ export function foldWorkProjection(
 		policySnapshot?.policy.review.gates
 			.filter((gate) => gate.enforcement === "required")
 			.map((gate) => gate.gate) ?? [];
+	const execution = projectExecutionEvidence(
+		records,
+		policySnapshot,
+		contractRevision,
+		contractHash,
+		policyHash,
+	);
 	const unsigned: Omit<WorkProjection, "projection_hash"> = {
 		schema_version: WORK_PROJECTION_SCHEMA_VERSION,
 		work_id: workId,
@@ -387,6 +473,8 @@ export function foldWorkProjection(
 		policy_hash: policyHash,
 		policy_snapshot: policySnapshot,
 		configured_required_gates: configuredRequiredGates,
+		review_gates: execution.review_gates,
+		parallelism: execution.parallelism,
 		ledger_head: records.at(-1)?.record_hash ?? null,
 		last_event_id: records.at(-1)?.event_id ?? null,
 		requirements: requirementList,
@@ -406,7 +494,545 @@ export function foldWorkProjection(
 	return { ...unsigned, projection_hash: sha256(canonicalJson(unsigned)) };
 }
 
-function boundedText(value: string, label: string, maxUtf8Bytes: number): string {
+type ReviewDetail = ProjectedStaleReviewEvidence;
+type ParallelDetail = ProjectedStaleParallelismEvidence;
+
+function projectExecutionEvidence(
+	records: readonly WorkLedgerRecord[],
+	policySnapshot: WorkPolicySnapshot | null,
+	contractRevision: number,
+	contractHash: string | null,
+	policyHash: string | null,
+): { review_gates: ProjectedReviewGate[]; parallelism: ProjectedParallelism } {
+	if (!policySnapshot || !contractHash || !policyHash) {
+		return { review_gates: [], parallelism: emptyProjectedParallelism("off") };
+	}
+	const gates = new Map<ReviewGateName, ProjectedReviewGate>(
+		policySnapshot.policy.review.gates.map((gate) => [
+			gate.gate,
+			{
+				gate: gate.gate,
+				enforcement: gate.enforcement,
+				state:
+					gate.enforcement === "off"
+						? "off"
+						: gate.waived_by
+							? "waived"
+							: "pending",
+				recorded_input_hash: null,
+				activity_id: null,
+				passing_reviewer_refs: [],
+				next_provider:
+					gate.enforcement === "off" || gate.waived_by
+						? null
+						: (gate.provider_order[0] ?? null),
+				finding_refs: [],
+				failure_refs: [],
+				evidence_event_ids: [],
+				stale_evidence: [],
+			},
+		]),
+	);
+	const reviewDetails = new Map<ReviewGateName, ReviewDetail[]>();
+	let parallelism = emptyProjectedParallelism(
+		policySnapshot.policy.delegation.parallelism,
+	);
+	parallelism.next_provider = delegationProviders(policySnapshot)[0] ?? null;
+	let parallelDetails: ParallelDetail[] = [];
+
+	for (const record of records) {
+		if (!isExecutionEvidenceRecord(record)) continue;
+		const event = parseTypedWorkEvent(record);
+		if (
+			!("basis_contract_revision" in event.payload) ||
+			event.payload.basis_contract_revision !== contractRevision ||
+			event.payload.basis_contract_hash !== contractHash ||
+			event.payload.policy_hash !== policyHash
+		) {
+			appendHistoricalEvidence(
+				gates,
+				parallelism,
+				event,
+				"contract_revision_changed",
+			);
+			continue;
+		}
+		if (event.kind === "work_review_requested") {
+			const gate = requiredProjectedGate(gates, event.payload.gate);
+			const configured = policySnapshot.policy.review.gates.find(
+				(item) => item.gate === event.payload.gate,
+			)!;
+			if (configured.enforcement === "off" || configured.waived_by) {
+				throw new Error(
+					"Work review evidence conflicts with an inactive policy gate",
+				);
+			}
+			if (gate.recorded_input_hash !== null) {
+				gate.stale_evidence = appendReviewStale(
+					gate.stale_evidence,
+					(reviewDetails.get(gate.gate) ?? []).map((detail) => ({
+						...detail,
+						reason: "superseded_review_request",
+					})),
+				);
+				resetProjectedReviewGate(gate, configured.provider_order[0] ?? null);
+				reviewDetails.set(gate.gate, []);
+			}
+			gate.recorded_input_hash = event.payload.review_input_hash;
+			gate.activity_id = event.payload.activity_id;
+			gate.evidence_event_ids = appendLimited(
+				gate.evidence_event_ids,
+				[event.event_id],
+				WORK_EXECUTION_LIMITS.maxEvidenceRefs,
+				"review evidence event IDs",
+			);
+			if (gate.state !== "passed" && gate.state !== "changes_requested")
+				gate.state = "requested";
+			const details = reviewDetails.get(gate.gate) ?? [];
+			details.push(
+				reviewDetail(event.event_id, event.payload.review_input_hash, [], []),
+			);
+			reviewDetails.set(gate.gate, details);
+			continue;
+		}
+		if (event.kind === "work_review_attempt_recorded") {
+			const gate = requiredProjectedGate(gates, event.payload.gate);
+			if (
+				gate.recorded_input_hash !== event.payload.review_input_hash ||
+				gate.activity_id !== event.payload.activity_id
+			)
+				throw new Error("Work review attempt is not for the current request");
+			gate.evidence_event_ids = appendLimited(
+				gate.evidence_event_ids,
+				[event.event_id],
+				WORK_EXECUTION_LIMITS.maxEvidenceRefs,
+				"review evidence event IDs",
+			);
+			const findings =
+				"finding_refs" in event.payload ? event.payload.finding_refs : [];
+			const failures =
+				"failure_refs" in event.payload ? event.payload.failure_refs : [];
+			gate.finding_refs = appendLimited(
+				gate.finding_refs,
+				findings,
+				WORK_EXECUTION_LIMITS.maxFindingRefs,
+				"review finding refs",
+			);
+			gate.failure_refs = appendLimited(
+				gate.failure_refs,
+				failures,
+				WORK_EXECUTION_LIMITS.maxFailureRefs,
+				"review failure refs",
+			);
+			const details = reviewDetails.get(gate.gate) ?? [];
+			details.push(
+				reviewDetail(
+					event.event_id,
+					event.payload.review_input_hash,
+					findings,
+					failures,
+				),
+			);
+			reviewDetails.set(gate.gate, details);
+			const configured = policySnapshot.policy.review.gates.find(
+				(item) => item.gate === event.payload.gate,
+			)!;
+			if (gate.state === "blocked_unavailable" || gate.state === "ask") {
+				throw new Error(
+					"Work review activity is terminal after provider unavailability",
+				);
+			}
+			if (event.payload.outcome === "passed") {
+				const identity = canonicalJson(event.payload.reviewer_instance_ref);
+				if (
+					!gate.passing_reviewer_refs.some(
+						(item) => canonicalJson(item) === identity,
+					)
+				)
+					gate.passing_reviewer_refs.push(event.payload.reviewer_instance_ref);
+				gate.state =
+					gate.passing_reviewer_refs.length >= configured.minimum_reviewers
+						? "passed"
+						: "requested";
+			} else if (event.payload.outcome === "changes_requested") {
+				gate.passing_reviewer_refs = [];
+				gate.state = "changes_requested";
+			} else {
+				const providerIndex = configured.provider_order.indexOf(
+					event.payload.provider,
+				);
+				gate.next_provider = policySnapshot.policy.review.fallback_on.includes(
+					event.payload.outcome,
+				)
+					? (configured.provider_order[providerIndex + 1] ?? null)
+					: null;
+				if (gate.next_provider === null) {
+					if (configured.unavailable === "ask") gate.state = "ask";
+					else if (
+						configured.enforcement === "required" ||
+						configured.unavailable === "fail_closed"
+					)
+						gate.state = "blocked_unavailable";
+				}
+			}
+			continue;
+		}
+		if (event.kind === "work_parallelism_assessed") {
+			if (policySnapshot.policy.delegation.parallelism === "off") {
+				throw new Error(
+					"Work parallelism evidence conflicts with policy mode off",
+				);
+			}
+			if (parallelism.assessment_id !== null) {
+				parallelism.stale_evidence = appendParallelStale(
+					parallelism.stale_evidence,
+					parallelDetails.map((detail) => ({
+						...detail,
+						reason: "superseded_assessment",
+					})),
+				);
+			}
+			parallelism = {
+				...emptyProjectedParallelism(
+					policySnapshot.policy.delegation.parallelism,
+				),
+				recorded_state:
+					event.payload.decision === "parallel" ? "assessed" : "continue_solo",
+				assessment_id: event.payload.assessment_id,
+				recorded_assessment_input_hash: event.payload.assessment_input_hash,
+				decision: event.payload.decision,
+				selected_provider: event.payload.selected_provider,
+				next_provider: event.payload.selected_provider,
+				required_agents: event.payload.lanes.length,
+				stale_evidence: parallelism.stale_evidence,
+				evidence_event_ids: [event.event_id],
+			};
+			parallelDetails = [
+				parallelDetail(event.event_id, event.payload.assessment_input_hash, []),
+			];
+			continue;
+		}
+		if (event.kind === "work_delegation_outcome_recorded") {
+			assertCurrentProjectedAssessment(
+				parallelism,
+				event.payload.assessment_id,
+				event.payload.assessment_input_hash,
+			);
+			if (
+				parallelism.recorded_state === "results_recorded" ||
+				parallelism.recorded_state === "blocked_unavailable" ||
+				parallelism.recorded_state === "ask" ||
+				parallelism.recorded_state === "continue_solo" ||
+				(parallelism.recorded_state === "delegated" &&
+					event.payload.outcome !== "results_recorded")
+			) {
+				throw new Error(
+					"Work delegation assessment already has a terminal outcome",
+				);
+			}
+			parallelism.evidence_event_ids = appendLimited(
+				parallelism.evidence_event_ids,
+				[event.event_id],
+				WORK_EXECUTION_LIMITS.maxEvidenceRefs,
+				"parallelism evidence event IDs",
+			);
+			const failures =
+				"failure_refs" in event.payload ? event.payload.failure_refs : [];
+			parallelism.failure_refs = appendLimited(
+				parallelism.failure_refs,
+				failures,
+				WORK_EXECUTION_LIMITS.maxFailureRefs,
+				"delegation failure refs",
+			);
+			parallelDetails.push(
+				parallelDetail(
+					event.event_id,
+					event.payload.assessment_input_hash,
+					failures,
+				),
+			);
+			if (
+				event.payload.outcome === "delegated" ||
+				event.payload.outcome === "results_recorded"
+			) {
+				parallelism.recorded_state = event.payload.outcome;
+				parallelism.next_provider = null;
+			} else {
+				const candidates = delegationProviders(policySnapshot);
+				const index = candidates.indexOf(event.payload.provider);
+				const unavailable = policySnapshot.policy.delegation.unavailable;
+				parallelism.next_provider =
+					unavailable === "fallback" ? (candidates[index + 1] ?? null) : null;
+				if (parallelism.next_provider === null) {
+					parallelism.recorded_state =
+						unavailable === "ask"
+							? "ask"
+							: unavailable === "fail_closed"
+								? "blocked_unavailable"
+								: policySnapshot.policy.delegation.provider_exhaustion;
+				}
+			}
+			continue;
+		}
+		if (event.kind === "work_delegation_waived") {
+			assertCurrentProjectedAssessment(
+				parallelism,
+				event.payload.assessment_id,
+				event.payload.assessment_input_hash,
+			);
+			if (
+				[
+					"delegated",
+					"results_recorded",
+					"blocked_unavailable",
+					"ask",
+				].includes(parallelism.recorded_state)
+			) {
+				throw new Error(
+					"Work delegation waiver cannot overwrite terminal evidence",
+				);
+			}
+			parallelism.recorded_state = "continue_solo";
+			parallelism.next_provider = null;
+			parallelism.evidence_event_ids = appendLimited(
+				parallelism.evidence_event_ids,
+				[event.event_id],
+				WORK_EXECUTION_LIMITS.maxEvidenceRefs,
+				"parallelism evidence event IDs",
+			);
+			parallelDetails.push(
+				parallelDetail(event.event_id, event.payload.assessment_input_hash, []),
+			);
+		}
+	}
+	for (const gate of gates.values())
+		assertReviewStaleLimits(gate.stale_evidence);
+	assertParallelStaleLimits(parallelism.stale_evidence);
+	return { review_gates: [...gates.values()], parallelism };
+}
+
+function isExecutionEvidenceRecord(record: WorkLedgerRecord): boolean {
+	const schema =
+		WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS[
+			record.kind as keyof typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS
+		];
+	return (
+		schema !== undefined &&
+		schema === record.payload.schema_version &&
+		[
+			"work_review_requested",
+			"work_review_attempt_recorded",
+			"work_parallelism_assessed",
+			"work_delegation_outcome_recorded",
+			"work_delegation_waived",
+		].includes(record.kind)
+	);
+}
+
+function emptyProjectedParallelism(
+	mode: ProjectedParallelism["mode"],
+): ProjectedParallelism {
+	return {
+		mode,
+		recorded_state: "off",
+		assessment_id: null,
+		recorded_assessment_input_hash: null,
+		decision: null,
+		selected_provider: null,
+		next_provider: null,
+		required_agents: null,
+		failure_refs: [],
+		evidence_event_ids: [],
+		stale_evidence: [],
+	};
+}
+
+function resetProjectedReviewGate(
+	gate: ProjectedReviewGate,
+	firstProvider: WorkReviewProvider | null,
+): void {
+	gate.state = "pending";
+	gate.recorded_input_hash = null;
+	gate.activity_id = null;
+	gate.passing_reviewer_refs = [];
+	gate.finding_refs = [];
+	gate.failure_refs = [];
+	gate.evidence_event_ids = [];
+	gate.next_provider = firstProvider;
+}
+
+function requiredProjectedGate(
+	gates: Map<ReviewGateName, ProjectedReviewGate>,
+	name: ReviewGateName,
+): ProjectedReviewGate {
+	const gate = gates.get(name);
+	if (!gate) throw new Error(`Work projection is missing review gate ${name}`);
+	return gate;
+}
+
+function appendHistoricalEvidence(
+	gates: Map<ReviewGateName, ProjectedReviewGate>,
+	parallelism: ProjectedParallelism,
+	event: ReturnType<typeof parseTypedWorkEvent>,
+	reason: string,
+): void {
+	if (
+		event.kind === "work_review_requested" ||
+		event.kind === "work_review_attempt_recorded"
+	) {
+		const findings =
+			"finding_refs" in event.payload ? event.payload.finding_refs : [];
+		const failures =
+			"failure_refs" in event.payload ? event.payload.failure_refs : [];
+		const gate = requiredProjectedGate(gates, event.payload.gate);
+		gate.stale_evidence = appendReviewStale(gate.stale_evidence, [
+			reviewDetail(
+				event.event_id,
+				event.payload.review_input_hash,
+				findings,
+				failures,
+				reason,
+			),
+		]);
+	} else if (
+		event.kind === "work_parallelism_assessed" ||
+		event.kind === "work_delegation_outcome_recorded" ||
+		event.kind === "work_delegation_waived"
+	) {
+		const failures =
+			"failure_refs" in event.payload ? event.payload.failure_refs : [];
+		parallelism.stale_evidence = appendParallelStale(
+			parallelism.stale_evidence,
+			[
+				parallelDetail(
+					event.event_id,
+					event.payload.assessment_input_hash,
+					failures,
+					reason,
+				),
+			],
+		);
+	}
+}
+
+function reviewDetail(
+	eventId: string,
+	inputHash: string,
+	findings: readonly string[],
+	failures: readonly string[],
+	reason = "current",
+): ReviewDetail {
+	return {
+		event_id: eventId,
+		input_hash: inputHash,
+		reason,
+		finding_refs: [...findings],
+		failure_refs: [...failures],
+	};
+}
+function parallelDetail(
+	eventId: string,
+	inputHash: string,
+	failures: readonly string[],
+	reason = "current",
+): ParallelDetail {
+	return {
+		event_id: eventId,
+		input_hash: inputHash,
+		reason,
+		failure_refs: [...failures],
+	};
+}
+function appendReviewStale(
+	current: ProjectedStaleReviewEvidence[],
+	incoming: ProjectedStaleReviewEvidence[],
+): ProjectedStaleReviewEvidence[] {
+	const next = [...current, ...incoming];
+	assertReviewStaleLimits(next);
+	return next;
+}
+function appendParallelStale(
+	current: ProjectedStaleParallelismEvidence[],
+	incoming: ProjectedStaleParallelismEvidence[],
+): ProjectedStaleParallelismEvidence[] {
+	const next = [...current, ...incoming];
+	assertParallelStaleLimits(next);
+	return next;
+}
+function assertReviewStaleLimits(
+	items: readonly ProjectedStaleReviewEvidence[],
+): void {
+	if (items.length > WORK_EXECUTION_LIMITS.maxEvidenceRefs)
+		throw new Error("review stale evidence limit exceeded");
+	if (
+		new Set(items.flatMap((item) => item.finding_refs)).size >
+		WORK_EXECUTION_LIMITS.maxFindingRefs
+	)
+		throw new Error("review stale finding refs limit exceeded");
+	if (
+		new Set(items.flatMap((item) => item.failure_refs)).size >
+		WORK_EXECUTION_LIMITS.maxFailureRefs
+	)
+		throw new Error("review stale failure refs limit exceeded");
+}
+function assertParallelStaleLimits(
+	items: readonly ProjectedStaleParallelismEvidence[],
+): void {
+	if (items.length > WORK_EXECUTION_LIMITS.maxEvidenceRefs)
+		throw new Error("parallelism stale evidence limit exceeded");
+	if (
+		new Set(items.flatMap((item) => item.failure_refs)).size >
+		WORK_EXECUTION_LIMITS.maxFailureRefs
+	)
+		throw new Error("parallelism stale failure refs limit exceeded");
+}
+function appendLimited(
+	current: readonly string[],
+	incoming: readonly string[],
+	maximum: number,
+	label: string,
+): string[] {
+	const next = [...new Set([...current, ...incoming])];
+	if (next.length > maximum) throw new Error(`${label} limit exceeded`);
+	return next;
+}
+function assertCurrentProjectedAssessment(
+	parallelism: ProjectedParallelism,
+	id: string,
+	hash: string,
+): void {
+	if (
+		parallelism.assessment_id !== id ||
+		parallelism.recorded_assessment_input_hash !== hash
+	)
+		throw new Error(
+			"Work delegation evidence is not for the current assessment",
+		);
+}
+function delegationProviders(
+	snapshot: WorkPolicySnapshot,
+): WorkDelegationProvider[] {
+	const policy = snapshot.policy.delegation;
+	const required =
+		policy.native_agents === "required"
+			? "native_agents"
+			: policy.tmux_team === "required"
+				? "tmux_team"
+				: null;
+	if (required) return [required];
+	return policy.fallback_order.filter(
+		(provider) =>
+			(provider === "native_agents"
+				? policy.native_agents
+				: policy.tmux_team) !== "never",
+	);
+}
+
+function boundedText(
+	value: string,
+	label: string,
+	maxUtf8Bytes: number,
+): string {
 	if (Buffer.byteLength(value, "utf8") > maxUtf8Bytes)
 		throw new Error(`${label} exceeds UTF-8 byte limit`);
 	return value;
@@ -480,7 +1106,9 @@ export function calculateWorkProgress(
 function checkedWeightSum(sum: number, weight: number): number {
 	const next = sum + weight;
 	if (!Number.isFinite(next) || next > Number.MAX_SAFE_INTEGER)
-		throw new Error("Work requirement weight sum exceeds the safe integer range");
+		throw new Error(
+			"Work requirement weight sum exceeds the safe integer range",
+		);
 	return next;
 }
 
@@ -546,14 +1174,19 @@ export function writeWorkProjectionAtomic(
 function assertNoSymlinkAncestors(candidate: string): void {
 	const absolute = path.resolve(candidate);
 	const parsed = path.parse(absolute);
-	const parts = absolute.slice(parsed.root.length).split(path.sep).filter(Boolean);
+	const parts = absolute
+		.slice(parsed.root.length)
+		.split(path.sep)
+		.filter(Boolean);
 	if (parts.length === 0) return;
 	let current = fs.realpathSync(path.join(parsed.root, parts[0]!));
 	for (const part of parts.slice(1)) {
 		current = path.join(current, part);
 		try {
 			if (fs.lstatSync(current).isSymbolicLink())
-				throw new Error(`managed Work path contains a symbolic link: ${current}`);
+				throw new Error(
+					`managed Work path contains a symbolic link: ${current}`,
+				);
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
 			throw error;

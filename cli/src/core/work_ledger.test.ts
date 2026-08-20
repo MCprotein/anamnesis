@@ -4,12 +4,14 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { sha256 } from "../util/hash.js";
 import {
   appendWorkLedger,
   canonicalWorkLedgerRecord,
   readWorkLedger,
   recoverWorkLedger,
   validateWorkLedger,
+	WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS,
   type WorkLedgerEvent,
 } from "./work_ledger.js";
 
@@ -29,7 +31,84 @@ function event(id: string, payload: Record<string, unknown> = {}): WorkLedgerEve
   };
 }
 
+function canonicalJson(value: unknown): string {
+	if (value === null || typeof value !== "object") return JSON.stringify(value);
+	if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+	return `{${Object.entries(value as Record<string, unknown>)
+		.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+		.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+		.join(",")}}`;
+}
+
 describe("work ledger", () => {
+	it("fails closed through the generic appender for typed schemas and every execution-evidence kind", () => {
+		const executionEvidenceKinds = new Set([
+			"work_review_requested",
+			"work_review_attempt_recorded",
+			"work_parallelism_assessed",
+			"work_delegation_outcome_recorded",
+			"work_delegation_waived",
+		]);
+		for (const [kind, schema_version] of Object.entries(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS)) {
+			const payloads = executionEvidenceKinds.has(kind)
+				? [{ schema_version }, {}, { schema_version: "unknown.v1" }]
+				: [{ schema_version }];
+			for (const payload of payloads) {
+				const ledgerPath = temporaryLedger();
+				expect(() => appendWorkLedger({
+					ledgerPath,
+					expectedHead: null,
+					event: { event_id: `evt_${kind}`, occurred_at: "x", kind, payload },
+				})).toThrow(/typed Work append API/);
+				expect(readWorkLedger(ledgerPath).records).toHaveLength(0);
+			}
+			const wrongKindLedger = temporaryLedger();
+			expect(() => appendWorkLedger({
+				ledgerPath: wrongKindLedger,
+				expectedHead: null,
+				event: { event_id: `evt_schema_${kind}`, occurred_at: "x", kind: "unknown_kind", payload: { schema_version } },
+			})).toThrow(/typed Work append API/);
+		}
+	});
+
+	it("preserves schema-less legacy Work events on the generic surface", () => {
+		const ledgerPath = temporaryLedger();
+		const result = appendWorkLedger({
+			ledgerPath,
+			expectedHead: null,
+			event: {
+				event_id: "evt_legacy_created",
+				occurred_at: "2026-08-13T00:00:00.000Z",
+				kind: "work_created",
+				payload: { work_id: "wu_legacy" },
+			},
+		});
+		expect(result.idempotent).toBe(false);
+		expect(readWorkLedger(ledgerPath).records).toHaveLength(1);
+	});
+
+	it("rejects an exact typed retry before generic duplicate success", () => {
+		const ledgerPath = temporaryLedger();
+		const typedEvent: WorkLedgerEvent = {
+			event_id: "evt_typed_retry",
+			occurred_at: "x",
+			kind: "work_review_requested",
+			payload: { schema_version: "anamnesis.work-review-request-event.v1" },
+		};
+		const unsigned = {
+			schema_version: "anamnesis.work-ledger.v1",
+			...typedEvent,
+			previous_hash: null,
+		};
+		const record = {
+			...unsigned,
+			record_hash: sha256(Buffer.from(canonicalJson(unsigned), "utf8")),
+		};
+		fs.writeFileSync(ledgerPath, `${canonicalJson(record)}\n`);
+		expect(readWorkLedger(ledgerPath).records).toHaveLength(1);
+		expect(() => appendWorkLedger({ ledgerPath, event: typedEvent, expectedHead: null })).toThrow(/typed Work append API/);
+		expect(readWorkLedger(ledgerPath).records).toHaveLength(1);
+	});
 	it.each([
 		["event_id", "   "],
 		["occurred_at", 123],

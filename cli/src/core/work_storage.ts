@@ -4,15 +4,21 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { sha256 } from "../util/hash.js";
 import {
-  type AppendWorkLedgerResult,
-  type WorkLedgerEvent,
-  type WorkLedgerRecord,
-  WORK_LEDGER_SCHEMA_VERSION,
-  assertWorkLedgerEvent,
-  readWorkLedger,
-  withWorkLedgerLock,
+	parseTypedWorkEvent,
+	type SourceFreeWorkEvidenceEvent,
+	validateWorkEventAppend,
+} from "./work_contract.js";
+import {
+	type AppendWorkLedgerResult,
+	assertWorkLedgerEvent,
+	readWorkLedger,
+	WORK_LEDGER_SCHEMA_VERSION,
+	WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS,
+	type WorkLedgerEvent,
+	type WorkLedgerRecord,
+	withWorkLedgerLock,
 } from "./work_ledger.js";
-import { parseTypedWorkEvent, validateWorkEventAppend } from "./work_contract.js";
+import { foldWorkProjection } from "./work_projection.js";
 
 export const WORK_SOURCE_EVENT_SCHEMA_VERSION = "anamnesis.work-source.v1";
 export const SOURCE_ENVELOPE_BINDINGS_SCHEMA_VERSION =
@@ -133,6 +139,13 @@ export interface AppendCanonicalTypedWorkProgressEventInput {
   ledgerPath: string;
   ledgerEvent: WorkLedgerEvent;
   expectedHead: string | null;
+}
+
+export interface AppendCanonicalTypedWorkEvidenceEventInput {
+	stateRoot: string;
+	ledgerPath: string;
+	ledgerEvent: SourceFreeWorkEvidenceEvent;
+	expectedHead: string;
 }
 
 export interface AppendCanonicalTypedWorkEventWithPublishedSourceInput {
@@ -331,27 +344,74 @@ export function appendCanonicalTypedWorkProgressEvent(
 	);
 }
 
+/** Official source-free boundary for the four runtime-neutral evidence kinds. */
+export function appendCanonicalTypedWorkEvidenceEvent(
+	input: AppendCanonicalTypedWorkEvidenceEventInput,
+	options: WorkStorageOptions = {},
+): AppendWorkLedgerResult {
+	const event = parseTypedWorkEvent(input.ledgerEvent);
+	if (
+		![
+			"work_review_requested",
+			"work_review_attempt_recorded",
+			"work_parallelism_assessed",
+			"work_delegation_outcome_recorded",
+		].includes(event.kind)
+	) {
+		throw new Error(
+			"source-free typed evidence append accepts exactly four Work evidence kinds",
+		);
+	}
+	if (hasSourceReference(event.payload)) {
+		throw new Error(
+			"source-free Work evidence cannot contain source references",
+		);
+	}
+	const stateRoot = secureStateRoot(input.stateRoot);
+	const ledgerPath = canonicalTypedWorkLedgerPath(
+		stateRoot,
+		input.ledgerPath,
+		event.payload.work_id,
+	);
+	return withWorkLedgerLock(ledgerPath, options, () =>
+		appendPublishedLedgerUnlocked(
+			{
+				ledgerPath,
+				event,
+				expectedHead: input.expectedHead,
+			},
+			stateRoot,
+		),
+	);
+}
+
 /** Bind an already immutable source envelope to a canonical typed Work event. */
 export function appendCanonicalTypedWorkEventWithPublishedSource(
 	input: AppendCanonicalTypedWorkEventWithPublishedSourceInput,
 	options: PublishAndAppendWorkSourceEventOptions = {},
 ): PublishedWorkSourceAllocation {
 	assertSafeId(input.sourceEventId, "source event ID");
-	const typedEvent = parseTypedWorkEvent(input.ledgerEvent);
+	const waiverDraft = delegationWaiverDraft(
+		input.ledgerEvent,
+		input.sourceEventId,
+	);
+	const typedEvent = waiverDraft
+		? undefined
+		: parseTypedWorkEvent(input.ledgerEvent);
 	const stateRoot = secureStateRoot(input.stateRoot);
 	const ledgerPath = canonicalTypedWorkLedgerPath(
 		stateRoot,
 		input.ledgerPath,
-		typedEvent.payload.work_id,
+		typedEvent?.payload.work_id ?? waiverDraft!.work_id,
 	);
 	const referencedIds = new Set<string>([input.sourceEventId]);
-	collectSourceEventIds(typedEvent.payload, referencedIds);
+	collectSourceEventIds(waiverDraft ?? typedEvent!.payload, referencedIds);
 	const orderedIds = [...referencedIds].sort(compareCodeUnits);
 	const deadline = Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
 	return withSourceEventLocks(stateRoot, orderedIds, options, deadline, () => {
 		const source = readPublishedWorkSourceEventUnlocked(stateRoot, input.sourceEventId);
 		const payload: Record<string, unknown> = {
-			...typedEvent.payload,
+			...(waiverDraft ?? typedEvent!.payload),
 			source_event_id: source.envelope.event_id,
 			source_envelope_hash: envelopeBytesHash(source.envelope),
 			source_object_hash: source.envelope.object_hash,
@@ -363,12 +423,26 @@ export function appendCanonicalTypedWorkEventWithPublishedSource(
 			{ lockTimeoutMs: options.ledgerLockTimeoutMs, lockRetryMs: options.ledgerLockRetryMs },
 			() => {
 				assertPublishedWorkSourceEvent(source);
-				return appendPublishedLedgerUnlocked({
-					ledgerPath,
-					event: { ...typedEvent, payload },
-					expectedHead: input.expectedHead,
-					onBeforeLedgerSync: options.onBeforeLedgerSync,
-				}, stateRoot);
+				const boundPayload = waiverDraft
+					? bindAssessmentHashForAppend(
+							readWorkLedger(ledgerPath).records,
+							input.ledgerEvent.event_id,
+							payload,
+						)
+					: payload;
+				const event = parseTypedWorkEvent({
+					...input.ledgerEvent,
+					payload: boundPayload,
+				});
+				return appendPublishedLedgerUnlocked(
+					{
+						ledgerPath,
+						event,
+						expectedHead: input.expectedHead,
+						onBeforeLedgerSync: options.onBeforeLedgerSync,
+					},
+					stateRoot,
+				);
 			},
 		);
 		return { source, ledger };
@@ -446,54 +520,87 @@ function publishAndAppendWorkSourceEventInternal(
 			"typed Work events require the canonical typed source publication API",
 		);
 	}
-	const typedEvent = typedLane ? parseTypedWorkEvent(sourceEvent) : undefined;
-  assertSafeId(input.source.eventId, "event ID");
-  const stateRoot = secureStateRoot(input.source.stateRoot);
-	const ledgerPath = typedEvent
-		? canonicalTypedWorkLedgerPath(
+	const waiverDraft = typedLane
+		? delegationWaiverDraft(sourceEvent, input.source.eventId)
+		: undefined;
+	const typedEvent =
+		typedLane && !waiverDraft ? parseTypedWorkEvent(sourceEvent) : undefined;
+	assertSafeId(input.source.eventId, "event ID");
+	const stateRoot = secureStateRoot(input.source.stateRoot);
+	const ledgerPath =
+		typedEvent || waiverDraft
+			? canonicalTypedWorkLedgerPath(
+					stateRoot,
+					input.ledgerPath,
+					typedEvent?.payload.work_id ?? waiverDraft!.work_id,
+				)
+			: input.ledgerPath;
+	const referencedIds = new Set<string>([input.source.eventId]);
+	collectSourceEventIds(input.ledgerEvent.payload ?? {}, referencedIds);
+	const orderedIds = [...referencedIds].sort(compareCodeUnits);
+	const sourceLockDeadline =
+		Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
+	return withSourceEventLocks(
+		stateRoot,
+		orderedIds,
+		options,
+		sourceLockDeadline,
+		() => {
+			const source = publishWorkSourceEventUnlocked(
+				input.source,
+				options,
 				stateRoot,
-				input.ledgerPath,
-				typedEvent.payload.work_id,
-			)
-		: input.ledgerPath;
-  const referencedIds = new Set<string>([input.source.eventId]);
-  collectSourceEventIds(input.ledgerEvent.payload ?? {}, referencedIds);
-  const orderedIds = [...referencedIds].sort(compareCodeUnits);
-  const sourceLockDeadline = Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
-  return withSourceEventLocks(stateRoot, orderedIds, options, sourceLockDeadline, () => {
-    const source = publishWorkSourceEventUnlocked(input.source, options, stateRoot);
-    options.onSourcePublished?.(source);
-    const payload: Record<string, unknown> = {
-      ...(input.ledgerEvent.payload ?? {}),
-      source_event_id: source.envelope.event_id,
-	  source_envelope_hash: envelopeBytesHash(source.envelope),
-      source_object_hash: source.envelope.object_hash,
-      source_object_path: source.envelope.object_path,
-    };
-    const appendOptions: AppendParameters = {
-      ledgerPath,
-      event: { ...input.ledgerEvent, payload },
-      expectedHead: input.expectedHead,
-      onBeforeLedgerSync: options.onBeforeLedgerSync,
-    };
-    assertPayloadSourceReferences(stateRoot, payload, source.envelope.event_id);
-    const ledger = withWorkLedgerLock(
-      ledgerPath,
-      {
-        lockTimeoutMs: options.ledgerLockTimeoutMs,
-        lockRetryMs: options.ledgerLockRetryMs,
-      },
-      () => {
-        assertPublishedWorkSourceEvent(source);
-        assertPayloadSourceReferences(stateRoot, payload, source.envelope.event_id);
-		return appendPublishedLedgerUnlocked(
-			appendOptions,
-			stateRoot,
-		);
-      },
-    );
-    return { source, ledger };
-  });
+			);
+			options.onSourcePublished?.(source);
+			const sourcePayload: Record<string, unknown> = {
+				...(waiverDraft ?? input.ledgerEvent.payload ?? {}),
+				source_event_id: source.envelope.event_id,
+				source_envelope_hash: envelopeBytesHash(source.envelope),
+				source_object_hash: source.envelope.object_hash,
+				source_object_path: source.envelope.object_path,
+			};
+			assertPayloadSourceReferences(
+				stateRoot,
+				sourcePayload,
+				source.envelope.event_id,
+			);
+			const ledger = withWorkLedgerLock(
+				ledgerPath,
+				{
+					lockTimeoutMs: options.ledgerLockTimeoutMs,
+					lockRetryMs: options.ledgerLockRetryMs,
+				},
+				() => {
+					assertPublishedWorkSourceEvent(source);
+					assertPayloadSourceReferences(
+						stateRoot,
+						sourcePayload,
+						source.envelope.event_id,
+					);
+					const payload = waiverDraft
+						? bindAssessmentHashForAppend(
+								readWorkLedger(ledgerPath).records,
+								input.ledgerEvent.event_id,
+								sourcePayload,
+							)
+						: sourcePayload;
+					const event = typedLane
+						? parseTypedWorkEvent({ ...input.ledgerEvent, payload })
+						: { ...input.ledgerEvent, payload };
+					return appendPublishedLedgerUnlocked(
+						{
+							ledgerPath,
+							event,
+							expectedHead: input.expectedHead,
+							onBeforeLedgerSync: options.onBeforeLedgerSync,
+						},
+						stateRoot,
+					);
+				},
+			);
+			return { source, ledger };
+		},
+	);
 }
 
 function canonicalTypedWorkLedgerPath(
@@ -531,12 +638,117 @@ function canonicalManagedCandidate(candidate: string): string {
 	return path.join(fs.realpathSync(current), ...missing);
 }
 
-function isTypedWorkPayload(payload: Record<string, unknown> | undefined): boolean {
-	return [
-		"anamnesis.work-contract-event.v1",
-		"anamnesis.work-progress-event.v1",
-		"anamnesis.work-lifecycle-event.v1",
-	].includes(String(payload?.schema_version ?? ""));
+function isTypedWorkPayload(
+	payload: Record<string, unknown> | undefined,
+): boolean {
+	return Object.values(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS).includes(
+		String(payload?.schema_version ?? "") as never,
+	);
+}
+
+function delegationWaiverDraft(
+	event: WorkLedgerEvent,
+	sourceEventId: string,
+): (Record<string, unknown> & { work_id: string }) | undefined {
+	if (event.kind !== "work_delegation_waived") return undefined;
+	if (
+		event.payload.schema_version !==
+		WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS.work_delegation_waived
+	) {
+		throw new Error(
+			"canonical typed Work waiver requires its exact schema discriminator",
+		);
+	}
+	if (Object.hasOwn(event.payload, "assessment_input_hash")) {
+		throw new Error(
+			"Work delegation waiver assessment_input_hash is resolved by core",
+		);
+	}
+	for (const field of [
+		"source_envelope_hash",
+		"source_object_hash",
+		"source_object_path",
+	]) {
+		if (Object.hasOwn(event.payload, field)) {
+			throw new Error(`Work delegation waiver ${field} is bound by core`);
+		}
+	}
+	if (event.payload.source_event_id !== sourceEventId) {
+		throw new Error(
+			"Work delegation waiver source_event_id must match the published source",
+		);
+	}
+	const allowed = new Set([
+		"schema_version",
+		"work_id",
+		"basis_contract_revision",
+		"basis_contract_hash",
+		"policy_hash",
+		"assessment_id",
+		"reason",
+		"authority_ref",
+		"source_event_id",
+		"evidence_refs",
+	]);
+	if (Object.keys(event.payload).some((key) => !allowed.has(key))) {
+		throw new Error("Work delegation waiver draft contains unknown fields");
+	}
+	if (typeof event.payload.work_id !== "string") {
+		throw new Error("Work delegation waiver requires work_id");
+	}
+	return { ...event.payload, work_id: event.payload.work_id };
+}
+
+function bindAssessmentHashForAppend(
+	records: readonly WorkLedgerRecord[],
+	eventId: string,
+	payload: Record<string, unknown>,
+): Record<string, unknown> {
+	const duplicate = records.find((record) => record.event_id === eventId);
+	if (duplicate) {
+		if (duplicate.kind !== "work_delegation_waived") {
+			throw new Error(`work ledger event ID collision: ${eventId}`);
+		}
+		const committed = parseTypedWorkEvent(duplicate);
+		if (committed.kind !== "work_delegation_waived") {
+			throw new Error(`work ledger event ID collision: ${eventId}`);
+		}
+		const { assessment_input_hash: committedHash, ...committedDraft } =
+			committed.payload;
+		if (canonicalJson(committedDraft) !== canonicalJson(payload)) {
+			throw new Error(`work ledger event ID collision: ${eventId}`);
+		}
+		return { ...payload, assessment_input_hash: committedHash };
+	}
+	const currentAssessment = [...records]
+		.reverse()
+		.map((record) => {
+			try {
+				return parseTypedWorkEvent(record);
+			} catch {
+				return null;
+			}
+		})
+		.find((event) => event?.kind === "work_parallelism_assessed");
+	if (
+		!currentAssessment ||
+		currentAssessment.kind !== "work_parallelism_assessed" ||
+		currentAssessment.payload.assessment_id !== payload.assessment_id ||
+		currentAssessment.payload.work_id !== payload.work_id ||
+		currentAssessment.payload.basis_contract_revision !==
+			payload.basis_contract_revision ||
+		currentAssessment.payload.basis_contract_hash !==
+			payload.basis_contract_hash ||
+		currentAssessment.payload.policy_hash !== payload.policy_hash
+	) {
+		throw new Error(
+			"Work delegation waiver requires the current parallelism assessment",
+		);
+	}
+	return {
+		...payload,
+		assessment_input_hash: currentAssessment.payload.assessment_input_hash,
+	};
 }
 
 function hasSourceReference(value: unknown): boolean {
@@ -560,35 +772,67 @@ function appendPublishedLedgerUnlocked(
 ): AppendWorkLedgerResult {
   const current = readWorkLedger(options.ledgerPath);
 	assertCommittedEnvelopeBindings(stateRoot, current.records, options.event);
-  const duplicate = current.records.find((record) => record.event_id === options.event.event_id);
-  if (duplicate) {
-    if (duplicate.occurred_at !== options.event.occurred_at || duplicate.kind !== options.event.kind || canonicalJson(duplicate.payload) !== canonicalJson(options.event.payload))
-      throw new Error(`work ledger event ID collision: ${options.event.event_id}`);
-    return { record: duplicate, head: current.head!, idempotent: true };
-  }
-  if (current.head !== options.expectedHead)
-    throw new Error(`work ledger head conflict: expected ${options.expectedHead ?? "null"}, actual ${current.head ?? "null"}`);
-  validateWorkEventAppend(current.records, options.event);
-  const unsigned = {
-    schema_version: WORK_LEDGER_SCHEMA_VERSION,
-    event_id: options.event.event_id,
-    occurred_at: options.event.occurred_at,
-    kind: options.event.kind,
-    payload: options.event.payload,
-    previous_hash: current.head,
-  } as const;
-  const record: WorkLedgerRecord = { ...unsigned, record_hash: sha256(Buffer.from(canonicalJson(unsigned), "utf8")) };
-  const fd = fs.openSync(path.resolve(options.ledgerPath), fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_CREAT | noFollowFlag(), 0o600);
-  try {
-    fs.fchmodSync(fd, 0o600);
-    options.onBeforeLedgerSync?.(record);
-    writeAll(fd, Buffer.from(`${canonicalJson(record)}\n`, "utf8"));
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-  fsyncDirectory(path.dirname(path.resolve(options.ledgerPath)));
-  return { record, head: record.record_hash, idempotent: false };
+	const duplicate = current.records.find(
+		(record) => record.event_id === options.event.event_id,
+	);
+	if (duplicate) {
+		if (
+			duplicate.occurred_at !== options.event.occurred_at ||
+			duplicate.kind !== options.event.kind ||
+			canonicalJson(duplicate.payload) !== canonicalJson(options.event.payload)
+		)
+			throw new Error(
+				`work ledger event ID collision: ${options.event.event_id}`,
+			);
+		return { record: duplicate, head: current.head!, idempotent: true };
+	}
+	if (current.head !== options.expectedHead)
+		throw new Error(
+			`work ledger head conflict: expected ${options.expectedHead ?? "null"}, actual ${current.head ?? "null"}`,
+		);
+	validateWorkEventAppend(current.records, options.event);
+	const unsigned = {
+		schema_version: WORK_LEDGER_SCHEMA_VERSION,
+		event_id: options.event.event_id,
+		occurred_at: options.event.occurred_at,
+		kind: options.event.kind,
+		payload: options.event.payload,
+		previous_hash: current.head,
+	} as const;
+	const record: WorkLedgerRecord = {
+		...unsigned,
+		record_hash: sha256(Buffer.from(canonicalJson(unsigned), "utf8")),
+	};
+	const expectedTypedSchema =
+		WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS[
+			record.kind as keyof typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS
+		];
+	if (
+		expectedTypedSchema !== undefined &&
+		expectedTypedSchema === record.payload.schema_version
+	) {
+		// Preflight the exact candidate projection while the ledger lock is held.
+		// This makes aggregate evidence bounds a durable append precondition.
+		foldWorkProjection([...current.records, record]);
+	}
+	const fd = fs.openSync(
+		path.resolve(options.ledgerPath),
+		fs.constants.O_WRONLY |
+			fs.constants.O_APPEND |
+			fs.constants.O_CREAT |
+			noFollowFlag(),
+		0o600,
+	);
+	try {
+		fs.fchmodSync(fd, 0o600);
+		options.onBeforeLedgerSync?.(record);
+		writeAll(fd, Buffer.from(`${canonicalJson(record)}\n`, "utf8"));
+		fs.fsyncSync(fd);
+	} finally {
+		fs.closeSync(fd);
+	}
+	fsyncDirectory(path.dirname(path.resolve(options.ledgerPath)));
+	return { record, head: record.record_hash, idempotent: false };
 }
 
 function assertCommittedEnvelopeBindings(

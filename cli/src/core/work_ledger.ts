@@ -6,6 +6,42 @@ import { isHash, sha256 } from "../util/hash.js";
 
 export const WORK_LEDGER_SCHEMA_VERSION = "anamnesis.work-ledger.v1";
 
+/**
+ * Dependency-leaf authority for canonical typed Work kind/schema pairs.
+ * Keep parsers and official append surfaces exhaustive against this registry.
+ */
+export const WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS = {
+  work_created: "anamnesis.work-contract-event.v1",
+  work_contract_revised: "anamnesis.work-contract-event.v1",
+  work_requirement_transitioned: "anamnesis.work-progress-event.v1",
+  work_lifecycle_changed: "anamnesis.work-lifecycle-event.v1",
+  work_review_requested: "anamnesis.work-review-request-event.v1",
+  work_review_attempt_recorded: "anamnesis.work-review-attempt-event.v1",
+  work_parallelism_assessed: "anamnesis.work-parallelism-assessment-event.v1",
+  work_delegation_outcome_recorded:
+    "anamnesis.work-delegation-outcome-event.v1",
+  work_delegation_waived: "anamnesis.work-delegation-waiver-event.v1",
+} as const;
+
+export type CanonicalTypedWorkEventKind =
+  keyof typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS;
+export type CanonicalTypedWorkEventSchema =
+  (typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS)[CanonicalTypedWorkEventKind];
+
+const TYPED_WORK_KINDS = new Set<string>(
+  Object.keys(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS),
+);
+const TYPED_WORK_SCHEMAS = new Set<string>(
+  Object.values(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS),
+);
+const EXECUTION_EVIDENCE_KINDS = new Set<string>([
+  "work_review_requested",
+  "work_review_attempt_recorded",
+  "work_parallelism_assessed",
+  "work_delegation_outcome_recorded",
+  "work_delegation_waived",
+]);
+
 let cachedCurrentProcessStartIdentity: string | undefined;
 
 export interface WorkLedgerEvent {
@@ -91,6 +127,10 @@ export function appendWorkLedger(
   options: AppendWorkLedgerOptions,
 ): AppendWorkLedgerResult {
   assertWorkLedgerEvent(options.event);
+  // This public API is the generic/legacy surface. Reject canonical typed
+  // events before duplicate detection so an exact retry cannot bypass the
+  // official typed append authority boundary.
+  assertTypedSemanticValidationBoundary([], options.event);
   if (hasSourceReference(options.event.payload)) {
     throw new Error(
       "source-referencing work ledger events require the official source publication API",
@@ -158,11 +198,6 @@ function appendWorkLedgerUnlocked(
     return { record, head: record.record_hash, idempotent: false };
 }
 
-const TYPED_WORK_SCHEMAS = new Set([
-  "anamnesis.work-contract-event.v1",
-  "anamnesis.work-progress-event.v1",
-  "anamnesis.work-lifecycle-event.v1",
-]);
 const WORK_SEMANTIC_KINDS = new Set([
   "work_created",
   "contract_revised",
@@ -177,6 +212,7 @@ const WORK_SEMANTIC_KINDS = new Set([
   "lifecycle_changed",
   "conflict_recorded",
   "conflict_resolved",
+  ...TYPED_WORK_KINDS,
 ]);
 
 function assertTypedSemanticValidationBoundary(
@@ -186,7 +222,11 @@ function assertTypedSemanticValidationBoundary(
   const created = records.find((record) => record.kind === "work_created");
   const currentTyped = created ? isTypedWorkPayload(created.payload) : false;
   const incomingTyped = isTypedWorkPayload(event.payload);
-  if (incomingTyped || (currentTyped && WORK_SEMANTIC_KINDS.has(event.kind))) {
+  if (
+    incomingTyped ||
+    EXECUTION_EVIDENCE_KINDS.has(event.kind) ||
+    (currentTyped && WORK_SEMANTIC_KINDS.has(event.kind))
+  ) {
     throw new Error(
       "typed Work semantic events require the typed Work append API",
     );
