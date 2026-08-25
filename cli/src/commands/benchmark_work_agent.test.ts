@@ -7,6 +7,7 @@ import {
 	analyzePairedRuns,
 	evaluateWorkAgentContract,
 	parseCodexJsonl,
+	publishWorkAgentBenchmarkArtifacts,
 	WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR,
 	type WorkAgentAnswer,
 	type WorkAgentRunner,
@@ -603,7 +604,7 @@ describe("Work agent A/B benchmark", () => {
 		);
 	});
 
-	it("does not overwrite canonical artifacts through a symlink when a strict run fails", () => {
+	it("does not overwrite canonical artifacts through a symlink when publication is denied", () => {
 		const projectRoot = root();
 		const canonicalDir = path.join(projectRoot, WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR);
 		fs.mkdirSync(canonicalDir, { recursive: true });
@@ -612,30 +613,21 @@ describe("Work agent A/B benchmark", () => {
 		const sentinel = "existing canonical evidence";
 		fs.writeFileSync(path.join(canonicalDir, "work-agent-ab.json"), sentinel);
 		fs.writeFileSync(path.join(canonicalDir, "README.md"), sentinel);
-		const baseRunner = fakeRunner([]);
-		const runner: WorkAgentRunner = (request) => {
-			const response = baseRunner(request);
-			if (!request.cwd.endsWith("-enabled")) return response;
-			const events = response.stdout.split("\n").map((line) => JSON.parse(line));
-			const usage = events.find((event) => event.type === "turn.completed").usage;
-			usage.total_tokens = 120;
-			usage.input_tokens = 100;
-			return { ...response, elapsedMs: 12, stdout: events.map(JSON.stringify).join("\n") };
-		};
 
 		expect(() =>
-			workAgentBenchmark({
-				projectRoot,
-				runs: 9,
-				strict: true,
-				write: true,
-				outputPath: outputAlias,
-				runner,
-			}),
+			publishWorkAgentBenchmarkArtifacts(
+				{
+					strict: true,
+					ok: false,
+					project_root: projectRoot,
+					markdown: "failed diagnostic",
+				},
+				outputAlias,
+			),
 		).toThrow("refusing to overwrite canonical public artifacts");
 		expect(fs.readFileSync(path.join(canonicalDir, "work-agent-ab.json"), "utf8")).toBe(sentinel);
 		expect(fs.readFileSync(path.join(canonicalDir, "README.md"), "utf8")).toBe(sentinel);
-	}, 30_000);
+	});
 });
 
 function pairedRuns(

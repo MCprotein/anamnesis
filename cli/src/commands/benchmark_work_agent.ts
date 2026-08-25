@@ -432,22 +432,42 @@ export function workAgentBenchmark(
 	};
 	result.markdown = renderWorkAgentBenchmarkMarkdown(result);
 	if (opts.write === true) {
-		if (
-			result.strict &&
-			!result.ok &&
-			isCanonicalBenchmarkOutput(projectRoot, opts.outputPath)
-		) {
-			throw new WorkAgentBenchmarkError(
-				"strict benchmark failed; refusing to overwrite canonical public artifacts (pass --output for diagnostic evidence)",
-			);
-		}
-		result.artifacts = writeArtifacts(
+		result.artifacts = publishWorkAgentBenchmarkArtifacts(
 			result,
 			opts.outputPath,
 			opts.artifactOperations,
 		);
 	}
 	return result;
+}
+
+function assertBenchmarkArtifactPublicationAllowed(
+	result: Pick<WorkAgentBenchmarkResult, "strict" | "ok" | "project_root">,
+	outputPath?: string,
+): void {
+	if (
+		result.strict &&
+		!result.ok &&
+		isCanonicalBenchmarkOutput(result.project_root, outputPath)
+	) {
+		throw new WorkAgentBenchmarkError(
+			"strict benchmark failed; refusing to overwrite canonical public artifacts (pass --output for diagnostic evidence)",
+		);
+	}
+}
+
+type WorkAgentArtifactPublication = Pick<
+	WorkAgentBenchmarkResult,
+	"strict" | "ok" | "project_root" | "markdown"
+>;
+
+export function publishWorkAgentBenchmarkArtifacts(
+	result: WorkAgentArtifactPublication,
+	outputPath?: string,
+	operations?: WorkAgentArtifactOperations,
+): WorkAgentBenchmarkResult["artifacts"] {
+	assertBenchmarkArtifactPublicationAllowed(result, outputPath);
+	return writeArtifacts(result, outputPath, operations);
 }
 
 export function parseCodexJsonl(stdout: string): ParsedCodexJsonl {
@@ -1474,7 +1494,7 @@ function renderWorkAgentBenchmarkMarkdown(
 }
 
 function writeArtifacts(
-	result: WorkAgentBenchmarkResult,
+	result: WorkAgentArtifactPublication,
 	outputPath?: string,
 	operations: WorkAgentArtifactOperations = fs,
 ): WorkAgentBenchmarkResult["artifacts"] {

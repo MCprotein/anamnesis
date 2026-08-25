@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { dogfoodCheck, type CommandCheck } from "./dogfood.js";
 import { init } from "./init.js";
 
-const DOGFOOD_TEST_TIMEOUT_MS = 15_000;
+const DOGFOOD_TEST_TIMEOUT_MS = 60_000;
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));

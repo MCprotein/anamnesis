@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Removed a redundant full nine-pair benchmark execution from the canonical
+  artifact symlink regression test and allowed realistic CI time for dogfood
+  fixture verification, preventing resource-contention timeouts without
+  weakening either assertion.
+
 ## [1.18.1] — 2026-08-25
 
 ### Changed
