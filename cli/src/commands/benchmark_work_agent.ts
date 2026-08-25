@@ -235,6 +235,13 @@ export interface WorkAgentBenchmarkOptions {
 	strict?: boolean;
 	scenarios?: WorkAgentScenarioId[];
 	onPlan?: (plan: { runs: number; scenarios: number; invocations: number }) => void;
+	/** @internal Test seam for publish/rollback failure coverage. */
+	artifactOperations?: WorkAgentArtifactOperations;
+}
+
+export interface WorkAgentArtifactOperations {
+	renameSync: typeof fs.renameSync;
+	rmSync: typeof fs.rmSync;
 }
 
 export class WorkAgentBenchmarkError extends Error {
@@ -434,7 +441,11 @@ export function workAgentBenchmark(
 				"strict benchmark failed; refusing to overwrite canonical public artifacts (pass --output for diagnostic evidence)",
 			);
 		}
-		result.artifacts = writeArtifacts(result, opts.outputPath);
+		result.artifacts = writeArtifacts(
+			result,
+			opts.outputPath,
+			opts.artifactOperations,
+		);
 	}
 	return result;
 }
@@ -1465,6 +1476,7 @@ function renderWorkAgentBenchmarkMarkdown(
 function writeArtifacts(
 	result: WorkAgentBenchmarkResult,
 	outputPath?: string,
+	operations: WorkAgentArtifactOperations = fs,
 ): WorkAgentBenchmarkResult["artifacts"] {
 	const outputDir = path.resolve(
 		result.project_root,
@@ -1483,12 +1495,180 @@ function writeArtifacts(
 		json: path.basename(jsonPath),
 		markdown: path.basename(markdownPath),
 	};
-	fs.writeFileSync(
-		jsonPath,
-		`${JSON.stringify({ ...result, project_root: ".", artifacts: publicArtifacts }, null, 2)}\n`,
+	const stagedDir = fs.mkdtempSync(
+		path.join(outputDir, ".work-agent-ab-publish-"),
 	);
-	fs.writeFileSync(markdownPath, result.markdown);
+	let preserveStagedDir = false;
+	try {
+		const stagedJson = path.join(stagedDir, path.basename(jsonPath));
+		const stagedMarkdown = path.join(stagedDir, path.basename(markdownPath));
+		fs.writeFileSync(
+			stagedJson,
+			`${JSON.stringify({ ...result, project_root: ".", artifacts: publicArtifacts }, null, 2)}\n`,
+			{ flag: "wx" },
+		);
+		fs.writeFileSync(stagedMarkdown, result.markdown, { flag: "wx" });
+		publishStagedArtifacts(
+			[
+				{ staged: stagedMarkdown, destination: markdownPath },
+				// JSON is last because it is the machine-readable commit record.
+				{ staged: stagedJson, destination: jsonPath },
+			],
+			outputDir,
+			operations,
+		);
+	} catch (error) {
+		preserveStagedDir = error instanceof WorkAgentArtifactRollbackError;
+		throw error;
+	} finally {
+		if (!preserveStagedDir) {
+			fs.rmSync(stagedDir, { recursive: true, force: true });
+		}
+	}
 	return artifacts;
+}
+
+interface ArtifactPathIdentity {
+	exists: boolean;
+	dev?: number;
+	ino?: number;
+}
+
+interface ArtifactDirectoryIdentity extends ArtifactPathIdentity {
+	realPath: string;
+}
+
+class WorkAgentArtifactRollbackError extends WorkAgentBenchmarkError {}
+
+function publishStagedArtifacts(
+	artifacts: Array<{ staged: string; destination: string }>,
+	outputDir: string,
+	operations: WorkAgentArtifactOperations,
+): void {
+	const outputIdentity = captureArtifactDirectoryIdentity(outputDir);
+	const prepared = artifacts.map((artifact, index) => {
+		const identity = captureArtifactFileIdentity(artifact.destination);
+		const backup = `${artifact.staged}.previous-${index}`;
+		const candidate = `${artifact.staged}.candidate-${index}`;
+		fs.copyFileSync(artifact.staged, candidate);
+		const candidateIdentity = captureArtifactFileIdentity(candidate);
+		if (identity.exists) fs.copyFileSync(artifact.destination, backup);
+		return { ...artifact, backup, candidate, candidateIdentity, identity };
+	});
+	const published: typeof prepared = [];
+	try {
+		for (const artifact of prepared) {
+			assertArtifactDirectoryIdentity(outputDir, outputIdentity);
+			assertArtifactFileIdentity(artifact.destination, artifact.identity);
+			operations.renameSync(artifact.candidate, artifact.destination);
+			published.push({ ...artifact, identity: artifact.candidateIdentity });
+			assertArtifactFileIdentity(
+				artifact.destination,
+				artifact.candidateIdentity,
+			);
+		}
+	} catch (error) {
+		const rollbackFailures: string[] = [];
+		for (const artifact of published.reverse()) {
+			try {
+				assertArtifactDirectoryIdentity(outputDir, outputIdentity);
+				assertArtifactFileIdentity(artifact.destination, artifact.identity);
+				if (fs.existsSync(artifact.backup)) {
+					operations.renameSync(artifact.backup, artifact.destination);
+				} else {
+					operations.rmSync(artifact.destination, { force: true });
+				}
+			} catch (rollbackError) {
+				rollbackFailures.push(
+					`${artifact.destination}: ${errorMessage(rollbackError)}`,
+				);
+			}
+		}
+		if (rollbackFailures.length > 0) {
+			throw new WorkAgentArtifactRollbackError(
+				`artifact publish failed (${errorMessage(error)}) and rollback was incomplete; recovery files preserved in ${path.dirname(artifacts[0]!.staged)}: ${rollbackFailures.join("; ")}`,
+			);
+		}
+		throw error;
+	}
+}
+
+function captureArtifactDirectoryIdentity(
+	directory: string,
+): ArtifactDirectoryIdentity {
+	const stat = fs.lstatSync(directory);
+	if (stat.isSymbolicLink() || !stat.isDirectory()) {
+		throw new WorkAgentBenchmarkError(
+			`artifact output is not a stable directory: ${directory}`,
+		);
+	}
+	return {
+		exists: true,
+		dev: stat.dev,
+		ino: stat.ino,
+		realPath: fs.realpathSync.native(directory),
+	};
+}
+
+function assertArtifactDirectoryIdentity(
+	directory: string,
+	expected: ArtifactDirectoryIdentity,
+): void {
+	const actual = captureArtifactDirectoryIdentity(directory);
+	if (
+		actual.dev !== expected.dev ||
+		actual.ino !== expected.ino ||
+		actual.realPath !== expected.realPath
+	) {
+		throw new WorkAgentBenchmarkError(
+			`artifact output changed during publication: ${directory}`,
+		);
+	}
+}
+
+function captureArtifactFileIdentity(file: string): ArtifactPathIdentity {
+	let stat: fs.Stats;
+	try {
+		stat = fs.lstatSync(file);
+	} catch (error) {
+		if (isFileNotFoundError(error)) return { exists: false };
+		throw error;
+	}
+	if (stat.isSymbolicLink() || !stat.isFile()) {
+		throw new WorkAgentBenchmarkError(
+			`artifact destination is not a regular file: ${file}`,
+		);
+	}
+	return { exists: true, dev: stat.dev, ino: stat.ino };
+}
+
+function isFileNotFoundError(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		error.code === "ENOENT"
+	);
+}
+
+function assertArtifactFileIdentity(
+	file: string,
+	expected: ArtifactPathIdentity,
+): void {
+	const actual = captureArtifactFileIdentity(file);
+	if (
+		actual.exists !== expected.exists ||
+		actual.dev !== expected.dev ||
+		actual.ino !== expected.ino
+	) {
+		throw new WorkAgentBenchmarkError(
+			`artifact destination changed during publication: ${file}`,
+		);
+	}
+}
+
+function errorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
 }
 
 function isCanonicalBenchmarkOutput(
@@ -1496,11 +1676,28 @@ function isCanonicalBenchmarkOutput(
 	outputPath: string | undefined,
 ): boolean {
 	return (
-		path.resolve(
-			projectRoot,
-			outputPath ?? WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR,
-		) === path.resolve(projectRoot, WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR)
+		resolveFilesystemPath(
+			path.resolve(
+				projectRoot,
+				outputPath ?? WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR,
+			),
+		) ===
+		resolveFilesystemPath(
+			path.resolve(projectRoot, WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR),
+		)
 	);
+}
+
+function resolveFilesystemPath(targetPath: string): string {
+	const missingSegments: string[] = [];
+	let existingPath = path.resolve(targetPath);
+	while (!fs.existsSync(existingPath)) {
+		const parent = path.dirname(existingPath);
+		if (parent === existingPath) break;
+		missingSegments.unshift(path.basename(existingPath));
+		existingPath = parent;
+	}
+	return path.join(fs.realpathSync.native(existingPath), ...missingSegments);
 }
 
 function check(

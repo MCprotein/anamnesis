@@ -18,7 +18,10 @@ could include breaking changes.
   The fresh nine-pair `gpt-5.6-luna` validation passed across all six scenarios:
   108 initial calls plus 45 bounded oracle corrections (153 total), with
   average total tokens down 50.30%, elapsed time down 44.19%, 100% enabled
-  completion and gate correctness, and 100% requirement, status, and summary recall.
+  completion and gate correctness, and 100% requirement, status, and summary
+  recall. Failed strict runs now recognize canonical output through symlinks,
+  and successful artifact publication stages complete JSON and Markdown files
+  before atomically replacing either destination.
 
 ## [1.18.0] — 2026-08-20
 

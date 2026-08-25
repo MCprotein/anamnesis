@@ -143,8 +143,13 @@ describe("Work agent A/B benchmark", () => {
 		const prompts: string[] = [];
 		const contexts: Array<{ cwd: string; content: string }> = [];
 		const plans: Array<{ runs: number; scenarios: number; invocations: number }> = [];
+		const projectRoot = root();
+		const outputDir = path.join(projectRoot, "evidence");
+		fs.mkdirSync(outputDir, { recursive: true });
+		fs.writeFileSync(path.join(outputDir, "work-agent-ab.json"), "old json");
+		fs.writeFileSync(path.join(outputDir, "README.md"), "old markdown");
 		const result = workAgentBenchmark({
-			projectRoot: root(),
+			projectRoot,
 			runs: 3,
 			model: "test-model",
 			runner: fakeRunner(prompts, contexts),
@@ -196,6 +201,11 @@ describe("Work agent A/B benchmark", () => {
 			json: "work-agent-ab.json",
 			markdown: "README.md",
 		});
+		expect(
+			fs
+				.readdirSync(path.join(result.project_root, "evidence"))
+				.filter((name) => name.startsWith(".work-agent-ab-publish-")),
+		).toEqual([]);
 		expect(artifact).not.toContain("Resume this sanitized project");
 		expect(artifact).not.toContain("CONTEXT.md");
 		const enabledMultiSession = contexts.find((item) =>
@@ -211,6 +221,156 @@ describe("Work agent A/B benchmark", () => {
 			/REQ-[A-Z0-9]+\|(verified|pending)\|"\d{2}"/u,
 		);
 		expect(enabledMultiSession?.content.length).toBeLessThan(4_000);
+	}, 30_000);
+
+	it("does not publish either artifact when a destination is invalid", () => {
+		const projectRoot = root();
+		const outputDir = path.join(projectRoot, "evidence");
+		fs.mkdirSync(outputDir, { recursive: true });
+		fs.symlinkSync(
+			path.join(outputDir, "missing-target.json"),
+			path.join(outputDir, "work-agent-ab.json"),
+		);
+		const sentinel = "existing markdown";
+		fs.writeFileSync(path.join(outputDir, "README.md"), sentinel);
+
+		expect(() =>
+			workAgentBenchmark({
+				projectRoot,
+				runs: 3,
+				model: "test-model",
+				runner: fakeRunner([]),
+				write: true,
+				outputPath: "evidence",
+			}),
+		).toThrow("artifact destination is not a regular file");
+		expect(fs.readFileSync(path.join(outputDir, "README.md"), "utf8")).toBe(
+			sentinel,
+		);
+		expect(
+			fs
+				.readdirSync(outputDir)
+				.filter((name) => name.startsWith(".work-agent-ab-publish-")),
+		).toEqual([]);
+	}, 30_000);
+
+	it("tracks a successful rename before post-publish identity validation", () => {
+		const projectRoot = root();
+		const outputDir = path.join(projectRoot, "evidence");
+		fs.mkdirSync(outputDir, { recursive: true });
+		fs.writeFileSync(path.join(outputDir, "work-agent-ab.json"), "old json");
+		fs.writeFileSync(path.join(outputDir, "README.md"), "old markdown");
+
+		expect(() =>
+			workAgentBenchmark({
+				projectRoot,
+				runs: 3,
+				model: "test-model",
+				runner: fakeRunner([]),
+				write: true,
+				outputPath: "evidence",
+				artifactOperations: {
+					renameSync: (source, destination) => {
+						fs.renameSync(source, destination);
+						if (
+							destination.endsWith("README.md") &&
+							source.includes(".candidate-")
+						) {
+							fs.rmSync(destination);
+						}
+					},
+					rmSync: fs.rmSync,
+				},
+			}),
+		).toThrow("rollback was incomplete; recovery files preserved");
+		const recoveryDirs = fs
+			.readdirSync(outputDir)
+			.filter((name) => name.startsWith(".work-agent-ab-publish-"));
+		expect(recoveryDirs).toHaveLength(1);
+		expect(
+			fs.readdirSync(path.join(outputDir, recoveryDirs[0]!)),
+		).toContain("README.md.previous-0");
+	}, 30_000);
+
+	it("restores the first artifact when the second atomic replacement fails", () => {
+		const projectRoot = root();
+		const outputDir = path.join(projectRoot, "evidence");
+		fs.mkdirSync(outputDir, { recursive: true });
+		fs.writeFileSync(path.join(outputDir, "work-agent-ab.json"), "old json");
+		fs.writeFileSync(path.join(outputDir, "README.md"), "old markdown");
+
+		expect(() =>
+			workAgentBenchmark({
+				projectRoot,
+				runs: 3,
+				model: "test-model",
+				runner: fakeRunner([]),
+				write: true,
+				outputPath: "evidence",
+				artifactOperations: {
+					renameSync: (source, destination) => {
+						if (
+							destination.endsWith("work-agent-ab.json") &&
+							source.includes(".candidate-")
+						) {
+							throw new Error("injected JSON publish failure");
+						}
+						fs.renameSync(source, destination);
+					},
+					rmSync: fs.rmSync,
+				},
+			}),
+		).toThrow("injected JSON publish failure");
+		expect(fs.readFileSync(path.join(outputDir, "work-agent-ab.json"), "utf8")).toBe(
+			"old json",
+		);
+		expect(fs.readFileSync(path.join(outputDir, "README.md"), "utf8")).toBe(
+			"old markdown",
+		);
+		expect(
+			fs
+				.readdirSync(outputDir)
+				.filter((name) => name.startsWith(".work-agent-ab-publish-")),
+		).toEqual([]);
+	}, 30_000);
+
+	it("preserves recovery files when publication and rollback both fail", () => {
+		const projectRoot = root();
+		const outputDir = path.join(projectRoot, "evidence");
+		fs.mkdirSync(outputDir, { recursive: true });
+		fs.writeFileSync(path.join(outputDir, "work-agent-ab.json"), "old json");
+		fs.writeFileSync(path.join(outputDir, "README.md"), "old markdown");
+
+		expect(() =>
+			workAgentBenchmark({
+				projectRoot,
+				runs: 3,
+				model: "test-model",
+				runner: fakeRunner([]),
+				write: true,
+				outputPath: "evidence",
+				artifactOperations: {
+					renameSync: (source, destination) => {
+						if (
+							(destination.endsWith("work-agent-ab.json") &&
+								source.includes(".candidate-")) ||
+							source.includes(".previous-0")
+						) {
+							throw new Error("injected publish or rollback failure");
+						}
+						fs.renameSync(source, destination);
+					},
+					rmSync: fs.rmSync,
+				},
+			}),
+		).toThrow("rollback was incomplete; recovery files preserved");
+		const recoveryDirs = fs
+			.readdirSync(outputDir)
+			.filter((name) => name.startsWith(".work-agent-ab-publish-"));
+		expect(recoveryDirs).toHaveLength(1);
+		expect(
+			fs.readdirSync(path.join(outputDir, recoveryDirs[0]!)),
+		).toContain("README.md.previous-0");
 	}, 30_000);
 
 	it("fails the evaluator when enabled token cost breaches the contract", () => {
@@ -443,10 +603,12 @@ describe("Work agent A/B benchmark", () => {
 		);
 	});
 
-	it("does not overwrite canonical artifacts when a strict run fails", () => {
+	it("does not overwrite canonical artifacts through a symlink when a strict run fails", () => {
 		const projectRoot = root();
 		const canonicalDir = path.join(projectRoot, WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR);
 		fs.mkdirSync(canonicalDir, { recursive: true });
+		const outputAlias = path.join(projectRoot, "benchmark-output-alias");
+		fs.symlinkSync(canonicalDir, outputAlias, "dir");
 		const sentinel = "existing canonical evidence";
 		fs.writeFileSync(path.join(canonicalDir, "work-agent-ab.json"), sentinel);
 		fs.writeFileSync(path.join(canonicalDir, "README.md"), sentinel);
@@ -467,6 +629,7 @@ describe("Work agent A/B benchmark", () => {
 				runs: 9,
 				strict: true,
 				write: true,
+				outputPath: outputAlias,
 				runner,
 			}),
 		).toThrow("refusing to overwrite canonical public artifacts");
