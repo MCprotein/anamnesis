@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-08-25
+
 ### Fixed
 
 - Removed a redundant full nine-pair benchmark execution from the canonical
