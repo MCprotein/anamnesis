@@ -15,7 +15,10 @@ could include breaking changes.
   briefings now preserve requirement summaries losslessly or require
   authoritative retrieval, and required review/delegation contexts avoid the
   shared-prefix compression that caused correction turns in diagnostic runs.
-  Fresh nine-pair evidence remains a separate, explicitly paid validation step.
+  The fresh nine-pair `gpt-5.6-luna` validation passed across all six scenarios:
+  108 initial calls plus 45 bounded oracle corrections (153 total), with
+  average total tokens down 50.30%, elapsed time down 44.19%, 100% enabled
+  completion and gate correctness, and 100% requirement, status, and summary recall.
 
 ## [1.18.0] — 2026-08-20
 

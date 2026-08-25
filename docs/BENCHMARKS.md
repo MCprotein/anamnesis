@@ -99,21 +99,20 @@ tokens and elapsed time remain charged to that condition. The evaluator keeps
 equal-information and resilience scenarios labeled separately and stores no
 prompts, model answers, fixture bodies, stderr, or host paths.
 
-The checked-in 2026-08-20 `gpt-5.6-luna` evidence is the last published
-three-repetition diagnostic (36 initial and 52 total invocations including
-corrections). Work reduced average total tokens by 24.14% and elapsed time by
-30.89%, improved status accuracy from 73.33% to 100%, and retained 100%
-completion and gate correctness. Its multi-session and delegation/review
-samples were regressions, so it remains directional evidence rather than a
-universal cost claim.
+The checked-in `gpt-5.6-luna` strict evidence uses nine paired repetitions per
+scenario: 108 initial paid model calls and 153 total invocations after bounded
+oracle corrections. Work reduced average total tokens by 50.30% and elapsed
+time by 44.19%, improved status recall from 72.59% to 100%, and retained 100%
+completion and gate correctness. Enabled answers reached 100% requirement and
+summary recall with no hallucinated or duplicate requirements. The strict
+contract also passed paired token and elapsed non-regression gates for the
+multi-session handoff and delegation/review scenarios.
 
-The evaluator now additionally requires exact summaries, rejects unexpected or
-duplicate requirements, separates comparison classes, and applies paired
-bootstrap regression gates. Diagnostic reruns after the briefing fix removed
-the two sampled regressions, but those partial runs are not published as release
-evidence. A fresh nine-pair strict run is intentionally pending because it makes
-108 initial paid model calls before corrections. Until that run passes, the
-checked-in three-pair artifact and visualization remain the public baseline.
+The evaluator requires exact summaries, rejects unexpected or duplicate
+requirements, separates comparison classes, and records paired p50/p95/MAD and
+deterministic 90% bootstrap intervals. It stores no prompts, model answers,
+fixture bodies, stderr, or host paths. Historical three-pair diagnostic results
+remain in version history; the strict artifact is the current public baseline.
 Evidence lives under
 [`docs/benchmark-evidence/work-agent-ab/`](benchmark-evidence/work-agent-ab/).
 

@@ -1,88 +1,51 @@
 # Work agent A/B benchmark
 
-> **Published baseline:** this directory intentionally retains the last passing
-> three-pair diagnostic. The evaluator has since been strengthened with exact
-> summary, hallucination/duplicate, comparison-class, and bootstrap gates. A
-> fresh nine-pair paid run is still pending, so no post-fix strict numbers are
-> claimed here yet.
-
-- Generated: 2026-08-20T07:21:58.500Z
+- Generated: 2026-08-25T12:04:59.398Z
 - Model: gpt-5.6-luna
-- Repetitions per scenario: 3
-- Planned initial Codex invocations: 36
-- Actual invocations including oracle corrections: 52
+- Repetitions per scenario: 9
+- Strict contract: enabled
+- Planned initial Codex invocations: 108
+- Actual invocations: 153 (108 initial calls + 45 oracle corrections)
 - Equal-information scenarios: perfect-handoff, delegation-review, requirement-scale-100
 - Resilience scenarios: bounded-loss, stale-conflict, multi-session-handoff
+- Excluded model failures: 0
 - Contract: PASS
 
-![Work continuity real Codex A/B summary](work-agent-ab-summary.svg)
+![Work continuity strict real Codex A/B summary](work-agent-ab-summary.svg)
 
 | Metric | Disabled | Enabled | Delta |
 | --- | ---: | ---: | ---: |
-| Total tokens (average/run) | 106587.5 | 80854.78 | -24.14% |
-| Elapsed ms (average/run) | 43792.87 | 30265.02 | -30.89% |
+| Total tokens (average/run) | 90901.72 | 45177.06 | -50.3% |
+| Elapsed ms (average/run) | 46054.24 | 25703.4 | -44.19% |
+| Paired token delta | — | — | p50 -50.08%, p95 -0.09%, MAD 1.69% |
+| Paired elapsed delta | — | — | p50 -49.56%, p95 5.81%, MAD 6.52% |
 | Completion correctness | 100% | 100% | 0pp |
 | Gate correctness | 100% | 100% | — |
-| Requirement recall | 100% | 100% | 0pp |
-| Status recall | 73.33% | 100% | 26.67pp |
-| Missed requirements (average/run) | 0 | 0 | 0 |
-| Actual correction rounds (average/run) | 0.78 | 0.11 | -0.67 |
-| Re-explained requirements (average/run) | 5.33 | 0 | — |
+| Requirement recall | 99.26% | 100% | 0.74pp |
+| Status recall | 72.59% | 100% | 27.41pp |
+| Summary recall | 55.56% | 100% | — |
+| Hallucinated requirements (average/run) | 0 | 0 | — |
+| Duplicate requirement IDs (average/run) | 0 | 0 | — |
+| Missed requirements (average/run) | 0.15 | 0 | -0.15 |
+| Actual correction rounds (average/run) | 0.8 | 0.04 | -0.76 |
+| Re-explained requirements (average/run) | 17.11 | 0.33 | — |
+
+## Comparison classes
+
+| Class | Token p50 (90% bootstrap CI) | Elapsed p50 (90% bootstrap CI) | Token wins |
+| --- | ---: | ---: | ---: |
+| equal_information | -50.11% (-52.49% to -49.96%) | -50.02% (-52.61% to -47.57%) | 27/27 |
+| resilience | -50% (-50.29% to -49.77%) | -47.05% (-51.37% to -44.38%) | 26/27 |
 
 ## Scenario breakdown
 
-| Scenario | Class | Token delta | Elapsed delta | Disabled → enabled status accuracy | Disabled → enabled correction rounds/run |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Perfect handoff | Equal information | -29.73% | -37.30% | 100% → 100% | 1.00 → 0.00 |
-| Bounded loss | Resilience | -42.91% | -47.64% | 40% → 100% | 1.00 → 0.00 |
-| Stale conflict | Resilience | -41.22% | -44.92% | 0% → 100% | 1.00 → 0.00 |
-| Multi-session handoff | Resilience | +15.88% | +25.58% | 100% → 100% | 0.67 → 0.67 |
-| Delegation/review | Equal information | +5.83% | +20.31% | 100% → 100% | 0.00 → 0.00 |
-| 100 requirements | Equal information | -30.08% | -45.11% | 100% → 100% | 1.00 → 0.00 |
+| Scenario | Class | Token p50 (p95) | Elapsed p50 (p95) | Token wins | Disabled → enabled status recall | Disabled → enabled corrections/run |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| perfect-handoff | equal_information | -49.99% (-49.76%) | -50.02% (-44.58%) | 9/9 | 100% → 100% | 1 → 0 |
+| bounded-loss | resilience | -49.68% (-49.43%) | -45.71% (-31.19%) | 9/9 | 35.56% → 100% | 1 → 0 |
+| stale-conflict | resilience | -50% (0.33%) | -52.21% (11.24%) | 8/9 | 0% → 100% | 1 → 0.22 |
+| multi-session-handoff | resilience | -51.04% (-34.27%) | -45.59% (-16.34%) | 9/9 | 100% → 100% | 0.67 → 0 |
+| delegation-review | equal_information | -50.05% (-0.07%) | -51.1% (7.85%) | 9/9 | 100% → 100% | 0.67 → 0 |
+| requirement-scale-100 | equal_information | -60.66% (-3.41%) | -41.87% (-0.23%) | 9/9 | 100% → 100% | 0.44 → 0 |
 
-The multi-session case is a cost regression in this sample. The
-overall contract passes because the full suite improves correctness and total
-cost, but this scenario should be re-measured with more pairs before claiming a
-universal per-scenario reduction.
-
-## Why two scenarios cost more
-
-These are not accuracy regressions: both conditions reached `100%` requirement
-and status accuracy in both scenarios. They are different kinds of cost signal.
-
-### Multi-session handoff: correction-turn variance dominated three pairs
-
-The disabled and enabled conditions each needed two correction turns across the
-three pairs, but the corrections landed in different pairs. In enabled pairs 2
-and 3, the extra turn raised total usage to roughly `125.8k` and `126.2k`
-tokens. In pair 1, where enabled needed no correction, it used `62.8k` tokens
-versus disabled's `104.3k`.
-
-That distribution means the reported `+15.88%` is not evidence that Work has a
-stable multi-session tax. It shows that one correction can dominate a
-three-pair mean and that this scenario needs more repetitions, paired medians,
-and confidence intervals before a directional claim. The product still has an
-optimization target here: make the authoritative multi-session state obvious
-enough that the model never asks for the extra verification turn.
-
-### Delegation/review: fixed safety metadata with no sampled quality gain
-
-The legacy condition described the missing delegation and review gates in one
-short prose sentence. The Work condition supplied the same conclusion through
-structured completion-contract, gate, policy, and authoritative retrieval
-metadata. All six runs were correct on the first response, so there was no
-correction cost for Work to eliminate.
-
-The remaining `+5.83%` token and `+20.31%` elapsed deltas are therefore best
-read as the fixed cost of stronger machine-checkable safety context in a small
-case where concise prose happened to be sufficient. This is an equal-information
-overhead measurement, not a quality win. Future optimization should compact the
-gate payload and avoid unnecessary retrieval while preserving fail-closed gate
-decisions.
-
-The benchmark deliberately keeps both sampled regressions visible. Aggregate
-savings must not be used to imply universal per-scenario savings. Post-fix
-diagnostics are encouraging, but only a fresh strict run may replace this
-published baseline.
-
-The evaluator stores aggregate metrics only. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.
+Every accepted answer contains each expected requirement exactly once with an exact ID, status, and summary; hallucinated or duplicate rows trigger deterministic correction. Each paired distribution also records min, max, MAD, and a deterministic 90% bootstrap interval in the JSON artifact. Model failures are scored, never excluded. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.

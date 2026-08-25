@@ -138,11 +138,22 @@ only. Public claims need repeated public-safe runs.
 The Work-specific A/B evaluator uses six fixed scenarios and a deterministic
 oracle rather than model self-scoring. The diagnostic command runs a smaller
 subset for iteration. The strict command runs nine alternating pairs per
-scenario, charges correction turns to the condition that needed them, requires
-100% enabled requirement/status/completion/gate correctness, and checks paired
-token and elapsed medians. Equal-information and resilience scenarios remain
-separate in the artifact; prompts, model answers, fixture bodies, stderr, and
-host paths are not committed.
+scenario (108 initial model calls), charges correction turns to the condition
+that needed them, requires 100% enabled completion/gate correctness and
+requirement/status/summary recall, rejects hallucinated or duplicate requirements, and checks
+paired token and elapsed medians plus strict average-cost bounds. It also gates
+the multi-session handoff and delegation/review scenarios on token and elapsed
+non-regression. Equal-information and resilience scenarios remain separate in
+the artifact; prompts, model answers, fixture bodies, stderr, and host paths
+are not committed.
+
+The current published strict `gpt-5.6-luna` run passed: Work reduced average
+total tokens by 50.30% and elapsed time by 44.19%, with 100% enabled completion
+and gate correctness plus 100% requirement, status, and summary recall. The aggregate
+artifact includes 153 invocations: 108 initial calls plus 45 bounded
+correction calls. See the
+[`work-agent-ab`](benchmark-evidence/work-agent-ab/) evidence directory for
+the machine-readable result, scenario breakdown, and visualization.
 
 `benchmark task-compare` reports:
 

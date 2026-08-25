@@ -1,9 +1,9 @@
 {
-  "schema_version": "anamnesis.work_agent_ab_benchmark.v1",
-  "generated_at": "2026-08-20T07:21:58.500Z",
+  "schema_version": "anamnesis.work_agent_ab_benchmark.v2",
+  "generated_at": "2026-08-25T12:04:59.398Z",
   "project_root": ".",
   "model": "gpt-5.6-luna",
-  "runs_per_scenario": 3,
+  "runs_per_scenario": 9,
   "scenarios": [
     "perfect-handoff",
     "bounded-loss",
@@ -24,8 +24,8 @@
       "multi-session-handoff"
     ]
   },
-  "planned_invocations": 36,
-  "actual_invocations": 52,
+  "planned_invocations": 108,
+  "actual_invocations": 153,
   "runs": [
     {
       "iteration": 1,
@@ -39,12 +39,12 @@
       "disabled": {
         "condition": "disabled",
         "execution_ok": true,
-        "elapsed_ms": 38459.68,
+        "elapsed_ms": 36395.74,
         "tokens": {
-          "input_tokens": 102206,
-          "cached_input_tokens": 57600,
-          "output_tokens": 1263,
-          "total_tokens": 103469
+          "input_tokens": 83703,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1506,
+          "total_tokens": 85209
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -52,19 +52,23 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
+        "reexplained_requirements": 20
       },
       "enabled": {
         "condition": "enabled",
         "execution_ok": true,
-        "elapsed_ms": 23099.43,
+        "elapsed_ms": 20895.43,
         "tokens": {
-          "input_tokens": 68791,
-          "cached_input_tokens": 39424,
-          "output_tokens": 900,
-          "total_tokens": 69691
+          "input_tokens": 42020,
+          "cached_input_tokens": 20224,
+          "output_tokens": 824,
+          "total_tokens": 42844
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -72,7 +76,11 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 0,
         "reexplained_requirements": 0
       }
@@ -89,12 +97,12 @@
       "disabled": {
         "condition": "disabled",
         "execution_ok": true,
-        "elapsed_ms": 44340.15,
+        "elapsed_ms": 32662.39,
         "tokens": {
-          "input_tokens": 101962,
-          "cached_input_tokens": 58624,
-          "output_tokens": 1231,
-          "total_tokens": 103193
+          "input_tokens": 83261,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1340,
+          "total_tokens": 84601
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -102,19 +110,23 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 8,
         "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 12
+        "reexplained_requirements": 20
       },
       "enabled": {
         "condition": "enabled",
         "execution_ok": true,
-        "elapsed_ms": 22343.91,
+        "elapsed_ms": 19600.24,
         "tokens": {
-          "input_tokens": 62010,
-          "cached_input_tokens": 38400,
-          "output_tokens": 793,
-          "total_tokens": 62803
+          "input_tokens": 41863,
+          "cached_input_tokens": 20224,
+          "output_tokens": 776,
+          "total_tokens": 42639
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -122,7 +134,11 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 0,
         "reexplained_requirements": 0
       }
@@ -139,12 +155,12 @@
       "disabled": {
         "condition": "disabled",
         "execution_ok": true,
-        "elapsed_ms": 38023.93,
+        "elapsed_ms": 39116.81,
         "tokens": {
-          "input_tokens": 102434,
-          "cached_input_tokens": 57600,
-          "output_tokens": 1362,
-          "total_tokens": 103796
+          "input_tokens": 83764,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1643,
+          "total_tokens": 85407
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -152,619 +168,23 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 0,
         "status_recall_pct": 0,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 1,
         "reexplained_requirements": 20
       },
       "enabled": {
         "condition": "enabled",
         "execution_ok": true,
-        "elapsed_ms": 24996.83,
+        "elapsed_ms": 17677.03,
         "tokens": {
-          "input_tokens": 68716,
-          "cached_input_tokens": 39424,
-          "output_tokens": 911,
-          "total_tokens": 69627
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 1,
-      "scenario": "multi-session-handoff",
-      "scenario_class": "resilience",
-      "requirements": 20,
-      "order": [
-        "enabled",
-        "disabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 36367.55,
-        "tokens": {
-          "input_tokens": 102976,
-          "cached_input_tokens": 58624,
-          "output_tokens": 1345,
-          "total_tokens": 104321
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 21731.25,
-        "tokens": {
-          "input_tokens": 61941,
-          "cached_input_tokens": 38400,
-          "output_tokens": 842,
-          "total_tokens": 62783
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 1,
-      "scenario": "delegation-review",
-      "scenario_class": "equal_information",
-      "requirements": 20,
-      "order": [
-        "disabled",
-        "enabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 19380.05,
-        "tokens": {
-          "input_tokens": 61384,
-          "cached_input_tokens": 39424,
-          "output_tokens": 660,
-          "total_tokens": 62044
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 21967.38,
-        "tokens": {
-          "input_tokens": 62171,
-          "cached_input_tokens": 39424,
-          "output_tokens": 889,
-          "total_tokens": 63060
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 1,
-      "scenario": "requirement-scale-100",
-      "scenario_class": "equal_information",
-      "requirements": 100,
-      "order": [
-        "enabled",
-        "disabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 78371.9,
-        "tokens": {
-          "input_tokens": 108496,
-          "cached_input_tokens": 58624,
-          "output_tokens": 3593,
-          "total_tokens": 112089
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 100,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 100,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 47529.38,
-        "tokens": {
-          "input_tokens": 111360,
-          "cached_input_tokens": 72960,
-          "output_tokens": 2144,
-          "total_tokens": 113504
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 100,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 100,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 2,
-      "scenario": "perfect-handoff",
-      "scenario_class": "equal_information",
-      "requirements": 20,
-      "order": [
-        "enabled",
-        "disabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 40917.27,
-        "tokens": {
-          "input_tokens": 122661,
-          "cached_input_tokens": 77824,
-          "output_tokens": 1460,
-          "total_tokens": 124121
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 22712.98,
-        "tokens": {
-          "input_tokens": 62174,
-          "cached_input_tokens": 39424,
-          "output_tokens": 903,
-          "total_tokens": 63077
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 2,
-      "scenario": "bounded-loss",
-      "scenario_class": "resilience",
-      "requirements": 20,
-      "order": [
-        "disabled",
-        "enabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 38637.16,
-        "tokens": {
-          "input_tokens": 101979,
-          "cached_input_tokens": 76800,
-          "output_tokens": 1223,
-          "total_tokens": 103202
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 8,
-        "status_recall_pct": 40,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 12
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 22258.68,
-        "tokens": {
-          "input_tokens": 62107,
-          "cached_input_tokens": 39424,
-          "output_tokens": 816,
-          "total_tokens": 62923
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 2,
-      "scenario": "stale-conflict",
-      "scenario_class": "resilience",
-      "requirements": 20,
-      "order": [
-        "enabled",
-        "disabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 34746.74,
-        "tokens": {
-          "input_tokens": 102250,
-          "cached_input_tokens": 38400,
-          "output_tokens": 1241,
-          "total_tokens": 103491
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 0,
-        "status_recall_pct": 0,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 20
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 20679.48,
-        "tokens": {
-          "input_tokens": 62355,
-          "cached_input_tokens": 39424,
-          "output_tokens": 798,
-          "total_tokens": 63153
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 2,
-      "scenario": "multi-session-handoff",
-      "scenario_class": "resilience",
-      "requirements": 20,
-      "order": [
-        "disabled",
-        "enabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 35686.45,
-        "tokens": {
-          "input_tokens": 103230,
-          "cached_input_tokens": 58624,
-          "output_tokens": 1293,
-          "total_tokens": 104523
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 47086.57,
-        "tokens": {
-          "input_tokens": 123897,
-          "cached_input_tokens": 76800,
-          "output_tokens": 1856,
-          "total_tokens": 125753
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 2,
-      "scenario": "delegation-review",
-      "scenario_class": "equal_information",
-      "requirements": 20,
-      "order": [
-        "enabled",
-        "disabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 20187.46,
-        "tokens": {
-          "input_tokens": 62713,
-          "cached_input_tokens": 58624,
-          "output_tokens": 748,
-          "total_tokens": 63461
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 28854.21,
-        "tokens": {
-          "input_tokens": 71426,
-          "cached_input_tokens": 39424,
-          "output_tokens": 1198,
-          "total_tokens": 72624
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 2,
-      "scenario": "requirement-scale-100",
-      "scenario_class": "equal_information",
-      "requirements": 100,
-      "order": [
-        "disabled",
-        "enabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 98002.4,
-        "tokens": {
-          "input_tokens": 185174,
-          "cached_input_tokens": 128512,
-          "output_tokens": 4453,
-          "total_tokens": 189627
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 100,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 100,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 43444.75,
-        "tokens": {
-          "input_tokens": 63737,
-          "cached_input_tokens": 38400,
-          "output_tokens": 1958,
-          "total_tokens": 65695
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 100,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 100,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 3,
-      "scenario": "perfect-handoff",
-      "scenario_class": "equal_information",
-      "requirements": 20,
-      "order": [
-        "disabled",
-        "enabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 35374.6,
-        "tokens": {
-          "input_tokens": 102111,
-          "cached_input_tokens": 57600,
-          "output_tokens": 1270,
-          "total_tokens": 103381
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 0
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 26134.47,
-        "tokens": {
-          "input_tokens": 98793,
-          "cached_input_tokens": 66816,
-          "output_tokens": 997,
-          "total_tokens": 99790
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 3,
-      "scenario": "bounded-loss",
-      "scenario_class": "resilience",
-      "requirements": 20,
-      "order": [
-        "enabled",
-        "disabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 46541.28,
-        "tokens": {
-          "input_tokens": 122254,
-          "cached_input_tokens": 76800,
-          "output_tokens": 1585,
-          "total_tokens": 123839
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 8,
-        "status_recall_pct": 40,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 12
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 23207.73,
-        "tokens": {
-          "input_tokens": 62055,
-          "cached_input_tokens": 38400,
-          "output_tokens": 740,
-          "total_tokens": 62795
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 20,
-        "status_recall_pct": 100,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
-      }
-    },
-    {
-      "iteration": 3,
-      "scenario": "stale-conflict",
-      "scenario_class": "resilience",
-      "requirements": 20,
-      "order": [
-        "disabled",
-        "enabled"
-      ],
-      "disabled": {
-        "condition": "disabled",
-        "execution_ok": true,
-        "elapsed_ms": 49002.17,
-        "tokens": {
-          "input_tokens": 123863,
-          "cached_input_tokens": 78848,
-          "output_tokens": 1808,
-          "total_tokens": 125671
-        },
-        "completion_correct": true,
-        "gate_correct": true,
-        "requirements_recovered": 20,
-        "requirement_recall_pct": 100,
-        "statuses_correct": 0,
-        "status_recall_pct": 0,
-        "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
-        "reexplained_requirements": 20
-      },
-      "enabled": {
-        "condition": "enabled",
-        "execution_ok": true,
-        "elapsed_ms": 21400.51,
-        "tokens": {
-          "input_tokens": 62199,
-          "cached_input_tokens": 39424,
+          "input_tokens": 42020,
+          "cached_input_tokens": 20224,
           "output_tokens": 742,
-          "total_tokens": 62941
+          "total_tokens": 42762
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -772,7 +192,707 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 41112.6,
+        "tokens": {
+          "input_tokens": 105469,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1700,
+          "total_tokens": 107169
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 22368.73,
+        "tokens": {
+          "input_tokens": 41769,
+          "cached_input_tokens": 20224,
+          "output_tokens": 823,
+          "total_tokens": 42592
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 42561.98,
+        "tokens": {
+          "input_tokens": 104855,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1663,
+          "total_tokens": 106518
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18226.67,
+        "tokens": {
+          "input_tokens": 41825,
+          "cached_input_tokens": 20224,
+          "output_tokens": 738,
+          "total_tokens": 42563
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 111321.22,
+        "tokens": {
+          "input_tokens": 90648,
+          "cached_input_tokens": 40448,
+          "output_tokens": 5573,
+          "total_tokens": 96221
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 100
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 52410.38,
+        "tokens": {
+          "input_tokens": 43071,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2641,
+          "total_tokens": 45712
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 38124.42,
+        "tokens": {
+          "input_tokens": 83864,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1636,
+          "total_tokens": 85500
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19987.1,
+        "tokens": {
+          "input_tokens": 42040,
+          "cached_input_tokens": 20224,
+          "output_tokens": 811,
+          "total_tokens": 42851
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 33935.35,
+        "tokens": {
+          "input_tokens": 83134,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1316,
+          "total_tokens": 84450
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 12,
+        "requirement_recall_pct": 60,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 8,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 12
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19375.18,
+        "tokens": {
+          "input_tokens": 41811,
+          "cached_input_tokens": 20224,
+          "output_tokens": 781,
+          "total_tokens": 42592
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 37456.39,
+        "tokens": {
+          "input_tokens": 83981,
+          "cached_input_tokens": 52480,
+          "output_tokens": 1564,
+          "total_tokens": 85545
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 39909.24,
+        "tokens": {
+          "input_tokens": 83915,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1623,
+          "total_tokens": 85538
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 9
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 21862.81,
+        "tokens": {
+          "input_tokens": 63830,
+          "cached_input_tokens": 41472,
+          "output_tokens": 891,
+          "total_tokens": 64721
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18346.03,
+        "tokens": {
+          "input_tokens": 41810,
+          "cached_input_tokens": 20224,
+          "output_tokens": 765,
+          "total_tokens": 42575
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 43134.07,
+        "tokens": {
+          "input_tokens": 104575,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1795,
+          "total_tokens": 106370
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18477.18,
+        "tokens": {
+          "input_tokens": 42021,
+          "cached_input_tokens": 20224,
+          "output_tokens": 760,
+          "total_tokens": 42781
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 54133.66,
+        "tokens": {
+          "input_tokens": 44951,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2774,
+          "total_tokens": 47725
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 53694.14,
+        "tokens": {
+          "input_tokens": 43260,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2612,
+          "total_tokens": 45872
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 39372.75,
+        "tokens": {
+          "input_tokens": 83939,
+          "cached_input_tokens": 20224,
+          "output_tokens": 1589,
+          "total_tokens": 85528
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18511.39,
+        "tokens": {
+          "input_tokens": 41862,
+          "cached_input_tokens": 20224,
+          "output_tokens": 765,
+          "total_tokens": 42627
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 37027.67,
+        "tokens": {
+          "input_tokens": 83279,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1518,
+          "total_tokens": 84797
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 12
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18373.32,
+        "tokens": {
+          "input_tokens": 41834,
+          "cached_input_tokens": 20224,
+          "output_tokens": 758,
+          "total_tokens": 42592
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 38786.83,
+        "tokens": {
+          "input_tokens": 83883,
+          "cached_input_tokens": 49408,
+          "output_tokens": 1509,
+          "total_tokens": 85392
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 20917.95,
+        "tokens": {
+          "input_tokens": 41821,
+          "cached_input_tokens": 20224,
+          "output_tokens": 872,
+          "total_tokens": 42693
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 0,
         "reexplained_requirements": 0
       }
@@ -789,12 +909,12 @@
       "disabled": {
         "condition": "disabled",
         "execution_ok": true,
-        "elapsed_ms": 22279.3,
+        "elapsed_ms": 38650.39,
         "tokens": {
-          "input_tokens": 62011,
-          "cached_input_tokens": 39424,
-          "output_tokens": 728,
-          "total_tokens": 62739
+          "input_tokens": 84255,
+          "cached_input_tokens": 49408,
+          "output_tokens": 1518,
+          "total_tokens": 85773
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -802,19 +922,23 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
         "reexplained_requirements": 0
       },
       "enabled": {
         "condition": "enabled",
         "execution_ok": true,
-        "elapsed_ms": 49650.38,
+        "elapsed_ms": 20464.14,
         "tokens": {
-          "input_tokens": 124242,
-          "cached_input_tokens": 86784,
-          "output_tokens": 1938,
-          "total_tokens": 126180
+          "input_tokens": 41823,
+          "cached_input_tokens": 20224,
+          "output_tokens": 875,
+          "total_tokens": 42698
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -822,8 +946,12 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
-        "reminders_or_reexplanations": 1,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
         "reexplained_requirements": 0
       }
     },
@@ -839,12 +967,12 @@
       "disabled": {
         "condition": "disabled",
         "execution_ok": true,
-        "elapsed_ms": 20767.77,
+        "elapsed_ms": 39177.65,
         "tokens": {
-          "input_tokens": 61445,
-          "cached_input_tokens": 39424,
-          "output_tokens": 722,
-          "total_tokens": 62167
+          "input_tokens": 83788,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1638,
+          "total_tokens": 85426
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -852,19 +980,23 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
         "missed_requirements": 0,
-        "reminders_or_reexplanations": 0,
-        "reexplained_requirements": 0
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
       },
       "enabled": {
         "condition": "enabled",
         "execution_ok": true,
-        "elapsed_ms": 21770.68,
+        "elapsed_ms": 19157.79,
         "tokens": {
-          "input_tokens": 62062,
-          "cached_input_tokens": 39424,
-          "output_tokens": 876,
-          "total_tokens": 62938
+          "input_tokens": 42051,
+          "cached_input_tokens": 20224,
+          "output_tokens": 793,
+          "total_tokens": 42844
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -872,7 +1004,11 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 20,
         "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 0,
         "reexplained_requirements": 0
       }
@@ -889,12 +1025,12 @@
       "disabled": {
         "condition": "disabled",
         "execution_ok": true,
-        "elapsed_ms": 91185.82,
+        "elapsed_ms": 51765.48,
         "tokens": {
-          "input_tokens": 159353,
-          "cached_input_tokens": 104192,
-          "output_tokens": 4088,
-          "total_tokens": 163441
+          "input_tokens": 44730,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2626,
+          "total_tokens": 47356
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -902,19 +1038,719 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 100,
         "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 51844.3,
+        "tokens": {
+          "input_tokens": 43240,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2646,
+          "total_tokens": 45886
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 4,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 37012.58,
+        "tokens": {
+          "input_tokens": 83688,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1576,
+          "total_tokens": 85264
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18501.9,
+        "tokens": {
+          "input_tokens": 41857,
+          "cached_input_tokens": 20224,
+          "output_tokens": 783,
+          "total_tokens": 42640
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 4,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 31931.34,
+        "tokens": {
+          "input_tokens": 83361,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1308,
+          "total_tokens": 84669
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 21200.58,
+        "tokens": {
+          "input_tokens": 42000,
+          "cached_input_tokens": 20224,
+          "output_tokens": 897,
+          "total_tokens": 42897
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 4,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 54952.7,
+        "tokens": {
+          "input_tokens": 83970,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1757,
+          "total_tokens": 85727
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18316.02,
+        "tokens": {
+          "input_tokens": 41846,
+          "cached_input_tokens": 20224,
+          "output_tokens": 771,
+          "total_tokens": 42617
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 4,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 45414.86,
+        "tokens": {
+          "input_tokens": 106073,
+          "cached_input_tokens": 61696,
+          "output_tokens": 1838,
+          "total_tokens": 107911
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18898.47,
+        "tokens": {
+          "input_tokens": 42004,
+          "cached_input_tokens": 20224,
+          "output_tokens": 772,
+          "total_tokens": 42776
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 4,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 18363.99,
+        "tokens": {
+          "input_tokens": 41973,
+          "cached_input_tokens": 20224,
+          "output_tokens": 745,
+          "total_tokens": 42718
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 20102.9,
+        "tokens": {
+          "input_tokens": 41831,
+          "cached_input_tokens": 32256,
+          "output_tokens": 834,
+          "total_tokens": 42665
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 4,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 65509.97,
+        "tokens": {
+          "input_tokens": 104984,
+          "cached_input_tokens": 70912,
+          "output_tokens": 3260,
+          "total_tokens": 108244
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 50985.92,
+        "tokens": {
+          "input_tokens": 43204,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2591,
+          "total_tokens": 45795
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 5,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 37985.95,
+        "tokens": {
+          "input_tokens": 83821,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1598,
+          "total_tokens": 85419
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18178,
+        "tokens": {
+          "input_tokens": 41844,
+          "cached_input_tokens": 20224,
+          "output_tokens": 771,
+          "total_tokens": 42615
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 5,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 35543.49,
+        "tokens": {
+          "input_tokens": 83183,
+          "cached_input_tokens": 49408,
+          "output_tokens": 1426,
+          "total_tokens": 84609
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18092.89,
+        "tokens": {
+          "input_tokens": 41811,
+          "cached_input_tokens": 20224,
+          "output_tokens": 768,
+          "total_tokens": 42579
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 5,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 42307.16,
+        "tokens": {
+          "input_tokens": 104752,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1749,
+          "total_tokens": 106501
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18637.07,
+        "tokens": {
+          "input_tokens": 41866,
+          "cached_input_tokens": 20224,
+          "output_tokens": 785,
+          "total_tokens": 42651
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 5,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 47495.08,
+        "tokens": {
+          "input_tokens": 106490,
+          "cached_input_tokens": 61696,
+          "output_tokens": 1780,
+          "total_tokens": 108270
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 20018.87,
+        "tokens": {
+          "input_tokens": 41812,
+          "cached_input_tokens": 20224,
+          "output_tokens": 770,
+          "total_tokens": 42582
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 5,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 18977.86,
+        "tokens": {
+          "input_tokens": 41987,
+          "cached_input_tokens": 20224,
+          "output_tokens": 830,
+          "total_tokens": 42817
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 20004.88,
+        "tokens": {
+          "input_tokens": 41803,
+          "cached_input_tokens": 20224,
+          "output_tokens": 885,
+          "total_tokens": 42688
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 5,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 132259.02,
+        "tokens": {
+          "input_tokens": 168832,
+          "cached_input_tokens": 111360,
+          "output_tokens": 6609,
+          "total_tokens": 175441
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 1,
         "reexplained_requirements": 0
       },
       "enabled": {
         "condition": "enabled",
         "execution_ok": true,
-        "elapsed_ms": 55901.71,
+        "elapsed_ms": 50929.62,
         "tokens": {
-          "input_tokens": 143772,
-          "cached_input_tokens": 105472,
-          "output_tokens": 2277,
-          "total_tokens": 146049
+          "input_tokens": 43022,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2596,
+          "total_tokens": 45618
         },
         "completion_correct": true,
         "gate_correct": true,
@@ -922,7 +1758,1403 @@
         "requirement_recall_pct": 100,
         "statuses_correct": 100,
         "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
         "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 6,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 39603.19,
+        "tokens": {
+          "input_tokens": 104714,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1642,
+          "total_tokens": 106356
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19002.35,
+        "tokens": {
+          "input_tokens": 41852,
+          "cached_input_tokens": 20224,
+          "output_tokens": 795,
+          "total_tokens": 42647
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 6,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 36786.5,
+        "tokens": {
+          "input_tokens": 103997,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1445,
+          "total_tokens": 105442
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19969.9,
+        "tokens": {
+          "input_tokens": 42067,
+          "cached_input_tokens": 20224,
+          "output_tokens": 853,
+          "total_tokens": 42920
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 6,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40376.93,
+        "tokens": {
+          "input_tokens": 105069,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1696,
+          "total_tokens": 106765
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19294.81,
+        "tokens": {
+          "input_tokens": 42012,
+          "cached_input_tokens": 20224,
+          "output_tokens": 771,
+          "total_tokens": 42783
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 6,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 24758.97,
+        "tokens": {
+          "input_tokens": 86406,
+          "cached_input_tokens": 62720,
+          "output_tokens": 1005,
+          "total_tokens": 87411
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19047.33,
+        "tokens": {
+          "input_tokens": 41982,
+          "cached_input_tokens": 20224,
+          "output_tokens": 818,
+          "total_tokens": 42800
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 6,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 18657.57,
+        "tokens": {
+          "input_tokens": 41803,
+          "cached_input_tokens": 20224,
+          "output_tokens": 796,
+          "total_tokens": 42599
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 17916.06,
+        "tokens": {
+          "input_tokens": 41817,
+          "cached_input_tokens": 20224,
+          "output_tokens": 765,
+          "total_tokens": 42582
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 6,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 91797.32,
+        "tokens": {
+          "input_tokens": 130487,
+          "cached_input_tokens": 96256,
+          "output_tokens": 4050,
+          "total_tokens": 134537
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 53357.41,
+        "tokens": {
+          "input_tokens": 43242,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2609,
+          "total_tokens": 45851
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 7,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 37827.29,
+        "tokens": {
+          "input_tokens": 83654,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1484,
+          "total_tokens": 85138
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18905.22,
+        "tokens": {
+          "input_tokens": 41838,
+          "cached_input_tokens": 20224,
+          "output_tokens": 766,
+          "total_tokens": 42604
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 7,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 41661.15,
+        "tokens": {
+          "input_tokens": 104164,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1500,
+          "total_tokens": 105664
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18858.51,
+        "tokens": {
+          "input_tokens": 41846,
+          "cached_input_tokens": 20224,
+          "output_tokens": 794,
+          "total_tokens": 42640
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 7,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40290.14,
+        "tokens": {
+          "input_tokens": 104530,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1598,
+          "total_tokens": 106128
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 46077.02,
+        "tokens": {
+          "input_tokens": 104753,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1966,
+          "total_tokens": 106719
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 9
+      }
+    },
+    {
+      "iteration": 7,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40249.69,
+        "tokens": {
+          "input_tokens": 107149,
+          "cached_input_tokens": 61696,
+          "output_tokens": 1658,
+          "total_tokens": 108807
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 21036.41,
+        "tokens": {
+          "input_tokens": 41803,
+          "cached_input_tokens": 32256,
+          "output_tokens": 899,
+          "total_tokens": 42702
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 7,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 39224.61,
+        "tokens": {
+          "input_tokens": 83974,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1664,
+          "total_tokens": 85638
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19685.4,
+        "tokens": {
+          "input_tokens": 41826,
+          "cached_input_tokens": 32256,
+          "output_tokens": 760,
+          "total_tokens": 42586
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 7,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 80797.3,
+        "tokens": {
+          "input_tokens": 126429,
+          "cached_input_tokens": 93184,
+          "output_tokens": 3898,
+          "total_tokens": 130327
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 54817.34,
+        "tokens": {
+          "input_tokens": 43061,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2607,
+          "total_tokens": 45668
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 8,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40556.83,
+        "tokens": {
+          "input_tokens": 83672,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1604,
+          "total_tokens": 85276
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 20556.54,
+        "tokens": {
+          "input_tokens": 42003,
+          "cached_input_tokens": 20224,
+          "output_tokens": 786,
+          "total_tokens": 42789
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 8,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 34277.08,
+        "tokens": {
+          "input_tokens": 83225,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1373,
+          "total_tokens": 84598
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 24136.87,
+        "tokens": {
+          "input_tokens": 41840,
+          "cached_input_tokens": 20224,
+          "output_tokens": 767,
+          "total_tokens": 42607
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 8,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 47283.4,
+        "tokens": {
+          "input_tokens": 83871,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1686,
+          "total_tokens": 85557
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18927.62,
+        "tokens": {
+          "input_tokens": 42037,
+          "cached_input_tokens": 20224,
+          "output_tokens": 774,
+          "total_tokens": 42811
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 8,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 38141.43,
+        "tokens": {
+          "input_tokens": 84171,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1526,
+          "total_tokens": 85697
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 21216.08,
+        "tokens": {
+          "input_tokens": 41800,
+          "cached_input_tokens": 20224,
+          "output_tokens": 856,
+          "total_tokens": 42656
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 8,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40801.24,
+        "tokens": {
+          "input_tokens": 83816,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1750,
+          "total_tokens": 85566
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 17319.83,
+        "tokens": {
+          "input_tokens": 42015,
+          "cached_input_tokens": 20224,
+          "output_tokens": 725,
+          "total_tokens": 42740
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 8,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 121221.42,
+        "tokens": {
+          "input_tokens": 117607,
+          "cached_input_tokens": 63744,
+          "output_tokens": 5909,
+          "total_tokens": 123516
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 100
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 50978.11,
+        "tokens": {
+          "input_tokens": 43245,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2573,
+          "total_tokens": 45818
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 9,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 41941.8,
+        "tokens": {
+          "input_tokens": 83889,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1803,
+          "total_tokens": 85692
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18627.66,
+        "tokens": {
+          "input_tokens": 42035,
+          "cached_input_tokens": 20224,
+          "output_tokens": 786,
+          "total_tokens": 42821
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 9,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 36104.57,
+        "tokens": {
+          "input_tokens": 83244,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1504,
+          "total_tokens": 84748
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 17136.29,
+        "tokens": {
+          "input_tokens": 41829,
+          "cached_input_tokens": 20224,
+          "output_tokens": 735,
+          "total_tokens": 42564
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 9,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40899.31,
+        "tokens": {
+          "input_tokens": 83894,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1667,
+          "total_tokens": 85561
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19887.59,
+        "tokens": {
+          "input_tokens": 41870,
+          "cached_input_tokens": 20224,
+          "output_tokens": 765,
+          "total_tokens": 42635
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 9,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 22188.4,
+        "tokens": {
+          "input_tokens": 64025,
+          "cached_input_tokens": 41472,
+          "output_tokens": 843,
+          "total_tokens": 64868
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18478.7,
+        "tokens": {
+          "input_tokens": 41807,
+          "cached_input_tokens": 20224,
+          "output_tokens": 780,
+          "total_tokens": 42587
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 9,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40079.89,
+        "tokens": {
+          "input_tokens": 83862,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1617,
+          "total_tokens": 85479
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 17916.28,
+        "tokens": {
+          "input_tokens": 41844,
+          "cached_input_tokens": 20224,
+          "output_tokens": 760,
+          "total_tokens": 42604
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 9,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 107050.7,
+        "tokens": {
+          "input_tokens": 110625,
+          "cached_input_tokens": 60672,
+          "output_tokens": 5400,
+          "total_tokens": 116025
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 50730.83,
+        "tokens": {
+          "input_tokens": 43047,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2596,
+          "total_tokens": 45643
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
         "reminders_or_reexplanations": 0,
         "reexplained_requirements": 0
       }
@@ -930,47 +3162,656 @@
   ],
   "summary": {
     "disabled": {
-      "runs": 18,
+      "runs": 54,
       "execution_success_pct": 100,
-      "elapsed_ms": 43792.87,
-      "input_tokens": 104916.78,
-      "cached_input_tokens": 64753.78,
-      "output_tokens": 1670.72,
-      "total_tokens": 106587.5,
+      "elapsed_ms": 46054.24,
+      "input_tokens": 88912.96,
+      "cached_input_tokens": 48241.78,
+      "output_tokens": 1988.76,
+      "total_tokens": 90901.72,
       "completion_correct_pct": 100,
       "gate_correct_pct": 100,
-      "requirement_recall_pct": 100,
-      "status_recall_pct": 73.33,
-      "reminders_or_reexplanations": 0.78,
-      "reexplained_requirements": 5.33,
-      "missed_requirements": 0
+      "requirement_recall_pct": 99.26,
+      "status_recall_pct": 72.59,
+      "summary_recall_pct": 55.56,
+      "reminders_or_reexplanations": 0.8,
+      "reexplained_requirements": 17.11,
+      "missed_requirements": 0.15,
+      "hallucinated_requirements": 0,
+      "duplicate_requirement_ids": 0
     },
     "enabled": {
-      "runs": 18,
+      "runs": 54,
       "execution_success_pct": 100,
-      "elapsed_ms": 30265.02,
-      "input_tokens": 79656,
-      "cached_input_tokens": 50958.22,
-      "output_tokens": 1198.78,
-      "total_tokens": 80854.78,
+      "elapsed_ms": 25703.4,
+      "input_tokens": 44044.94,
+      "cached_input_tokens": 22016,
+      "output_tokens": 1132.11,
+      "total_tokens": 45177.06,
       "completion_correct_pct": 100,
       "gate_correct_pct": 100,
       "requirement_recall_pct": 100,
       "status_recall_pct": 100,
-      "reminders_or_reexplanations": 0.11,
-      "reexplained_requirements": 0,
-      "missed_requirements": 0
+      "summary_recall_pct": 100,
+      "reminders_or_reexplanations": 0.04,
+      "reexplained_requirements": 0.33,
+      "missed_requirements": 0,
+      "hallucinated_requirements": 0,
+      "duplicate_requirement_ids": 0
     },
     "delta": {
-      "total_tokens_pct": -24.14,
-      "elapsed_pct": -30.89,
-      "requirement_recall_points": 0,
-      "status_recall_points": 26.67,
+      "total_tokens_pct": -50.3,
+      "elapsed_pct": -44.19,
+      "requirement_recall_points": 0.74,
+      "status_recall_points": 27.41,
       "completion_correct_points": 0,
-      "missed_requirements": 0,
-      "reminders_or_reexplanations": -0.67
+      "missed_requirements": -0.15,
+      "reminders_or_reexplanations": -0.76
     }
   },
+  "analysis": {
+    "overall": {
+      "token_delta_pct": {
+        "average": -46.74,
+        "p50": -50.08,
+        "p95": -0.09,
+        "min": -74,
+        "max": 0.56,
+        "mad": 1.69,
+        "bootstrap_90_ci": {
+          "low": -50.24,
+          "high": -49.96
+        }
+      },
+      "elapsed_delta_pct": {
+        "average": -40.98,
+        "p50": -49.56,
+        "p95": 5.81,
+        "min": -66.67,
+        "max": 14.36,
+        "mad": 6.52,
+        "bootstrap_90_ci": {
+          "low": -51.56,
+          "high": -46.07
+        }
+      },
+      "token_pair_wins": 53,
+      "elapsed_pair_wins": 49,
+      "pairs": 54
+    },
+    "classes": [
+      {
+        "class": "equal_information",
+        "disabled": {
+          "runs": 27,
+          "execution_success_pct": 100,
+          "elapsed_ms": 54283.54,
+          "input_tokens": 88328.52,
+          "cached_input_tokens": 47587.56,
+          "output_tokens": 2482.78,
+          "total_tokens": 90811.3,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 62.96,
+          "reminders_or_reexplanations": 0.7,
+          "reexplained_requirements": 18.52,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 27,
+          "execution_success_pct": 100,
+          "elapsed_ms": 30063.73,
+          "input_tokens": 42325.04,
+          "cached_input_tokens": 21115.26,
+          "output_tokens": 1391.78,
+          "total_tokens": 43716.81,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -45.4,
+            "p50": -50.11,
+            "p95": -0.17,
+            "min": -74,
+            "max": -0.04,
+            "mad": 7.58,
+            "bootstrap_90_ci": {
+              "low": -52.49,
+              "high": -49.96
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -40.42,
+            "p50": -50.02,
+            "p95": 3.83,
+            "min": -61.49,
+            "max": 9.47,
+            "mad": 7.14,
+            "bootstrap_90_ci": {
+              "low": -52.61,
+              "high": -47.57
+            }
+          },
+          "token_pair_wins": 27,
+          "elapsed_pair_wins": 24,
+          "pairs": 27
+        }
+      },
+      {
+        "class": "resilience",
+        "disabled": {
+          "runs": 27,
+          "execution_success_pct": 100,
+          "elapsed_ms": 37824.94,
+          "input_tokens": 89497.41,
+          "cached_input_tokens": 48896,
+          "output_tokens": 1494.74,
+          "total_tokens": 90992.15,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 98.52,
+          "status_recall_pct": 45.19,
+          "summary_recall_pct": 48.15,
+          "reminders_or_reexplanations": 0.89,
+          "reexplained_requirements": 15.7,
+          "missed_requirements": 0.3,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 27,
+          "execution_success_pct": 100,
+          "elapsed_ms": 21343.07,
+          "input_tokens": 45764.85,
+          "cached_input_tokens": 22916.74,
+          "output_tokens": 872.44,
+          "total_tokens": 46637.3,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0.07,
+          "reexplained_requirements": 0.67,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -48.08,
+            "p50": -50,
+            "p95": -10.27,
+            "min": -60.75,
+            "max": 0.56,
+            "mad": 0.66,
+            "bootstrap_90_ci": {
+              "low": -50.29,
+              "high": -49.77
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -41.54,
+            "p50": -47.05,
+            "p95": -0.24,
+            "min": -66.67,
+            "max": 14.36,
+            "mad": 7.68,
+            "bootstrap_90_ci": {
+              "low": -51.37,
+              "high": -44.38
+            }
+          },
+          "token_pair_wins": 26,
+          "elapsed_pair_wins": 25,
+          "pairs": 27
+        }
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "perfect-handoff",
+        "class": "equal_information",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 38757.84,
+          "input_tokens": 86104.89,
+          "cached_input_tokens": 40448,
+          "output_tokens": 1604.22,
+          "total_tokens": 87709.11,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 66.67,
+          "reminders_or_reexplanations": 1,
+          "reexplained_requirements": 20,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 19240.62,
+          "input_tokens": 41927.89,
+          "cached_input_tokens": 20224,
+          "output_tokens": 787.44,
+          "total_tokens": 42715.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -51.06,
+            "p50": -49.99,
+            "p95": -49.76,
+            "min": -59.9,
+            "max": -49.72,
+            "mad": 0.12,
+            "bootstrap_90_ci": {
+              "low": -50.11,
+              "high": -49.88
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -50.25,
+            "p50": -50.02,
+            "p95": -44.58,
+            "min": -55.59,
+            "max": -42.59,
+            "mad": 2.13,
+            "bootstrap_90_ci": {
+              "low": -52.15,
+              "high": -49.31
+            }
+          },
+          "token_pair_wins": 9,
+          "elapsed_pair_wins": 9,
+          "pairs": 9
+        }
+      },
+      {
+        "id": "bounded-loss",
+        "class": "resilience",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 35547.73,
+          "input_tokens": 87872,
+          "cached_input_tokens": 43690.67,
+          "output_tokens": 1414.44,
+          "total_tokens": 89286.44,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 95.56,
+          "status_recall_pct": 35.56,
+          "summary_recall_pct": 0,
+          "reminders_or_reexplanations": 1,
+          "reexplained_requirements": 18.22,
+          "missed_requirements": 0.89,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 19638.2,
+          "input_tokens": 41877.89,
+          "cached_input_tokens": 20224,
+          "output_tokens": 792.11,
+          "total_tokens": 42670,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -51.81,
+            "p50": -49.68,
+            "p95": -49.43,
+            "min": -59.65,
+            "max": -49.34,
+            "mad": 0.1,
+            "bootstrap_90_ci": {
+              "low": -49.78,
+              "high": -49.6
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -44.28,
+            "p50": -45.71,
+            "p95": -31.19,
+            "min": -54.73,
+            "max": -29.58,
+            "mad": 5.72,
+            "bootstrap_90_ci": {
+              "low": -50.38,
+              "high": -39.99
+            }
+          },
+          "token_pair_wins": 9,
+          "elapsed_pair_wins": 9,
+          "pairs": 9
+        }
+      },
+      {
+        "id": "stale-conflict",
+        "class": "resilience",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 42385.52,
+          "input_tokens": 90857.11,
+          "cached_input_tokens": 49521.78,
+          "output_tokens": 1652.11,
+          "total_tokens": 92509.22,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 0,
+          "summary_recall_pct": 55.56,
+          "reminders_or_reexplanations": 1,
+          "reexplained_requirements": 20,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 24404.93,
+          "input_tokens": 53571.11,
+          "cached_input_tokens": 26965.33,
+          "output_tokens": 1007.67,
+          "total_tokens": 54578.78,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0.22,
+          "reexplained_requirements": 2,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -41.08,
+            "p50": -50,
+            "p95": 0.33,
+            "min": -59.95,
+            "max": 0.56,
+            "mad": 0.29,
+            "bootstrap_90_ci": {
+              "low": -50.29,
+              "high": -49.93
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -40.68,
+            "p50": -52.21,
+            "p95": 11.24,
+            "min": -66.67,
+            "max": 14.36,
+            "mad": 6.14,
+            "bootstrap_90_ci": {
+              "low": -55.95,
+              "high": -46.07
+            }
+          },
+          "token_pair_wins": 8,
+          "elapsed_pair_wins": 7,
+          "pairs": 9
+        }
+      },
+      {
+        "id": "multi-session-handoff",
+        "class": "resilience",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 35541.58,
+          "input_tokens": 89763.11,
+          "cached_input_tokens": 53475.56,
+          "output_tokens": 1417.67,
+          "total_tokens": 91180.78,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 88.89,
+          "reminders_or_reexplanations": 0.67,
+          "reexplained_requirements": 8.89,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 19986.08,
+          "input_tokens": 41845.56,
+          "cached_input_tokens": 21560.89,
+          "output_tokens": 817.56,
+          "total_tokens": 42663.11,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -51.34,
+            "p50": -51.04,
+            "p95": -34.27,
+            "min": -60.75,
+            "max": -34.22,
+            "mad": 9.32,
+            "bootstrap_90_ci": {
+              "low": -60.36,
+              "high": -50.22
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -39.65,
+            "p50": -45.59,
+            "p95": -16.34,
+            "min": -58.39,
+            "max": -16.09,
+            "mad": 12.26,
+            "bootstrap_90_ci": {
+              "low": -47.74,
+              "high": -23.07
+            }
+          },
+          "token_pair_wins": 9,
+          "elapsed_pair_wins": 9,
+          "pairs": 9
+        }
+      },
+      {
+        "id": "delegation-review",
+        "class": "equal_information",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 33442.1,
+          "input_tokens": 74514.78,
+          "cached_input_tokens": 38200.89,
+          "output_tokens": 1388.67,
+          "total_tokens": 75903.44,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 44.44,
+          "reminders_or_reexplanations": 0.67,
+          "reexplained_requirements": 13.33,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 18756.33,
+          "input_tokens": 41892.56,
+          "cached_input_tokens": 22897.78,
+          "output_tokens": 780,
+          "total_tokens": 42672.56,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -35.62,
+            "p50": -50.05,
+            "p95": -0.07,
+            "min": -60.04,
+            "max": -0.04,
+            "mad": 9.73,
+            "bootstrap_90_ci": {
+              "low": -50.27,
+              "high": -0.3
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -35.24,
+            "p50": -51.1,
+            "p95": 7.85,
+            "min": -57.55,
+            "max": 9.47,
+            "mad": 6.08,
+            "bootstrap_90_ci": {
+              "low": -57.16,
+              "high": -3.97
+            }
+          },
+          "token_pair_wins": 9,
+          "elapsed_pair_wins": 7,
+          "pairs": 9
+        }
+      },
+      {
+        "id": "requirement-scale-100",
+        "class": "equal_information",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 90650.68,
+          "input_tokens": 104365.89,
+          "cached_input_tokens": 64113.78,
+          "output_tokens": 4455.44,
+          "total_tokens": 108821.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 77.78,
+          "reminders_or_reexplanations": 0.44,
+          "reexplained_requirements": 22.22,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 52194.23,
+          "input_tokens": 43154.67,
+          "cached_input_tokens": 20224,
+          "output_tokens": 2607.89,
+          "total_tokens": 45762.56,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -49.51,
+            "p50": -60.66,
+            "p95": -3.41,
+            "min": -74,
+            "max": -3.1,
+            "mad": 5.26,
+            "bootstrap_90_ci": {
+              "low": -64.96,
+              "high": -52.49
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -35.76,
+            "p50": -41.87,
+            "p95": -0.23,
+            "min": -61.49,
+            "max": 0.15,
+            "mad": 16.08,
+            "bootstrap_90_ci": {
+              "low": -52.92,
+              "high": -22.17
+            }
+          },
+          "token_pair_wins": 9,
+          "elapsed_pair_wins": 8,
+          "pairs": 9
+        }
+      }
+    ],
+    "excluded_model_failures": 0
+  },
+  "strict": true,
   "contract": {
     "ok": true,
     "checks": [
@@ -1010,44 +3851,214 @@
         "comparison": "gte"
       },
       {
-        "id": "requirement-recall-noninferiority",
+        "id": "enabled-summary-recall",
         "ok": true,
         "actual": 100,
         "limit": 100,
         "comparison": "gte"
       },
       {
+        "id": "enabled-hallucinated-requirements",
+        "ok": true,
+        "actual": 0,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "enabled-duplicate-requirement-ids",
+        "ok": true,
+        "actual": 0,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "requirement-recall-noninferiority",
+        "ok": true,
+        "actual": 100,
+        "limit": 99.26,
+        "comparison": "gte"
+      },
+      {
         "id": "status-recall-noninferiority",
         "ok": true,
         "actual": 100,
-        "limit": 73.33,
+        "limit": 72.59,
+        "comparison": "gte"
+      },
+      {
+        "id": "summary-recall-noninferiority",
+        "ok": true,
+        "actual": 100,
+        "limit": 55.56,
         "comparison": "gte"
       },
       {
         "id": "reminder-noninferiority",
         "ok": true,
-        "actual": 0.11,
-        "limit": 0.78,
+        "actual": 0.04,
+        "limit": 0.8,
         "comparison": "lte"
       },
       {
         "id": "total-token-budget",
         "ok": true,
-        "actual": 80854.78,
-        "limit": 117246.25,
+        "actual": 45177.06,
+        "limit": 99991.89,
         "comparison": "lte"
       },
       {
         "id": "elapsed-budget",
         "ok": true,
-        "actual": 30265.02,
-        "limit": 54741.09,
+        "actual": 25703.4,
+        "limit": 57567.8,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-scenario-coverage",
+        "ok": true,
+        "actual": 1,
+        "limit": 1,
+        "comparison": "gte"
+      },
+      {
+        "id": "strict-pairs-per-scenario",
+        "ok": true,
+        "actual": 9,
+        "limit": 9,
+        "comparison": "gte"
+      },
+      {
+        "id": "strict-overall-token-median",
+        "ok": true,
+        "actual": -50.08,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-overall-elapsed-median",
+        "ok": true,
+        "actual": -49.56,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-overall-token-average",
+        "ok": true,
+        "actual": -50.3,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-overall-elapsed-average",
+        "ok": true,
+        "actual": -44.19,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-perfect-handoff-corrections",
+        "ok": true,
+        "actual": 0,
+        "limit": 1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-bounded-loss-corrections",
+        "ok": true,
+        "actual": 0,
+        "limit": 1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-stale-conflict-corrections",
+        "ok": true,
+        "actual": 0.22,
+        "limit": 1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-multi-session-handoff-corrections",
+        "ok": true,
+        "actual": 0,
+        "limit": 0.67,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-delegation-review-corrections",
+        "ok": true,
+        "actual": 0,
+        "limit": 0.67,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-requirement-scale-100-corrections",
+        "ok": true,
+        "actual": 0,
+        "limit": 0.44,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-multi-session-handoff-token-median",
+        "ok": true,
+        "actual": -51.04,
+        "limit": 0.1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-multi-session-handoff-token-bootstrap-high",
+        "ok": true,
+        "actual": -50.22,
+        "limit": 0.1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-multi-session-handoff-elapsed-median",
+        "ok": true,
+        "actual": -45.59,
+        "limit": 0.1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-multi-session-handoff-elapsed-bootstrap-high",
+        "ok": true,
+        "actual": -23.07,
+        "limit": 0.1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-delegation-review-token-median",
+        "ok": true,
+        "actual": -50.05,
+        "limit": 0.1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-delegation-review-token-bootstrap-high",
+        "ok": true,
+        "actual": -0.3,
+        "limit": 0.1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-delegation-review-elapsed-median",
+        "ok": true,
+        "actual": -51.1,
+        "limit": 0.1,
+        "comparison": "lte"
+      },
+      {
+        "id": "strict-delegation-review-elapsed-bootstrap-high",
+        "ok": true,
+        "actual": -3.97,
+        "limit": 0.1,
         "comparison": "lte"
       }
     ],
     "limits": {
       "enabled_total_tokens_ratio": 1.1,
-      "enabled_elapsed_ratio": 1.25
+      "enabled_elapsed_ratio": 1.25,
+      "strict_minimum_pairs": 9,
+      "strict_regression_token_median_pct": 0.1
     }
   },
   "ok": true,
@@ -1056,5 +4067,5 @@
     "json": "work-agent-ab.json",
     "markdown": "README.md"
   },
-  "markdown": "# Work agent A/B benchmark\n\n- Generated: 2026-08-20T07:21:58.500Z\n- Model: gpt-5.6-luna\n- Repetitions per scenario: 3\n- Planned initial Codex invocations: 36\n- Actual invocations including oracle corrections: 52\n- Equal-information scenarios: perfect-handoff, delegation-review, requirement-scale-100\n- Resilience scenarios: bounded-loss, stale-conflict, multi-session-handoff\n- Contract: PASS\n\n| Metric | Disabled | Enabled | Delta |\n| --- | ---: | ---: | ---: |\n| Total tokens (average/run) | 106587.5 | 80854.78 | -24.14% |\n| Elapsed ms (average/run) | 43792.87 | 30265.02 | -30.89% |\n| Completion correctness | 100% | 100% | 0pp |\n| Gate correctness | 100% | 100% | — |\n| Requirement recall | 100% | 100% | 0pp |\n| Status recall | 73.33% | 100% | 26.67pp |\n| Missed requirements (average/run) | 0 | 0 | 0 |\n| Actual correction rounds (average/run) | 0.78 | 0.11 | -0.67 |\n| Re-explained requirements (average/run) | 5.33 | 0 | — |\n\nThe evaluator stores aggregate metrics only. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.\n"
+  "markdown": "# Work agent A/B benchmark\n\n- Generated: 2026-08-25T12:04:59.398Z\n- Model: gpt-5.6-luna\n- Repetitions per scenario: 9\n- Strict contract: enabled\n- Planned initial Codex invocations: 108\n- Actual invocations including oracle corrections: 153\n- Equal-information scenarios: perfect-handoff, delegation-review, requirement-scale-100\n- Resilience scenarios: bounded-loss, stale-conflict, multi-session-handoff\n- Excluded model failures: 0\n- Contract: PASS\n\n| Metric | Disabled | Enabled | Delta |\n| --- | ---: | ---: | ---: |\n| Total tokens (average/run) | 90901.72 | 45177.06 | -50.3% |\n| Elapsed ms (average/run) | 46054.24 | 25703.4 | -44.19% |\n| Paired token delta | — | — | p50 -50.08%, p95 -0.09%, MAD 1.69% |\n| Paired elapsed delta | — | — | p50 -49.56%, p95 5.81%, MAD 6.52% |\n| Completion correctness | 100% | 100% | 0pp |\n| Gate correctness | 100% | 100% | — |\n| Requirement recall | 99.26% | 100% | 0.74pp |\n| Status recall | 72.59% | 100% | 27.41pp |\n| Summary recall | 55.56% | 100% | — |\n| Hallucinated requirements (average/run) | 0 | 0 | — |\n| Duplicate requirement IDs (average/run) | 0 | 0 | — |\n| Missed requirements (average/run) | 0.15 | 0 | -0.15 |\n| Actual correction rounds (average/run) | 0.8 | 0.04 | -0.76 |\n| Re-explained requirements (average/run) | 17.11 | 0.33 | — |\n\n## Comparison classes\n\n| Class | Token p50 (90% bootstrap CI) | Elapsed p50 (90% bootstrap CI) | Token wins |\n| --- | ---: | ---: | ---: |\n| equal_information | -50.11% (-52.49% to -49.96%) | -50.02% (-52.61% to -47.57%) | 27/27 |\n| resilience | -50% (-50.29% to -49.77%) | -47.05% (-51.37% to -44.38%) | 26/27 |\n\n## Scenario breakdown\n\n| Scenario | Class | Token p50 (p95) | Elapsed p50 (p95) | Token wins | Disabled → enabled status accuracy | Disabled → enabled corrections/run |\n| --- | --- | ---: | ---: | ---: | ---: | ---: |\n| perfect-handoff | equal_information | -49.99% (-49.76%) | -50.02% (-44.58%) | 9/9 | 100% → 100% | 1 → 0 |\n| bounded-loss | resilience | -49.68% (-49.43%) | -45.71% (-31.19%) | 9/9 | 35.56% → 100% | 1 → 0 |\n| stale-conflict | resilience | -50% (0.33%) | -52.21% (11.24%) | 8/9 | 0% → 100% | 1 → 0.22 |\n| multi-session-handoff | resilience | -51.04% (-34.27%) | -45.59% (-16.34%) | 9/9 | 100% → 100% | 0.67 → 0 |\n| delegation-review | equal_information | -50.05% (-0.07%) | -51.1% (7.85%) | 9/9 | 100% → 100% | 0.67 → 0 |\n| requirement-scale-100 | equal_information | -60.66% (-3.41%) | -41.87% (-0.23%) | 9/9 | 100% → 100% | 0.44 → 0 |\n\nEvery accepted answer contains each expected requirement exactly once with an exact ID, status, and summary; hallucinated or duplicate rows trigger deterministic correction. Each paired distribution also records min, max, MAD, and a deterministic 90% bootstrap interval in the JSON artifact. Model failures are scored, never excluded. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.\n"
 }

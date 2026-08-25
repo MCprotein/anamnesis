@@ -30,22 +30,23 @@ preserving user-authored content.
 
 ## Measured Work continuity
 
-The latest published real-Codex diagnostic compares Work disabled and enabled
-across six continuity scenarios. Correction turns are charged to the condition
-that needed them.
+The latest published real-Codex benchmark compares Work disabled and enabled
+across six continuity scenarios and nine paired repetitions per scenario.
+Correction turns are charged to the condition that needed them.
 
 ![Work continuity real Codex A/B summary](docs/benchmark-evidence/work-agent-ab/work-agent-ab-summary.svg)
 
-| Published 3-pair diagnostic | Change with Work |
+| Published strict 9-pair benchmark | Change with Work |
 | --- | ---: |
-| Average total tokens/run | **-24.14%** |
-| Average elapsed time/run | **-30.89%** |
-| Status accuracy | **73.33% → 100%** |
-| Re-explained requirements/run | **5.33 → 0** |
+| Average total tokens/run | **-50.30%** |
+| Average elapsed time/run | **-44.19%** |
+| Status recall | **72.59% → 100%** |
+| Re-explained requirements/run | **17.11 → 0.33** |
 
-Both conditions retained 100% completion and gate correctness. This small run
-is directional, not a universal cost claim; the stronger nine-pair evaluator is
-implemented but its fresh paid run is still pending. See the
+Both conditions retained 100% completion and gate correctness; Work also reached
+100% requirement and summary recall with no hallucinated or duplicate
+requirements. The strict contract passed all six scenarios (108 initial calls,
+153 including bounded corrections). See the
 [scenario evidence](docs/benchmark-evidence/work-agent-ab/README.md) and
 [methodology](docs/AGENT-TASK-BENCHMARKS.md).
 

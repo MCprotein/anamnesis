@@ -425,6 +425,15 @@ export function workAgentBenchmark(
 	};
 	result.markdown = renderWorkAgentBenchmarkMarkdown(result);
 	if (opts.write === true) {
+		if (
+			result.strict &&
+			!result.ok &&
+			isCanonicalBenchmarkOutput(projectRoot, opts.outputPath)
+		) {
+			throw new WorkAgentBenchmarkError(
+				"strict benchmark failed; refusing to overwrite canonical public artifacts (pass --output for diagnostic evidence)",
+			);
+		}
 		result.artifacts = writeArtifacts(result, opts.outputPath);
 	}
 	return result;
@@ -656,6 +665,18 @@ export function evaluateWorkAgentContract(
 				0,
 				"lte",
 			),
+			check(
+				"strict-overall-token-average",
+				summary.delta.total_tokens_pct,
+				0,
+				"lte",
+			),
+			check(
+				"strict-overall-elapsed-average",
+				summary.delta.elapsed_pct,
+				0,
+				"lte",
+			),
 		);
 		for (const scenario of analysis.scenarios) {
 			checks.push(
@@ -693,6 +714,18 @@ export function evaluateWorkAgentContract(
 				check(
 					`strict-${id}-token-bootstrap-high`,
 					scenario.paired.token_delta_pct.bootstrap_90_ci.high,
+					limits.strict_regression_token_median_pct,
+					"lte",
+				),
+				check(
+					`strict-${id}-elapsed-median`,
+					scenario.paired.elapsed_delta_pct.p50,
+					limits.strict_regression_token_median_pct,
+					"lte",
+				),
+				check(
+					`strict-${id}-elapsed-bootstrap-high`,
+					scenario.paired.elapsed_delta_pct.bootstrap_90_ci.high,
 					limits.strict_regression_token_median_pct,
 					"lte",
 				),
@@ -1456,6 +1489,18 @@ function writeArtifacts(
 	);
 	fs.writeFileSync(markdownPath, result.markdown);
 	return artifacts;
+}
+
+function isCanonicalBenchmarkOutput(
+	projectRoot: string,
+	outputPath: string | undefined,
+): boolean {
+	return (
+		path.resolve(
+			projectRoot,
+			outputPath ?? WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR,
+		) === path.resolve(projectRoot, WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR)
+	);
 }
 
 function check(

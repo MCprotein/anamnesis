@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="650" viewBox="0 0 960 650" role="img" aria-labelledby="title desc">
-  <title id="title">Work continuity real Codex A/B benchmark</title>
-  <desc id="desc">Three paired runs across six scenarios. Work enabled reduced average total tokens by 24.14 percent and elapsed time by 30.89 percent, improved status accuracy from 73.33 to 100 percent, and reduced correction rounds from 0.78 to 0.11. Multi-session handoff and delegation review remained token regressions.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="650" viewBox="0 0 1100 650" role="img" aria-labelledby="title desc">
+  <title id="title">Work continuity strict real Codex A/B benchmark</title>
+  <desc id="desc">Nine paired runs across six scenarios. Work enabled reduced average total tokens by 50.30 percent and elapsed time by 44.19 percent, improved status recall from 72.59 to 100 percent, and passed all strict correctness and non-regression gates.</desc>
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1f2937; }
     .title { font-size: 24px; font-weight: 700; }
@@ -14,60 +14,49 @@
     .grid { stroke: #d0d5dd; stroke-width: 1; }
     .zero { stroke: #667085; stroke-width: 1.5; }
   </style>
-  <rect width="960" height="650" fill="#ffffff" />
-  <text x="32" y="38" class="title">Work continuity: real Codex A/B</text>
-  <text x="32" y="62" class="subtitle">gpt-5.6-luna · 6 scenarios × 3 paired runs · correction cost included · lower cost is better</text>
-  <text x="32" y="100" class="metric-label">TOTAL TOKENS</text>
-  <text x="32" y="126" class="metric-value" fill="#047857">−24.14%</text>
-  <text x="250" y="100" class="metric-label">ELAPSED TIME</text>
-  <text x="250" y="126" class="metric-value" fill="#047857">−30.89%</text>
-  <text x="468" y="100" class="metric-label">STATUS ACCURACY</text>
-  <text x="468" y="126" class="metric-value" fill="#047857">73.33% → 100%</text>
-  <text x="700" y="100" class="metric-label">CORRECTIONS / RUN</text>
-  <text x="700" y="126" class="metric-value" fill="#047857">0.78 → 0.11</text>
-  <text x="32" y="174" class="section">Average tokens per run</text>
-  <text x="32" y="208" class="label">Work disabled</text>
-  <rect x="170" y="190" width="580" height="24" rx="3" fill="#2563eb" />
-  <text x="761" y="207" class="value">106,587.5</text>
-  <text x="32" y="246" class="label">Work enabled</text>
-  <rect x="170" y="228" width="440" height="24" rx="3" fill="#059669" />
-  <text x="621" y="245" class="value">80,854.78</text>
-  <text x="32" y="300" class="section">Token delta by scenario</text>
-  <text x="32" y="320" class="subtitle">enabled versus disabled; negative values are savings</text>
-  <line x1="180" x2="820" y1="346" y2="346" class="grid" />
-  <line x1="180" x2="180" y1="342" y2="568" class="grid" />
-  <line x1="340" x2="340" y1="342" y2="568" class="grid" />
-  <line x1="500" x2="500" y1="342" y2="568" class="grid" />
-  <line x1="580" x2="580" y1="336" y2="574" class="zero" />
-  <line x1="660" x2="660" y1="342" y2="568" class="grid" />
-  <line x1="820" x2="820" y1="342" y2="568" class="grid" />
-  <text x="180" y="588" text-anchor="middle" class="axis-label">−50%</text>
-  <text x="340" y="588" text-anchor="middle" class="axis-label">−30%</text>
-  <text x="500" y="588" text-anchor="middle" class="axis-label">−10%</text>
-  <text x="580" y="588" text-anchor="middle" class="axis-label">0%</text>
-  <text x="660" y="588" text-anchor="middle" class="axis-label">+10%</text>
-  <text x="820" y="588" text-anchor="middle" class="axis-label">+30%</text>
-  <text x="32" y="372" class="label">Perfect handoff</text>
-  <rect x="342" y="355" width="238" height="22" rx="3" fill="#059669" />
-  <text x="333" y="371" text-anchor="end" class="value">−29.73%</text>
-  <text x="32" y="410" class="label">Bounded loss</text>
-  <rect x="237" y="393" width="343" height="22" rx="3" fill="#059669" />
-  <text x="228" y="409" text-anchor="end" class="value">−42.91%</text>
-  <text x="32" y="448" class="label">Stale conflict</text>
-  <rect x="250" y="431" width="330" height="22" rx="3" fill="#059669" />
-  <text x="241" y="447" text-anchor="end" class="value">−41.22%</text>
-  <text x="32" y="486" class="label">Multi-session handoff</text>
-  <rect x="580" y="469" width="127" height="22" rx="3" fill="#dc2626" />
-  <text x="716" y="485" class="value">+15.88%</text>
-  <text x="32" y="524" class="label">Delegation / review</text>
-  <rect x="580" y="507" width="47" height="22" rx="3" fill="#dc2626" />
-  <text x="636" y="523" class="value">+5.83%</text>
-  <text x="32" y="562" class="label">100 requirements</text>
-  <rect x="339" y="545" width="241" height="22" rx="3" fill="#059669" />
-  <text x="330" y="561" text-anchor="end" class="value">−30.08%</text>
-  <circle cx="32" cy="620" r="5" fill="#059669" />
-  <text x="44" y="624" class="subtitle">Savings</text>
-  <circle cx="130" cy="620" r="5" fill="#dc2626" />
-  <text x="142" y="624" class="subtitle">Remaining regression</text>
-  <text x="928" y="624" text-anchor="end" class="subtitle">52 invocations including corrections</text>
+  <rect width="1100" height="650" fill="#ffffff" />
+  <text x="32" y="38" class="title">Work continuity: strict real Codex A/B</text>
+  <text x="32" y="62" class="subtitle">gpt-5.6-luna · 6 scenarios × 9 paired runs · 108 initial calls · 153 total with corrections</text>
+  <text x="32" y="100" class="metric-label">AVERAGE TOTAL TOKENS</text>
+  <text x="32" y="126" class="metric-value" fill="#047857">−50.30%</text>
+  <text x="250" y="100" class="metric-label">AVERAGE ELAPSED TIME</text>
+  <text x="250" y="126" class="metric-value" fill="#047857">−44.19%</text>
+  <text x="468" y="100" class="metric-label">STATUS RECALL</text>
+  <text x="468" y="126" class="metric-value" fill="#047857">72.59% → 100%</text>
+  <text x="700" y="100" class="metric-label">STRICT CONTRACT</text>
+  <text x="700" y="126" class="metric-value" fill="#047857">PASS</text>
+  <text x="32" y="174" class="section">Paired token delta by scenario (p50)</text>
+  <text x="32" y="196" class="subtitle">Work enabled versus disabled; negative values are savings</text>
+  <line x1="280" x2="920" y1="222" y2="222" class="grid" />
+  <line x1="280" x2="280" y1="218" y2="510" class="grid" />
+  <line x1="440" x2="440" y1="218" y2="510" class="grid" />
+  <line x1="600" x2="600" y1="218" y2="510" class="grid" />
+  <line x1="760" x2="760" y1="212" y2="516" class="zero" />
+  <line x1="920" x2="920" y1="218" y2="510" class="grid" />
+  <text x="280" y="532" text-anchor="middle" class="axis-label">−60%</text>
+  <text x="440" y="532" text-anchor="middle" class="axis-label">−40%</text>
+  <text x="600" y="532" text-anchor="middle" class="axis-label">−20%</text>
+  <text x="760" y="532" text-anchor="middle" class="axis-label">0%</text>
+  <text x="920" y="532" text-anchor="middle" class="axis-label">+20%</text>
+  <text x="32" y="248" class="label">Perfect handoff</text>
+  <rect x="360" y="232" width="400" height="22" rx="3" fill="#059669" />
+  <text x="352" y="248" text-anchor="end" class="value">−49.99%</text>
+  <text x="32" y="294" class="label">Bounded loss</text>
+  <rect x="363" y="278" width="397" height="22" rx="3" fill="#059669" />
+  <text x="355" y="294" text-anchor="end" class="value">−49.68%</text>
+  <text x="32" y="340" class="label">Stale conflict</text>
+  <rect x="360" y="324" width="400" height="22" rx="3" fill="#059669" />
+  <text x="352" y="340" text-anchor="end" class="value">−50.00%</text>
+  <text x="32" y="386" class="label">Multi-session handoff</text>
+  <rect x="352" y="370" width="408" height="22" rx="3" fill="#059669" />
+  <text x="344" y="386" text-anchor="end" class="value">−51.04%</text>
+  <text x="32" y="432" class="label">Delegation / review</text>
+  <rect x="360" y="416" width="400" height="22" rx="3" fill="#059669" />
+  <text x="352" y="432" text-anchor="end" class="value">−50.05%</text>
+  <text x="32" y="478" class="label">100 requirements</text>
+  <rect x="275" y="462" width="485" height="22" rx="3" fill="#059669" />
+  <text x="267" y="478" text-anchor="end" class="value">−60.66%</text>
+  <text x="32" y="580" class="section">Strict quality and paired timing</text>
+  <text x="32" y="606" class="subtitle">Enabled completion/gate correctness and requirement/status/summary recall: 100% · elapsed p50: −49.56% · elapsed wins: 49/54</text>
+  <text x="32" y="628" class="subtitle">Targeted multi-session/delegation bootstrap-high gates passed; hallucinated and duplicate requirements: 0</text>
 </svg>

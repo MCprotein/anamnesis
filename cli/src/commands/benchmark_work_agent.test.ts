@@ -7,6 +7,7 @@ import {
 	analyzePairedRuns,
 	evaluateWorkAgentContract,
 	parseCodexJsonl,
+	WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR,
 	type WorkAgentAnswer,
 	type WorkAgentRunner,
 	type WorkAgentScenarioRun,
@@ -371,7 +372,10 @@ describe("Work agent A/B benchmark", () => {
 			"delegation-review",
 			[1, 2, 3, 4, 5, 6, 7, 8, 9],
 		);
-		const failedRuns = [...runs.slice(0, 9), ...regressed];
+		const failedRuns = [
+			...strictRuns.filter((run) => run.scenario !== "delegation-review"),
+			...regressed,
+		];
 		const failed = evaluateWorkAgentContract(
 			aggregateWorkAgentRuns(failedRuns),
 			analyzePairedRuns(failedRuns),
@@ -384,12 +388,97 @@ describe("Work agent A/B benchmark", () => {
 				ok: false,
 			}),
 		);
+
+		const elapsedRegressed = pairedRuns(
+			"multi-session-handoff",
+			[-9, -8, -7, -6, -5, -4, -3, -2, -1],
+			[1, 2, 3, 4, 5, 6, 7, 8, 9],
+		);
+		const elapsedFailedRuns = [
+			...strictRuns.filter((run) => run.scenario !== "multi-session-handoff"),
+			...elapsedRegressed,
+		];
+		const elapsedFailed = evaluateWorkAgentContract(
+			aggregateWorkAgentRuns(elapsedFailedRuns),
+			analyzePairedRuns(elapsedFailedRuns),
+			true,
+		);
+		expect(elapsedFailed.ok).toBe(false);
+		expect(elapsedFailed.checks).toContainEqual(
+			expect.objectContaining({
+				id: "strict-multi-session-handoff-elapsed-median",
+				ok: false,
+			}),
+		);
+		expect(elapsedFailed.checks).toContainEqual(
+			expect.objectContaining({
+				id: "strict-multi-session-handoff-elapsed-bootstrap-high",
+				ok: false,
+			}),
+		);
+
+		const averageRegression = strictRuns.map((run, index) =>
+			index === 0
+				? {
+						...run,
+						enabled: {
+							...run.enabled,
+							tokens: { ...run.enabled.tokens, total_tokens: 1_000 },
+							elapsed_ms: 1_000,
+						},
+					}
+				: run,
+		);
+		const averageFailed = evaluateWorkAgentContract(
+			aggregateWorkAgentRuns(averageRegression),
+			analyzePairedRuns(averageRegression),
+			true,
+		);
+		expect(averageFailed.ok).toBe(false);
+		expect(averageFailed.checks).toContainEqual(
+			expect.objectContaining({ id: "strict-overall-token-average", ok: false }),
+		);
+		expect(averageFailed.checks).toContainEqual(
+			expect.objectContaining({ id: "strict-overall-elapsed-average", ok: false }),
+		);
 	});
+
+	it("does not overwrite canonical artifacts when a strict run fails", () => {
+		const projectRoot = root();
+		const canonicalDir = path.join(projectRoot, WORK_AGENT_AB_BENCHMARK_OUTPUT_DIR);
+		fs.mkdirSync(canonicalDir, { recursive: true });
+		const sentinel = "existing canonical evidence";
+		fs.writeFileSync(path.join(canonicalDir, "work-agent-ab.json"), sentinel);
+		fs.writeFileSync(path.join(canonicalDir, "README.md"), sentinel);
+		const baseRunner = fakeRunner([]);
+		const runner: WorkAgentRunner = (request) => {
+			const response = baseRunner(request);
+			if (!request.cwd.endsWith("-enabled")) return response;
+			const events = response.stdout.split("\n").map((line) => JSON.parse(line));
+			const usage = events.find((event) => event.type === "turn.completed").usage;
+			usage.total_tokens = 120;
+			usage.input_tokens = 100;
+			return { ...response, elapsedMs: 12, stdout: events.map(JSON.stringify).join("\n") };
+		};
+
+		expect(() =>
+			workAgentBenchmark({
+				projectRoot,
+				runs: 9,
+				strict: true,
+				write: true,
+				runner,
+			}),
+		).toThrow("refusing to overwrite canonical public artifacts");
+		expect(fs.readFileSync(path.join(canonicalDir, "work-agent-ab.json"), "utf8")).toBe(sentinel);
+		expect(fs.readFileSync(path.join(canonicalDir, "README.md"), "utf8")).toBe(sentinel);
+	}, 30_000);
 });
 
 function pairedRuns(
 	scenario: WorkAgentScenarioRun["scenario"],
 	tokenDeltas: number[],
+	elapsedDeltas: number[] = tokenDeltas,
 ): WorkAgentScenarioRun[] {
 	return tokenDeltas.map((delta, index) => ({
 		iteration: index + 1,
@@ -399,7 +488,7 @@ function pairedRuns(
 		requirements: 20,
 		order: index % 2 === 0 ? ["disabled", "enabled"] : ["enabled", "disabled"],
 		disabled: condition("disabled", 100, 100),
-		enabled: condition("enabled", 100 + delta, 100 + delta),
+		enabled: condition("enabled", 100 + delta, 100 + elapsedDeltas[index]!),
 	}));
 }
 
