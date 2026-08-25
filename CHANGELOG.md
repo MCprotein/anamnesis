@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-08-25
+
 ### Changed
 
 - Tightened the real-Codex Work A/B evaluator with nine-pair strict gates,
