@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.19.0] — 2026-08-26
+
 ### Changed
 
 - New `anamnesis init` projects now materialize an active Work profile by
