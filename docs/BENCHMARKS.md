@@ -119,6 +119,15 @@ delegation/review at a -0.19% paired token median. See the
 and the
 [`cross-model chart`](benchmark-evidence/work-agent-ab/work-agent-ab-cross-model.svg).
 
+The matching `gpt-5.6-sol` diagnostic used 36 initial calls and 54 total
+invocations, consuming 2,806,955 tokens. Work reduced average tokens by 53.76%
+and elapsed time by 50.97%, reached 100% enabled requirement/status/summary
+recall, and won all 18 token pairs. Unlike Terra, Sol retained a -50.02%
+delegation/review paired token median; the difference reinforces that both
+three-pair results are directional diagnostics rather than model-independent
+performance guarantees. See the
+[`sol-3pair` artifact](benchmark-evidence/work-agent-ab/sol-3pair/README.md).
+
 The evaluator requires exact summaries, rejects unexpected or duplicate
 requirements, separates comparison classes, and records paired p50/p95/MAD and
 deterministic 90% bootstrap intervals. It stores no prompts, model answers,

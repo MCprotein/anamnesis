@@ -50,15 +50,22 @@ requirements. The strict contract passed all six scenarios (108 initial calls,
 [scenario evidence](docs/benchmark-evidence/work-agent-ab/README.md) and
 [methodology](docs/AGENT-TASK-BENCHMARKS.md).
 
-The same six-scenario diagnostic on `gpt-5.6-terra` (`n=3`) reproduced the
-overall direction: **-50.80% tokens**, **-44.56% elapsed time**, 100% enabled
-status recall, and 18/18 token pair wins. Scenario variance remains material —
-delegation/review was nearly flat at -0.19% — so Luna `n=9` remains the strict
-baseline and Terra is directional cross-model evidence.
+The same six-scenario diagnostic (`n=3`) reproduced the overall direction on
+two additional models:
 
-![Luna strict and Terra diagnostic token savings by scenario](docs/benchmark-evidence/work-agent-ab/work-agent-ab-cross-model.svg)
+| Cross-model diagnostic | Tokens/run | Elapsed/run | Enabled status recall | Token pair wins |
+| --- | ---: | ---: | ---: | ---: |
+| `gpt-5.6-terra` | **-50.80%** | **-44.56%** | **100%** | **18/18** |
+| `gpt-5.6-sol` | **-53.76%** | **-50.97%** | **100%** | **18/18** |
 
-[Terra diagnostic evidence](docs/benchmark-evidence/work-agent-ab/terra-3pair/README.md)
+Scenario variance remains material — Terra delegation/review was nearly flat
+at -0.19% while Sol reached -50.02% — so Luna `n=9` remains the strict baseline
+and both `n=3` runs are directional cross-model evidence.
+
+![Luna strict plus Terra and Sol diagnostic token savings by scenario](docs/benchmark-evidence/work-agent-ab/work-agent-ab-cross-model.svg)
+
+[Terra diagnostic evidence](docs/benchmark-evidence/work-agent-ab/terra-3pair/README.md) ·
+[Sol diagnostic evidence](docs/benchmark-evidence/work-agent-ab/sol-3pair/README.md)
 
 ## Quickstart
 
@@ -161,6 +168,7 @@ for the detailed trust and execution model.
 - [Benchmarks](docs/BENCHMARKS.md) — evidence index and deterministic suites
 - [Work A/B evidence](docs/benchmark-evidence/work-agent-ab/README.md) — scenario results and limitations
 - [Terra Work A/B diagnostic](docs/benchmark-evidence/work-agent-ab/terra-3pair/README.md) — three-pair cross-model evidence
+- [Sol Work A/B diagnostic](docs/benchmark-evidence/work-agent-ab/sol-3pair/README.md) — three-pair cross-model evidence
 - [Roadmap](docs/ROADMAP.md) — shipped and deferred work
 - [Contributing](CONTRIBUTING.md) — fragments and project development
 - [Changelog](CHANGELOG.md) — release history
