@@ -1605,8 +1605,8 @@ function renderSummarySvg(
 	);
 	const model = escapeXml(result.model);
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="330" viewBox="0 0 760 330" role="img" aria-labelledby="title desc">
-  <title id="title">Parallel-agent ${model} Work A/B diagnostic</title>
-  <desc id="desc">Final requirement accuracy changed from ${result.summary.disabled.final_accuracy_pct} percent to ${result.summary.enabled.final_accuracy_pct} percent; directional verdict ${result.comparison.verdict}.</desc>
+  <title id="title">Parallel-agent ${model} Work A/B benchmark</title>
+  <desc id="desc">Final requirement accuracy changed from ${result.summary.disabled.final_accuracy_pct} percent to ${result.summary.enabled.final_accuracy_pct} percent; product verdict ${result.comparison.verdict}.</desc>
   <rect width="760" height="330" rx="16" fill="#0f172a"/>
   <text x="32" y="42" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Parallel-agent ${model} benchmark (${result.comparison.total_pairs} pairs)</text>
   <text x="32" y="72" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Harness ${result.harness_validity.ok ? "PASS" : "FAIL"} · ${result.comparison.verdict} · enabled quality ${result.quality.enabled_ready ? "PASS" : "FAIL"}</text>

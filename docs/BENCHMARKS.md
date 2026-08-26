@@ -150,6 +150,24 @@ of at least 10% with its bootstrap upper bound below zero. The final protocol
 requires a clean implementation commit and records only one claim-eligible
 attempt for that commit; validation and shadow runs are always inconclusive.
 
+The single claim-eligible v3 run used 90 real Codex calls across nine pairs.
+Harness validity passed, and Work improved final exact-requirement accuracy
+from **55.56% to 100%** with **4 wins, 5 ties, and 0 losses**. The enabled
+condition passed the absolute-quality gate at **8/9**, but the overall verdict
+was **`FAIL_ACCURACY`**: the preregistered contract required six wins and an
+exact one-sided p-value at most 0.05; the observed p-value was 0.06. The stale
+cross-session family was ceiling-tied at 100% in both conditions, while clean
+partition and review recovery each improved from 33.33% to 100%.
+
+The run also rejected an efficiency claim. Average tokens increased **9.14%**
+(paired p50 **+8.70%**, bootstrap upper 90% **+14.40%**) and paired
+critical-path p50 increased **10.86%** (upper **+21.83%**). The largest average
+token increase was the reviewer stage: 76,915 disabled versus 94,449 enabled.
+A future protocol revision may replace the ceiling-prone family, but only with
+a new frozen contract; the recorded v3 attempt will not be rerun or selected
+away. The product follow-up is to compact reviewer/child inputs and preserve
+review issue-set exactness before spending another held-out run.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with
@@ -158,8 +176,8 @@ comparison passed. The enabled absolute-quality gate remained **FAIL at 2/3**.
 Average tokens increased **3.96%** and average critical-path time increased
 **27.63%**; paired medians were **+2.63% tokens** (MAD 3.02pp) and
 **+17.88% time** (MAD 16.29pp). This is an accuracy signal in one scenario, not
-an efficiency, statistical-significance, or release-readiness claim. It measures separate
-process orchestration, not same-session native subagent spawning or general
+an efficiency, statistical-significance, or release-readiness claim. It
+measures separate process orchestration, not same-session native subagent spawning or general
 coding productivity. See the
 [`parallel-agent artifact`](benchmark-evidence/work-parallel-agent-ab/README.md).
 

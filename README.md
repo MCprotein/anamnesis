@@ -67,17 +67,18 @@ and both `n=3` runs are directional cross-model evidence.
 [Terra diagnostic evidence](docs/benchmark-evidence/work-agent-ab/terra-3pair/README.md) ·
 [Sol diagnostic evidence](docs/benchmark-evidence/work-agent-ab/sol-3pair/README.md)
 
-### Parallel-agent diagnostic
+### Parallel-agent benchmark
 
-A Luna three-pair diagnostic measured an externally orchestrated pipeline with
-two concurrent children, authoritative review, and final leader integration.
-Work improved final exact-requirement accuracy from **33.33% to 100%** and won
-**2/3** paired comparisons with one tie, passing the preregistered directional
-accuracy contract. It did not establish an efficiency or release-quality win:
-average tokens were **+3.96%**, critical-path time was **+27.63%**, and the enabled
-absolute-quality gate finished at **2/3**.
+A held-out Luna benchmark measured nine paired, externally orchestrated
+pipelines: leader planning, two concurrent children, authoritative review, and
+final integration. Work raised final exact-requirement accuracy from **55.56%
+to 100%** with no paired losses, but the preregistered product contract failed:
+only **4/9** pairs were wins (five tied), tokens were **+9.14%**, and paired
+critical-path p50 was **+10.86%**. This is evidence of an accuracy benefit in
+the two discriminating scenario families—not an efficiency or general
+parallel-agent performance claim.
 
-![Parallel-agent Luna diagnostic](docs/benchmark-evidence/work-parallel-agent-ab/work-parallel-agent-ab-summary.svg)
+![Parallel-agent Luna benchmark](docs/benchmark-evidence/work-parallel-agent-ab/work-parallel-agent-ab-summary.svg)
 
 [Parallel-agent methodology and evidence](docs/benchmark-evidence/work-parallel-agent-ab/README.md)
 
@@ -183,7 +184,7 @@ for the detailed trust and execution model.
 - [Work A/B evidence](docs/benchmark-evidence/work-agent-ab/README.md) — scenario results and limitations
 - [Terra Work A/B diagnostic](docs/benchmark-evidence/work-agent-ab/terra-3pair/README.md) — three-pair cross-model evidence
 - [Sol Work A/B diagnostic](docs/benchmark-evidence/work-agent-ab/sol-3pair/README.md) — three-pair cross-model evidence
-- [Parallel-agent Luna diagnostic](docs/benchmark-evidence/work-parallel-agent-ab/README.md) — two concurrent children, review, and leader integration
+- [Parallel-agent Luna benchmark](docs/benchmark-evidence/work-parallel-agent-ab/README.md) — held-out accuracy, cost, and latency gates
 - [Roadmap](docs/ROADMAP.md) — shipped and deferred work
 - [Contributing](CONTRIBUTING.md) — fragments and project development
 - [Changelog](CHANGELOG.md) — release history

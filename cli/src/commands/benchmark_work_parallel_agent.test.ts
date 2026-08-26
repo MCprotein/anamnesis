@@ -393,6 +393,9 @@ describe("real parallel-agent benchmark", () => {
 		const original = artifactPaths.map((relativePath) =>
 			fs.readFileSync(path.join(root, relativePath), "utf8"),
 		);
+		expect(original[1]).toContain("Work A/B benchmark");
+		expect(original[1]).toContain("product verdict INCONCLUSIVE");
+		expect(original[1]).not.toContain("directional verdict");
 		let renames = 0;
 		expect(() =>
 			publishParallelArtifacts(

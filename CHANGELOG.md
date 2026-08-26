@@ -25,6 +25,14 @@ could include breaking changes.
   claim-eligible attempt per implementation commit. Work-enabled stages now use
   a bounded authoritative execution packet instead of the user-facing briefing,
   and final integration no longer repeats both child payloads.
+- Recorded the single held-out v3 Luna attempt without result selection. All
+  harness checks passed and final exact-requirement accuracy improved from
+  55.56% to 100% (4 wins, 5 ties, 0 losses), but the preregistered result was
+  `FAIL_ACCURACY` because six wins were required and the exact one-sided
+  p-value was 0.06. The run also failed its efficiency gates: average tokens
+  increased 9.14%, paired token p50 increased 8.70%, and paired critical-path
+  p50 increased 10.86%. The published artifact preserves this negative result
+  and identifies reviewer/child context cost as the next optimization target.
 
 ## [1.19.0] — 2026-08-26
 
