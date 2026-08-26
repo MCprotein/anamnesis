@@ -216,6 +216,28 @@ separate `v5-shadow/` sibling. Harness validity also requires the full packet to
 declare authoritative completeness and exactly match every expected fact before
 any child subset can be accepted.
 
+The bounded v5 shadow also used 30 real Luna calls across three pairs. Inline
+transport passed every harness, stage-cost, aggregate-cost, and latency gate:
+average total tokens were **-12.94%**, total-token p50 **-12.35%** (upper 90%
+**-9.99%**), combined-child p50 **-2.97%** (upper **-2.40%**), reviewer p50
+**-32.00%** (upper **-12.95%**), and average critical path **-12.01%**. It still
+failed the enabled absolute-quality gate at **2/3**. Children and reviewer were
+exact in all enabled pairs, but the final leader copied only 47 of 48 already
+correct reviewer rows in review recovery. The v5 result is retained at
+[`v5-shadow`](benchmark-evidence/work-parallel-agent-ab/v5-shadow/README.md) and
+does not authorize a nine-pair final.
+
+Frozen v6 removes only that redundant model copy. The fifth logical stage
+deterministically passes through the reviewer requirements without filling,
+reordering, deduplicating, or otherwise repairing them; reviewer defects must
+remain final defects. Both conditions use the same rule. The stage records zero
+model tokens and explicit deterministic execution, so a shadow has 24 model
+calls (three families by two conditions by four model stages) while retaining
+five-stage audit records. V6 uses a new schema, scoring version, harness hash,
+default `v6/` artifact root, and separate `v6-shadow/` diagnostic. Existing
+quality, concurrency, packet-integrity, stage-cost, aggregate-cost, latency,
+no-retry, and no-exclusion gates remain unchanged.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

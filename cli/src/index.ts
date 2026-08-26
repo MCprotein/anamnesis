@@ -4417,7 +4417,7 @@ async function main(argv: string[]): Promise<number> {
 				onPlan: ({ runs, invocations }) => {
 					if (flags["json"] !== true) {
 						console.error(
-							`planning ${invocations} ${protocolValue === "validate" ? "local fake-runner" : "Codex"} invocations (${runs} ${protocolValue === "legacy" ? "pairs" : "pairs/family x 3 families"} x 2 conditions x 5 stages)`,
+							`planning ${invocations} ${protocolValue === "validate" ? "local fake-runner" : "Codex"} invocations (${runs} ${protocolValue === "legacy" ? "pairs" : "pairs/family x 3 families"} x 2 conditions x 4 model stages; deterministic final excluded)`,
 						);
 					}
 				},

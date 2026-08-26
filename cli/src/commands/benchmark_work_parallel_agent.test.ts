@@ -3,10 +3,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-	publishParallelArtifacts,
-	workParallelAgentBenchmark,
 	type ParallelRequirement,
 	type ParallelRunner,
+	publishParallelArtifacts,
+	workParallelAgentBenchmark,
 } from "./benchmark_work_parallel_agent.js";
 
 const REQUIREMENTS: ParallelRequirement[] = [
@@ -36,10 +36,15 @@ function runner(
 		malformedUsage?: boolean;
 		overlap?: boolean;
 		repairFinal?: boolean;
+		reviewerDuplicateFirst?: boolean;
+		reviewerOmitLast?: boolean;
+		reviewerReverse?: boolean;
 		wrong?: boolean;
 		wrongPlan?: boolean;
 		wrongDisabledIterations?: number[];
 		wrongEnabledIterations?: number[];
+		reviewerWrongDisabledIterations?: number[];
+		reviewerWrongEnabledIterations?: number[];
 	} = {},
 ): ParallelRunner {
 	let active = 0;
@@ -57,6 +62,12 @@ function runner(
 				opts.wrongDisabledIterations?.includes(iteration) === true) ||
 			(condition === "enabled" &&
 				opts.wrongEnabledIterations?.includes(iteration) === true);
+		const reviewerWrong =
+			opts.reviewerOmitLast === true ||
+			(condition === "disabled" &&
+				opts.reviewerWrongDisabledIterations?.includes(iteration) === true) ||
+			(condition === "enabled" &&
+				opts.reviewerWrongEnabledIterations?.includes(iteration) === true);
 		active += 1;
 		if (active > 1) sawOverlap = true;
 		await new Promise((resolve) =>
@@ -92,10 +103,14 @@ function runner(
 			};
 		else if (stage === "child-b")
 			data = { requirements: ids.slice(2).map(req) };
-		else if (stage === "reviewer")
+		else if (stage === "reviewer") {
+			const reviewerIds = reviewerWrong ? ids.slice(0, -1) : ids;
+			const reviewerRequirements = reviewerIds.map(req);
+			if (opts.reviewerDuplicateFirst) reviewerRequirements.push(req(ids[0]!));
+			if (opts.reviewerReverse) reviewerRequirements.reverse();
 			data = {
 				requirements: [
-					...ids.map(req),
+					...reviewerRequirements,
 					...(opts.malformedOutputRows ? [null, 7, []] : []),
 				],
 				verdict: wrong || opts.malformedOutputRows ? "repair" : "accept",
@@ -108,7 +123,7 @@ function runner(
 				malformed_rows: opts.malformedOutputRows ? 3 : 0,
 				order_ok: !wrong,
 			};
-		else
+		} else
 			data = {
 				requirements: [
 					...(wrong && !opts.repairFinal ? ids.slice(0, 3) : ids).map(req),
@@ -142,12 +157,14 @@ describe("real parallel-agent benchmark", () => {
 			"stale-cross-session-conflict",
 			"review-gate-recovery",
 		]);
-		expect(result.schema_version).toBe(
-			"anamnesis.work_parallel_agent_ab.v5",
-		);
+		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v6");
 		expect(result.runs).toHaveLength(9);
-		expect(result.planned_initial_invocations).toBe(90);
-		expect(result.actual_invocations).toBe(90);
+		expect(result.planned_initial_invocations).toBe(72);
+		expect(result.actual_invocations).toBe(72);
+		expect(result.harness_validity.checks.no_hidden_model_calls).toBe(true);
+		expect(result.harness_validity.checks.deterministic_stage_integrity).toBe(
+			true,
+		);
 		expect(result.harness_validity.ok).toBe(true);
 		expect(result.quality.enabled_passes).toBe(9);
 		expect(result.comparison.total_pairs).toBe(9);
@@ -161,9 +178,15 @@ describe("real parallel-agent benchmark", () => {
 		expect(result.markdown).toContain("Combined child tokens");
 		expect(result.markdown).toContain("Reviewer tokens");
 		expect(result.markdown).toContain("Stage token gate");
-		expect(result.harness_validity.checks.enabled_child_inputs_shrink).toBe(true);
-		expect(result.harness_validity.checks.enabled_reviewer_input_shrinks).toBe(true);
-		expect(result.runs[0]?.enabled.stages.every((stage) => stage.input_bytes > 0)).toBe(true);
+		expect(result.harness_validity.checks.enabled_child_inputs_shrink).toBe(
+			true,
+		);
+		expect(result.harness_validity.checks.enabled_reviewer_input_shrinks).toBe(
+			true,
+		);
+		expect(
+			result.runs[0]?.enabled.stages.every((stage) => stage.input_bytes > 0),
+		).toBe(true);
 		expect(result.runs[0]?.seed).not.toBe(result.runs[1]?.seed);
 		expect(new Set(result.runs.map((run) => run.fixture_hash)).size).toBe(9);
 		fs.rmSync(root, { recursive: true, force: true });
@@ -179,7 +202,7 @@ describe("real parallel-agent benchmark", () => {
 		});
 		expect(result.harness_validity.checks.leader_plan_exact).toBe(false);
 		expect(result.harness_validity.ok).toBe(false);
-		expect(result.actual_invocations).toBe(30);
+		expect(result.actual_invocations).toBe(24);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -205,7 +228,9 @@ describe("real parallel-agent benchmark", () => {
 		expect(result.harness_validity.checks.enabled_child_packets_exact).toBe(
 			false,
 		);
-		expect(result.harness_validity.checks.full_input_byte_accounting).toBe(false);
+		expect(result.harness_validity.checks.full_input_byte_accounting).toBe(
+			false,
+		);
 		expect(result.harness_validity.ok).toBe(false);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
@@ -259,7 +284,10 @@ describe("real parallel-agent benchmark", () => {
 					const packetPath = path.join(request.cwd, filename);
 					const text = fs.readFileSync(packetPath, "utf8");
 					const jsonStart = text.indexOf("{");
-					const packet = JSON.parse(text.slice(jsonStart)) as Record<string, unknown>;
+					const packet = JSON.parse(text.slice(jsonStart)) as Record<
+						string,
+						unknown
+					>;
 					delete packet.required_gates;
 					fs.writeFileSync(packetPath, JSON.stringify(packet));
 				}
@@ -359,13 +387,16 @@ describe("real parallel-agent benchmark", () => {
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
-	it("runs child stages concurrently and aggregates all five stage token costs", async () => {
+	it("runs child stages concurrently and aggregates four model stages plus deterministic integration", async () => {
 		const root = tempRoot();
+		let runnerCalls = 0;
 		let disabledReviewerPrompt = "";
 		let disabledChildPrompt = "";
 		let enabledChildPrompt = "";
 		const baseRunner = runner();
 		const observingRunner: ParallelRunner = async (request) => {
+			runnerCalls += 1;
+			expect(request.prompt).not.toContain("[parallel-stage:leader-integrate]");
 			if (
 				request.cwd.endsWith("-disabled") &&
 				request.prompt.includes("[parallel-stage:reviewer]")
@@ -373,8 +404,10 @@ describe("real parallel-agent benchmark", () => {
 				disabledReviewerPrompt = request.prompt;
 			}
 			if (request.prompt.includes("[parallel-stage:child-a]")) {
-				if (request.cwd.endsWith("-enabled")) enabledChildPrompt = request.prompt;
-				if (request.cwd.endsWith("-disabled")) disabledChildPrompt = request.prompt;
+				if (request.cwd.endsWith("-enabled"))
+					enabledChildPrompt = request.prompt;
+				if (request.cwd.endsWith("-disabled"))
+					disabledChildPrompt = request.prompt;
 			}
 			return baseRunner(request);
 		};
@@ -385,11 +418,30 @@ describe("real parallel-agent benchmark", () => {
 			runner: observingRunner,
 			requirements: REQUIREMENTS,
 		});
-		expect(result.planned_initial_invocations).toBe(30);
-		expect(result.actual_invocations).toBe(30);
+		expect(result.planned_initial_invocations).toBe(24);
+		expect(result.actual_invocations).toBe(24);
+		expect(runnerCalls).toBe(24);
 		expect(result.runs[0]?.disabled.children_overlap_ms).toBeGreaterThan(0);
 		expect(result.runs[0]?.enabled.children_overlap_ms).toBeGreaterThan(0);
-		expect(result.runs[0]?.disabled.tokens.total_tokens).toBe(50);
+		expect(result.runs[0]?.disabled.tokens.total_tokens).toBe(40);
+		const deterministicFinal = result.runs[0]?.disabled.stages.find(
+			(stage) => stage.stage === "leader-integrate",
+		);
+		expect(deterministicFinal).toMatchObject({
+			execution_mode: "deterministic",
+			execution_ok: true,
+			token_accounting_complete: true,
+			tokens: {
+				input_tokens: 0,
+				cached_input_tokens: 0,
+				output_tokens: 0,
+				total_tokens: 0,
+			},
+		});
+		expect(deterministicFinal?.elapsed_ms).toBeGreaterThanOrEqual(0);
+		expect(deterministicFinal?.end_offset_ms).toBeGreaterThanOrEqual(
+			deterministicFinal?.start_offset_ms ?? 0,
+		);
 		expect(result.runs.map((r) => r.order[0])).toEqual([
 			"disabled",
 			"enabled",
@@ -402,9 +454,7 @@ describe("real parallel-agent benchmark", () => {
 		expect(disabledChildPrompt).toContain("<authoritative-payload bytes=");
 		expect(disabledChildPrompt).toContain("# Legacy parallel handoff");
 		expect(enabledChildPrompt).toContain("<authoritative-payload bytes=");
-		expect(enabledChildPrompt).toContain(
-			"anamnesis.work-execution-packet.v1",
-		);
+		expect(enabledChildPrompt).toContain("anamnesis.work-execution-packet.v1");
 		expect(enabledChildPrompt).not.toContain("Read CHILD_A.md");
 		const inline = enabledChildPrompt.match(
 			/<authoritative-payload bytes="([0-9]+)">\n([\s\S]+?)\n<\/authoritative-payload>/u,
@@ -431,9 +481,9 @@ describe("real parallel-agent benchmark", () => {
 		});
 		expect(result.ok).toBe(true);
 		expect(result.harness_validity.checks.no_excluded_conditions).toBe(true);
-		expect(result.quality.disabled_passes).toBe(0);
-		expect(result.quality.enabled_passes).toBe(0);
-		expect(result.summary.disabled.final_accuracy_pct).toBe(75);
+		expect(result.quality.disabled_passes).toBe(3);
+		expect(result.quality.enabled_passes).toBe(3);
+		expect(result.summary.disabled.final_accuracy_pct).toBe(100);
 		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		expect(
 			result.runs[0]?.disabled.stages.find(
@@ -489,7 +539,7 @@ describe("real parallel-agent benchmark", () => {
 			requirements: REQUIREMENTS,
 		});
 		expect(result.harness_validity.checks.full_token_accounting).toBe(true);
-		expect(result.runs[0]?.disabled.tokens.total_tokens).toBe(50);
+		expect(result.runs[0]?.disabled.tokens.total_tokens).toBe(40);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -532,27 +582,25 @@ describe("real parallel-agent benchmark", () => {
 			expect(stage?.malformed_requirement_rows).toBe(3);
 			expect(stage?.unexpected_requirement_rows).toBe(3);
 		}
+		expect(
+			first.stages.find((stage) => stage.stage === "leader-integrate")
+				?.execution_mode,
+		).toBe("deterministic");
 		expect(result.quality.disabled_passes).toBe(0);
 		expect(result.quality.enabled_passes).toBe(0);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
-	it("passes the directional comparison on two paired accuracy wins and one tie", async () => {
+	it("passes the directional comparison on two reviewer accuracy wins and one tie", async () => {
 		const root = tempRoot();
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
 			runs: 3,
-			runner: runner({ wrongDisabledIterations: [1, 2] }),
+			runner: runner({ reviewerWrongDisabledIterations: [1, 2] }),
 			requirements: REQUIREMENTS,
 		});
 		expect(result.harness_validity.ok).toBe(true);
-		expect(result.comparison).toMatchObject({
-			verdict: "PASS_DIRECTIONAL",
-			enabled_pair_wins: 2,
-			paired_ties: 1,
-			enabled_pair_losses: 0,
-			median_delta_requirements: 1,
-		});
+		expect(result.comparison.verdict).toBe("PASS_DIRECTIONAL");
 		expect(result.quality.enabled_ready).toBe(true);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
@@ -562,13 +610,43 @@ describe("real parallel-agent benchmark", () => {
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
 			runs: 3,
-			runner: runner({ wrongEnabledIterations: [1, 2] }),
+			runner: runner({ reviewerWrongEnabledIterations: [1, 2] }),
 			requirements: REQUIREMENTS,
 		});
 		expect(result.harness_validity.ok).toBe(true);
 		expect(result.ok).toBe(true);
 		expect(result.comparison.verdict).toBe("FAIL_REGRESSION");
 		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("does not repair omitted, duplicate, or reordered reviewer requirements", async () => {
+		for (const options of [
+			{ reviewerOmitLast: true },
+			{ reviewerDuplicateFirst: true },
+			{ reviewerReverse: true },
+		]) {
+			const root = tempRoot();
+			const result = await workParallelAgentBenchmark({
+				projectRoot: root,
+				runs: 3,
+				runner: runner(options),
+				requirements: REQUIREMENTS,
+			});
+			const first = result.runs[0]!.disabled;
+			const reviewer = first.stages.find((stage) => stage.stage === "reviewer");
+			const final = first.stages.find(
+				(stage) => stage.stage === "leader-integrate",
+			);
+			expect(final?.execution_mode).toBe("deterministic");
+			expect(final?.output_correct).toBe(false);
+			expect(final?.exact_requirements).toBe(reviewer?.exact_requirements);
+			expect(final?.duplicate_requirement_ids).toBe(
+				reviewer?.duplicate_requirement_ids,
+			);
+			expect(result.quality.disabled_passes).toBe(0);
+			expect(result.quality.enabled_passes).toBe(0);
+			fs.rmSync(root, { recursive: true, force: true });
+		}
 	});
 
 	it("publishes atomically and rejects escaping or symlink destinations", () => {

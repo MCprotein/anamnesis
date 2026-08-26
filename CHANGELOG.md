@@ -53,6 +53,13 @@ could include breaking changes.
   the v4 artifact separate rather than overwriting or selecting it away. V5
   defaults to its own artifact directory and verifies the complete full packet
   as well as each child subset before accepting the harness.
+- Preserved the v5 inline-transport shadow separately. It passed every harness,
+  stage-cost, aggregate-cost, and latency gate (total tokens -12.94%; critical
+  path -12.01%; child p50 -2.97%; reviewer p50 -32.00%), but enabled absolute
+  quality finished 2/3 because a redundant final model copy omitted one of 48
+  already-correct reviewer rows. V6 keeps that failure visible and replaces
+  only the copy-only final model call with a symmetric deterministic pass-through
+  that cannot fill, reorder, or repair reviewer output.
 
 ## [1.19.0] — 2026-08-26
 
