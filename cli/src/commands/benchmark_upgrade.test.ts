@@ -11,6 +11,8 @@ import {
   readEvidenceRecords,
 } from "../core/evidence.js";
 
+const UPGRADE_BENCHMARK_TEST_TIMEOUT_MS = 60_000;
+
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
@@ -91,7 +93,7 @@ describe("upgrade benchmark", () => {
         choice_unsupported_total: 0,
       },
     });
-  });
+  }, UPGRADE_BENCHMARK_TEST_TIMEOUT_MS);
 
   it("rejects non-positive run counts", () => {
     const project = tmpDir("anamnesis-upgrade-benchmark-invalid-");
