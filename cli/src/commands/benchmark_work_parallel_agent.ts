@@ -10,9 +10,9 @@ import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkExecutionPacket } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v4";
+	"anamnesis.work_parallel_agent_ab.v5";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
-	"docs/benchmark-evidence/work-parallel-agent-ab";
+	"docs/benchmark-evidence/work-parallel-agent-ab/v5";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
 
 export type ParallelCondition = "disabled" | "enabled";
@@ -141,7 +141,7 @@ export interface ParallelBenchmarkResult {
 	attempts_before_this_sha: number;
 	scenario_families: ParallelScenarioFamily[];
 	topology: "harness-orchestrated-two-child-reviewer-leader";
-	scoring_version: "parallel-requirement-score.v4";
+	scoring_version: "parallel-requirement-score.v5";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -361,11 +361,12 @@ export async function workParallelAgentBenchmark(
 		topology: TOPOLOGY,
 		stages: STAGES,
 		reasoning_effort: REASONING_EFFORT,
-		scoring_version: "parallel-requirement-score.v4",
+		scoring_version: "parallel-requirement-score.v5",
 		families: scenarioFamilies,
 		final_pairs_per_family: 3,
 		accuracy: { mean_delta_points: 5, one_sided_p: 0.05, wins: 6, family_floor: -2 },
 		quality: { exact_overall: "8/9", exact_per_family: "2/3", final_defects: 0 },
+		child_transport: "inline-authoritative-payload-v1",
 		tokens: { aggregate_pct: 5, median_pct: 5, bootstrap_upper_90_pct: 10 },
 		stage_tokens: {
 			combined_children: { median_pct: 0, bootstrap_upper_90_pct: 5 },
@@ -754,7 +755,7 @@ export async function workParallelAgentBenchmark(
 		protocol: protocol ?? "legacy",
 		scenario_families: scenarioFamilies,
 		runs_per_condition: runs,
-		scoring_version: "parallel-requirement-score.v4",
+		scoring_version: "parallel-requirement-score.v5",
 		planned_initial_invocations: plannedInitialInvocations,
 		actual_invocations: allRuns.reduce(
 			(total, run) => total + run.stages.length,
@@ -860,6 +861,7 @@ async function executeCondition(input: {
 		stage: ParallelStage,
 		prompt: string,
 		inputPaths: string[] = [],
+		inputComplete = true,
 	): Promise<{
 		record: ParallelStageRecord;
 		data: Record<string, unknown>;
@@ -885,7 +887,7 @@ async function executeCondition(input: {
 				start_offset_ms: round(started - conditionStart),
 				end_offset_ms: round(ended - conditionStart),
 				input_bytes: measuredInput.bytes,
-				input_bytes_complete: measuredInput.complete,
+				input_bytes_complete: measuredInput.complete && inputComplete,
 				tokens: { ...EMPTY_USAGE },
 				error: "runner-threw",
 			};
@@ -904,7 +906,7 @@ async function executeCondition(input: {
 			start_offset_ms: round(started - conditionStart),
 			end_offset_ms: round(ended - conditionStart),
 			input_bytes: measuredInput.bytes,
-			input_bytes_complete: measuredInput.complete,
+			input_bytes_complete: measuredInput.complete && inputComplete,
 			tokens: parsed.usage ?? { ...EMPTY_USAGE },
 			...(response.status === 0 && parsed.data !== undefined
 				? {}
@@ -923,34 +925,50 @@ async function executeCondition(input: {
 		equalStringArrays(plan.data.child_b, expectedB);
 	const planA = planExact ? (plan.data.child_a as string[]) : expectedA;
 	const planB = planExact ? (plan.data.child_b as string[]) : expectedB;
+	const childAInput = readInlineInput(
+		path.join(
+			input.cwd,
+			input.condition === "enabled" ? "CHILD_A.md" : "CONTEXT.md",
+		),
+	);
+	const childBInput = readInlineInput(
+		path.join(
+			input.cwd,
+			input.condition === "enabled" ? "CHILD_B.md" : "CONTEXT.md",
+		),
+	);
+	const childAPrompt = `Scenario ${input.scenarioId}; replicate seed ${input.seed}. Use only the authoritative payload below; do not read files or run commands.\n${renderInlinePayload(childAInput.content)}\nReturn exact id, status, and summary for only these assigned requirements, in this order: ${planA.join(", ")}.`;
+	const childBPrompt = `Scenario ${input.scenarioId}; replicate seed ${input.seed}. Use only the authoritative payload below; do not read files or run commands.\n${renderInlinePayload(childBInput.content)}\nReturn exact id, status, and summary for only these assigned requirements, in this order: ${planB.join(", ")}.`;
 	const childAInputExact =
-		input.condition !== "enabled" ||
-		workPacketSubsetExact(
-			input.cwd,
-			"CHILD_A.md",
-			input.requirements.slice(0, half),
-		);
+		parseInlinePayload(childAPrompt) === childAInput.content &&
+		(input.condition !== "enabled" ||
+			workPacketSubsetExact(
+				input.cwd,
+				"CHILD_A.md",
+				input.requirements.slice(0, half),
+				input.requirements,
+			));
 	const childBInputExact =
-		input.condition !== "enabled" ||
-		workPacketSubsetExact(
-			input.cwd,
-			"CHILD_B.md",
-			input.requirements.slice(half),
-		);
+		parseInlinePayload(childBPrompt) === childBInput.content &&
+		(input.condition !== "enabled" ||
+			workPacketSubsetExact(
+				input.cwd,
+				"CHILD_B.md",
+				input.requirements.slice(half),
+				input.requirements,
+			));
 	const [childA, childB] = await Promise.all([
 		invoke(
 			"child-a",
-			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. ${input.condition === "enabled" ? "Read CHILD_A.md, the assigned Work execution packet subset." : "Read CONTEXT.md, the authoritative context."} Return exact id, status, and summary for only these assigned requirements, in this order: ${planA.join(", ")}.`,
-			input.condition === "enabled"
-				? [path.join(input.cwd, "CHILD_A.md")]
-				: [path.join(input.cwd, "CONTEXT.md")],
+			childAPrompt,
+			[],
+			childAInput.complete,
 		),
 		invoke(
 			"child-b",
-			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. ${input.condition === "enabled" ? "Read CHILD_B.md, the assigned Work execution packet subset." : "Read CONTEXT.md, the authoritative context."} Return exact id, status, and summary for only these assigned requirements, in this order: ${planB.join(", ")}.`,
-			input.condition === "enabled"
-				? [path.join(input.cwd, "CHILD_B.md")]
-				: [path.join(input.cwd, "CONTEXT.md")],
+			childBPrompt,
+			[],
+			childBInput.complete,
 		),
 	]);
 	childA.record.input_contract_ok = childAInputExact;
@@ -1266,6 +1284,37 @@ function measureInputBytes(
 		}
 	}
 	return { bytes, complete: true };
+}
+
+function readInlineInput(file: string): { content: string; complete: boolean } {
+	try {
+		return { content: fs.readFileSync(file, "utf8"), complete: true };
+	} catch {
+		return { content: "", complete: false };
+	}
+}
+
+function renderInlinePayload(content: string): string {
+	return `<authoritative-payload bytes="${Buffer.byteLength(content, "utf8")}">\n${content}\n</authoritative-payload>`;
+}
+
+function parseInlinePayload(prompt: string): string | undefined {
+	const opening = prompt.match(
+		/<authoritative-payload bytes="([0-9]+)">\n/u,
+	);
+	if (!opening || opening.index === undefined) return undefined;
+	const contentStart = opening.index + opening[0].length;
+	const closing = "\n</authoritative-payload>";
+	const contentEnd = prompt.indexOf(closing, contentStart);
+	if (contentEnd < 0 || prompt.indexOf(closing, contentEnd + closing.length) >= 0) {
+		return undefined;
+	}
+	const content = prompt.slice(contentStart, contentEnd);
+	const declaredBytes = Number(opening[1]);
+	return Number.isSafeInteger(declaredBytes) &&
+		Buffer.byteLength(content, "utf8") === declaredBytes
+		? content
+		: undefined;
 }
 
 function renderLegacyContext(requirements: ParallelRequirement[]): string {
@@ -2049,13 +2098,16 @@ function assertNoSymlinkPath(root: string, destination: string): void {
 /** Local, deterministic runner used by `validate`; it never starts Codex. */
 const validationRunner: ParallelRunner = (request) => {
 	const stage = request.prompt.match(/\[parallel-stage:([^\]]+)/u)?.[1];
-	const contextFile =
-		stage === "child-a" && request.prompt.includes("CHILD_A.md")
-			? "CHILD_A.md"
-			: stage === "child-b" && request.prompt.includes("CHILD_B.md")
-				? "CHILD_B.md"
-				: "CONTEXT.md";
-	const requirements = requirementsFromContext(request.cwd, contextFile);
+	const inlinePayload =
+		stage === "child-a" || stage === "child-b"
+			? parseInlinePayload(request.prompt)
+			: undefined;
+	const requirements =
+		stage === "child-a" || stage === "child-b"
+			? inlinePayload === undefined
+				? []
+				: requirementsFromText(inlinePayload)
+			: requirementsFromContext(request.cwd);
 	const ids = requirements.map((requirement) => requirement.id);
 	const assignedIds = request.prompt.match(/assigned requirements, in this order: ([^.]+)\./u)?.[1]
 		?.split(/,\s*/u)
@@ -2124,6 +2176,10 @@ function requirementsFromContext(
 	} catch {
 		return [];
 	}
+	return requirementsFromText(context);
+}
+
+function requirementsFromText(context: string): ParallelRequirement[] {
 	const jsonStart = context.indexOf("{");
 	if (jsonStart >= 0) {
 		try {
@@ -2190,6 +2246,7 @@ function workPacketSubsetExact(
 	cwd: string,
 	filename: string,
 	expected: ParallelRequirement[],
+	expectedFull: ParallelRequirement[],
 ): boolean {
 	const full = readWorkExecutionPacket(cwd, "CONTEXT.md");
 	const subset = readWorkExecutionPacket(cwd, filename);
@@ -2209,6 +2266,9 @@ function workPacketSubsetExact(
 	);
 	return (
 		sameMetadata &&
+		full.authoritative_completeness === true &&
+		digest(requirementsFromContext(cwd, "CONTEXT.md")) ===
+			digest(expectedFull) &&
 		subset.authoritative_completeness === false &&
 		digest(requirementsFromContext(cwd, filename)) === digest(expected)
 	);

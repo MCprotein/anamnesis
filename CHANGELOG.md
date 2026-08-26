@@ -45,6 +45,14 @@ could include breaking changes.
   reviewer token p50 at or below 0% with bootstrap upper 90% at or below +5%;
   paid shadow and final protocols also require the real runner and a clean,
   committed implementation so results cannot be attributed to an older HEAD.
+- Preserved the v4 file-mediated three-pair shadow as negative evidence: harness
+  and enabled quality passed, but total tokens rose 13.95%, combined-child token
+  p50 rose 47.56%, and critical-path p50 rose 22.77%. The next frozen v5
+  transport inlines the same authoritative payload in both child conditions,
+  validates the byte-length framing and exact packet facts locally, and keeps
+  the v4 artifact separate rather than overwriting or selecting it away. V5
+  defaults to its own artifact directory and verifies the complete full packet
+  as well as each child subset before accepting the harness.
 
 ## [1.19.0] — 2026-08-26
 

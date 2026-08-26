@@ -142,6 +142,9 @@ describe("real parallel-agent benchmark", () => {
 			"stale-cross-session-conflict",
 			"review-gate-recovery",
 		]);
+		expect(result.schema_version).toBe(
+			"anamnesis.work_parallel_agent_ab.v5",
+		);
 		expect(result.runs).toHaveLength(9);
 		expect(result.planned_initial_invocations).toBe(90);
 		expect(result.actual_invocations).toBe(90);
@@ -276,6 +279,42 @@ describe("real parallel-agent benchmark", () => {
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
+	it("rejects full packet fact drift even when child packets are unchanged", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const tamperingRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			if (
+				request.prompt.includes("[parallel-stage:leader-plan]") &&
+				request.cwd.endsWith("-enabled")
+			) {
+				const contextPath = path.join(request.cwd, "CONTEXT.md");
+				const text = fs.readFileSync(contextPath, "utf8");
+				const jsonStart = text.indexOf("{");
+				const packet = JSON.parse(text.slice(jsonStart)) as {
+					requirements: string[];
+				};
+				packet.requirements[0] = packet.requirements[0]!.replace(
+					"|verified|",
+					"|pending|",
+				);
+				fs.writeFileSync(contextPath, JSON.stringify(packet));
+			}
+			return response;
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: tamperingRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.enabled_child_packets_exact).toBe(
+			false,
+		);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
 	it("refuses an unrecorded or uncommitted claim-eligible final run", async () => {
 		const root = tempRoot();
 		await expect(
@@ -323,6 +362,8 @@ describe("real parallel-agent benchmark", () => {
 	it("runs child stages concurrently and aggregates all five stage token costs", async () => {
 		const root = tempRoot();
 		let disabledReviewerPrompt = "";
+		let disabledChildPrompt = "";
+		let enabledChildPrompt = "";
 		const baseRunner = runner();
 		const observingRunner: ParallelRunner = async (request) => {
 			if (
@@ -330,6 +371,10 @@ describe("real parallel-agent benchmark", () => {
 				request.prompt.includes("[parallel-stage:reviewer]")
 			) {
 				disabledReviewerPrompt = request.prompt;
+			}
+			if (request.prompt.includes("[parallel-stage:child-a]")) {
+				if (request.cwd.endsWith("-enabled")) enabledChildPrompt = request.prompt;
+				if (request.cwd.endsWith("-disabled")) disabledChildPrompt = request.prompt;
 			}
 			return baseRunner(request);
 		};
@@ -354,6 +399,23 @@ describe("real parallel-agent benchmark", () => {
 		expect(disabledReviewerPrompt).toContain(
 			"Read CONTEXT.md (legacy context) as authoritative truth",
 		);
+		expect(disabledChildPrompt).toContain("<authoritative-payload bytes=");
+		expect(disabledChildPrompt).toContain("# Legacy parallel handoff");
+		expect(enabledChildPrompt).toContain("<authoritative-payload bytes=");
+		expect(enabledChildPrompt).toContain(
+			"anamnesis.work-execution-packet.v1",
+		);
+		expect(enabledChildPrompt).not.toContain("Read CHILD_A.md");
+		const inline = enabledChildPrompt.match(
+			/<authoritative-payload bytes="([0-9]+)">\n([\s\S]+?)\n<\/authoritative-payload>/u,
+		);
+		expect(inline).toBeTruthy();
+		expect(Buffer.byteLength(inline![2]!, "utf8")).toBe(Number(inline![1]));
+		const packet = JSON.parse(inline![2]!) as { requirements: string[] };
+		expect(packet.requirements).toEqual([
+			'REQ-A|verified|"sanitized parallel condition 1"',
+			'REQ-B|verified|"sanitized parallel condition 2"',
+		]);
 		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		expect(result.quality.enabled_ready).toBe(true);
 		fs.rmSync(root, { recursive: true, force: true });

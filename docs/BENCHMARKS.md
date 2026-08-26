@@ -168,9 +168,9 @@ a new frozen contract; the recorded v3 attempt will not be rerun or selected
 away. The product follow-up is to compact reviewer/child inputs and preserve
 review issue-set exactness before spending another held-out run.
 
-### Frozen v4 follow-up contract
+### V4 file-mediated shadow and frozen v5 follow-up
 
-The next claim-eligible attempt is a new protocol and implementation commit;
+V4 was a new protocol and implementation commit;
 it does not replace or rerun the v3 failure. V4 uses nine distinct deterministic
 fixtures rather than repeating one fixture per family. The stale-history family
 contains complete chronological facts but no final folded projection, so it
@@ -191,6 +191,30 @@ p50 must each be at most 0%, with deterministic stratified bootstrap upper 90%
 at most +5%. The public claim remains limited to the external
 harness-orchestrated packet experiment; it does not establish native same-session
 subagent performance or monetary savings.
+
+The bounded v4 shadow used 30 real Luna calls across three pairs. Harness
+validity and enabled quality passed, but it failed every efficiency gate: total
+tokens were **+13.95%**, combined-child paired p50 was **+47.56%**, total-token
+p50 was **+11.25%**, and critical-path p50 was **+22.77%**. Reviewer p50 was
+nearly flat at **+0.23%**. The enabled child payload files were structurally
+smaller, but file-mediated child execution still incurred higher cumulative
+model input. This diagnostic is retained separately at
+[`v4-shadow`](benchmark-evidence/work-parallel-agent-ab/v4-shadow/README.md) and
+does not authorize a nine-pair final.
+
+Frozen v5 changes only the child transport: both conditions receive their exact
+authoritative payload inline and are instructed not to read files or run
+commands. Disabled receives the full legacy payload; enabled receives the real
+validated execution-packet subset. Byte-length framing, strict inline parsing,
+exact packet metadata/facts, missing input, fixture uniqueness, and all existing
+quality, stage-token, aggregate-token, latency, no-retry, and no-exclusion gates
+remain preregistered. V5 uses a new schema, scoring version, harness hash,
+implementation commit, and artifact directory; it cannot overwrite or be pooled
+with the v4 file-mediated result. The default v5 final directory is
+`docs/benchmark-evidence/work-parallel-agent-ab/v5/`; bounded diagnostics use a
+separate `v5-shadow/` sibling. Harness validity also requires the full packet to
+declare authoritative completeness and exactly match every expected fact before
+any child subset can be accepted.
 
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
