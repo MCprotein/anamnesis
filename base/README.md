@@ -88,12 +88,18 @@ When `anamnesis init` runs with `--allow-exec-adapters` against a fresh project:
 
 Without `--allow-exec-adapters`, the AGENTS.md region and ontology file install but native/executable adapter files such as Claude Code hooks/commands/skills, Codex native skills/hooks, and Cursor rules are reported as `blocked` (supply-chain protection).
 
+Fresh `anamnesis init` projects materialize an active Work profile by default:
+adaptive reconciliation, advisory review, automatic delegation assessment,
+and bounded repository-side prompt-capture policy. Set the corresponding
+policy to `off` to disable it. Existing Agentfiles that omit Work settings keep
+their legacy all-off behavior.
+
 The `UserPromptSubmit` wrappers perform a bounded local preflight before they
 start the CLI. With prompt capture and project reconciliation off, an unlinked
 session returns immediately without Work storage writes. When
-`settings.work_prompt_capture.preset: bounded` and the user-local
-`ANAMNESIS_WORK_PROMPT_CAPTURE=1` environment opt-in are both enabled, the
-wrapper passes the complete native JSON payload exactly once through child
-stdin; prompt text is never placed in argv, logs, or temporary files. Claude
+`settings.work_prompt_capture.preset: bounded` is enabled, the wrapper passes
+the complete native JSON payload exactly once through child stdin; prompt text
+is never placed in argv, logs, or temporary files. Users can review this policy
+in the installation Git diff and set it to `off`. Claude
 UserPromptSubmit handling always requires a native `prompt_id`, including for
 an already linked session cursor.

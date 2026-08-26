@@ -85,6 +85,12 @@ anamnesis apply --allow-exec-adapters
 anamnesis doctor
 ```
 
+New installs materialize an active Work profile: adaptive continuity
+briefings, advisory independent review, automatic delegation assessment, and
+bounded repository-side prompt-capture policy. Existing projects retain their
+current behavior; explicit opt-out and trust-boundary details are in the
+[user guide](docs/USER-GUIDE.md#active-work-defaults-and-opt-out).
+
 Running `anamnesis` prints the short first-run guide. Use `anamnesis --help` for
 grouped help and `anamnesis --help --all` for the complete command reference.
 

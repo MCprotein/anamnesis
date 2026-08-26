@@ -20,5 +20,9 @@ settings:
   work_policy:
     reconciliation:
       preset: frequent
+    review:
+      preset: advisory
+    delegation:
+      parallelism: auto
   work_prompt_capture:
     preset: bounded

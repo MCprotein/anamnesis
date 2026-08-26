@@ -11,6 +11,7 @@
 
 import * as path from "node:path";
 import {
+  AGENTFILE_SETTING_DEFAULTS,
   findAgentfile,
   writeAgentfile,
   type Agentfile,
@@ -190,10 +191,14 @@ export class InitError extends Error {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_SETTINGS = {
-  ontology_file: "system_graph.yaml",
-  agents_md_path: "AGENTS.md",
-  claude_md_path: "CLAUDE.md",
-};
+  ...AGENTFILE_SETTING_DEFAULTS,
+  work_policy: {
+    reconciliation: { preset: "adaptive" },
+    review: { preset: "advisory" },
+    delegation: { parallelism: "auto" },
+  },
+  work_prompt_capture: { preset: "bounded" },
+} as const;
 
 /**
  * Resolve the on-disk directory for a fragment in the library.
@@ -346,6 +351,7 @@ export function init(opts: InitOptions): InitResult {
       : { name: projectName },
     tools,
     fragments: rootOrdered.map((f) => ({ id: f.id, version: f.version })),
+    settings: DEFAULT_SETTINGS,
   };
 
   // 8. Plan rendering — per-scope loop (root + each sub-scope).

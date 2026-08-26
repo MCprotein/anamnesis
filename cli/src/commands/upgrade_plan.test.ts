@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import YAML from "yaml";
 import { init } from "./init.js";
 import { update } from "./update.js";
 import { upgradePlan } from "./upgrade_plan.js";
@@ -54,6 +55,15 @@ function installProject(library: string): string {
     noBootstrap: true,
   });
   return project;
+}
+
+function omitAgentfileSettings(project: string): void {
+  const agentfilePath = path.join(project, "Agentfile");
+  const agentfile = YAML.parse(
+    fs.readFileSync(agentfilePath, "utf8"),
+  ) as Record<string, unknown>;
+  delete agentfile.settings;
+  fs.writeFileSync(agentfilePath, YAML.stringify(agentfile), "utf8");
 }
 
 describe("upgrade plan", () => {
@@ -130,6 +140,7 @@ describe("upgrade plan", () => {
   it("reports optional setting defaults without materializing Agentfile settings", () => {
     const library = makeLibrary({ version: 1 });
     const project = installProject(library);
+    omitAgentfileSettings(project);
     const agentfilePath = path.join(project, "Agentfile");
     const before = fs.readFileSync(agentfilePath, "utf8");
 
@@ -170,6 +181,7 @@ describe("upgrade plan", () => {
     const library = makeLibrary({ version: 1 });
     const project = installProject(library);
     const agentfilePath = path.join(project, "Agentfile");
+    omitAgentfileSettings(project);
     fs.writeFileSync(
       agentfilePath,
       fs.readFileSync(agentfilePath, "utf8").replace("version: 2", "version: 1"),

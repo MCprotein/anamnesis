@@ -21,7 +21,6 @@ import {
 } from "../core/work_reconciliation.js";
 import {
 	normalizeWorkPromptCapturePolicy,
-	workPromptCaptureUserOptIn,
 } from "../core/work_prompt_policy.js";
 import { stageWorkPrompt } from "../core/work_prompt_stage.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
@@ -478,7 +477,6 @@ function stagePromptAtBoundary(
 				: undefined,
 		);
 		if (!policy.enabled) return { status: "disabled" };
-		if (!workPromptCaptureUserOptIn()) return { status: "disabled" };
 		const staged = stageWorkPrompt({
 			projectRoot: input.project_root,
 			stateRoot,

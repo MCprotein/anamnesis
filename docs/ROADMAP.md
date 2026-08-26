@@ -1924,7 +1924,9 @@ independent review returned `APPROVE`.
 
 The Agentfile v2 and pure Work-policy resolution slice is also implemented.
 Agentfile v2 strictly accepts optional `settings.work_policy`; new `init`
-output uses v2 without materializing policy, preserving all-off defaults.
+output materializes adaptive reconciliation, advisory review, automatic
+delegation assessment, and bounded repository-side prompt capture. Existing
+Agentfiles that omit these settings preserve legacy all-off behavior.
 Existing v1 files migrate explicitly and idempotently by changing only the
 version while preserving a backup. A side-effect-free resolver applies the
 fixed current-instruction, per-Work, matched-harness, project, user, and product
@@ -1988,8 +1990,8 @@ delivery as `injected_unconfirmed` rather than visible confirmation. Compact
 context structurally preserves the completion contract, delta, configured
 review gates, changed/at-risk requirements, next action, blockers, and an
 authoritative status command; oversized full output falls back atomically
-without a partial list. Codex omits a per-prompt status message so default-off
-is visually silent. Fresh verification passed 79 focused review tests and
+without a partial list. Codex omits a per-prompt status message so an explicitly
+disabled or legacy-unconfigured policy is visually silent. Fresh verification passed 79 focused review tests and
 914/914 tests across 89 files, plus typecheck, lint, build, adapter parity,
 status, and diff checks; independent review returned `APPROVE` and adversarial
 verification returned `PASS`. The remaining non-blocking cost is foreground
@@ -1998,8 +2000,9 @@ hook events.
 
 Bounded raw prompt staging and allocation are now implemented as the next thin
 slice. Agentfile v2 accepts optional `settings.work_prompt_capture` without a
-new schema version; absence remains off, and user-local
-`ANAMNESIS_WORK_PROMPT_CAPTURE=1` is a second required consent key. Native boundary identity derives an
+new schema version; fresh init materializes `bounded`, legacy absence remains
+off, and users can review or disable the policy in the installation Git diff.
+Native boundary identity derives an
 opaque stage/source ID without prompt bytes, identical retries are idempotent,
 and same-ID/different-body input fails closed. The foreground control path must
 choose same-Work, new-Work, provisional retention, or discard and supplies
@@ -2140,7 +2143,7 @@ Work plan:
 | # | Item | Status | Description |
 |---|---|---|---|
 | 1 | **Thin Work boundary, schema, and lifecycle** | creation/amend boundary commands implemented; closure deferred | Keep Work as the only durable task-domain object. `work create` requires `new_unit`, `work amend` requires `same_unit`, and interruption is rejected rather than allocated. Typed creation and monotonic contract revision preserve requirement identity, source provenance, frozen policy snapshots, accepted-boundary state, and explicit replacement lineage. Lifecycle closure remains fail-closed until user authority, completion evidence, and reopening/supersession rules are implemented. Foreground is a disposable per-session cursor, never global Work state. |
-| 2 | **Verbatim source-event ledger and projection** | bounded native prompt staging/allocation implemented; exact-span UI deferred | Immutable exact-byte prompt objects, canonical envelopes, hash-linked allocation records, monotonic typed contracts, deterministic projection rebuilds, stable-order multi-source locking, exact envelope-hash binding, torn-tail recovery, and corruption/symlink fail-closed behavior are implemented. Agentfile v2 bounds and user-local environment consent jointly enable private UserPrompt staging; Codex/Claude adapters preserve `client_exact` UTF-8 bytes and expose an opaque four-way same/new/provisional/discard allocation contract. Explicit GC enforces TTL and repairs partial/temp crash residue without a daemon. Raw paths remain outside Git, backups, context index, logs, hook context, and default MCP. Exact sub-prompt span allocation remains planned. |
+| 2 | **Verbatim source-event ledger and projection** | bounded native prompt staging/allocation implemented; exact-span UI deferred | Immutable exact-byte prompt objects, canonical envelopes, hash-linked allocation records, monotonic typed contracts, deterministic projection rebuilds, stable-order multi-source locking, exact envelope-hash binding, torn-tail recovery, and corruption/symlink fail-closed behavior are implemented. Reviewed Agentfile v2 bounds enable or disable private UserPrompt staging; Codex/Claude adapters preserve `client_exact` UTF-8 bytes and expose an opaque four-way same/new/provisional/discard allocation contract. Explicit GC enforces TTL and repairs partial/temp crash residue without a daemon. Raw paths remain outside Git, backups, context index, logs, hook context, and default MCP. Exact sub-prompt span allocation remains planned. |
 | 3 | **Evidence-based progress reporter** | deterministic core and CLI rendering implemented; evidence freshness diagnostics deferred | Projection, status, and briefing output report verified/applicable, pending, in-progress, implemented-unverified, blocked, and waived counts with explicit denominator/weights. Invalid, overflowing, inconsistent, or provenance-free states fail closed. Human and JSON presentation refold the ledger instead of trusting projection cache; deeper evidence freshness diagnostics remain planned. |
 | 4 | **Automatic reconciliation briefing** | prompt and same-turn safe-hook emission plus prompt classification control implemented; compaction/close triggers deferred | Agentfile v2 and the pure resolver normalize `off`, `adaptive`, `frequent`, and `custom`. Reconciliation builds complete bounded snapshots, deterministic deltas/fingerprints, validated due decisions, and exact prepare/confirm delivery tuples. `work brief` renders the ordered requirements/done/remaining/blockers/progress/next contract. Dedicated Claude Code and Codex `UserPromptSubmit` adapters handle foreground prompt boundaries and, when bounded capture is enabled, combine the due briefing with an opaque explicit allocation obligation. Codex `PostToolUse` and Claude Code batch-level `PostToolBatch` evaluate meaningful-action and silence cadence during a long turn without a daemon. Wrappers discard tool payloads, one durable lock-scoped cursor mutation deduplicates stable boundary IDs, and hidden context remains `injected_unconfirmed`. Compaction-specific and close-specific native triggers remain research-first. |
 | 5 | **Per-Work automatic delegation and runtime policy** | evidence, contextual readiness, and CLI implemented; provider execution deferred | The resolver normalizes `off`, `auto`, `prefer`, and `required` parallelism, maximum agents, native/tmux preferences, fallback order, reassessment triggers, and unavailable behavior. Typed assessments and delegation outcomes preserve structured lanes, child contracts, failures, results, and source-bound user waivers; changed scope/capability invalidates contextual readiness by hash. Required parallelism fails closed after provider exhaustion. `work delegation assess|record|waive` records runtime-neutral evidence, but actual native/tmux launch, supervision, retry, mailbox, worktree, and shutdown remain runtime-owned and deferred. |
@@ -2155,7 +2158,8 @@ Work plan:
 ### Work-unit review policy
 
 The work unit should carry user-configurable action gates, not universal prose
-reminders. Existing projects resolve to preset `off`; users may choose
+reminders. Existing projects that omit policy resolve to preset `off`; fresh
+init materializes `advisory`, and users may choose
 `advisory`, `strict`, or `custom` globally, per project, by matched task
 harness, or per unit. Required gates merge monotonically so a weaker lower
 precedence default cannot silently remove a stronger requirement. Current
@@ -2224,8 +2228,9 @@ fallback; anamnesis injects the preference and records each result as an
 gate.
 
 Project policy now has a strict optional home at Agentfile v2
-`settings.work_policy`. New `init` output uses v2 but leaves that field absent,
-so all behaviors remain off. Existing v1 files migrate explicitly and
+`settings.work_policy`. New `init` output uses v2 and materializes the active
+default profile; explicit `off` disables individual behaviors. Existing files
+that omit the field retain the legacy all-off resolver. Existing v1 files migrate explicitly and
 idempotently by changing only `version`, with a backup on apply; v1 continues
 to reject v2-only policy fields. Preset-first `anamnesis init --review-preset`,
 a guided `anamnesis context policy configure --scope user|project`, user-level
@@ -2273,7 +2278,8 @@ waiver; a required tmux surface cannot be satisfied by native agents. `solo` is
 not a provider-order value.
 
 Review, reconciliation, and delegation share the precedence already defined
-above. Existing projects resolve the new behaviors to `off`; guided policy
+above. Existing projects that omit policy resolve the behaviors to `off`;
+fresh init materializes the active profile, while guided policy
 configuration and a natural-language per-Work instruction both append the
 resolved policy and source/hash to a new contract revision.
 

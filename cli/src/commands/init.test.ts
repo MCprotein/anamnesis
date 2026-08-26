@@ -106,7 +106,14 @@ describe("init", () => {
     expect(af.version).toBe(2);
     expect(af.fragments).toHaveLength(0);
     expect(af.tools).toEqual(["claude-code"]);
-    expect(af.settings).toBeUndefined();
+    expect(af.settings).toMatchObject({
+      work_policy: {
+        reconciliation: { preset: "adaptive" },
+        review: { preset: "advisory" },
+        delegation: { parallelism: "auto" },
+      },
+      work_prompt_capture: { preset: "bounded" },
+    });
 
     const m = readManifest(project);
     expect(m.regions).toHaveLength(0);

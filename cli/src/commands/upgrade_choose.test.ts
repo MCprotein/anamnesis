@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import YAML from "yaml";
 import { init } from "./init.js";
 import {
   buildUpgradeChoiceMenu,
@@ -50,6 +51,15 @@ function installProject(library: string): string {
   return project;
 }
 
+function omitAgentfileSettings(project: string): void {
+  const agentfilePath = path.join(project, "Agentfile");
+  const agentfile = YAML.parse(
+    fs.readFileSync(agentfilePath, "utf8"),
+  ) as Record<string, unknown>;
+  delete agentfile.settings;
+  fs.writeFileSync(agentfilePath, YAML.stringify(agentfile), "utf8");
+}
+
 describe("upgrade choose", () => {
   it("renders and selects upgrade choices by number or id", () => {
     const v1Library = makeLibrary(1);
@@ -75,6 +85,7 @@ describe("upgrade choose", () => {
   it("refuses to prompt in non-interactive mode without a selected choice", async () => {
     const library = makeLibrary(1);
     const project = installProject(library);
+    omitAgentfileSettings(project);
 
     await expect(
       upgradeChoose({
@@ -112,6 +123,7 @@ describe("upgrade choose", () => {
   it("can select through an injected prompt", async () => {
     const library = makeLibrary(1);
     const project = installProject(library);
+    omitAgentfileSettings(project);
 
     const result = await upgradeChoose({
       projectRoot: project,

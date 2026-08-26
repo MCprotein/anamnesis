@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import YAML from "yaml";
 import { init } from "./init.js";
 import {
   upgradeApplyChoice,
@@ -45,6 +46,15 @@ function installProject(library: string): string {
     noBootstrap: true,
   });
   return project;
+}
+
+function omitAgentfileSettings(project: string): void {
+  const agentfilePath = path.join(project, "Agentfile");
+  const agentfile = YAML.parse(
+    fs.readFileSync(agentfilePath, "utf8"),
+  ) as Record<string, unknown>;
+  delete agentfile.settings;
+  fs.writeFileSync(agentfilePath, YAML.stringify(agentfile), "utf8");
 }
 
 describe("upgrade apply-choice", () => {
@@ -140,6 +150,7 @@ describe("upgrade apply-choice", () => {
   it("does not execute manual choices", () => {
     const library = makeLibrary(1);
     const project = installProject(library);
+    omitAgentfileSettings(project);
 
     const result = upgradeApplyChoice({
       choiceId: "keep-implicit-setting-defaults",

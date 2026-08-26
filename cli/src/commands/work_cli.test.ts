@@ -71,7 +71,7 @@ function run(root: string, args: string[], input?: Buffer) {
 			cwd: repositoryRoot,
 			input,
 			encoding: "utf8",
-			env: { ...process.env, ANAMNESIS_WORK_PROMPT_CAPTURE: "1" },
+			env: { ...process.env },
 		},
 	);
 }
@@ -85,7 +85,7 @@ function runAsync(root: string, args: string[], input: Buffer) {
 				{
 					cwd: repositoryRoot,
 					stdio: ["pipe", "pipe", "pipe"],
-					env: { ...process.env, ANAMNESIS_WORK_PROMPT_CAPTURE: "1" },
+					env: { ...process.env },
 				},
 			);
 			let stdout = "";

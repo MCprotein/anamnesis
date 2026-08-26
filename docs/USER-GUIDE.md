@@ -39,6 +39,45 @@ anamnesis init --enhance-docs --allow-exec-adapters
 without replacing user prose. When an agent performs setup, the
 `anamnesis-init` skill maps one documentation choice to these flags.
 
+## Active Work defaults and opt-out
+
+Fresh `anamnesis init` projects materialize an active Work profile:
+
+```yaml
+settings:
+  work_policy:
+    reconciliation:
+      preset: adaptive
+    review:
+      preset: advisory
+    delegation:
+      parallelism: auto
+  work_prompt_capture:
+    preset: bounded
+```
+
+Disable only the features you do not want by changing their values to `off`:
+
+```yaml
+settings:
+  work_policy:
+    reconciliation:
+      preset: off
+    review:
+      preset: off
+    delegation:
+      parallelism: off
+  work_prompt_capture:
+    preset: off
+```
+
+Existing Agentfiles that omit these settings retain the legacy all-off
+behavior. Review the generated Agentfile in the installation Git diff and set
+`work_prompt_capture.preset: off` if prompt staging is not wanted. Executable
+hooks and skills remain a separate supply-chain boundary and require
+`--allow-exec-adapters`; init output states whether that native automation is
+enabled and prints the enabling command when it is not.
+
 ## Updating an existing project
 
 Package upgrades and managed-project updates are separate operations:

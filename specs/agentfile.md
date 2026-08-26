@@ -90,7 +90,7 @@ settings:
   max_warm_handoff_archives: 5 # active.md 없을 때 startup/resume 이 warm 으로 보는 최신 archive 수
   max_cold_handoff_age_days: 90 # cold archive 가 GC review 후보가 되는 age budget
   max_handoff_bytes: 524288    # handoff 전체 byte budget; 초과 시 diagnostics/GC 경고
-  work_prompt_capture:          # optional; absent/off 가 기본
+  work_prompt_capture:          # 새 init 은 bounded; 명시적 off 가능
     preset: bounded
     ttl: PT24H
     max_entry_bytes: 262144
@@ -184,8 +184,8 @@ rulebook 이 `declined` 에 있는 fragment 를 매칭해도 **다시 제안하�
 | `max_warm_handoff_archives` | `int` | `5` | active reference 가 없을 때 warm 으로 취급할 최신 handoff archive 개수. 0 = 자동 최신 archive fallback 없음 |
 | `max_cold_handoff_age_days` | `int` | `90` | cold handoff archive 가 review 후보가 되는 age budget |
 | `max_handoff_bytes` | `int` | `524288` | `.anamnesis/handoff` 전체 byte budget. 초과 시 `status`/`doctor`/`context diagnose`/`gc` 가 경고 또는 후보를 보고 |
-| `work_policy` | `WorkPolicyConfig` | 생략 시 전체 `off` | v2 전용 Work reconciliation/review/delegation 정책. 해결된 정책은 Work contract revision에 snapshot으로 고정하며 live Agentfile 변경은 drift로 보고 |
-| `work_prompt_capture` | `WorkPromptCaptureConfig` | `{ preset: off }` | v2 전용 UserPrompt 임시 보존 정책. `bounded`일 때만 exact decoded text를 private stage에 저장하고 명시적 allocation/provisional/discard 전에는 Work source로 만들지 않음 |
+| `work_policy` | `WorkPolicyConfig` | 새 init: `adaptive` reconciliation + `advisory` review + `auto` delegation; 생략 시 legacy 전체 `off` | v2 전용 Work reconciliation/review/delegation 정책. 각 기능은 명시적 `off`로 비활성화할 수 있다. 해결된 정책은 Work contract revision에 snapshot으로 고정하며 live Agentfile 변경은 drift로 보고 |
+| `work_prompt_capture` | `WorkPromptCaptureConfig` | 새 init: `{ preset: bounded }`; 생략 시 legacy `{ preset: off }` | v2 전용 UserPrompt 임시 보존 정책. `bounded`이면 exact decoded text를 private stage에 저장하며, 명시적 allocation/provisional/discard 전에는 Work source로 만들지 않음. 설치 Git diff에서 검토하고 원하지 않으면 `off`로 설정 |
 
 `work_prompt_capture.preset: bounded`는 `ttl`(지원되는 양의 `PT...`
 duration), `max_entry_bytes`, `max_total_bytes`, `max_entries`를 선택적으로
@@ -193,10 +193,9 @@ duration), `max_entry_bytes`, `max_total_bytes`, `max_entries`를 선택적으�
 30일, 8 MiB/entry, 64 MiB total, 1024 entries이며 total은 entry보다 작을
 수 없다. 원문은 Git·backup·context index에서 제외되는 `0700`/`0600`
 private staging 경로에만 남고, hook context·stdout/stderr·diagnostics에는
-stage ID와 제어 문구만 노출한다. 이 저장소 정책은 허용 범위일 뿐이며,
-실제 원문 capture에는 사용자 로컬 환경의
-`ANAMNESIS_WORK_PROMPT_CAPTURE=1`도 동시에 필요하다. 저장소 변경만으로
-협업자의 원문 보존을 켤 수 없다. TTL은 다음 capture 또는 명시적
+stage ID와 제어 문구만 노출한다. Agentfile 정책이 capture 여부와 범위를
+결정한다. 사용자는 설치 Git diff에서 이 설정을 검토하고 필요하면
+`preset: off`로 비활성화한다. TTL은 다음 capture 또는 명시적
 `anamnesis work prompt gc` 실행에서 집행되며 daemon을 만들지 않는다.
 
 ### 4.7 `Overrides`

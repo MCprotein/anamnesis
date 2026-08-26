@@ -27,9 +27,8 @@ invalid JSON, missing executables, and command failures are fail-open and do
 not inject a briefing. Prompt text is decoded only from the documented string
 field and is never logged, fingerprinted, or returned. With the default
 `settings.work_prompt_capture` policy absent or `off`, it is not persisted.
-With explicit `bounded` capture plus the user-local environment consent
-`ANAMNESIS_WORK_PROMPT_CAPTURE=1`, the exact decoded string re-encoded as UTF-8
-is stored temporarily as `client_exact` in the local-private
+With `bounded` capture in the reviewed Agentfile, the exact decoded string
+re-encoded as UTF-8 is stored temporarily as `client_exact` in the local-private
 `.anamnesis/work-prompt-stage/` tree. Lone UTF-16 surrogates fail open rather
 than being replacement-encoded. Returned context contains only an opaque stage
 ID and the explicit `allocate-same`, `allocate-new`, `retain`, or `discard`
@@ -49,6 +48,11 @@ status retrieval instead. The Codex registration intentionally omits a status
 message, so an `off` policy produces no visible per-prompt UI. The registered
 wrapper performs a local fail-open preflight and avoids starting the CLI when
 both prompt capture is off and the session has no linked Work cursor.
+When the local preflight sees a bounded candidate, it asks the installed CLI
+to validate the complete Agentfile through the canonical schema before raw
+prompt bytes cross the wrapper boundary. Invalid or ambiguous configuration
+cannot authorize capture; linked-work reconciliation receives only a
+whitelisted payload with an empty prompt when capture is not authorized.
 
 Stage resolution is a foreground command, never an automatic current-cursor
 allocation. Accepted same/new decisions publish one immutable source envelope
@@ -59,11 +63,12 @@ and then delete the raw stage. Bounded GC uses the same stage locks, so it
 cannot remove a prompt while allocation is committing. `anamnesis work prompt
 gc` is the explicit daemon-free TTL boundary and also recovers expired
 body-only, corrupt partial, and stale temporary publication files. Repository
-policy can cap or disable capture but cannot grant the user-local consent key.
+policy controls, caps, or disables capture; users review it in the installation
+Git diff and can set `preset: off`.
 
 Contract evidence: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 [Claude Code hooks reference](https://code.claude.com/docs/en/hooks). Raw
-prompt retention is opt-in and bounded; every retained prompt is explicitly
+prompt retention is policy-controlled and bounded; every retained prompt is explicitly
 allocated or provisional, while discarded/non-requirement prompts leave no
 raw body.
 

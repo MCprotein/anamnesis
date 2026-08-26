@@ -202,7 +202,7 @@ import {
   handleWorkUserPromptSubmit,
   type WorkHookClient,
 } from "./commands/work_hook.js";
-import type { ToolName } from "./core/agentfile.js";
+import { readAgentfile, type ToolName } from "./core/agentfile.js";
 import {
   formatCompactHelp,
   formatGettingStartedGuide,
@@ -226,6 +226,7 @@ import {
 } from "./core/work_cursor.js";
 import { deliverWorkBriefing } from "./core/work_delivery.js";
 import { workExecutionInputsSchema } from "./core/work_execution_inputs.js";
+import { normalizeWorkPromptCapturePolicy } from "./core/work_prompt_policy.js";
 import {
 	detectWorkspaceProfile,
 	formatWorkspaceProfileLines,
@@ -962,7 +963,11 @@ function reportWorkspaceProfile(projectRoot: string): void {
 // Reporters
 // ---------------------------------------------------------------------------
 
-function reportInit(result: InitResult, projectRoot: string): void {
+function reportInit(
+  result: InitResult,
+  projectRoot: string,
+  execAdaptersEnabled: boolean,
+): void {
   const ui = createTui();
   const s = summarizeChanges(result.changes);
 	const fragIds =
@@ -1071,6 +1076,7 @@ function reportInit(result: InitResult, projectRoot: string): void {
     writtenToDisk: result.writtenToDisk,
     blockedWrites: s.blocked,
     tools: result.agentfile.tools,
+    execAdaptersEnabled,
   })) {
     console.log(line);
   }
@@ -3048,7 +3054,11 @@ async function main(argv: string[]): Promise<number> {
           scaffoldDocs: flags["scaffold-docs"] === true,
           enhanceDocs: flags["enhance-docs"] === true,
         });
-        reportInit(result, projectRoot);
+        reportInit(
+          result,
+          projectRoot,
+          flags["allow-exec-adapters"] === true,
+        );
         return 0;
       } catch (e) {
         if (e instanceof InitError) {
@@ -3349,6 +3359,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "confirm" &&
         sub !== "switch" &&
         sub !== "prompt" &&
+        sub !== "hook-policy-probe" &&
         sub !== "hook-user-prompt" &&
         sub !== "hook-post-tool-use"
       ) {
@@ -3359,6 +3370,29 @@ async function main(argv: string[]): Promise<number> {
         return 1;
       }
       try {
+        if (sub === "hook-policy-probe") {
+          const projectRoot =
+            optionalWorkFlag(flags, "project-root") ?? process.cwd();
+          let enabled = false;
+          try {
+            const agentfile = readAgentfile(projectRoot);
+            enabled =
+              agentfile.version === 2 &&
+              normalizeWorkPromptCapturePolicy(
+                agentfile.settings?.work_prompt_capture,
+              ).enabled;
+          } catch {
+            enabled = false;
+          }
+          await writeStdoutFully(
+            `${JSON.stringify({
+              schema_version: "anamnesis.work-prompt-policy-probe.v1",
+              capture_enabled: enabled,
+            })}\n`,
+          );
+          return 0;
+        }
+
         if (sub === "prompt") {
           const action = positional[1];
           if (

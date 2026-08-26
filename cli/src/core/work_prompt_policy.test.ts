@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
 	normalizeWorkPromptCapturePolicy,
-	workPromptCaptureUserOptIn,
 	workPromptCaptureConfigSchema,
 } from "./work_prompt_policy.js";
 
@@ -41,16 +40,6 @@ describe("Work prompt capture policy", () => {
 			max_total_bytes: 4_096,
 			max_entries: 8,
 		});
-	});
-
-	it("requires an exact user-local environment opt-in", () => {
-		expect(workPromptCaptureUserOptIn({})).toBe(false);
-		expect(
-			workPromptCaptureUserOptIn({ ANAMNESIS_WORK_PROMPT_CAPTURE: "true" }),
-		).toBe(false);
-		expect(
-			workPromptCaptureUserOptIn({ ANAMNESIS_WORK_PROMPT_CAPTURE: "1" }),
-		).toBe(true);
 	});
 
 	it("rejects unknown, unsafe, unbounded, and inconsistent values", () => {

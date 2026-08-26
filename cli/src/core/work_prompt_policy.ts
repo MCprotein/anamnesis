@@ -70,16 +70,6 @@ export const WORK_PROMPT_CAPTURE_DEFAULTS = {
 	max_entries: 64,
 } as const;
 
-export const WORK_PROMPT_CAPTURE_CONSENT_ENV =
-	"ANAMNESIS_WORK_PROMPT_CAPTURE" as const;
-
-/** Repository policy sets bounds; this user-local switch grants raw capture. */
-export function workPromptCaptureUserOptIn(
-	environment: NodeJS.ProcessEnv = process.env,
-): boolean {
-	return environment[WORK_PROMPT_CAPTURE_CONSENT_ENV] === "1";
-}
-
 export function normalizeWorkPromptCapturePolicy(
 	config?: WorkPromptCaptureConfig,
 ): NormalizedWorkPromptCapturePolicy {

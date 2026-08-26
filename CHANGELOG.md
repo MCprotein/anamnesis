@@ -7,6 +7,20 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- New `anamnesis init` projects now materialize an active Work profile by
+  default: adaptive reconciliation, advisory review, automatic delegation
+  assessment, and bounded repository-side prompt-capture policy. Users can
+  explicitly set these policies to `off`; existing projects with omitted Work
+  settings retain their legacy all-off behavior. Prompt capture now follows the
+  reviewed Agentfile policy directly instead of requiring an extra environment
+  variable. Before forwarding raw prompt bytes, native wrappers now confirm the
+  candidate policy through the CLI's strict Agentfile parser and fail closed on
+  malformed, duplicate, ambiguous, or schema-invalid configuration. Executable
+  adapter writes remain gated by `--allow-exec-adapters`, and init output
+  reports whether native automation is enabled.
+
 ## [1.18.2] — 2026-08-25
 
 ### Fixed

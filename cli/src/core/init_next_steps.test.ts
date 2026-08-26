@@ -8,6 +8,7 @@ describe("formatInitNextStepLines", () => {
         writtenToDisk: false,
         blockedWrites: 0,
         tools: ["claude-code", "codex", "cursor"],
+        execAdaptersEnabled: false,
       }),
     ).toEqual(
       expect.arrayContaining([
@@ -24,11 +25,13 @@ describe("formatInitNextStepLines", () => {
         writtenToDisk: true,
         blockedWrites: 0,
         tools: ["claude-code", "codex", "cursor"],
+        execAdaptersEnabled: true,
       }),
     ).toEqual(
       expect.arrayContaining([
         "    verify install: anamnesis doctor",
         "    inspect status: anamnesis status",
+        "    native automation: enabled via --allow-exec-adapters",
       ]),
     );
   });
@@ -39,7 +42,10 @@ describe("formatInitNextStepLines", () => {
         writtenToDisk: true,
         blockedWrites: 3,
         tools: ["claude-code"],
+        execAdaptersEnabled: false,
       }).join("\n"),
-    ).toContain("blocked executable surfaces");
+    ).toContain(
+      "native automation: disabled; enable with anamnesis apply --allow-exec-adapters",
+    );
   });
 });

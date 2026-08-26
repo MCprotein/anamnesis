@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import YAML from "yaml";
 import { update } from "./update.js";
 import { init } from "./init.js";
 import {
@@ -204,9 +205,14 @@ describe("update — preconditions", () => {
     const { project } = setupPrismaProject(library);
     const agentfilePath = path.join(project, "Agentfile");
     const agentsPath = path.join(project, "AGENTS.md");
+    const legacyAgentfile = YAML.parse(
+      fs.readFileSync(agentfilePath, "utf8"),
+    ) as Record<string, unknown>;
+    legacyAgentfile.version = 1;
+    delete legacyAgentfile.settings;
     fs.writeFileSync(
       agentfilePath,
-      fs.readFileSync(agentfilePath, "utf8").replace("version: 2", "version: 1"),
+      YAML.stringify(legacyAgentfile),
       "utf8",
     );
     const beforeAgentfile = fs.readFileSync(agentfilePath, "utf8");

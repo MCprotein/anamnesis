@@ -147,11 +147,10 @@ interruption/non-requirement discards the body after classification and keeps
 at most minimal retention-policy metadata. Full user-prompt archival is a
 separate explicit opt-in.
 
-The implemented staging policy requires two keys: Agentfile v2
-`settings.work_prompt_capture` must permit bounded capture, and the local user
-must set `ANAMNESIS_WORK_PROMPT_CAPTURE=1` in the foreground client environment.
-Either key being absent leaves capture `off`, so a repository change cannot
-unilaterally retain collaborators' prompts. `bounded` capture uses
+The implemented staging policy follows Agentfile v2
+`settings.work_prompt_capture`: `bounded` enables private staging and `off` or
+absence disables it. The setting is reviewable in the installation Git diff.
+`bounded` capture uses
 a deterministic identity derived from the native client/session/turn boundary,
 never from prompt bytes, and enforces TTL, per-entry, total-byte, and entry-count
 budgets. Codex requires `session_id + turn_id`; Claude Code stages only when an
@@ -356,8 +355,9 @@ the old completion evidence remains visible. A mistaken allocation appends a
 
 ## User-configurable review policy
 
-Independent review is a user/project capability, not a universal anamnesis
-requirement. Existing projects default to `off`.
+Independent review is a user/project capability, not a universal blocking
+requirement. Fresh init uses `advisory`; existing projects that omit policy
+retain the legacy `off` default.
 
 Presets:
 
@@ -377,7 +377,7 @@ weaker settings cannot remove a required gate. The effective order is:
 3. matched task harness;
 4. project policy;
 5. user-level default;
-6. product default `off`.
+6. product fallback `off` for legacy or hand-authored files that omit policy.
 
 The resolved policy, all contributing source refs, and its hash are frozen into
 each accepted contract revision. Lowering an already-required gate is a waiver and must be
@@ -563,10 +563,10 @@ The first automatic adapter slice evaluates this contract at
 Claude Code versions), refolds only the cursor-selected Work, and emits bounded
 additional context instructing the foreground agent to brief visibly and
 continue. Missing identity or runtime failure is fail-open. This slice does
-not retain the submitted prompt by default. When repository bounds and the
-user-local consent key both enable it, the adapter uses the bounded staging
-lifecycle above and injects only an opaque allocated/provisional/discard
-control obligation.
+not retain the submitted prompt when policy is absent or `off`. When repository
+policy enables bounded capture, the adapter uses the bounded staging lifecycle
+above and injects only an opaque allocated/provisional/discard control
+obligation.
 
 The next thin adapter slice evaluates elapsed-time and meaningful-action
 cadence inside a long foreground turn without adding a timer or daemon. Codex
@@ -676,8 +676,9 @@ ordinary prompts and tool calls do not cause repeated re-planning.
 Review, reconciliation, and delegation policies use the same precedence:
 current explicit user instruction, per-Work override, matched task harness,
 project policy, user default, then product default. Existing installations
-resolve reconciliation and delegation to `off` until configured or migrated.
-Guided init/policy configuration offers presets, while natural-language Work
+that omit policy resolve reconciliation and delegation to `off`; fresh init
+materializes adaptive reconciliation and automatic delegation. Guided
+init/policy configuration offers presets, while natural-language Work
 instructions such as “이 작업은 5분마다 브리핑하고 병렬은 auto, tmux는 prefer”
 append an evidenced Work-policy revision instead of requiring hand-written YAML.
 

@@ -191,8 +191,72 @@ describe("CLI entrypoint", () => {
     expect(result.stdout).toContain(
       "apply reviewed plan: anamnesis init --tools all --allow-exec-adapters",
     );
+    expect(result.stdout).toContain(
+      "native automation: enabled via --allow-exec-adapters",
+    );
     expect(result.stdout).toContain("semantic ontology: /ontology-enrich");
     expect(result.stdout).toContain("task handoff: /handoff-prepare");
+  });
+
+  it("probes prompt capture through the strict Agentfile parser", () => {
+    const project = fs.mkdtempSync(
+      path.join(os.tmpdir(), "anamnesis-cli-prompt-policy-"),
+    );
+    writeFile(
+      project,
+      "Agentfile",
+      `version: 2
+project:
+  name: fixture
+tools: [codex]
+fragments: []
+settings:
+  work_prompt_capture:
+    preset: bounded
+`,
+    );
+    const runProbe = () =>
+      spawnSync(
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          indexPath,
+          "work",
+          "hook-policy-probe",
+          "--project-root",
+          project,
+        ],
+        { cwd: repoRoot, encoding: "utf8" },
+      );
+
+    const enabled = runProbe();
+    expect(enabled.status).toBe(0);
+    expect(enabled.stderr).toBe("");
+    expect(JSON.parse(enabled.stdout)).toEqual({
+      schema_version: "anamnesis.work-prompt-policy-probe.v1",
+      capture_enabled: true,
+    });
+
+    writeFile(
+      project,
+      "Agentfile",
+      `version: 2
+project: []
+tools: nope
+fragments: nope
+settings:
+  work_prompt_capture:
+    preset: bounded
+`,
+    );
+    const rejected = runProbe();
+    expect(rejected.status).toBe(0);
+    expect(rejected.stderr).toBe("");
+    expect(JSON.parse(rejected.stdout)).toEqual({
+      schema_version: "anamnesis.work-prompt-policy-probe.v1",
+      capture_enabled: false,
+    });
   });
 
   it("previews project changes through apply --dry-run", () => {

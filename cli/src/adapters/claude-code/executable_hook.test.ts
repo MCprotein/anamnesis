@@ -12,6 +12,25 @@ function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-hook-"));
 }
 
+function claudeAgentfile(settings: string): string {
+  const body = settings
+    .trimEnd()
+    .split("\n")
+    .map((line) => `  ${line}`)
+    .join("\n");
+  return `version: 2\nproject: { name: test }\ntools: [claude-code]\nfragments: []\nsettings:\n${body}\n`;
+}
+
+function claudeFlowAgentfile(settings: string): string {
+  return `{version: 2, project: {name: test}, tools: [claude-code], fragments: [], settings: {${settings}}}\n`;
+}
+
+const ENABLE_CAPTURE_POLICY_PROBE =
+  'if (process.argv.slice(2).join(" ").startsWith("work hook-policy-probe ")) { process.stdout.write(JSON.stringify({ schema_version: "anamnesis.work-prompt-policy-probe.v1", capture_enabled: true }) + "\\n"); process.exit(0); }';
+
+const DISABLE_CAPTURE_POLICY_PROBE =
+  'if (process.argv.slice(2).join(" ").startsWith("work hook-policy-probe ")) { process.stdout.write(JSON.stringify({ schema_version: "anamnesis.work-prompt-policy-probe.v1", capture_enabled: false }) + "\\n"); process.exit(0); }';
+
 function makeContext(
   fragmentDir: string,
   fragment: FragmentDefinition = {
@@ -328,6 +347,7 @@ describe("executableHookRenderer (claude-code)", () => {
       shimPath,
       [
         "#!/usr/bin/env node",
+        ENABLE_CAPTURE_POLICY_PROBE,
         "const chunks = [];",
         "for await (const chunk of process.stdin) chunks.push(chunk);",
         "const input = Buffer.concat(chunks);",
@@ -341,7 +361,7 @@ describe("executableHookRenderer (claude-code)", () => {
     fs.chmodSync(shimPath, 0o755);
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      'version: 2\n"settings": { "work_prompt_capture": { "preset": "bounded" } }\n',
+      claudeFlowAgentfile('"work_prompt_capture": { "preset": "bounded" }'),
     );
 
     const result = spawnSync("bash", [hook], {
@@ -350,7 +370,6 @@ describe("executableHookRenderer (claude-code)", () => {
         ...process.env,
         ANAMNESIS_BIN: shimPath,
         ANAMNESIS_NODE: process.execPath,
-        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
         CLAUDE_PROJECT_DIR: projectRoot,
         EXPECTED_INPUT_BASE64: input.toString("base64"),
       },
@@ -373,7 +392,9 @@ describe("executableHookRenderer (claude-code)", () => {
     fs.chmodSync(shimPath, 0o755);
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      'version: 2\n"settings": { "work_policy": { "reconciliation": { "preset": "custom" } } }\n',
+      claudeFlowAgentfile(
+        '"work_policy": { "reconciliation": { "preset": "custom" } }',
+      ),
     );
 
     const result = spawnSync(
@@ -410,12 +431,12 @@ describe("executableHookRenderer (claude-code)", () => {
     );
     fs.writeFileSync(
       checkoutBin,
-      `#!${process.execPath}\nprocess.stdout.write("checkout briefing\\n");\n`,
+      `#!${process.execPath}\n${ENABLE_CAPTURE_POLICY_PROBE}\nprocess.stdout.write("checkout briefing\\n");\n`,
     );
     fs.chmodSync(checkoutBin, 0o755);
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      "version: 2\nsettings:\n  work_prompt_capture: { preset: bounded }\n",
+      claudeAgentfile("work_prompt_capture: { preset: bounded }"),
     );
 
     const result = spawnSync(
@@ -426,7 +447,6 @@ describe("executableHookRenderer (claude-code)", () => {
         env: {
           CLAUDE_PROJECT_DIR: projectRoot,
           ANAMNESIS_NODE: process.execPath,
-          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
           PATH: "/usr/bin:/bin",
         },
         input: `${JSON.stringify({
@@ -458,12 +478,13 @@ describe("executableHookRenderer (claude-code)", () => {
     })}\n`;
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+      claudeAgentfile("work_prompt_capture:\n  preset: bounded"),
     );
     fs.writeFileSync(
       shimPath,
       [
         "#!/usr/bin/env node",
+        ENABLE_CAPTURE_POLICY_PROBE,
         'process.stderr.write("child failure detail: claude private failure sentinel\\n");',
         "process.exit(23);",
         "",
@@ -478,7 +499,6 @@ describe("executableHookRenderer (claude-code)", () => {
         ...process.env,
         ANAMNESIS_BIN: shimPath,
         ANAMNESIS_NODE: process.execPath,
-        ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
         CLAUDE_PROJECT_DIR: projectRoot,
       },
       input,
@@ -503,7 +523,7 @@ describe("executableHookRenderer (claude-code)", () => {
     fs.chmodSync(shimPath, 0o755);
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      'version: 2\n"settings": { "work_prompt_capture": { "preset": "off" } }\n',
+      claudeFlowAgentfile('"work_prompt_capture": { "preset": "off" }'),
     );
 
     const result = spawnSync(
@@ -515,7 +535,6 @@ describe("executableHookRenderer (claude-code)", () => {
           ...process.env,
           ANAMNESIS_BIN: shimPath,
           ANAMNESIS_NODE: process.execPath,
-          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
         },
         input: `${JSON.stringify({
           cwd: projectRoot,
@@ -533,18 +552,144 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(fs.existsSync(marker)).toBe(false);
   });
 
+  it("fails closed before forwarding prompts for ambiguous capture policies", () => {
+    const cases = [
+      {
+        name: "unknown preset",
+        files: {
+          Agentfile: claudeAgentfile("work_prompt_capture:\n  preset: typo"),
+        },
+      },
+      {
+        name: "unknown capture field",
+        files: {
+          Agentfile: claudeAgentfile(
+            "work_prompt_capture:\n  preset: bounded\n  unexpected: true",
+          ),
+        },
+      },
+      {
+        name: "wrong nesting",
+        files: {
+          Agentfile:
+            "version: 2\nproject: { name: test }\ntools: [claude-code]\nfragments: []\nsettings: {}\nwork_prompt_capture:\n  preset: bounded\n",
+        },
+      },
+      {
+        name: "duplicate capture keys",
+        files: {
+          Agentfile: claudeAgentfile(
+            "work_prompt_capture:\n  preset: bounded\nwork_prompt_capture:\n  preset: bounded",
+          ),
+        },
+      },
+      {
+        name: "duplicate settings keys",
+        files: {
+          Agentfile:
+            "version: 2\nproject: { name: test }\ntools: [claude-code]\nfragments: []\nsettings:\n  ontology_file: system_graph.yaml\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+        },
+      },
+      {
+        name: "duplicate version keys",
+        files: {
+          Agentfile:
+            "version: 2\nversion: 2\nproject: { name: test }\ntools: [claude-code]\nfragments: []\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+        },
+      },
+      {
+        name: "quoted version",
+        files: {
+          Agentfile:
+            'version: "2"\nproject: { name: test }\ntools: [claude-code]\nfragments: []\nsettings:\n  work_prompt_capture:\n    preset: bounded\n',
+        },
+      },
+      {
+        name: "nested settings",
+        files: {
+          Agentfile:
+            "version: 2\nproject:\n  name: test\n  settings:\n    work_prompt_capture:\n      preset: bounded\ntools: [claude-code]\nfragments: []\n",
+        },
+      },
+      {
+        name: "unknown root field",
+        files: {
+          Agentfile:
+            "version: 2\nproject: { name: test }\ntools: [claude-code]\nfragments: []\nsettings:\n  work_prompt_capture:\n    preset: bounded\nunexpected: true\n",
+        },
+      },
+      {
+        name: "invalid required root values",
+        files: {
+          Agentfile:
+            "version: 2\nproject: []\ntools: nope\nfragments: nope\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+        },
+      },
+      {
+        name: "multiple Agentfiles",
+        files: {
+          Agentfile: claudeAgentfile(
+            "work_prompt_capture:\n  preset: bounded",
+          ),
+          "agentfile.yaml": claudeAgentfile(
+            "work_prompt_capture:\n  preset: bounded",
+          ),
+        },
+      },
+    ] as const;
+
+    for (const scenario of cases) {
+      const projectRoot = tmpDir();
+      const marker = path.join(projectRoot, "invoked");
+      const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
+      fs.writeFileSync(
+        shimPath,
+        `#!${process.execPath}\n${DISABLE_CAPTURE_POLICY_PROBE}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+      );
+      fs.chmodSync(shimPath, 0o755);
+      for (const [filename, contents] of Object.entries(scenario.files)) {
+        fs.writeFileSync(path.join(projectRoot, filename), contents);
+      }
+
+      const result = spawnSync(
+        "bash",
+        [path.resolve("base/adapters/claude-code/hooks/work-briefing.sh")],
+        {
+          cwd: projectRoot,
+          env: {
+            ...process.env,
+            ANAMNESIS_BIN: shimPath,
+            ANAMNESIS_NODE: process.execPath,
+          },
+          input: `${JSON.stringify({
+            cwd: projectRoot,
+            session_id: `ambiguous-${scenario.name}`,
+            prompt_id: "prompt-1",
+            prompt: "must not be forwarded",
+          })}\n`,
+          encoding: "utf8",
+        },
+      );
+
+      expect(result.status, scenario.name).toBe(0);
+      expect(result.stdout, scenario.name).toBe("");
+      expect(result.stderr, scenario.name).toBe("");
+      expect(fs.existsSync(marker), scenario.name).toBe(false);
+    }
+  });
+
   it("does not start the Work CLI for a full-root flow-map off policy", () => {
     const projectRoot = tmpDir();
     const marker = path.join(projectRoot, "invoked");
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     fs.writeFileSync(
       shimPath,
-      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+      `#!${process.execPath}\n${ENABLE_CAPTURE_POLICY_PROBE}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
     );
     fs.chmodSync(shimPath, 0o755);
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      "{version: 2, settings: {work_prompt_capture: {preset: off}}}\n",
+      claudeFlowAgentfile("work_prompt_capture: {preset: off}"),
     );
 
     const result = spawnSync(
@@ -556,7 +701,6 @@ describe("executableHookRenderer (claude-code)", () => {
           ...process.env,
           ANAMNESIS_BIN: shimPath,
           ANAMNESIS_NODE: process.execPath,
-          ANAMNESIS_WORK_PROMPT_CAPTURE: "1",
         },
         input: `${JSON.stringify({
           cwd: projectRoot,
@@ -580,7 +724,7 @@ describe("executableHookRenderer (claude-code)", () => {
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     fs.writeFileSync(
       shimPath,
-      `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
+      `#!${process.execPath}\n${ENABLE_CAPTURE_POLICY_PROBE}\nimport { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "yes");\n`,
     );
     fs.chmodSync(shimPath, 0o755);
 
@@ -605,13 +749,13 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(fs.existsSync(marker)).toBe(false);
   });
 
-  it("does not start capture unless the Claude environment opt-in is exactly 1", () => {
+  it("starts capture from reviewed Claude project policy without an environment gate", () => {
     const projectRoot = tmpDir();
     const marker = path.join(projectRoot, "invoked");
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+      claudeAgentfile("work_prompt_capture:\n  preset: bounded"),
     );
     fs.writeFileSync(
       shimPath,
@@ -628,13 +772,12 @@ describe("executableHookRenderer (claude-code)", () => {
           ...process.env,
           ANAMNESIS_BIN: shimPath,
           ANAMNESIS_NODE: process.execPath,
-          ANAMNESIS_WORK_PROMPT_CAPTURE: "true",
         },
         input: `${JSON.stringify({
           cwd: projectRoot,
           session_id: "no-env-session",
           prompt_id: "no-env-prompt",
-          prompt: "must not be forwarded",
+          prompt: "forward through private stdin",
         })}\n`,
         encoding: "utf8",
       },
@@ -643,16 +786,16 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("");
     expect(result.stderr).toBe("");
-    expect(fs.existsSync(marker)).toBe(false);
+    expect(fs.existsSync(marker)).toBe(true);
   });
 
-  it("does not start full-root flow-map capture without the environment opt-in", () => {
+  it("starts full-root flow-map capture from reviewed project policy", () => {
     const projectRoot = tmpDir();
     const marker = path.join(projectRoot, "invoked");
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      "{version: 2, settings: {work_prompt_capture: {preset: bounded}}}\n",
+      claudeFlowAgentfile("work_prompt_capture: {preset: bounded}"),
     );
     fs.writeFileSync(
       shimPath,
@@ -674,7 +817,7 @@ describe("executableHookRenderer (claude-code)", () => {
           cwd: projectRoot,
           session_id: "flow-no-env-claude-session",
           prompt_id: "flow-no-env-claude-prompt",
-          prompt: "must not be forwarded",
+          prompt: "forward through private stdin",
         })}\n`,
         encoding: "utf8",
       },
@@ -683,7 +826,7 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("");
     expect(result.stderr).toBe("");
-    expect(fs.existsSync(marker)).toBe(false);
+    expect(fs.existsSync(marker)).toBe(true);
   });
 
   it("requires a native Claude prompt_id before capture can start the CLI", () => {
@@ -692,7 +835,7 @@ describe("executableHookRenderer (claude-code)", () => {
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     fs.writeFileSync(
       path.join(projectRoot, "Agentfile"),
-      "version: 2\nsettings:\n  work_prompt_capture:\n    preset: bounded\n",
+      claudeAgentfile("work_prompt_capture:\n  preset: bounded"),
     );
     fs.writeFileSync(
       shimPath,

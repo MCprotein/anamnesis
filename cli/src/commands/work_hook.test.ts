@@ -45,7 +45,6 @@ function projectRoot(
 	reviewPreset: "off" | "strict" = "off",
 	capture = false,
 ): string {
-	if (capture) vi.stubEnv("ANAMNESIS_WORK_PROMPT_CAPTURE", "1");
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-work-hook-"));
 	roots.push(root);
 	fs.writeFileSync(
@@ -319,7 +318,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		).toBe(false);
 	});
 
-	it("requires user-local consent in addition to repository capture policy", () => {
+	it("uses the reviewed repository capture policy without an environment gate", () => {
 		const root = projectRoot("off", "off", true);
 		vi.unstubAllEnvs();
 		const result = handleWorkUserPromptSubmit({
@@ -328,13 +327,13 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			payload: codexPayload("no-consent", "turn-1", "private requirement"),
 		});
 		expect(result).toMatchObject({
-			status: "not_due",
-			reason: "policy_off",
-			context: null,
+			status: "capture_staged",
+			reason: "capture_staged",
+			context: expect.stringContaining("Opaque stage token"),
 		});
 		expect(
 			fs.existsSync(path.join(root, ".anamnesis/work-prompt-stage")),
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it("returns bounded onboarding with no cursor and no briefing under an off policy", () => {

@@ -1422,15 +1422,206 @@ function yamlKeyIsClearlyOff(source, key, ancestors) {
   return false;
 }
 
+function promptCaptureFieldsAreValid(entries) {
+  const allowed = new Set([
+    "preset",
+    "ttl",
+    "max_entry_bytes",
+    "max_total_bytes",
+    "max_entries",
+  ]);
+  const values = new Map();
+  for (const [rawKey, rawValue] of entries) {
+    const key = rawKey.replace(/^["']|["']$/gu, "");
+    if (!allowed.has(key) || values.has(key)) return false;
+    values.set(key, rawValue.trim());
+  }
+  const scalar = (value) => value?.replace(/^["']|["']$/gu, "");
+  if (scalar(values.get("preset")) !== "bounded") return false;
+
+  const ttl = scalar(values.get("ttl"));
+  if (ttl !== undefined) {
+    const match = /^PT(?=\d)(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/u.exec(ttl);
+    if (!match) return false;
+    const milliseconds =
+      ((Number(match[1] ?? 0) * 60 + Number(match[2] ?? 0)) * 60 +
+        Number(match[3] ?? 0)) *
+      1_000;
+    if (
+      !Number.isSafeInteger(milliseconds) ||
+      milliseconds <= 0 ||
+      milliseconds > 30 * 24 * 60 * 60 * 1_000
+    ) {
+      return false;
+    }
+  }
+
+  const boundedInteger = (key, fallback, maximum) => {
+    const value = values.get(key);
+    if (value === undefined) return fallback;
+    if (!/^[1-9]\d*$/u.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed <= maximum ? parsed : null;
+  };
+  const entry = boundedInteger("max_entry_bytes", 256 * 1024, 8 * 1024 * 1024);
+  const total = boundedInteger(
+    "max_total_bytes",
+    2 * 1024 * 1024,
+    64 * 1024 * 1024,
+  );
+  const count = boundedInteger("max_entries", 64, 1_024);
+  return entry !== null && total !== null && count !== null && total >= entry;
+}
+
+function parseFlowPromptCaptureFields(body) {
+  if (body.trim() === "") return null;
+  const entries = [];
+  for (const part of body.split(",")) {
+    const match = /^\s*([A-Za-z_][A-Za-z0-9_]*|"[^"]+"|'[^']+')\s*:\s*([^,{}\n]+?)\s*$/u.exec(
+      part,
+    );
+    if (!match) return null;
+    entries.push([match[1], match[2]]);
+  }
+  return entries;
+}
+
+function yamlRootShapeIsUnambiguous(source) {
+  const allowed = new Set([
+    "version",
+    "project",
+    "tools",
+    "fragments",
+    "declined",
+    "overrides",
+    "settings",
+  ]);
+  const required = ["version", "project", "tools", "fragments", "settings"];
+  const rootEntries = [];
+  const trimmed = source.trimStart();
+
+  if (trimmed.startsWith("{")) {
+    const key = /(?:^|[\n{,])\s*([A-Za-z_][A-Za-z0-9_]*|"[^"]+"|'[^']+')\s*:/gu;
+    let single = false;
+    let double = false;
+    let depth = 0;
+    const depths = new Array(source.length + 1).fill(0);
+    for (let index = 0; index < source.length; index += 1) {
+      depths[index] = depth;
+      const char = source[index];
+      if (char === "'" && !double) single = !single;
+      if (char === '"' && !single && source[index - 1] !== "\\") double = !double;
+      if (single || double) continue;
+      if (char === "{") depth += 1;
+      if (char === "}") depth -= 1;
+      if (depth < 0) return false;
+    }
+    if (depth !== 0 || single || double) return false;
+    for (const match of source.matchAll(key)) {
+      const keyOffset = match[0].indexOf(match[1]);
+      if (depths[(match.index ?? 0) + keyOffset] !== 1) continue;
+      const colon = (match.index ?? 0) + match[0].lastIndexOf(":");
+      rootEntries.push([
+        match[1].replace(/^["']|["']$/gu, ""),
+        source.slice(colon + 1),
+      ]);
+    }
+  } else {
+    for (const line of source.split("\n")) {
+      const match = /^([A-Za-z_][A-Za-z0-9_]*|"[^"]+"|'[^']+')\s*:\s*(.*)$/u.exec(
+        line,
+      );
+      if (!match) continue;
+      rootEntries.push([match[1].replace(/^["']|["']$/gu, ""), match[2]]);
+    }
+  }
+
+  const root = new Map();
+  for (const [key, remainder] of rootEntries) {
+    if (!allowed.has(key) || root.has(key)) return false;
+    root.set(key, remainder);
+  }
+  if (required.some((key) => !root.has(key))) return false;
+  return /^2(?=\s*(?:$|[,}]))/u.test(
+    root.get("version")?.trim() ?? "",
+  );
+}
+
+function yamlCaptureIsClearlyBounded(source) {
+  if (!yamlRootShapeIsUnambiguous(source)) return false;
+  const capturePattern = yamlKeyPattern("work_prompt_capture");
+  const occurrences = source.match(
+    new RegExp(`(?:^|[\\n{,])\\s*${capturePattern}\\s*:`, "gu"),
+  );
+  if (occurrences?.length !== 1) return false;
+
+  const settingsPattern = yamlKeyPattern("settings");
+  const strictFlow = new RegExp(
+    `(?:^|[\\n{,])\\s*${settingsPattern}\\s*:\\s*\\{\\s*${capturePattern}\\s*:\\s*\\{([^{}\\n]*)\\}\\s*\\}`,
+    "u",
+  ).exec(source);
+  if (strictFlow) {
+    const entries = parseFlowPromptCaptureFields(strictFlow[1]);
+    return entries !== null && promptCaptureFieldsAreValid(entries);
+  }
+
+  const lines = source.split("\n");
+  const captureLine = new RegExp(
+    `^([ \\t]*)${capturePattern}\\s*:\\s*(?:\\{([^{}]*)\\})?\\s*$`,
+    "u",
+  );
+  const anyKeyLine = /^([ \t]*)(?:[A-Za-z_][A-Za-z0-9_]*|"[^"]+"|'[^']+')\s*:/u;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = captureLine.exec(lines[index]);
+    if (!match) continue;
+    const parentIndent = match[1].length;
+    const foundAncestors = [];
+    let enclosingIndent = parentIndent;
+    for (let back = index - 1; back >= 0; back -= 1) {
+      const candidate = anyKeyLine.exec(lines[back]);
+      if (!candidate || candidate[1].length >= enclosingIndent) continue;
+      foundAncestors.unshift(
+        candidate[0]
+          .slice(candidate[1].length, candidate[0].lastIndexOf(":"))
+          .replace(/^["']|["']$/gu, ""),
+      );
+      enclosingIndent = candidate[1].length;
+    }
+    if (foundAncestors.join("\0") !== "settings") return false;
+    if (match[2] !== undefined) {
+      const entries = parseFlowPromptCaptureFields(match[2]);
+      return entries !== null && promptCaptureFieldsAreValid(entries);
+    }
+
+    const entries = [];
+    let childIndent = null;
+    for (let next = index + 1; next < lines.length; next += 1) {
+      if (lines[next].trim() === "") continue;
+      const indent = /^([ \t]*)/u.exec(lines[next])?.[1].length ?? 0;
+      if (indent <= parentIndent) break;
+      if (childIndent === null) childIndent = indent;
+      if (indent !== childIndent) return false;
+      const child = /^\s*([A-Za-z_][A-Za-z0-9_]*|"[^"]+"|'[^']+')\s*:\s*([^{}\[\],\n]+?)\s*$/u.exec(
+        lines[next],
+      );
+      if (!child) return false;
+      entries.push([child[1], child[2]]);
+    }
+    return entries.length > 0 && promptCaptureFieldsAreValid(entries);
+  }
+  return false;
+}
+
 function projectPolicySignals(projectRoot) {
-  const captureOptIn = process.env.ANAMNESIS_WORK_PROMPT_CAPTURE === "1";
   try {
     const found = AGENTFILE_CANDIDATES.map((name) => join(projectRoot, name)).filter(
       (candidate) => existsSync(candidate),
     );
-    if (found.length === 0) return { capture: false, reconciliation: false };
+    if (found.length === 0) {
+      return { valid: true, capture: false, reconciliation: false };
+    }
     if (found.length !== 1 || statSync(found[0]).size > MAX_AGENTFILE_BYTES) {
-      return { capture: captureOptIn, reconciliation: true };
+      return { valid: false, capture: false, reconciliation: false };
     }
     const source = readFileSync(found[0], "utf8")
       .split(/\r?\n/u)
@@ -1442,13 +1633,11 @@ function projectPolicySignals(projectRoot) {
       source,
     );
     if ((hasCapture || hasReconciliation) && !isVersion2) {
-      return { capture: captureOptIn && hasCapture, reconciliation: true };
+      return { valid: false, capture: false, reconciliation: false };
     }
     return {
-      capture:
-        captureOptIn &&
-        hasCapture &&
-        !yamlKeyIsClearlyOff(source, "work_prompt_capture", ["settings"]),
+      valid: true,
+      capture: hasCapture && yamlCaptureIsClearlyBounded(source),
       reconciliation:
         hasReconciliation &&
         !yamlKeyIsClearlyOff(source, "reconciliation", [
@@ -1457,7 +1646,46 @@ function projectPolicySignals(projectRoot) {
         ]),
     };
   } catch {
-    return { capture: captureOptIn, reconciliation: true };
+    return { valid: false, capture: false, reconciliation: false };
+  }
+}
+
+function sanitizedPromptInput(payload) {
+  return Buffer.from(
+    `${JSON.stringify({
+      cwd: safeString(payload.cwd),
+      hook_event_name: safeString(payload.hook_event_name),
+      session_id: safeString(payload.session_id),
+      prompt_id: safeString(payload.prompt_id),
+      prompt: "",
+    })}\n`,
+    "utf8",
+  );
+}
+
+function capturePolicyIsValid(executable, projectRoot) {
+  const result = spawnSync(
+    executable,
+    ["work", "hook-policy-probe", "--project-root", projectRoot],
+    {
+      cwd: projectRoot,
+      env: process.env,
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 64 * 1024,
+      timeout: 10_000,
+    },
+  );
+  if (result.error || result.status !== 0) return false;
+  try {
+    const output = safeObject(
+      JSON.parse(Buffer.isBuffer(result.stdout) ? result.stdout.toString("utf8") : ""),
+    );
+    return (
+      output.schema_version === "anamnesis.work-prompt-policy-probe.v1" &&
+      output.capture_enabled === true
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -1542,6 +1770,10 @@ async function main() {
   );
   const cursorExists = sessionCursorExists(projectRoot, payload.session_id);
   const policy = projectPolicySignals(projectRoot);
+  if (!policy.valid) {
+    failOpen();
+    return;
+  }
   if (
     !cursorExists &&
     !policy.capture &&
@@ -1555,13 +1787,19 @@ async function main() {
     failOpen("executable unavailable");
     return;
   }
+  const captureAuthorized =
+    policy.capture && capturePolicyIsValid(executable, projectRoot);
+  if (!captureAuthorized && !policy.reconciliation && !cursorExists) {
+    failOpen();
+    return;
+  }
   const result = spawnSync(
     executable,
     ["work", "hook-user-prompt", "--client", "claude-code"],
     {
       cwd: projectRoot,
       env: process.env,
-      input,
+      input: captureAuthorized ? input : sanitizedPromptInput(payload),
       stdio: ["pipe", "pipe", "pipe"],
       maxBuffer: 8 * 1024 * 1024,
       timeout: 35_000,
