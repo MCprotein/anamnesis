@@ -238,6 +238,19 @@ default `v6/` artifact root, and separate `v6-shadow/` diagnostic. Existing
 quality, concurrency, packet-integrity, stage-cost, aggregate-cost, latency,
 no-retry, and no-exclusion gates remain unchanged.
 
+The bounded v6 shadow used the preregistered 24 real Luna calls. The harness,
+aggregate-cost, stage-cost, and latency gates passed: average total tokens were
+**-6.61%**, total-token p50 **-1.14%** (upper 90% **-5.12%**), combined-child
+p50 **-2.40%** (upper **-2.13%**), reviewer p50 **-0.67%** (upper **-7.74%**),
+and average critical path **-3.47%**. Deterministic integration eliminated the
+v5 copy loss: final requirements were exact in all six conditions. The enabled
+absolute-quality gate still finished **2/3**, because the enabled reviewer in
+review recovery returned all 48 requirements exactly but failed the structured
+audit-metadata contract. Final accuracy tied at 100% in all three pairs, so the
+preregistered accuracy-improvement gate also failed. The diagnostic is retained
+at [`v6-shadow`](benchmark-evidence/work-parallel-agent-ab/v6-shadow/README.md);
+it does not authorize a nine-pair final or a release claim.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

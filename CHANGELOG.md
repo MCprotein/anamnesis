@@ -60,6 +60,12 @@ could include breaking changes.
   already-correct reviewer rows. V6 keeps that failure visible and replaces
   only the copy-only final model call with a symmetric deterministic pass-through
   that cannot fill, reorder, or repair reviewer output.
+- Preserved the v6 deterministic-integration shadow separately. It used 24 real
+  Luna calls and passed harness, aggregate-cost, stage-cost, and latency gates
+  (average tokens -6.61%; average critical path -3.47%) while producing exact
+  final requirements in all six conditions. It remains diagnostic-only because
+  enabled absolute quality was 2/3: one review-recovery reviewer returned all 48
+  requirements exactly but failed the structured audit-metadata contract.
 
 ## [1.19.0] — 2026-08-26
 
