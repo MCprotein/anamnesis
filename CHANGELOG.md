@@ -18,6 +18,13 @@ could include breaking changes.
   (33.33% to 100%, 2/3 paired wins and one tie) but not the 3/3 quality gate;
   tokens and critical-path time regressed 3.96% and 27.63%, respectively, and
   are reported as costs rather than folded into the accuracy claim.
+- Upgraded that benchmark to a frozen v3 protocol with three materially
+  different scenario families, a free 90-stage validation mode, held-out
+  nine-pair final runs, exact one-sided paired accuracy gates, per-family
+  quality floors, deterministic bootstrap cost/latency limits, and one recorded
+  claim-eligible attempt per implementation commit. Work-enabled stages now use
+  a bounded authoritative execution packet instead of the user-facing briefing,
+  and final integration no longer repeats both child payloads.
 
 ## [1.19.0] — 2026-08-26
 

@@ -76,6 +76,7 @@ import {
 } from "./commands/benchmark_work_agent.js";
 import {
 	type ParallelBenchmarkResult,
+	type ParallelProtocol,
 	workParallelAgentBenchmark,
 } from "./commands/benchmark_work_parallel_agent.js";
 import {
@@ -839,7 +840,9 @@ Flags (benchmark work-agent-ab):
 
 Flags (benchmark work-parallel-agent-ab):
   --project-root <path>         Target directory (default: cwd)
-  --runs <n>                    Paired repetitions (minimum/default: 3)
+  --protocol <name>             validate (free, default), shadow (3 pairs), or
+                                  final (9 held-out pairs; claim eligible)
+  --runs <n>                    Deprecated v2 single-scenario diagnostic mode
   --model <id>                  Codex model (default: gpt-5.6-luna)
   --json                        Print structured JSON
   --write                       Write aggregate-only JSON and markdown under
@@ -2097,7 +2100,7 @@ function reportWorkParallelAgentBenchmark(
 ): void {
 	console.log("anamnesis benchmark work-parallel-agent-ab");
 	console.log(
-		`  model=${result.model}, pairs=${result.runs_per_condition}, invocations=${result.actual_invocations}`,
+		`  protocol=${result.protocol}, model=${result.model}, pairs=${result.comparison.total_pairs}, invocations=${result.actual_invocations}`,
 	);
 	console.log(
 		`  tokens/run: disabled=${result.summary.disabled.total_tokens}, enabled=${result.summary.enabled.total_tokens}, delta=${result.summary.delta.total_tokens_pct}%`,
@@ -4122,7 +4125,7 @@ async function main(argv: string[]): Promise<number> {
 			`       anamnesis benchmark work-agent-ab [--json] [--write] [--runs=<n>] [--model=<id>] [--output=<dir>]`,
 		);
 		console.error(
-			`       anamnesis benchmark work-parallel-agent-ab [--json] [--write] [--runs=<n>] [--model=<id>] [--output=<dir>]`,
+			`       anamnesis benchmark work-parallel-agent-ab [--protocol=validate|shadow|final] [--json] [--write] [--model=<id>] [--output=<dir>]`,
 		);
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
@@ -4388,17 +4391,33 @@ async function main(argv: string[]): Promise<number> {
 		}
 
 		if (sub === "work-parallel-agent-ab") {
+			const explicitProtocol = flags["protocol"];
+			if (explicitProtocol !== undefined && flags["runs"] !== undefined) {
+				throw new Error("--runs cannot be combined with --protocol");
+			}
+			const protocolValue = explicitProtocol ??
+				(flags["runs"] !== undefined ? "legacy" : "validate");
+			if (
+				typeof protocolValue !== "string" ||
+				!["validate", "shadow", "final", "legacy"].includes(protocolValue)
+			) {
+				throw new Error("--protocol must be validate, shadow, or final");
+			}
 			const result = await workParallelAgentBenchmark({
 				projectRoot:
 					(flags["project-root"] as string | undefined) ?? process.cwd(),
-				runs: parseWorkContinuityBenchmarkFlag(flags["runs"], "--runs"),
+				protocol: protocolValue as ParallelProtocol,
+				runs:
+					protocolValue === "legacy"
+						? parseWorkContinuityBenchmarkFlag(flags["runs"], "--runs")
+						: undefined,
 				model: flags["model"] as string | undefined,
 				write: flags["write"] === true,
 				outputPath: flags["output"] as string | undefined,
 				onPlan: ({ runs, invocations }) => {
 					if (flags["json"] !== true) {
 						console.error(
-							`planning ${invocations} Codex invocations (${runs} pairs x 2 conditions x 5 stages)`,
+							`planning ${invocations} ${protocolValue === "validate" ? "local fake-runner" : "Codex"} invocations (${runs} ${protocolValue === "legacy" ? "pairs" : "pairs/family x 3 families"} x 2 conditions x 5 stages)`,
 						);
 					}
 				},

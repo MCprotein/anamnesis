@@ -124,6 +124,61 @@ function runner(
 }
 
 describe("real parallel-agent benchmark", () => {
+	it("validates the frozen three-family, nine-pair contract without Codex", async () => {
+		const root = tempRoot();
+		fs.writeFileSync(
+			path.join(root, "package.json"),
+			JSON.stringify({ version: "1.0.0" }),
+		);
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			protocol: "validate",
+		});
+		expect(result.scenario_families).toEqual([
+			"clean-partition",
+			"stale-cross-session-conflict",
+			"review-gate-recovery",
+		]);
+		expect(result.runs).toHaveLength(9);
+		expect(result.planned_initial_invocations).toBe(90);
+		expect(result.actual_invocations).toBe(90);
+		expect(result.harness_validity.ok).toBe(true);
+		expect(result.quality.enabled_passes).toBe(9);
+		expect(result.comparison.total_pairs).toBe(9);
+		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
+		expect(result.summary.paired.total_tokens_pct_upper_90).toBe(0);
+		fs.rmSync(root, { recursive: true, force: true });
+	}, 30_000);
+
+	it("refuses an unrecorded or uncommitted claim-eligible final run", async () => {
+		const root = tempRoot();
+		await expect(
+			workParallelAgentBenchmark({
+				projectRoot: root,
+				protocol: "final",
+				runner: runner(),
+			}),
+		).rejects.toThrow(/requires the real Codex runner/iu);
+		await expect(
+			workParallelAgentBenchmark({
+				projectRoot: root,
+				protocol: "final",
+				scenarioFamilies: ["clean-partition"],
+			}),
+		).rejects.toThrow(/scenario families cannot override/iu);
+		await expect(
+			workParallelAgentBenchmark({ projectRoot: root, protocol: "final" }),
+		).rejects.toThrow(/requires --write/iu);
+		await expect(
+			workParallelAgentBenchmark({
+				projectRoot: root,
+				protocol: "final",
+				write: true,
+			}),
+		).rejects.toThrow(/requires a Git commit/iu);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
 	it("runs child stages concurrently and aggregates all five stage token costs", async () => {
 		const root = tempRoot();
 		const result = await workParallelAgentBenchmark({

@@ -23,7 +23,8 @@ anamnesis benchmark prompt-gate
 anamnesis benchmark session-context --write
 anamnesis benchmark work-continuity --runs 5 --write
 anamnesis benchmark work-agent-ab --runs 3 --write
-anamnesis benchmark work-parallel-agent-ab --runs 3 --write
+anamnesis benchmark work-parallel-agent-ab --protocol validate
+anamnesis benchmark work-parallel-agent-ab --protocol final --write
 anamnesis context subagent-preamble
 anamnesis benchmark subagent-injection --attempts 20 --write --append
 anamnesis benchmark task-compare --template
@@ -129,25 +130,27 @@ three-pair results are directional diagnostics rather than model-independent
 performance guarantees. See the
 [`sol-3pair` artifact](benchmark-evidence/work-agent-ab/sol-3pair/README.md).
 
-Use `benchmark work-parallel-agent-ab --runs 3 --write` for the separate
-harness-orchestrated parallel-agent diagnostic. Each condition executes five
-fully charged Luna stages: leader planning, two child processes launched
-concurrently, an authoritative reviewer after both children finish, and final
-leader integration. Disabled and enabled conditions receive the same 24
-requirement facts; only their context representation differs. The evaluator
-alternates condition order, verifies positive child-process overlap and reviewer
-ordering, requires complete token accounting even on failures, and scores every
-requirement's exact ID/status/summary. Malformed, duplicate, unexpected,
-misassigned, and conflicting rows remain visible as defects.
+Use `benchmark work-parallel-agent-ab --protocol validate` for the free local
+preflight and `--protocol final --write` for the claim-eligible real-Codex run.
+The frozen v3 final is three scenario families by three pairs: a clean
+24-requirement partition, a 32-requirement cross-session history with stale,
+superseded, and removed facts, and a 48-requirement review-recovery case with
+condition-blind omission, duplication, stale-status, and misassignment faults.
+Each condition executes five fully charged Luna stages: leader planning, two
+concurrent child processes, authoritative review, and final leader integration.
 
-The v2 contract separates three questions: harness validity, paired directional
-accuracy, and enabled absolute quality. `PASS_DIRECTIONAL` requires at least two
-of three final-accuracy wins, a median gain of at least one exact requirement,
-and no aggregate unexpected/duplicate defect regression. Absolute quality is a
-separate 3/3 exact reviewed-pipeline gate; tokens and critical-path time are
-reported independently and never change the accuracy verdict.
+`PASS_PRODUCT` requires every harness check plus a mean accuracy gain of at
+least five points, an exact one-sided sign-test p-value at most 0.05, at least
+six of nine paired wins, no family worse than two points, at least eight exact
+reviewed pipelines overall and two per family, zero final malformed,
+hallucinated, or duplicate rows, aggregate and paired token limits, and paired
+critical-path limits with deterministic stratified 90% bootstrap upper bounds.
+`PASS_EFFICIENCY` additionally requires a token or latency median improvement
+of at least 10% with its bootstrap upper bound below zero. The final protocol
+requires a clean implementation commit and records only one claim-eligible
+attempt for that commit; validation and shadow runs are always inconclusive.
 
-The fresh three-pair run used 30 calls. Harness validity passed every
+The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with
 one tie and a median gain of **24 requirements**, so the directional accuracy

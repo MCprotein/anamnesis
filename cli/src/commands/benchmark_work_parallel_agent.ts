@@ -7,15 +7,29 @@ import { performance } from "node:perf_hooks";
 import YAML from "yaml";
 import type { WorkAgentTokenUsage } from "./benchmark_work_agent.js";
 import { briefWork, createWork, transitionWork } from "./work.js";
-import { renderWorkBriefingContext } from "./work_hook.js";
+import { renderWorkExecutionPacket } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v2";
+	"anamnesis.work_parallel_agent_ab.v3";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
 	"docs/benchmark-evidence/work-parallel-agent-ab";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
 
 export type ParallelCondition = "disabled" | "enabled";
+export type ParallelProtocol = "validate" | "shadow" | "final" | "legacy";
+export type ParallelScenarioFamily =
+	| "clean-partition"
+	| "stale-cross-session-conflict"
+	| "review-gate-recovery";
+export type ParallelComparisonVerdict =
+	| "INVALID"
+	| "FAIL_CRITICAL_QUALITY"
+	| "FAIL_ACCURACY"
+	| "FAIL_COST"
+	| "INCONCLUSIVE"
+	| "PASS_PRODUCT"
+	| "PASS_EFFICIENCY";
+type LegacyVerdict = "PASS_DIRECTIONAL" | "FAIL_REGRESSION";
 export type ParallelStage =
 	| "leader-plan"
 	| "child-a"
@@ -86,6 +100,9 @@ export interface ParallelConditionRun {
 
 export interface ParallelPairRun {
 	iteration: number;
+	scenario_id: ParallelScenarioFamily;
+	requirement_count: number;
+	seed: string;
 	order: [ParallelCondition, ParallelCondition];
 	disabled: ParallelConditionRun;
 	enabled: ParallelConditionRun;
@@ -103,6 +120,7 @@ interface ParallelSummary {
 	agent_elapsed_ms: number;
 	children_overlap_ms: number;
 	total_tokens: number;
+	stage_tokens: Record<ParallelStage, number>;
 }
 
 export interface ParallelBenchmarkResult {
@@ -111,8 +129,13 @@ export interface ParallelBenchmarkResult {
 	project_root: string;
 	model: string;
 	reasoning_effort: "high";
+	protocol: ParallelProtocol;
+	claim_eligible: boolean;
+	implementation_git_sha: string;
+	attempts_before_this_sha: number;
+	scenario_families: ParallelScenarioFamily[];
 	topology: "harness-orchestrated-two-child-reviewer-leader";
-	scoring_version: "parallel-requirement-score.v2";
+	scoring_version: "parallel-requirement-score.v3";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -131,8 +154,10 @@ export interface ParallelBenchmarkResult {
 		paired: {
 			total_tokens_pct_p50: number;
 			total_tokens_pct_mad: number;
+			total_tokens_pct_upper_90: number;
 			critical_path_pct_p50: number;
 			critical_path_pct_mad: number;
+			critical_path_pct_upper_90: number;
 		};
 	};
 	harness_validity: { ok: boolean; checks: Record<string, boolean> };
@@ -143,11 +168,7 @@ export interface ParallelBenchmarkResult {
 		total_per_condition: number;
 	};
 	comparison: {
-		verdict:
-			| "PASS_DIRECTIONAL"
-			| "INCONCLUSIVE"
-			| "FAIL_REGRESSION"
-			| "INVALID";
+		verdict: ParallelComparisonVerdict | LegacyVerdict;
 		primary_metric: "final_requirement_accuracy_pct";
 		disabled_mean_pct: number;
 		enabled_mean_pct: number;
@@ -160,7 +181,24 @@ export interface ParallelBenchmarkResult {
 		total_pairs: number;
 		disabled_aggregate_defects: number;
 		enabled_aggregate_defects: number;
+		sign_test_p_value: number;
+		accuracy_gate: boolean;
+		critical_quality_gate: boolean;
+		cost_gate: boolean;
+		latency_gate: boolean;
 	};
+	family_summaries: Record<
+		ParallelScenarioFamily,
+		{
+			pairs: number;
+			disabled_final_accuracy_pct: number;
+			enabled_final_accuracy_pct: number;
+			accuracy_delta_points: number;
+			enabled_wins: number;
+			reviewer_exact: number;
+			final_exact: number;
+		}
+	>;
 	ok: boolean;
 	artifacts: {
 		output_dir?: string;
@@ -174,6 +212,9 @@ export interface ParallelBenchmarkResult {
 export interface ParallelBenchmarkOptions {
 	projectRoot: string;
 	runs?: number;
+	protocol?: ParallelProtocol;
+	scenarioFamilies?: ParallelScenarioFamily[];
+	implementationSha?: string;
 	model?: string;
 	write?: boolean;
 	outputPath?: string;
@@ -249,12 +290,77 @@ export async function workParallelAgentBenchmark(
 	options: ParallelBenchmarkOptions,
 ): Promise<ParallelBenchmarkResult> {
 	const projectRoot = path.resolve(options.projectRoot);
-	const runs = parseRuns(options.runs ?? 3);
+	const protocol = options.protocol;
+	const frozenProtocol = protocol !== undefined && protocol !== "legacy";
+	if (frozenProtocol && options.runs !== undefined) {
+		throw new Error("runs cannot override a frozen benchmark protocol");
+	}
+	if (
+		frozenProtocol &&
+		options.scenarioFamilies !== undefined
+	) {
+		throw new Error("scenario families cannot override a frozen benchmark protocol");
+	}
+	if (frozenProtocol && options.requirements !== undefined) {
+		throw new Error("requirements cannot override a frozen benchmark protocol");
+	}
+	if (protocol === "final" && options.runner !== undefined) {
+		throw new Error("final protocol requires the real Codex runner");
+	}
+	const runs =
+		protocol === "final"
+			? 3
+			: protocol === "shadow"
+				? 1
+				: parseRuns(options.runs ?? 3);
+	const scenarioFamilies = frozenProtocol
+		? (options.scenarioFamilies ?? [
+				"clean-partition",
+				"stale-cross-session-conflict",
+				"review-gate-recovery",
+			])
+		: (options.scenarioFamilies ?? ["clean-partition"]);
 	const model = options.model?.trim() || DEFAULT_WORK_PARALLEL_AGENT_MODEL;
-	const runner = options.runner ?? runCodexExec;
+	const runner =
+		protocol === "validate"
+			? validationRunner
+			: (options.runner ?? runCodexExec);
 	const requirements = options.requirements ?? defaultRequirements();
-	const fixtureHash = digest(requirements);
-	const plannedInitialInvocations = runs * 2 * STAGES.length;
+	const reproducibility = collectReproducibility(projectRoot);
+	if (
+		protocol === "final" &&
+		options.implementationSha !== undefined &&
+		options.implementationSha !== reproducibility.git_sha
+	) {
+		throw new Error("final implementation SHA must match HEAD");
+	}
+	const finalGuard = prepareFinalProtocol(
+		projectRoot,
+		protocol,
+		options.write === true,
+		options.outputPath,
+		reproducibility.git_sha,
+	);
+	const implementationSha = options.implementationSha ?? reproducibility.git_sha;
+	const harnessHash = digest({
+		schema: WORK_PARALLEL_AGENT_SCHEMA_VERSION,
+		topology: TOPOLOGY,
+		stages: STAGES,
+		reasoning_effort: REASONING_EFFORT,
+		scoring_version: "parallel-requirement-score.v3",
+		families: scenarioFamilies,
+		final_pairs_per_family: 3,
+		accuracy: { mean_delta_points: 5, one_sided_p: 0.05, wins: 6, family_floor: -2 },
+		quality: { exact_overall: "8/9", exact_per_family: "2/3", final_defects: 0 },
+		tokens: { aggregate_pct: 5, median_pct: 5, bootstrap_upper_90_pct: 10 },
+		latency: { median_pct: 10, bootstrap_upper_90_pct: 20 },
+		reviewer_schema: REVIEW_SCHEMA,
+	});
+	const fixtureHash = digest(
+		scenarioFamilies.map((family) => buildScenarioFixture(requirements, family)),
+	);
+	const plannedInitialInvocations =
+		runs * scenarioFamilies.length * 2 * STAGES.length;
 	options.onPlan?.({ runs, invocations: plannedInitialInvocations });
 
 	const tempRoot = fs.mkdtempSync(
@@ -264,53 +370,84 @@ export async function workParallelAgentBenchmark(
 	const pairs: ParallelPairRun[] = [];
 	let equalAuthoritativeFacts = true;
 	try {
-		for (let iteration = 1; iteration <= runs; iteration += 1) {
-			const order: [ParallelCondition, ParallelCondition] =
-				iteration % 2 === 1 ? ["disabled", "enabled"] : ["enabled", "disabled"];
-			const conditions = {} as Record<ParallelCondition, ParallelConditionRun>;
-			const fixtures = {} as Record<
-				ParallelCondition,
-				{ cwd: string; factHash: string }
-			>;
-			for (const condition of ["disabled", "enabled"] as const) {
-				const cwd = path.join(tempRoot, `${iteration}-${condition}`);
-				fs.mkdirSync(cwd);
-				const rendered =
-					condition === "enabled"
-						? materializeWorkContext(cwd, requirements)
-						: {
-								context: renderLegacyContext(requirements),
-								factHash: digest(requirements),
-							};
-				fs.writeFileSync(path.join(cwd, "CONTEXT.md"), rendered.context);
-				fixtures[condition] = { cwd, factHash: rendered.factHash };
-			}
-			const pairFactsEqual =
-				fixtures.disabled.factHash === fixtureHash &&
-				fixtures.enabled.factHash === fixtureHash;
-			equalAuthoritativeFacts &&= pairFactsEqual;
-			if (!pairFactsEqual) {
-				throw new Error(
-					"disabled/enabled authoritative fact hashes differ; refusing paid calls",
-				);
-			}
-			for (const condition of order) {
-				conditions[condition] = await executeCondition({
-					condition,
-					cwd: fixtures[condition].cwd,
-					model,
-					runner,
-					schemas,
-					requirements,
+		for (const scenario_id of scenarioFamilies)
+			for (let iteration = 1; iteration <= runs; iteration += 1) {
+				const pairOrdinal =
+					scenarioFamilies.indexOf(scenario_id) * runs + iteration;
+				const scenario = buildScenarioFixture(requirements, scenario_id);
+				const scenarioRequirements = scenario.requirements;
+				const order: [ParallelCondition, ParallelCondition] =
+					pairOrdinal % 2 === 1
+						? ["disabled", "enabled"]
+						: ["enabled", "disabled"];
+				const conditions = {} as Record<
+					ParallelCondition,
+					ParallelConditionRun
+				>;
+				const fixtures = {} as Record<
+					ParallelCondition,
+					{ cwd: string; factHash: string }
+				>;
+				for (const condition of ["disabled", "enabled"] as const) {
+					const cwd = path.join(
+						tempRoot,
+						protocol === undefined
+							? `${iteration}-${condition}`
+							: `case-${iteration}-${digest({ scenario_id, condition }).slice(0, 12)}`,
+					);
+					fs.mkdirSync(cwd);
+					const rendered =
+						condition === "enabled"
+							? materializeWorkContext(cwd, scenarioRequirements)
+							: {
+									context: scenario.legacyContext,
+									factHash: digest(scenarioRequirements),
+								};
+					fs.writeFileSync(path.join(cwd, "CONTEXT.md"), rendered.context);
+					fixtures[condition] = { cwd, factHash: rendered.factHash };
+				}
+				const pairFactsEqual =
+					fixtures.disabled.factHash === digest(scenarioRequirements) &&
+					fixtures.enabled.factHash === digest(scenarioRequirements);
+				equalAuthoritativeFacts &&= pairFactsEqual;
+				if (!pairFactsEqual) {
+					throw new Error(
+						"disabled/enabled authoritative fact hashes differ; refusing paid calls",
+					);
+				}
+				for (const condition of order) {
+					conditions[condition] = await executeCondition({
+						condition,
+						scenarioId: scenario_id,
+						seed: digest({
+							harness: harnessHash,
+							family: scenario_id,
+							replicate: iteration,
+							implementation: implementationSha,
+						}),
+						cwd: fixtures[condition].cwd,
+						model,
+						runner,
+						schemas,
+						requirements: scenarioRequirements,
+					});
+				}
+				pairs.push({
+					iteration,
+					scenario_id,
+					requirement_count: scenarioRequirements.length,
+					seed: digest({
+					harness: harnessHash,
+						implementation:
+							implementationSha,
+						family: scenario_id,
+						replicate: iteration,
+					}),
+					order,
+					disabled: conditions.disabled,
+					enabled: conditions.enabled,
 				});
 			}
-			pairs.push({
-				iteration,
-				order,
-				disabled: conditions.disabled,
-				enabled: conditions.enabled,
-			});
-		}
 	} finally {
 		fs.rmSync(tempRoot, { recursive: true, force: true });
 	}
@@ -349,11 +486,23 @@ export async function workParallelAgentBenchmark(
 			(run) => run.reviewer_started_after_children,
 		),
 		all_processes_returned: allRuns.every((run) => run.execution_ok),
-		no_excluded_conditions: allRuns.length === runs * 2,
+		no_excluded_conditions:
+			allRuns.length === runs * scenarioFamilies.length * 2,
 		condition_order_alternated: pairs.every(
-			(pair) =>
-				pair.order[0] === (pair.iteration % 2 === 1 ? "disabled" : "enabled"),
+			(pair, index) =>
+				pair.order[0] === (index % 2 === 0 ? "disabled" : "enabled"),
 		),
+		scenario_contract_frozen:
+			protocol === undefined ||
+			pairs.every(
+				(pair) =>
+					pair.requirement_count ===
+					({
+						"clean-partition": 24,
+						"stale-cross-session-conflict": 32,
+						"review-gate-recovery": 48,
+					} as const)[pair.scenario_id],
+			),
 	};
 	const harnessValidity = {
 		ok: Object.values(checks).every(Boolean),
@@ -366,11 +515,45 @@ export async function workParallelAgentBenchmark(
 		(pair) => pair.enabled.product_pass,
 	).length;
 	const quality = {
-		enabled_ready: enabledPasses === runs,
+		enabled_ready: enabledPasses >= Math.ceil((pairs.length * 8) / 9),
 		disabled_passes: disabledPasses,
 		enabled_passes: enabledPasses,
-		total_per_condition: runs,
+		total_per_condition: pairs.length,
 	};
+	const familySummaries = Object.fromEntries(
+		scenarioFamilies.map((family) => {
+			const familyPairs = pairs.filter((pair) => pair.scenario_id === family);
+			const familyDisabled = summarize(
+				familyPairs.map((pair) => pair.disabled),
+			);
+			const familyEnabled = summarize(familyPairs.map((pair) => pair.enabled));
+			return [
+				family,
+				{
+					pairs: familyPairs.length,
+					disabled_final_accuracy_pct: familyDisabled.final_accuracy_pct,
+					enabled_final_accuracy_pct: familyEnabled.final_accuracy_pct,
+					accuracy_delta_points: round(
+						familyEnabled.final_accuracy_pct -
+							familyDisabled.final_accuracy_pct,
+					),
+					enabled_wins: familyPairs.filter(
+						(pair) =>
+							pair.enabled.final_exact_requirements >
+							pair.disabled.final_exact_requirements,
+					).length,
+					reviewer_exact: familyPairs.filter(
+						(pair) =>
+							pair.enabled.stages.find((stage) => stage.stage === "reviewer")
+								?.output_correct === true,
+					).length,
+					final_exact: familyPairs.filter(
+						(pair) => pair.enabled.final_accuracy_pct === 100,
+					).length,
+				},
+			];
+		}),
+	) as ParallelBenchmarkResult["family_summaries"];
 	const pairedAccuracyDeltas = pairs.map(
 		(pair) =>
 			pair.enabled.final_accuracy_pct - pair.disabled.final_accuracy_pct,
@@ -386,8 +569,8 @@ export async function workParallelAgentBenchmark(
 	const enabledPairLosses = pairedAccuracyDeltas.filter(
 		(delta) => delta < 0,
 	).length;
-	const pairedTies = runs - enabledPairWins - enabledPairLosses;
-	const minimumPairWins = Math.ceil((runs * 2) / 3);
+	const pairedTies = pairs.length - enabledPairWins - enabledPairLosses;
+	const minimumPairWins = Math.ceil((pairs.length * 2) / 3);
 	const medianDeltaRequirements = median(pairedExactRequirementDeltas);
 	const disabledAggregateDefects = pairs.reduce(
 		(total, pair) => total + pair.disabled.final_defects,
@@ -400,40 +583,89 @@ export async function workParallelAgentBenchmark(
 	const accuracyDeltaPoints = round(
 		enabled.final_accuracy_pct - disabled.final_accuracy_pct,
 	);
-	const comparisonVerdict = !harnessValidity.ok
-		? "INVALID"
-		: enabledPairWins >= minimumPairWins &&
-				medianDeltaRequirements >= 1 &&
-				enabledAggregateDefects <= disabledAggregateDefects
-			? "PASS_DIRECTIONAL"
-			: enabledPairLosses >= minimumPairWins && medianDeltaRequirements <= -1
-				? "FAIL_REGRESSION"
-				: "INCONCLUSIVE";
+	const signTestPValue = exactOneSidedSignPValue(
+		enabledPairWins,
+		enabledPairLosses,
+	);
+	const accuracyGate =
+		accuracyDeltaPoints >= 5 &&
+		signTestPValue <= 0.05 &&
+		enabledPairWins >= Math.min(6, minimumPairWins);
+	const criticalQualityGate =
+		enabledPasses >= Math.ceil((pairs.length * 8) / 9) &&
+		enabledAggregateDefects === 0 &&
+		scenarioFamilies.every((family) => {
+			const summary = familySummaries[family];
+			return (
+				summary.accuracy_delta_points >= -2 &&
+				summary.reviewer_exact >= Math.ceil((summary.pairs * 2) / 3) &&
+				summary.final_exact >= Math.ceil((summary.pairs * 2) / 3)
+			);
+		});
+	const tokenUpper90 = stratifiedBootstrapUpper90(pairs, (pair) =>
+		percent(pair.disabled.tokens.total_tokens, pair.enabled.tokens.total_tokens),
+	);
+	const latencyUpper90 = stratifiedBootstrapUpper90(pairs, (pair) =>
+		percent(pair.disabled.critical_path_ms, pair.enabled.critical_path_ms),
+	);
+	const costGate =
+		percent(disabled.total_tokens, enabled.total_tokens) <= 5 &&
+		median(pairedTokenDeltas) <= 5 &&
+		tokenUpper90 <= 10;
+	const latencyGate =
+		median(pairedCriticalPathDeltas) <= 10 && latencyUpper90 <= 20;
+	const efficiencyGate =
+		(median(pairedTokenDeltas) <= -10 && tokenUpper90 < 0) ||
+		(median(pairedCriticalPathDeltas) <= -10 && latencyUpper90 < 0);
+	const comparisonVerdict: ParallelComparisonVerdict | LegacyVerdict =
+		protocol === undefined || protocol === "legacy"
+			? !harnessValidity.ok
+				? "INVALID"
+				: enabledPairWins >= minimumPairWins &&
+						medianDeltaRequirements >= 1 &&
+						enabledAggregateDefects <= disabledAggregateDefects
+					? "PASS_DIRECTIONAL"
+					: enabledPairLosses >= minimumPairWins &&
+							medianDeltaRequirements <= -1
+						? "FAIL_REGRESSION"
+						: "INCONCLUSIVE"
+			: !harnessValidity.ok
+				? "INVALID"
+				: protocol !== "final"
+					? "INCONCLUSIVE"
+				: !criticalQualityGate
+					? "FAIL_CRITICAL_QUALITY"
+					: !accuracyGate
+						? "FAIL_ACCURACY"
+						: !costGate
+							? "FAIL_COST"
+							: !latencyGate
+								? "INCONCLUSIVE"
+								: efficiencyGate
+									? "PASS_EFFICIENCY"
+									: "PASS_PRODUCT";
 	const result: ParallelBenchmarkResult = {
 		schema_version: WORK_PARALLEL_AGENT_SCHEMA_VERSION,
 		generated_at: (options.now ?? (() => new Date()))().toISOString(),
 		project_root: projectRoot,
 		model,
 		reasoning_effort: REASONING_EFFORT,
+		claim_eligible: protocol === "final",
+		implementation_git_sha: implementationSha,
+		attempts_before_this_sha: finalGuard.attemptsBefore,
 		topology: TOPOLOGY,
+		protocol: protocol ?? "legacy",
+		scenario_families: scenarioFamilies,
 		runs_per_condition: runs,
-		scoring_version: "parallel-requirement-score.v2",
+		scoring_version: "parallel-requirement-score.v3",
 		planned_initial_invocations: plannedInitialInvocations,
 		actual_invocations: allRuns.reduce(
 			(total, run) => total + run.stages.length,
 			0,
 		),
 		fixture_hash: fixtureHash,
-		harness_hash: digest({
-			schema: WORK_PARALLEL_AGENT_SCHEMA_VERSION,
-			topology: TOPOLOGY,
-			stages: STAGES,
-			reasoning_effort: REASONING_EFFORT,
-			scoring_version: "parallel-requirement-score.v2",
-			directional_threshold: "two-thirds-wins-median-one-no-defect-regression",
-			reviewer_schema: REVIEW_SCHEMA,
-		}),
-		reproducibility: collectReproducibility(projectRoot),
+		harness_hash: harnessHash,
+		reproducibility,
 		runs: pairs,
 		summary: {
 			disabled,
@@ -448,10 +680,12 @@ export async function workParallelAgentBenchmark(
 			paired: {
 				total_tokens_pct_p50: median(pairedTokenDeltas),
 				total_tokens_pct_mad: medianAbsoluteDeviation(pairedTokenDeltas),
+				total_tokens_pct_upper_90: tokenUpper90,
 				critical_path_pct_p50: median(pairedCriticalPathDeltas),
 				critical_path_pct_mad: medianAbsoluteDeviation(
 					pairedCriticalPathDeltas,
 				),
+				critical_path_pct_upper_90: latencyUpper90,
 			},
 		},
 		harness_validity: harnessValidity,
@@ -467,11 +701,21 @@ export async function workParallelAgentBenchmark(
 			enabled_pair_wins: enabledPairWins,
 			paired_ties: pairedTies,
 			enabled_pair_losses: enabledPairLosses,
-			total_pairs: runs,
+			total_pairs: pairs.length,
 			disabled_aggregate_defects: disabledAggregateDefects,
 			enabled_aggregate_defects: enabledAggregateDefects,
+			sign_test_p_value: signTestPValue,
+			accuracy_gate: accuracyGate,
+			critical_quality_gate: criticalQualityGate,
+			cost_gate: costGate,
+			latency_gate: latencyGate,
 		},
-		ok: harnessValidity.ok,
+		family_summaries: familySummaries,
+		ok:
+			harnessValidity.ok &&
+			(protocol !== "final" ||
+				comparisonVerdict === "PASS_PRODUCT" ||
+				comparisonVerdict === "PASS_EFFICIENCY"),
 		artifacts: {},
 		markdown: "",
 	};
@@ -482,12 +726,17 @@ export async function workParallelAgentBenchmark(
 			options.outputPath,
 			options.artifactOperations,
 		);
+		if (protocol === "final") {
+			recordFinalAttempt(projectRoot, options.outputPath, result);
+		}
 	}
 	return result;
 }
 
 async function executeCondition(input: {
 	condition: ParallelCondition;
+	scenarioId: ParallelScenarioFamily;
+	seed: string;
 	cwd: string;
 	model: string;
 	runner: ParallelRunner;
@@ -552,27 +801,32 @@ async function executeCondition(input: {
 	};
 	const plan = await invoke(
 		"leader-plan",
-		`Read CONTEXT.md. Partition all authoritative requirement IDs in source order into two contiguous groups of ${expectedA.length} and ${expectedB.length}. Return only child_a and child_b arrays.`,
+		`Scenario ${input.scenarioId}; replicate seed ${input.seed}. Read CONTEXT.md. Partition all authoritative requirement IDs in source order into two contiguous groups of ${expectedA.length} and ${expectedB.length}. Return only child_a and child_b arrays.`,
 	);
 	const planA = stringArray(plan.data.child_a) ?? expectedA;
 	const planB = stringArray(plan.data.child_b) ?? expectedB;
 	const [childA, childB] = await Promise.all([
 		invoke(
 			"child-a",
-			`Read CONTEXT.md. Return exact id, status, and summary for only these assigned requirements, in this order: ${planA.join(", ")}.`,
+			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. Read CONTEXT.md. Return exact id, status, and summary for only these assigned requirements, in this order: ${planA.join(", ")}.`,
 		),
 		invoke(
 			"child-b",
-			`Read CONTEXT.md. Return exact id, status, and summary for only these assigned requirements, in this order: ${planB.join(", ")}.`,
+			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. Read CONTEXT.md. Return exact id, status, and summary for only these assigned requirements, in this order: ${planB.join(", ")}.`,
 		),
 	]);
+	const reviewedInputs = perturbReviewInputs(
+		input.scenarioId,
+		childA.data.requirements,
+		childB.data.requirements,
+	);
 	const reviewer = await invoke(
 		"reviewer",
-		`Read CONTEXT.md as authoritative truth, then review both child reports. Child A is assigned: ${expectedA.join(", ")}. Child B is assigned: ${expectedB.join(", ")}. Child A: ${JSON.stringify(childA.data)} Child B: ${JSON.stringify(childB.data)}. Return corrected exact requirements in source order plus the exact issue-ID arrays, malformed_rows count, order_ok, and verdict=accept only when every issue array is empty, malformed_rows is zero, and order is correct; otherwise verdict=repair.`,
+		`Read CONTEXT.md as authoritative truth, then review both child reports. Child A is assigned: ${expectedA.join(", ")}. Child B is assigned: ${expectedB.join(", ")}. Child A requirements: ${JSON.stringify(reviewedInputs.childA)} Child B requirements: ${JSON.stringify(reviewedInputs.childB)}. Return corrected exact requirements in source order plus the exact issue-ID arrays, malformed_rows count, order_ok, and verdict=accept only when every issue array is empty, malformed_rows is zero, and order is correct; otherwise verdict=repair.`,
 	);
 	const final = await invoke(
 		"leader-integrate",
-		`Read CONTEXT.md, integrate the child reports, and use the reviewer correction when a child differs from authoritative truth. Child A: ${JSON.stringify(childA.data)} Child B: ${JSON.stringify(childB.data)} Reviewer: ${JSON.stringify(reviewer.data)}. Return every requirement exactly once in expected order: ${ids.join(", ")}.`,
+		`Read CONTEXT.md and use the authoritative reviewer result: ${JSON.stringify(reviewer.data)}. Return every requirement exactly once in expected order: ${ids.join(", ")}.`,
 	);
 	plan.record.output_correct =
 		plan.record.execution_ok &&
@@ -595,8 +849,8 @@ async function executeCondition(input: {
 	childB.record.output_correct =
 		childB.record.execution_ok && childBScore.exact;
 	const childReportAnalysis = analyzeChildReports(
-		childA.data.requirements,
-		childB.data.requirements,
+		reviewedInputs.childA,
+		reviewedInputs.childB,
 		expectedChildA,
 		expectedChildB,
 	);
@@ -824,11 +1078,9 @@ function materializeWorkContext(
 		summary: requirement.summary,
 	}));
 	return {
-		context: `# Anamnesis Work context\n\n${renderWorkBriefingContext(
+		context: `# Anamnesis Work context\n\n${renderWorkExecutionPacket(
 			brief.briefing,
-			"full",
-			true,
-			50_000,
+			{ max_bytes: 50_000 },
 		)}\n`,
 		factHash: digest(briefingFacts),
 	};
@@ -849,6 +1101,44 @@ function defaultRequirements(): ParallelRequirement[] {
 		status: index < 18 ? ("verified" as const) : ("pending" as const),
 		summary: `sanitized parallel acceptance condition ${String(index + 1).padStart(3, "0")}`,
 	}));
+}
+
+interface ParallelScenarioFixture {
+	requirements: ParallelRequirement[];
+	legacyContext: string;
+}
+
+function buildScenarioFixture(
+	base: ParallelRequirement[],
+	family: ParallelScenarioFamily,
+): ParallelScenarioFixture {
+	if (family === "clean-partition") {
+		return { requirements: base, legacyContext: renderLegacyContext(base) };
+	}
+	const count = family === "stale-cross-session-conflict" ? 32 : 48;
+	const requirements = Array.from({ length: count }, (_, index) => ({
+		id: `REQ-${String(index + 1).padStart(3, "0")}`,
+		status: index % 5 === 0 ? ("pending" as const) : ("verified" as const),
+		summary:
+			family === "stale-cross-session-conflict"
+				? `current cross-session requirement ${index + 1}`
+				: `review recovery ${index % 4 === 0 ? "blocked dependency" : "required gate"} ${index + 1}`,
+	}));
+	if (family === "review-gate-recovery") {
+		return { requirements, legacyContext: renderLegacyContext(requirements) };
+	}
+	const removed = ["REQ-REMOVED-01", "REQ-REMOVED-02"];
+	const firstSession = requirements
+		.map((requirement, index) =>
+			`Requirement ${requirement.id}: ${index < 4 ? `superseded draft ${index + 1}` : requirement.summary}. Current status: ${index < 8 ? "pending" : requirement.status}.`,
+		)
+		.concat(removed.map((id) => `Requirement ${id}: obsolete requirement. Current status: pending.`));
+	const secondSession = requirements.slice(0, 8).map(
+		(requirement, index) =>
+			`Update ${requirement.id}: status verified; summary ${index < 4 ? JSON.stringify(requirement.summary) : "unchanged"}.`,
+	);
+	const legacyContext = `# Legacy chronological handoffs\n\nSession 1 (older):\n${firstSession.join("\n")}\n\nSession 2 (newer updates):\n${secondSession.join("\n")}\nRemoved after session 2: ${removed.join(", ")}\n\nSession 3 (authoritative current projection):\n${renderLegacyContext(requirements)}`;
+	return { requirements, legacyContext };
 }
 
 function writeSchemas(tempRoot: string): Record<ParallelStage, string> {
@@ -965,6 +1255,30 @@ function applyRequirementScore(
 	record.unexpected_requirement_rows = score.unexpectedRows;
 	record.duplicate_requirement_ids = score.duplicateIds;
 	record.malformed_requirement_rows = score.malformedRows;
+}
+
+function perturbReviewInputs(
+	family: ParallelScenarioFamily,
+	childA: unknown,
+	childB: unknown,
+): { childA: unknown[]; childB: unknown[] } {
+	const left = Array.isArray(childA) ? structuredClone(childA) : [];
+	const right = Array.isArray(childB) ? structuredClone(childB) : [];
+	if (family !== "review-gate-recovery" || left.length < 4) {
+		return { childA: left, childB: right };
+	}
+	const omitted = left.shift();
+	const duplicate = left[0];
+	if (duplicate !== undefined) left.splice(1, 0, structuredClone(duplicate));
+	const stale = left[2];
+	if (stale && typeof stale === "object" && !Array.isArray(stale)) {
+		const row = stale as Record<string, unknown>;
+		row.status = row.status === "verified" ? "pending" : "verified";
+	}
+	const misassigned = left.splice(3, 1)[0];
+	if (misassigned !== undefined) right.unshift(misassigned);
+	void omitted;
+	return { childA: left, childB: right };
 }
 
 function analyzeChildReports(
@@ -1103,6 +1417,20 @@ function equalStringArrays(value: unknown, expected: string[]): boolean {
 }
 
 function summarize(runs: ParallelConditionRun[]): ParallelSummary {
+	const stage_tokens = Object.fromEntries(
+		STAGES.map((stage) => [
+			stage,
+			round(
+				average(
+					runs.flatMap((run) =>
+						run.stages
+							.filter((record) => record.stage === stage)
+							.map((record) => record.tokens.total_tokens),
+					),
+				),
+			),
+		]),
+	) as Record<ParallelStage, number>;
 	return {
 		runs: runs.length,
 		complete_passes: runs.filter((run) => run.product_pass).length,
@@ -1130,13 +1458,21 @@ function summarize(runs: ParallelConditionRun[]): ParallelSummary {
 			average(runs.map((run) => run.children_overlap_ms)),
 		),
 		total_tokens: round(average(runs.map((run) => run.tokens.total_tokens))),
+		stage_tokens,
 	};
 }
 
 export function renderParallelBenchmarkMarkdown(
 	result: ParallelBenchmarkResult,
 ): string {
-	return `# Harness-orchestrated parallel-agent Work A/B\n\n- Generated: ${result.generated_at}\n- Model: \`${result.model}\` (reasoning effort: ${result.reasoning_effort})\n- Pairs per condition: ${result.runs_per_condition}\n- Topology: leader plan → two concurrent children → authoritative reviewer repair → leader integration\n- Planned/actual invocations: ${result.planned_initial_invocations}/${result.actual_invocations}\n- Harness validity: **${result.harness_validity.ok ? "PASS" : "FAIL"}**\n- Directional comparison: **${result.comparison.verdict}**\n- Enabled absolute-quality gate: **${result.quality.enabled_ready ? "PASS" : "FAIL"}** (${result.quality.enabled_passes}/${result.runs_per_condition} exact reviewed pipelines)\n\n![Parallel-agent ${escapeMarkdownAlt(result.model)} diagnostic](work-parallel-agent-ab-summary.svg)\n\n| Condition | Exact reviewed pipelines | Child accuracy | Reviewer accuracy | Final accuracy | Critical path/run | Tokens/run |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n| Work disabled | ${result.quality.disabled_passes}/${result.runs_per_condition} | ${result.summary.disabled.child_accuracy_pct}% | ${result.summary.disabled.reviewer_accuracy_pct}% | ${result.summary.disabled.final_accuracy_pct}% | ${result.summary.disabled.critical_path_ms} ms | ${result.summary.disabled.total_tokens} |\n| Work enabled | ${result.quality.enabled_passes}/${result.runs_per_condition} | ${result.summary.enabled.child_accuracy_pct}% | ${result.summary.enabled.reviewer_accuracy_pct}% | ${result.summary.enabled.final_accuracy_pct}% | ${result.summary.enabled.critical_path_ms} ms | ${result.summary.enabled.total_tokens} |\n\nPrimary paired comparison: enabled won **${result.comparison.enabled_pair_wins}/${result.comparison.total_pairs}**, tied **${result.comparison.paired_ties}/${result.comparison.total_pairs}**, and lost **${result.comparison.enabled_pair_losses}/${result.comparison.total_pairs}** on final exact-requirement accuracy; median delta was **${formatSignedNumber(result.comparison.median_delta_requirements)} requirements**. Paired cost deltas were **${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)} tokens** (MAD ${result.summary.paired.total_tokens_pct_mad}pp) and **${formatSignedPercent(result.summary.paired.critical_path_pct_p50)} critical-path time** (MAD ${result.summary.paired.critical_path_pct_mad}pp). Cost dimensions are reported separately and do not determine the accuracy verdict.\n\n## Claim boundary\n\nThis is a ${result.runs_per_condition}-pair directional diagnostic over one sanitized equal-information state-reconstruction scenario. \`PASS_DIRECTIONAL\` requires at least ${result.comparison.minimum_pair_wins} paired accuracy wins, a median gain of at least one exact requirement, and no aggregate duplicate/unexpected-row regression. The harness launches separate Codex processes and proves that the two child intervals overlap; the current Codex CLI does not expose a stable automation contract for same-session native child spawning plus per-child token accounting. This result therefore does not measure native subagent spawning, statistical significance, or general coding productivity. All stage costs and failures are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.\n`;
+	const finalProtocol = result.protocol === "final";
+	const familyRows = result.scenario_families
+		.map((family) => {
+			const summary = result.family_summaries[family];
+			return `| ${family} | ${summary.pairs} | ${summary.disabled_final_accuracy_pct}% | ${summary.enabled_final_accuracy_pct}% | ${formatSignedNumber(summary.accuracy_delta_points)}pp | ${summary.reviewer_exact}/${summary.pairs} | ${summary.final_exact}/${summary.pairs} |`;
+		})
+		.join("\n");
+	return `# Harness-orchestrated parallel-agent Work A/B\n\n- Generated: ${result.generated_at}\n- Protocol: \`${result.protocol}\`${result.claim_eligible ? " (claim eligible)" : " (diagnostic only)"}\n- Model: \`${result.model}\` (reasoning effort: ${result.reasoning_effort})\n- Implementation: \`${result.implementation_git_sha}\`\n- Prior final attempts: ${result.attempts_before_this_sha}\n- Scenarios: ${result.scenario_families.join(", ")}\n- Pairs: ${result.comparison.total_pairs}\n- Planned/actual invocations: ${result.planned_initial_invocations}/${result.actual_invocations}\n- Harness validity: **${result.harness_validity.ok ? "PASS" : "FAIL"}**\n- Product verdict: **${result.comparison.verdict}**\n- Enabled absolute-quality gate: **${result.quality.enabled_ready ? "PASS" : "FAIL"}** (${result.quality.enabled_passes}/${result.quality.total_per_condition})\n\n![Parallel-agent ${escapeMarkdownAlt(result.model)} benchmark](work-parallel-agent-ab-summary.svg)\n\n| Condition | Exact reviewed pipelines | Child accuracy | Reviewer accuracy | Final accuracy | Critical path/run | Tokens/run |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n| Work disabled | ${result.quality.disabled_passes}/${result.quality.total_per_condition} | ${result.summary.disabled.child_accuracy_pct}% | ${result.summary.disabled.reviewer_accuracy_pct}% | ${result.summary.disabled.final_accuracy_pct}% | ${result.summary.disabled.critical_path_ms} ms | ${result.summary.disabled.total_tokens} |\n| Work enabled | ${result.quality.enabled_passes}/${result.quality.total_per_condition} | ${result.summary.enabled.child_accuracy_pct}% | ${result.summary.enabled.reviewer_accuracy_pct}% | ${result.summary.enabled.final_accuracy_pct}% | ${result.summary.enabled.critical_path_ms} ms | ${result.summary.enabled.total_tokens} |\n\n| Scenario family | Pairs | Disabled accuracy | Enabled accuracy | Delta | Reviewer exact | Final exact |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n${familyRows}\n\nEnabled won **${result.comparison.enabled_pair_wins}/${result.comparison.total_pairs}**, tied **${result.comparison.paired_ties}/${result.comparison.total_pairs}**, and lost **${result.comparison.enabled_pair_losses}/${result.comparison.total_pairs}**. Mean final-accuracy delta: **${formatSignedNumber(result.comparison.delta_points)}pp**; exact one-sided sign-test p-value: **${result.comparison.sign_test_p_value}**.\n\n| Preregistered gate | Result |\n| --- | --- |\n| Harness validity | ${result.harness_validity.ok ? "PASS" : "FAIL"} |\n| Accuracy and per-family floor | ${result.comparison.accuracy_gate ? "PASS" : "FAIL"} |\n| Absolute quality | ${result.comparison.critical_quality_gate ? "PASS" : "FAIL"} |\n| Tokens (aggregate ≤+5%, p50 ≤+5%, bootstrap upper ≤+10%) | ${result.comparison.cost_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.total_tokens_pct_upper_90)} |\n| Critical path (p50 ≤+10%, bootstrap upper ≤+20%) | ${result.comparison.latency_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.critical_path_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.critical_path_pct_upper_90)} |\n\n## Claim boundary\n\n${finalProtocol ? "This is the single held-out claim-eligible attempt for the recorded implementation commit. A pass means only that the preregistered three-scenario contract passed; it is not a general productivity or model-independent claim." : "Validate and shadow protocols are never claim eligible. Their verdict remains INCONCLUSIVE even when harness and quality checks pass."} The harness launches separate Codex processes and proves child interval overlap; it does not measure same-session native subagent spawning. All stage costs and failures are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.\n`;
 }
 
 export function publishParallelArtifacts(
@@ -1272,7 +1608,7 @@ function renderSummarySvg(
   <title id="title">Parallel-agent ${model} Work A/B diagnostic</title>
   <desc id="desc">Final requirement accuracy changed from ${result.summary.disabled.final_accuracy_pct} percent to ${result.summary.enabled.final_accuracy_pct} percent; directional verdict ${result.comparison.verdict}.</desc>
   <rect width="760" height="330" rx="16" fill="#0f172a"/>
-  <text x="32" y="42" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Parallel-agent ${model} diagnostic (${result.runs_per_condition} pairs)</text>
+  <text x="32" y="42" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Parallel-agent ${model} benchmark (${result.comparison.total_pairs} pairs)</text>
   <text x="32" y="72" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Harness ${result.harness_validity.ok ? "PASS" : "FAIL"} · ${result.comparison.verdict} · enabled quality ${result.quality.enabled_ready ? "PASS" : "FAIL"}</text>
   <text x="32" y="112" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Average total tokens / pipeline</text>
   <text x="32" y="142" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Disabled</text>
@@ -1479,6 +1815,92 @@ function assertNoSymlinkPath(root: string, destination: string): void {
 	}
 }
 
+/** Local, deterministic runner used by `validate`; it never starts Codex. */
+const validationRunner: ParallelRunner = (request) => {
+	const stage = request.prompt.match(/\[parallel-stage:([^\]]+)/u)?.[1];
+	const requirements = requirementsFromContext(request.cwd);
+	const ids = requirements.map((requirement) => requirement.id);
+	const assignedIds = request.prompt.match(/assigned requirements, in this order: ([^.]+)\./u)?.[1]
+		?.split(/,\s*/u)
+		.filter(Boolean);
+	const rows = assignedIds
+		? assignedIds.flatMap((id) => requirements.filter((row) => row.id === id))
+		: requirements;
+	let data: Record<string, unknown>;
+	if (stage === "leader-plan") {
+		const half = Math.ceil(ids.length / 2);
+		data = { child_a: ids.slice(0, half), child_b: ids.slice(half) };
+	} else if (stage === "reviewer") {
+		const match = request.prompt.match(
+			/Child A requirements: (\[[\s\S]*?\]) Child B requirements: (\[[\s\S]*?\])\. Return/u,
+		);
+		const childA = match ? (JSON.parse(match[1]!) as unknown) : [];
+		const childB = match ? (JSON.parse(match[2]!) as unknown) : [];
+		const half = Math.ceil(requirements.length / 2);
+		const issues = analyzeChildReports(
+			childA,
+			childB,
+			requirements.slice(0, half),
+			requirements.slice(half),
+		);
+		data = {
+			requirements,
+			verdict: issues.verdict,
+			missing_ids: issues.missingIds,
+			duplicate_ids: issues.duplicateIds,
+			unexpected_ids: issues.unexpectedIds,
+			misassigned_ids: issues.misassignedIds,
+			status_mismatch_ids: issues.statusMismatchIds,
+			summary_mismatch_ids: issues.summaryMismatchIds,
+			malformed_rows: issues.malformedRows,
+			order_ok: issues.orderOk,
+		};
+	} else {
+		data = { requirements: rows };
+	}
+	return new Promise((resolve) =>
+		setTimeout(
+			() =>
+				resolve({
+					status: 0,
+					stdout: outputJsonl(data),
+					stderr: "",
+					elapsedMs: 1,
+				}),
+			1,
+		),
+	);
+};
+
+function requirementsFromContext(cwd: string): ParallelRequirement[] {
+	const context = fs.readFileSync(path.join(cwd, "CONTEXT.md"), "utf8");
+	const jsonStart = context.indexOf("{");
+	if (jsonStart >= 0) {
+		try {
+			const packet = JSON.parse(context.slice(jsonStart)) as { requirements?: unknown };
+			if (Array.isArray(packet.requirements)) {
+				return packet.requirements.flatMap((value) => {
+					if (typeof value !== "string") return [];
+					const match = value.match(/^([^|]+)\|([^|]+)\|(.*)$/u);
+					if (!match) return [];
+					return [{ id: match[1]!, status: match[2] as ParallelRequirement["status"], summary: JSON.parse(match[3]!) as string }];
+				});
+			}
+		} catch {
+			// Fall through to the legacy parser.
+		}
+	}
+	const marker = "# Legacy parallel handoff";
+	const current = context.slice(Math.max(0, context.lastIndexOf(marker)));
+	return [...current.matchAll(/^Requirement ([^:]+): (.*)\. Current status: (verified|pending)\.$/gmu)].map(
+		(match) => ({ id: match[1]!, summary: match[2]!, status: match[3]! as ParallelRequirement["status"] }),
+	);
+}
+
+function outputJsonl(data: Record<string, unknown>): string {
+	return `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, cached_input_tokens: 0, output_tokens: 1, total_tokens: 2 } })}`;
+}
+
 function runCodexExec(
 	request: ParallelRunnerRequest,
 ): Promise<ParallelRunnerResponse> {
@@ -1559,6 +1981,131 @@ function collectReproducibility(projectRoot: string): {
 		git_sha: commandOutput("git", ["rev-parse", "HEAD"], projectRoot),
 		codex_cli_version: commandOutput("codex", ["--version"], projectRoot),
 	};
+}
+
+function prepareFinalProtocol(
+	projectRoot: string,
+	protocol: ParallelProtocol | undefined,
+	write: boolean,
+	outputPath: string | undefined,
+	gitSha: string,
+): { attemptsBefore: number } {
+	if (protocol !== "final") return { attemptsBefore: 0 };
+	if (!write) throw new Error("final protocol requires --write to retain every outcome");
+	if (gitSha === "unknown") throw new Error("final protocol requires a Git commit");
+	const status = spawnSync("git", ["status", "--porcelain"], {
+		cwd: projectRoot,
+		encoding: "utf8",
+	});
+	if (status.status !== 0 || status.stdout.trim() !== "") {
+		throw new Error("final protocol requires a clean worktree");
+	}
+	const indexPath = finalAttemptIndexPath(projectRoot, outputPath);
+	fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+	const attemptsBefore = appendFinalAttemptLocked(indexPath, {
+		schema_version: "anamnesis.work_parallel_agent_attempt.v1",
+		phase: "started",
+		generated_at: new Date().toISOString(),
+		implementation_git_sha: gitSha,
+	}, gitSha);
+	return { attemptsBefore };
+}
+
+interface FinalAttemptRecord {
+	schema_version?: unknown;
+	phase?: unknown;
+	implementation_git_sha?: unknown;
+	[key: string]: unknown;
+}
+
+function finalAttemptIndexPath(
+	projectRoot: string,
+	outputPath: string | undefined,
+): string {
+	const outputDir = path.resolve(
+		projectRoot,
+		outputPath ?? WORK_PARALLEL_AGENT_OUTPUT_DIR,
+	);
+	if (
+		outputDir === projectRoot ||
+		!outputDir.startsWith(`${path.resolve(projectRoot)}${path.sep}`)
+	) {
+		throw new Error("benchmark output path escapes project root");
+	}
+	assertNoSymlinkPath(path.resolve(projectRoot), outputDir);
+	return path.join(outputDir, "attempts.jsonl");
+}
+
+function recordFinalAttempt(
+	projectRoot: string,
+	outputPath: string | undefined,
+	result: ParallelBenchmarkResult,
+): void {
+	const indexPath = finalAttemptIndexPath(projectRoot, outputPath);
+	appendFinalAttemptLocked(indexPath, {
+		schema_version: "anamnesis.work_parallel_agent_attempt.v1",
+		phase: "completed",
+		generated_at: result.generated_at,
+		implementation_git_sha: result.implementation_git_sha,
+		harness_hash: result.harness_hash,
+		fixture_hash: result.fixture_hash,
+		model: result.model,
+		verdict: result.comparison.verdict,
+		harness_valid: result.harness_validity.ok,
+	});
+}
+
+function appendFinalAttemptLocked(
+	indexPath: string,
+	record: Record<string, unknown>,
+	uniqueImplementationSha?: string,
+): number {
+	fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+	const lockPath = `${indexPath}.lock`;
+	let lock: number | undefined;
+	try {
+		lock = fs.openSync(lockPath, "wx", 0o600);
+		const previous = fs.existsSync(indexPath)
+			? fs.readFileSync(indexPath, "utf8")
+			: "";
+		const attempts = previous
+			.split(/\r?\n/u)
+			.filter(Boolean)
+			.map((line) => JSON.parse(line) as FinalAttemptRecord);
+		if (
+			uniqueImplementationSha !== undefined &&
+			attempts.some(
+				(attempt) =>
+					attempt.implementation_git_sha === uniqueImplementationSha,
+			)
+		) {
+			throw new Error("final protocol already ran for this implementation commit");
+		}
+		const attemptsBefore = attempts.filter(
+			(attempt) => attempt.phase === "started",
+		).length;
+		const completeRecord =
+			record.phase === "started"
+				? { ...record, attempt_number: attemptsBefore + 1 }
+				: record;
+		const temporary = `${indexPath}.tmp-${process.pid}-${Date.now()}`;
+		fs.writeFileSync(temporary, `${previous}${JSON.stringify(completeRecord)}\n`, {
+			flag: "wx",
+			mode: 0o600,
+		});
+		fs.renameSync(temporary, indexPath);
+		return attemptsBefore;
+	} catch (error) {
+		if (isFileExistsError(error)) {
+			throw new Error("another final benchmark attempt is being recorded");
+		}
+		throw error;
+	} finally {
+		if (lock !== undefined) {
+			fs.closeSync(lock);
+			fs.unlinkSync(lockPath);
+		}
+	}
 }
 
 function commandOutput(command: string, args: string[], cwd: string): string {
@@ -1656,6 +2203,15 @@ function isFileNotFoundError(error: unknown): boolean {
 	);
 }
 
+function isFileExistsError(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		error.code === "EEXIST"
+	);
+}
+
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -1691,6 +2247,47 @@ function median(values: number[]): number {
 function medianAbsoluteDeviation(values: number[]): number {
 	const center = median(values);
 	return median(values.map((value) => Math.abs(value - center)));
+}
+
+function stratifiedBootstrapUpper90(
+	pairs: ParallelPairRun[],
+	metric: (pair: ParallelPairRun) => number,
+): number {
+	if (pairs.length === 0) return 0;
+	const strata = [...new Set(pairs.map((pair) => pair.scenario_id))].map(
+		(family) => pairs.filter((pair) => pair.scenario_id === family),
+	);
+	let state = 0x6d2b79f5;
+	const randomIndex = (length: number): number => {
+		state = (Math.imul(state ^ (state >>> 15), 1 | state) + 0x6d2b79f5) | 0;
+		state ^= state + Math.imul(state ^ (state >>> 7), 61 | state);
+		return Math.floor((((state ^ (state >>> 14)) >>> 0) / 2 ** 32) * length);
+	};
+	const samples: number[] = [];
+	for (let iteration = 0; iteration < 5_000; iteration += 1) {
+		const selected = strata.flatMap((stratum) =>
+			Array.from({ length: stratum.length }, () => stratum[randomIndex(stratum.length)]!),
+		);
+		samples.push(average(selected.map(metric)));
+	}
+	samples.sort((left, right) => left - right);
+	return round(samples[Math.ceil(samples.length * 0.9) - 1] ?? 0);
+}
+
+function exactOneSidedSignPValue(wins: number, losses: number): number {
+	const n = wins + losses;
+	if (n === 0) return 1;
+	let tail = 0;
+	for (let k = wins; k <= n; k += 1) tail += binomial(n, k) / 2 ** n;
+	return round(Math.min(1, tail));
+}
+
+function binomial(n: number, k: number): number {
+	if (k < 0 || k > n) return 0;
+	let value = 1;
+	for (let i = 1; i <= Math.min(k, n - k); i += 1)
+		value = (value * (n - i + 1)) / i;
+	return value;
 }
 
 function percent(before: number, after: number): number {

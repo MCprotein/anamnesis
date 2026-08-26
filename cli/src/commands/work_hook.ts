@@ -82,6 +82,93 @@ const MAX_SAME_TURN_CONTEXT_CHARACTERS = 8_000;
 const MAX_RECENT_MEANINGFUL_BOUNDARIES = 64;
 const LIST_BUDGET = 2_000;
 const REQUIREMENT_SUMMARY_BUDGET = 4_000;
+const MAX_EXECUTION_PACKET_BYTES = 16_384;
+
+export interface WorkExecutionPacketOptions {
+	/** Requirement IDs to include, in source order. Omit to include all. */
+	requirement_ids?: readonly string[];
+	/** UTF-8 byte budget for the complete packet. */
+	max_bytes?: number;
+}
+
+/**
+ * Render the minimal authoritative Work contract consumed by an executor.
+ * This is intentionally separate from the user-facing reconciliation briefing:
+ * it contains no delivery, cadence, or retrieval instructions.
+ */
+export function renderWorkExecutionPacket(
+	briefing: WorkBriefingSnapshot,
+	requirementIds?: readonly string[],
+	maxBytes?: number,
+): string;
+export function renderWorkExecutionPacket(
+	briefing: WorkBriefingSnapshot,
+	options?: WorkExecutionPacketOptions,
+): string;
+export function renderWorkExecutionPacket(
+	briefing: WorkBriefingSnapshot,
+	selection: readonly string[] | WorkExecutionPacketOptions = {},
+	legacyMaxBytes?: number,
+): string {
+	const options: WorkExecutionPacketOptions = Array.isArray(selection)
+		? { requirement_ids: selection, max_bytes: legacyMaxBytes }
+		: (selection as WorkExecutionPacketOptions);
+	const maxBytes = options.max_bytes ?? MAX_EXECUTION_PACKET_BYTES;
+	if (!Number.isSafeInteger(maxBytes) || maxBytes < 256) {
+		throw new Error("invalid Work execution packet structural budget");
+	}
+	const requirements = briefing.requirements;
+	const sourceIds = new Set<string>();
+	for (const requirement of requirements) {
+		if (sourceIds.has(requirement.id)) {
+			throw new Error("ambiguous Work execution packet requirement IDs");
+		}
+		sourceIds.add(requirement.id);
+	}
+	const selectedIds = options.requirement_ids
+		? [...options.requirement_ids]
+		: requirements.map((requirement) => requirement.id);
+	const selectedIdSet = new Set<string>();
+	for (const id of selectedIds) {
+		if (typeof id !== "string" || id.length === 0 || selectedIdSet.has(id)) {
+			throw new Error(
+				"duplicate or invalid Work execution packet requirement ID",
+			);
+		}
+		if (!sourceIds.has(id)) {
+			throw new Error("unknown Work execution packet requirement ID");
+		}
+		selectedIdSet.add(id);
+	}
+	const selectedRequirements = requirements.filter((requirement) =>
+		selectedIdSet.has(requirement.id),
+	);
+	const packet = {
+		schema_version: "anamnesis.work-execution-packet.v1",
+		work_id: briefing.work_id,
+		contract_revision: briefing.contract_revision,
+		contract: {
+			completion_contract: briefing.work.completion_contract,
+			contract_hash: briefing.contract_hash,
+		},
+		requirements: selectedRequirements.map(
+			(requirement) =>
+				`${requirement.id}|${requirement.status}|${JSON.stringify(requirement.summary)}`,
+		),
+		blocker_ids: uniqueIds([
+			...briefing.blockers.requirement_ids,
+			...briefing.blockers.conflict_ids,
+		]),
+		required_gates: [...briefing.configured_required_gates],
+		authoritative_completeness:
+			selectedRequirements.length === requirements.length,
+	};
+	const rendered = JSON.stringify(packet);
+	if (Buffer.byteLength(rendered, "utf8") > maxBytes) {
+		throw new Error("Work execution packet exceeded structural budget");
+	}
+	return rendered;
+}
 
 /**
  * Foreground UserPromptSubmit service. When explicitly enabled, the decoded

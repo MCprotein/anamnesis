@@ -10,6 +10,7 @@ import {
 	updateWorkCursorAtomic,
 	writeWorkCursorAtomic,
 } from "../core/work_cursor.js";
+import { calculateWorkProgress } from "../core/work_projection.js";
 import { buildWorkBriefingSnapshot } from "../core/work_reconciliation.js";
 import {
 	deriveWorkPromptCaptureId,
@@ -27,6 +28,7 @@ import {
 	deriveWorkHookCursorId,
 	handleWorkPostToolBoundary,
 	handleWorkUserPromptSubmit,
+	renderWorkExecutionPacket,
 	renderWorkBriefingContext,
 	type WorkHookClient,
 } from "./work_hook.js";
@@ -602,6 +604,117 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		expect(context).toContain("Authoritative completeness:");
 		expect(context).toContain("Current requirements:");
 		expect(context).not.toContain("Required retrieval:");
+	});
+
+	it("renders a bounded executor packet with source-ordered, JSON-quoted rows", () => {
+		const root = projectRoot("frequent", "strict");
+		seed(root, "codex", "execution-packet-session");
+		const briefing = buildWorkBriefingSnapshot({
+			projection: statusWork({ project_root: root, work_id: "wu_hook" })
+				.projection,
+		});
+		const packet = renderWorkExecutionPacket(briefing);
+		const parsed = JSON.parse(packet) as {
+			schema_version: string;
+			requirements: string[];
+			authoritative_completeness: boolean;
+		};
+		expect(parsed.schema_version).toBe("anamnesis.work-execution-packet.v1");
+		expect(parsed.requirements).toEqual([
+			`req_a|pending|${JSON.stringify("Keep hook delivery safe")}`,
+		]);
+		expect(parsed.authoritative_completeness).toBe(true);
+		expect(packet).not.toContain("Delivery:");
+		expect(packet).not.toContain("reconciliation");
+
+		const twoRequirements = {
+			...briefing,
+			requirements: [
+				briefing.requirements[0]!,
+				{ ...briefing.requirements[0]!, id: "req_b", summary: "second" },
+			],
+		};
+		const subset = JSON.parse(
+			renderWorkExecutionPacket(twoRequirements, ["req_b", "req_a"]),
+		) as { requirements: string[]; authoritative_completeness: boolean };
+		expect(subset.requirements).toEqual([
+			`req_a|pending|${JSON.stringify("Keep hook delivery safe")}`,
+			`req_b|pending|${JSON.stringify("second")}`,
+		]);
+		expect(subset.authoritative_completeness).toBe(true);
+	});
+
+	it("fails closed for unknown, duplicate, and ambiguous requirement IDs", () => {
+		const root = projectRoot();
+		seed(root, "codex", "execution-packet-validation");
+		const briefing = buildWorkBriefingSnapshot({
+			projection: statusWork({ project_root: root, work_id: "wu_hook" })
+				.projection,
+		});
+		expect(() =>
+			renderWorkExecutionPacket(briefing, {
+				requirement_ids: ["missing"],
+			}),
+		).toThrow("unknown");
+		expect(() =>
+			renderWorkExecutionPacket(briefing, {
+				requirement_ids: ["req_a", "req_a"],
+			}),
+		).toThrow("duplicate");
+		expect(() =>
+			renderWorkExecutionPacket({
+				...briefing,
+				requirements: [briefing.requirements[0]!, briefing.requirements[0]!],
+			}),
+		).toThrow("ambiguous");
+	});
+
+	it("preserves hostile Unicode/delimiters and rejects structural budget overflow", () => {
+		const root = projectRoot();
+		seed(root, "codex", "execution-packet-security");
+		const briefing = buildWorkBriefingSnapshot({
+			projection: statusWork({ project_root: root, work_id: "wu_hook" })
+				.projection,
+		});
+		const hostile = {
+			...briefing,
+			requirements: [
+				{ ...briefing.requirements[0]!, summary: '한글|"line\\break\n😀' },
+			],
+		};
+		const packet = renderWorkExecutionPacket(hostile);
+		const parsed = JSON.parse(packet) as { requirements: string[] };
+		expect(parsed.requirements[0]).toBe(
+			`req_a|pending|${JSON.stringify('한글|"line\\break\n😀')}`,
+		);
+		expect(() =>
+			renderWorkExecutionPacket(hostile, { max_bytes: 256 }),
+		).toThrow("structural budget");
+	});
+
+	it("uses fewer UTF-8 bytes than a full user briefing for 24 requirements", () => {
+		const root = projectRoot();
+		seed(root, "codex", "execution-packet-metrics");
+		const status = statusWork({ project_root: root, work_id: "wu_hook" });
+		const requirements = Array.from({ length: 24 }, (_, index) => ({
+			...status.projection.requirements[0]!,
+			id: `req_${index.toString().padStart(2, "0")}`,
+			summary: `requirement ${index}: ${"설명 ".repeat(18)}`,
+		}));
+		const briefing = buildWorkBriefingSnapshot({
+			projection: {
+				...status.projection,
+				requirements,
+				progress: calculateWorkProgress(requirements),
+			},
+		});
+		const full = renderWorkBriefingContext(briefing, "full", true, 100_000);
+		const packet = renderWorkExecutionPacket(briefing);
+		const fullBytes = Buffer.byteLength(full, "utf8");
+		const packetBytes = Buffer.byteLength(packet, "utf8");
+		expect(packetBytes).toBeLessThan(fullBytes);
+		expect(packetBytes).toBeLessThanOrEqual(16_384);
+		expect(fullBytes).toBeGreaterThan(packetBytes);
 	});
 
 	it("keeps long and multiline requirement summaries lossless or requires retrieval", () => {
