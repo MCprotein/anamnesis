@@ -10,7 +10,7 @@ import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkBriefingContext } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v1";
+	"anamnesis.work_parallel_agent_ab.v2";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
 	"docs/benchmark-evidence/work-parallel-agent-ab";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
@@ -56,6 +56,12 @@ export interface ParallelStageRecord {
 	start_offset_ms: number;
 	end_offset_ms: number;
 	tokens: WorkAgentTokenUsage;
+	requirement_accuracy_pct?: number;
+	expected_requirements?: number;
+	exact_requirements?: number;
+	unexpected_requirement_rows?: number;
+	duplicate_requirement_ids?: number;
+	malformed_requirement_rows?: number;
 	error?: string;
 }
 
@@ -69,6 +75,11 @@ export interface ParallelConditionRun {
 	children_overlap_ms: number;
 	children_overlap_ratio: number;
 	reviewer_started_after_children: boolean;
+	child_accuracy_pct: number;
+	reviewer_accuracy_pct: number;
+	final_accuracy_pct: number;
+	final_exact_requirements: number;
+	final_defects: number;
 	tokens: WorkAgentTokenUsage;
 	stages: ParallelStageRecord[];
 }
@@ -82,7 +93,12 @@ export interface ParallelPairRun {
 
 interface ParallelSummary {
 	runs: number;
+	complete_passes: number;
 	product_pass_pct: number;
+	process_perfect_pct: number;
+	child_accuracy_pct: number;
+	reviewer_accuracy_pct: number;
+	final_accuracy_pct: number;
 	critical_path_ms: number;
 	agent_elapsed_ms: number;
 	children_overlap_ms: number;
@@ -96,6 +112,7 @@ export interface ParallelBenchmarkResult {
 	model: string;
 	reasoning_effort: "high";
 	topology: "harness-orchestrated-two-child-reviewer-leader";
+	scoring_version: "parallel-requirement-score.v2";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -111,13 +128,38 @@ export interface ParallelBenchmarkResult {
 		disabled: ParallelSummary;
 		enabled: ParallelSummary;
 		delta: { total_tokens_pct: number; critical_path_pct: number };
+		paired: {
+			total_tokens_pct_p50: number;
+			total_tokens_pct_mad: number;
+			critical_path_pct_p50: number;
+			critical_path_pct_mad: number;
+		};
 	};
 	harness_validity: { ok: boolean; checks: Record<string, boolean> };
-	product_contract: {
-		ok: boolean;
+	quality: {
+		enabled_ready: boolean;
 		disabled_passes: number;
 		enabled_passes: number;
 		total_per_condition: number;
+	};
+	comparison: {
+		verdict:
+			| "PASS_DIRECTIONAL"
+			| "INCONCLUSIVE"
+			| "FAIL_REGRESSION"
+			| "INVALID";
+		primary_metric: "final_requirement_accuracy_pct";
+		disabled_mean_pct: number;
+		enabled_mean_pct: number;
+		delta_points: number;
+		median_delta_requirements: number;
+		minimum_pair_wins: number;
+		enabled_pair_wins: number;
+		paired_ties: number;
+		enabled_pair_losses: number;
+		total_pairs: number;
+		disabled_aggregate_defects: number;
+		enabled_aggregate_defects: number;
 	};
 	ok: boolean;
 	artifacts: {
@@ -165,22 +207,41 @@ const PLAN_SCHEMA = strictObject(["child_a", "child_b"], {
 	child_a: { type: "array", items: { type: "string" } },
 	child_b: { type: "array", items: { type: "string" } },
 });
+const REQUIREMENTS_ARRAY_SCHEMA = {
+	type: "array",
+	items: strictObject(["id", "status", "summary"], {
+		id: { type: "string" },
+		status: { type: "string", enum: ["verified", "pending"] },
+		summary: { type: "string" },
+	}),
+};
 const REQUIREMENTS_SCHEMA = strictObject(["requirements"], {
-	requirements: {
-		type: "array",
-		items: strictObject(["id", "status", "summary"], {
-			id: { type: "string" },
-			status: { type: "string", enum: ["verified", "pending"] },
-			summary: { type: "string" },
-		}),
-	},
+	requirements: REQUIREMENTS_ARRAY_SCHEMA,
 });
 const REVIEW_SCHEMA = strictObject(
-	["union_complete", "duplicates", "conflicts"],
+	[
+		"requirements",
+		"verdict",
+		"missing_ids",
+		"duplicate_ids",
+		"unexpected_ids",
+		"misassigned_ids",
+		"status_mismatch_ids",
+		"summary_mismatch_ids",
+		"malformed_rows",
+		"order_ok",
+	],
 	{
-		union_complete: { type: "boolean" },
-		duplicates: { type: "integer" },
-		conflicts: { type: "integer" },
+		requirements: REQUIREMENTS_ARRAY_SCHEMA,
+		verdict: { type: "string", enum: ["accept", "repair"] },
+		missing_ids: { type: "array", items: { type: "string" } },
+		duplicate_ids: { type: "array", items: { type: "string" } },
+		unexpected_ids: { type: "array", items: { type: "string" } },
+		misassigned_ids: { type: "array", items: { type: "string" } },
+		status_mismatch_ids: { type: "array", items: { type: "string" } },
+		summary_mismatch_ids: { type: "array", items: { type: "string" } },
+		malformed_rows: { type: "integer" },
+		order_ok: { type: "boolean" },
 	},
 );
 
@@ -257,6 +318,15 @@ export async function workParallelAgentBenchmark(
 	const allRuns = pairs.flatMap((pair) => [pair.disabled, pair.enabled]);
 	const disabled = summarize(pairs.map((pair) => pair.disabled));
 	const enabled = summarize(pairs.map((pair) => pair.enabled));
+	const pairedTokenDeltas = pairs.map((pair) =>
+		percent(
+			pair.disabled.tokens.total_tokens,
+			pair.enabled.tokens.total_tokens,
+		),
+	);
+	const pairedCriticalPathDeltas = pairs.map((pair) =>
+		percent(pair.disabled.critical_path_ms, pair.enabled.critical_path_ms),
+	);
 	const checks = {
 		equal_authoritative_facts: equalAuthoritativeFacts,
 		exactly_five_stages: allRuns.every(
@@ -295,12 +365,50 @@ export async function workParallelAgentBenchmark(
 	const enabledPasses = pairs.filter(
 		(pair) => pair.enabled.product_pass,
 	).length;
-	const productContract = {
-		ok: disabledPasses === runs && enabledPasses === runs,
+	const quality = {
+		enabled_ready: enabledPasses === runs,
 		disabled_passes: disabledPasses,
 		enabled_passes: enabledPasses,
 		total_per_condition: runs,
 	};
+	const pairedAccuracyDeltas = pairs.map(
+		(pair) =>
+			pair.enabled.final_accuracy_pct - pair.disabled.final_accuracy_pct,
+	);
+	const pairedExactRequirementDeltas = pairs.map(
+		(pair) =>
+			pair.enabled.final_exact_requirements -
+			pair.disabled.final_exact_requirements,
+	);
+	const enabledPairWins = pairedAccuracyDeltas.filter(
+		(delta) => delta > 0,
+	).length;
+	const enabledPairLosses = pairedAccuracyDeltas.filter(
+		(delta) => delta < 0,
+	).length;
+	const pairedTies = runs - enabledPairWins - enabledPairLosses;
+	const minimumPairWins = Math.ceil((runs * 2) / 3);
+	const medianDeltaRequirements = median(pairedExactRequirementDeltas);
+	const disabledAggregateDefects = pairs.reduce(
+		(total, pair) => total + pair.disabled.final_defects,
+		0,
+	);
+	const enabledAggregateDefects = pairs.reduce(
+		(total, pair) => total + pair.enabled.final_defects,
+		0,
+	);
+	const accuracyDeltaPoints = round(
+		enabled.final_accuracy_pct - disabled.final_accuracy_pct,
+	);
+	const comparisonVerdict = !harnessValidity.ok
+		? "INVALID"
+		: enabledPairWins >= minimumPairWins &&
+				medianDeltaRequirements >= 1 &&
+				enabledAggregateDefects <= disabledAggregateDefects
+			? "PASS_DIRECTIONAL"
+			: enabledPairLosses >= minimumPairWins && medianDeltaRequirements <= -1
+				? "FAIL_REGRESSION"
+				: "INCONCLUSIVE";
 	const result: ParallelBenchmarkResult = {
 		schema_version: WORK_PARALLEL_AGENT_SCHEMA_VERSION,
 		generated_at: (options.now ?? (() => new Date()))().toISOString(),
@@ -309,6 +417,7 @@ export async function workParallelAgentBenchmark(
 		reasoning_effort: REASONING_EFFORT,
 		topology: TOPOLOGY,
 		runs_per_condition: runs,
+		scoring_version: "parallel-requirement-score.v2",
 		planned_initial_invocations: plannedInitialInvocations,
 		actual_invocations: allRuns.reduce(
 			(total, run) => total + run.stages.length,
@@ -320,6 +429,9 @@ export async function workParallelAgentBenchmark(
 			topology: TOPOLOGY,
 			stages: STAGES,
 			reasoning_effort: REASONING_EFFORT,
+			scoring_version: "parallel-requirement-score.v2",
+			directional_threshold: "two-thirds-wins-median-one-no-defect-regression",
+			reviewer_schema: REVIEW_SCHEMA,
 		}),
 		reproducibility: collectReproducibility(projectRoot),
 		runs: pairs,
@@ -333,10 +445,33 @@ export async function workParallelAgentBenchmark(
 					enabled.critical_path_ms,
 				),
 			},
+			paired: {
+				total_tokens_pct_p50: median(pairedTokenDeltas),
+				total_tokens_pct_mad: medianAbsoluteDeviation(pairedTokenDeltas),
+				critical_path_pct_p50: median(pairedCriticalPathDeltas),
+				critical_path_pct_mad: medianAbsoluteDeviation(
+					pairedCriticalPathDeltas,
+				),
+			},
 		},
 		harness_validity: harnessValidity,
-		product_contract: productContract,
-		ok: harnessValidity.ok && productContract.ok,
+		quality,
+		comparison: {
+			verdict: comparisonVerdict,
+			primary_metric: "final_requirement_accuracy_pct",
+			disabled_mean_pct: disabled.final_accuracy_pct,
+			enabled_mean_pct: enabled.final_accuracy_pct,
+			delta_points: accuracyDeltaPoints,
+			median_delta_requirements: medianDeltaRequirements,
+			minimum_pair_wins: minimumPairWins,
+			enabled_pair_wins: enabledPairWins,
+			paired_ties: pairedTies,
+			enabled_pair_losses: enabledPairLosses,
+			total_pairs: runs,
+			disabled_aggregate_defects: disabledAggregateDefects,
+			enabled_aggregate_defects: enabledAggregateDefects,
+		},
+		ok: harnessValidity.ok,
 		artifacts: {},
 		markdown: "",
 	};
@@ -433,33 +568,79 @@ async function executeCondition(input: {
 	]);
 	const reviewer = await invoke(
 		"reviewer",
-		`Review the two child reports only. Expected IDs in order: ${ids.join(", ")}. Child A: ${JSON.stringify(childA.data)} Child B: ${JSON.stringify(childB.data)}. Return union_complete, duplicates, and conflicts.`,
+		`Read CONTEXT.md as authoritative truth, then review both child reports. Child A is assigned: ${expectedA.join(", ")}. Child B is assigned: ${expectedB.join(", ")}. Child A: ${JSON.stringify(childA.data)} Child B: ${JSON.stringify(childB.data)}. Return corrected exact requirements in source order plus the exact issue-ID arrays, malformed_rows count, order_ok, and verdict=accept only when every issue array is empty, malformed_rows is zero, and order is correct; otherwise verdict=repair.`,
 	);
 	const final = await invoke(
 		"leader-integrate",
-		`Integrate only the child reports after considering the reviewer verdict. Child A: ${JSON.stringify(childA.data)} Child B: ${JSON.stringify(childB.data)} Reviewer: ${JSON.stringify(reviewer.data)}. Return every requirement exactly once in expected order: ${ids.join(", ")}.`,
+		`Read CONTEXT.md, integrate the child reports, and use the reviewer correction when a child differs from authoritative truth. Child A: ${JSON.stringify(childA.data)} Child B: ${JSON.stringify(childB.data)} Reviewer: ${JSON.stringify(reviewer.data)}. Return every requirement exactly once in expected order: ${ids.join(", ")}.`,
 	);
 	plan.record.output_correct =
 		plan.record.execution_ok &&
 		equalStringArrays(plan.data.child_a, expectedA) &&
 		equalStringArrays(plan.data.child_b, expectedB);
+	const expectedChildA = input.requirements.slice(0, half);
+	const expectedChildB = input.requirements.slice(half);
+	const childAScore = scoreRequirements(
+		childA.data.requirements,
+		expectedChildA,
+	);
+	const childBScore = scoreRequirements(
+		childB.data.requirements,
+		expectedChildB,
+	);
+	applyRequirementScore(childA.record, childAScore);
+	applyRequirementScore(childB.record, childBScore);
 	childA.record.output_correct =
-		childA.record.execution_ok &&
-		exactRequirements(
-			childA.data.requirements,
-			input.requirements.slice(0, half),
-		);
+		childA.record.execution_ok && childAScore.exact;
 	childB.record.output_correct =
-		childB.record.execution_ok &&
-		exactRequirements(childB.data.requirements, input.requirements.slice(half));
+		childB.record.execution_ok && childBScore.exact;
+	const childReportAnalysis = analyzeChildReports(
+		childA.data.requirements,
+		childB.data.requirements,
+		expectedChildA,
+		expectedChildB,
+	);
+	const reviewerScore = scoreRequirements(
+		reviewer.data.requirements,
+		input.requirements,
+	);
+	applyRequirementScore(reviewer.record, reviewerScore);
 	reviewer.record.output_correct =
 		reviewer.record.execution_ok &&
-		reviewer.data.union_complete === true &&
-		reviewer.data.duplicates === 0 &&
-		reviewer.data.conflicts === 0;
-	final.record.output_correct =
-		final.record.execution_ok &&
-		exactRequirements(final.data.requirements, input.requirements);
+		reviewerScore.exact &&
+		reviewer.data.verdict === childReportAnalysis.verdict &&
+		equalStringArrays(
+			reviewer.data.missing_ids,
+			childReportAnalysis.missingIds,
+		) &&
+		equalStringArrays(
+			reviewer.data.duplicate_ids,
+			childReportAnalysis.duplicateIds,
+		) &&
+		equalStringArrays(
+			reviewer.data.unexpected_ids,
+			childReportAnalysis.unexpectedIds,
+		) &&
+		equalStringArrays(
+			reviewer.data.misassigned_ids,
+			childReportAnalysis.misassignedIds,
+		) &&
+		equalStringArrays(
+			reviewer.data.status_mismatch_ids,
+			childReportAnalysis.statusMismatchIds,
+		) &&
+		equalStringArrays(
+			reviewer.data.summary_mismatch_ids,
+			childReportAnalysis.summaryMismatchIds,
+		) &&
+		reviewer.data.malformed_rows === childReportAnalysis.malformedRows &&
+		reviewer.data.order_ok === childReportAnalysis.orderOk;
+	const finalScore = scoreRequirements(
+		final.data.requirements,
+		input.requirements,
+	);
+	applyRequirementScore(final.record, finalScore);
+	final.record.output_correct = final.record.execution_ok && finalScore.exact;
 	const childStart = Math.max(
 		childA.record.start_offset_ms,
 		childB.record.start_offset_ms,
@@ -480,7 +661,7 @@ async function executeCondition(input: {
 	return {
 		condition: input.condition,
 		execution_ok: records.every((record) => record.execution_ok),
-		product_pass: records.every((record) => record.output_correct),
+		product_pass: reviewer.record.output_correct && final.record.output_correct,
 		token_accounting_complete: records.every(
 			(record) => record.token_accounting_complete,
 		),
@@ -493,6 +674,14 @@ async function executeCondition(input: {
 			childStageSpan > 0 ? childrenOverlapMs / childStageSpan : 0,
 		),
 		reviewer_started_after_children: reviewerStartedAfterChildren,
+		child_accuracy_pct: round(
+			((childAScore.exactRequirements + childBScore.exactRequirements) * 100) /
+				input.requirements.length,
+		),
+		reviewer_accuracy_pct: reviewerScore.accuracyPct,
+		final_accuracy_pct: finalScore.accuracyPct,
+		final_exact_requirements: finalScore.exactRequirements,
+		final_defects: finalScore.unexpectedRows + finalScore.duplicateIds,
 		tokens,
 		stages: records,
 	};
@@ -692,21 +881,210 @@ function strictObject(
 	};
 }
 
-function exactRequirements(
+interface RequirementScore {
+	accuracyPct: number;
+	exact: boolean;
+	expectedRequirements: number;
+	exactRequirements: number;
+	unexpectedRows: number;
+	duplicateIds: number;
+	malformedRows: number;
+}
+
+function scoreRequirements(
 	value: unknown,
 	expected: ParallelRequirement[],
-): boolean {
-	if (!Array.isArray(value) || value.length !== expected.length) return false;
-	return value.every((item, index) => {
-		if (!item || typeof item !== "object") return false;
-		const actual = item as Record<string, unknown>;
-		const wanted = expected[index];
-		return (
-			actual.id === wanted?.id &&
-			actual.status === wanted.status &&
-			actual.summary === wanted.summary
+): RequirementScore {
+	const rawRows = Array.isArray(value) ? value : [];
+	const rows = rawRows.filter(
+		(item): item is Record<string, unknown> =>
+			item !== null && typeof item === "object" && !Array.isArray(item),
+	);
+	const malformedRows = rawRows.length - rows.length;
+	const expectedIds = new Set(expected.map((requirement) => requirement.id));
+	const idCounts = new Map<string, number>();
+	for (const row of rows) {
+		if (typeof row.id !== "string") continue;
+		idCounts.set(row.id, (idCounts.get(row.id) ?? 0) + 1);
+	}
+	const exactRequirements = expected.filter((requirement) => {
+		if (idCounts.get(requirement.id) !== 1) return false;
+		return rows.some(
+			(row) =>
+				row.id === requirement.id &&
+				row.status === requirement.status &&
+				row.summary === requirement.summary,
 		);
-	});
+	}).length;
+	const unexpectedRows =
+		malformedRows +
+		rows.filter((row) => typeof row.id !== "string" || !expectedIds.has(row.id))
+			.length;
+	const duplicateIds = [...idCounts.values()].reduce(
+		(total, count) => total + Math.max(0, count - 1),
+		0,
+	);
+	const orderedExact =
+		rawRows.length === expected.length &&
+		malformedRows === 0 &&
+		rawRows.every((item, index) => {
+			if (!item || typeof item !== "object" || Array.isArray(item))
+				return false;
+			const row = item as Record<string, unknown>;
+			const wanted = expected[index];
+			return (
+				row.id === wanted?.id &&
+				row.status === wanted.status &&
+				row.summary === wanted.summary
+			);
+		});
+	return {
+		accuracyPct: round(
+			expected.length > 0 ? (exactRequirements * 100) / expected.length : 100,
+		),
+		exact:
+			orderedExact &&
+			unexpectedRows === 0 &&
+			duplicateIds === 0 &&
+			exactRequirements === expected.length,
+		expectedRequirements: expected.length,
+		exactRequirements,
+		unexpectedRows,
+		duplicateIds,
+		malformedRows,
+	};
+}
+
+function applyRequirementScore(
+	record: ParallelStageRecord,
+	score: RequirementScore,
+): void {
+	record.requirement_accuracy_pct = score.accuracyPct;
+	record.expected_requirements = score.expectedRequirements;
+	record.exact_requirements = score.exactRequirements;
+	record.unexpected_requirement_rows = score.unexpectedRows;
+	record.duplicate_requirement_ids = score.duplicateIds;
+	record.malformed_requirement_rows = score.malformedRows;
+}
+
+function analyzeChildReports(
+	childA: unknown,
+	childB: unknown,
+	expectedChildA: ParallelRequirement[],
+	expectedChildB: ParallelRequirement[],
+): {
+	verdict: "accept" | "repair";
+	missingIds: string[];
+	duplicateIds: string[];
+	unexpectedIds: string[];
+	misassignedIds: string[];
+	statusMismatchIds: string[];
+	summaryMismatchIds: string[];
+	malformedRows: number;
+	orderOk: boolean;
+} {
+	const rawRowsByChild = [childA, childB].map((value) =>
+		Array.isArray(value) ? value : [],
+	);
+	const rowsByChild = rawRowsByChild.map((rows) =>
+		rows.filter(
+			(item): item is Record<string, unknown> =>
+				item !== null && typeof item === "object" && !Array.isArray(item),
+		),
+	);
+	const malformedRows = rawRowsByChild.reduce(
+		(total, rawRows, index) =>
+			total + rawRows.length - rowsByChild[index]!.length,
+		0,
+	);
+	const rows = rowsByChild.flat();
+	const expected = [...expectedChildA, ...expectedChildB];
+	const expectedById = new Map(
+		expected.map((requirement) => [requirement.id, requirement]),
+	);
+	const byId = new Map<string, Record<string, unknown>[]>();
+	for (const row of rows) {
+		if (typeof row.id !== "string") continue;
+		const current = byId.get(row.id) ?? [];
+		current.push(row);
+		byId.set(row.id, current);
+	}
+	const missingIds = expected
+		.filter((requirement) => !byId.has(requirement.id))
+		.map((requirement) => requirement.id);
+	const duplicateIds = expected
+		.filter((requirement) => (byId.get(requirement.id)?.length ?? 0) > 1)
+		.map((requirement) => requirement.id);
+	const unexpectedIds = [...byId.keys()].filter((id) => !expectedById.has(id));
+	const expectedAIds = new Set(
+		expectedChildA.map((requirement) => requirement.id),
+	);
+	const expectedBIds = new Set(
+		expectedChildB.map((requirement) => requirement.id),
+	);
+	const misassignedIds = [
+		...rowsByChild[0]!
+			.filter(
+				(row) =>
+					typeof row.id === "string" &&
+					expectedById.has(row.id) &&
+					!expectedAIds.has(row.id),
+			)
+			.map((row) => row.id as string),
+		...rowsByChild[1]!
+			.filter(
+				(row) =>
+					typeof row.id === "string" &&
+					expectedById.has(row.id) &&
+					!expectedBIds.has(row.id),
+			)
+			.map((row) => row.id as string),
+	].filter((id, index, values) => values.indexOf(id) === index);
+	const statusMismatchIds = expected
+		.filter((requirement) =>
+			(byId.get(requirement.id) ?? []).some(
+				(row) => row.status !== requirement.status,
+			),
+		)
+		.map((requirement) => requirement.id);
+	const summaryMismatchIds = expected
+		.filter((requirement) =>
+			(byId.get(requirement.id) ?? []).some(
+				(row) => row.summary !== requirement.summary,
+			),
+		)
+		.map((requirement) => requirement.id);
+	const orderOk =
+		equalStringArrays(
+			rowsByChild[0]!.map((row) => row.id),
+			expectedChildA.map((requirement) => requirement.id),
+		) &&
+		equalStringArrays(
+			rowsByChild[1]!.map((row) => row.id),
+			expectedChildB.map((requirement) => requirement.id),
+		);
+	const hasIssues =
+		!orderOk ||
+		[
+			missingIds,
+			duplicateIds,
+			unexpectedIds,
+			misassignedIds,
+			statusMismatchIds,
+			summaryMismatchIds,
+		].some((values) => values.length > 0);
+	const requiresRepair = hasIssues || malformedRows > 0;
+	return {
+		verdict: requiresRepair ? "repair" : "accept",
+		missingIds,
+		duplicateIds,
+		unexpectedIds,
+		misassignedIds,
+		statusMismatchIds,
+		summaryMismatchIds,
+		malformedRows,
+		orderOk,
+	};
 }
 
 function stringArray(value: unknown): string[] | undefined {
@@ -727,8 +1105,24 @@ function equalStringArrays(value: unknown, expected: string[]): boolean {
 function summarize(runs: ParallelConditionRun[]): ParallelSummary {
 	return {
 		runs: runs.length,
+		complete_passes: runs.filter((run) => run.product_pass).length,
 		product_pass_pct: round(
 			(runs.filter((run) => run.product_pass).length * 100) / runs.length,
+		),
+		process_perfect_pct: round(
+			(runs.filter((run) => run.stages.every((stage) => stage.output_correct))
+				.length *
+				100) /
+				runs.length,
+		),
+		child_accuracy_pct: round(
+			average(runs.map((run) => run.child_accuracy_pct)),
+		),
+		reviewer_accuracy_pct: round(
+			average(runs.map((run) => run.reviewer_accuracy_pct)),
+		),
+		final_accuracy_pct: round(
+			average(runs.map((run) => run.final_accuracy_pct)),
 		),
 		critical_path_ms: round(average(runs.map((run) => run.critical_path_ms))),
 		agent_elapsed_ms: round(average(runs.map((run) => run.agent_elapsed_ms))),
@@ -742,7 +1136,7 @@ function summarize(runs: ParallelConditionRun[]): ParallelSummary {
 export function renderParallelBenchmarkMarkdown(
 	result: ParallelBenchmarkResult,
 ): string {
-	return `# Harness-orchestrated parallel-agent Work A/B\n\n- Generated: ${result.generated_at}\n- Model: \`${result.model}\` (reasoning effort: ${result.reasoning_effort})\n- Pairs per condition: ${result.runs_per_condition}\n- Topology: leader plan → two concurrent children → reviewer → leader integration\n- Planned/actual invocations: ${result.planned_initial_invocations}/${result.actual_invocations}\n- Harness validity: **${result.harness_validity.ok ? "PASS" : "FAIL"}**\n- Product contract: **${result.product_contract.ok ? "PASS" : "FAIL"}**\n\n![Parallel-agent ${escapeMarkdownAlt(result.model)} diagnostic](work-parallel-agent-ab-summary.svg)\n\n| Condition | Product passes | Critical path/run | Agent elapsed/run | Child overlap/run | Tokens/run |\n| --- | ---: | ---: | ---: | ---: | ---: |\n| Work disabled | ${result.product_contract.disabled_passes}/${result.runs_per_condition} | ${result.summary.disabled.critical_path_ms} ms | ${result.summary.disabled.agent_elapsed_ms} ms | ${result.summary.disabled.children_overlap_ms} ms | ${result.summary.disabled.total_tokens} |\n| Work enabled | ${result.product_contract.enabled_passes}/${result.runs_per_condition} | ${result.summary.enabled.critical_path_ms} ms | ${result.summary.enabled.agent_elapsed_ms} ms | ${result.summary.enabled.children_overlap_ms} ms | ${result.summary.enabled.total_tokens} |\n\nDescriptive paired-pilot delta with Work: **${result.summary.delta.total_tokens_pct}% tokens**, **${result.summary.delta.critical_path_pct}% critical-path time**. Work improved complete-pipeline success from **${result.product_contract.disabled_passes}/${result.runs_per_condition}** to **${result.product_contract.enabled_passes}/${result.runs_per_condition}**, but this pilot does not establish a token or latency win.\n\n## Claim boundary\n\nThis is a ${result.runs_per_condition}-pair directional diagnostic over one sanitized equal-information state-reconstruction scenario. The harness launches separate Codex processes and proves that the two child intervals overlap; it does not measure same-session native subagent spawning or general coding productivity. All stage costs are charged, and failed or malformed stages are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.\n`;
+	return `# Harness-orchestrated parallel-agent Work A/B\n\n- Generated: ${result.generated_at}\n- Model: \`${result.model}\` (reasoning effort: ${result.reasoning_effort})\n- Pairs per condition: ${result.runs_per_condition}\n- Topology: leader plan → two concurrent children → authoritative reviewer repair → leader integration\n- Planned/actual invocations: ${result.planned_initial_invocations}/${result.actual_invocations}\n- Harness validity: **${result.harness_validity.ok ? "PASS" : "FAIL"}**\n- Directional comparison: **${result.comparison.verdict}**\n- Enabled absolute-quality gate: **${result.quality.enabled_ready ? "PASS" : "FAIL"}** (${result.quality.enabled_passes}/${result.runs_per_condition} exact reviewed pipelines)\n\n![Parallel-agent ${escapeMarkdownAlt(result.model)} diagnostic](work-parallel-agent-ab-summary.svg)\n\n| Condition | Exact reviewed pipelines | Child accuracy | Reviewer accuracy | Final accuracy | Critical path/run | Tokens/run |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n| Work disabled | ${result.quality.disabled_passes}/${result.runs_per_condition} | ${result.summary.disabled.child_accuracy_pct}% | ${result.summary.disabled.reviewer_accuracy_pct}% | ${result.summary.disabled.final_accuracy_pct}% | ${result.summary.disabled.critical_path_ms} ms | ${result.summary.disabled.total_tokens} |\n| Work enabled | ${result.quality.enabled_passes}/${result.runs_per_condition} | ${result.summary.enabled.child_accuracy_pct}% | ${result.summary.enabled.reviewer_accuracy_pct}% | ${result.summary.enabled.final_accuracy_pct}% | ${result.summary.enabled.critical_path_ms} ms | ${result.summary.enabled.total_tokens} |\n\nPrimary paired comparison: enabled won **${result.comparison.enabled_pair_wins}/${result.comparison.total_pairs}**, tied **${result.comparison.paired_ties}/${result.comparison.total_pairs}**, and lost **${result.comparison.enabled_pair_losses}/${result.comparison.total_pairs}** on final exact-requirement accuracy; median delta was **${formatSignedNumber(result.comparison.median_delta_requirements)} requirements**. Paired cost deltas were **${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)} tokens** (MAD ${result.summary.paired.total_tokens_pct_mad}pp) and **${formatSignedPercent(result.summary.paired.critical_path_pct_p50)} critical-path time** (MAD ${result.summary.paired.critical_path_pct_mad}pp). Cost dimensions are reported separately and do not determine the accuracy verdict.\n\n## Claim boundary\n\nThis is a ${result.runs_per_condition}-pair directional diagnostic over one sanitized equal-information state-reconstruction scenario. \`PASS_DIRECTIONAL\` requires at least ${result.comparison.minimum_pair_wins} paired accuracy wins, a median gain of at least one exact requirement, and no aggregate duplicate/unexpected-row regression. The harness launches separate Codex processes and proves that the two child intervals overlap; the current Codex CLI does not expose a stable automation contract for same-session native child spawning plus per-child token accounting. This result therefore does not measure native subagent spawning, statistical significance, or general coding productivity. All stage costs and failures are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.\n`;
 }
 
 export function publishParallelArtifacts(
@@ -755,7 +1149,8 @@ export function publishParallelArtifacts(
 		| "runs_per_condition"
 		| "summary"
 		| "harness_validity"
-		| "product_contract"
+		| "quality"
+		| "comparison"
 	>,
 	outputPath = WORK_PARALLEL_AGENT_OUTPUT_DIR,
 	operations = { renameSync: fs.renameSync, rmSync: fs.rmSync },
@@ -850,7 +1245,8 @@ function renderSummarySvg(
 		| "runs_per_condition"
 		| "summary"
 		| "harness_validity"
-		| "product_contract"
+		| "quality"
+		| "comparison"
 	>,
 ): string {
 	const maxTokens = Math.max(
@@ -865,36 +1261,34 @@ function renderSummarySvg(
 	const enabledWidth = Math.round(
 		maxTokens > 0 ? (340 * result.summary.enabled.total_tokens) / maxTokens : 0,
 	);
-	const disabledPassWidth = Math.round(
-		(340 * result.product_contract.disabled_passes) /
-			result.product_contract.total_per_condition,
+	const disabledAccuracyWidth = Math.round(
+		(340 * result.summary.disabled.final_accuracy_pct) / 100,
 	);
-	const enabledPassWidth = Math.round(
-		(340 * result.product_contract.enabled_passes) /
-			result.product_contract.total_per_condition,
+	const enabledAccuracyWidth = Math.round(
+		(340 * result.summary.enabled.final_accuracy_pct) / 100,
 	);
 	const model = escapeXml(result.model);
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="330" viewBox="0 0 760 330" role="img" aria-labelledby="title desc">
   <title id="title">Parallel-agent ${model} Work A/B diagnostic</title>
-  <desc id="desc">Work left token cost nearly flat and improved complete pipeline passes from ${result.product_contract.disabled_passes} of ${result.product_contract.total_per_condition} to ${result.product_contract.enabled_passes} of ${result.product_contract.total_per_condition}.</desc>
+  <desc id="desc">Final requirement accuracy changed from ${result.summary.disabled.final_accuracy_pct} percent to ${result.summary.enabled.final_accuracy_pct} percent; directional verdict ${result.comparison.verdict}.</desc>
   <rect width="760" height="330" rx="16" fill="#0f172a"/>
   <text x="32" y="42" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Parallel-agent ${model} diagnostic (${result.runs_per_condition} pairs)</text>
-  <text x="32" y="72" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Harness ${result.harness_validity.ok ? "PASS" : "FAIL"} · Product contract ${result.product_contract.ok ? "PASS" : "FAIL"} · directional only</text>
+  <text x="32" y="72" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Harness ${result.harness_validity.ok ? "PASS" : "FAIL"} · ${result.comparison.verdict} · enabled quality ${result.quality.enabled_ready ? "PASS" : "FAIL"}</text>
   <text x="32" y="112" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Average total tokens / pipeline</text>
   <text x="32" y="142" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Disabled</text>
   <rect x="128" y="126" width="${disabledWidth}" height="22" rx="5" fill="#64748b"/>
   <text x="480" y="142" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.summary.disabled.total_tokens}</text>
   <text x="32" y="176" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Enabled</text>
   <rect x="128" y="160" width="${enabledWidth}" height="22" rx="5" fill="#38bdf8"/>
-  <text x="480" y="176" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.summary.enabled.total_tokens} (${result.summary.delta.total_tokens_pct}%)</text>
-  <text x="32" y="222" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Complete pipeline passes</text>
+  <text x="480" y="176" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.summary.enabled.total_tokens} (${formatSignedPercent(result.summary.delta.total_tokens_pct)})</text>
+  <text x="32" y="222" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Final exact-requirement accuracy</text>
   <text x="32" y="252" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Disabled</text>
-  <rect x="128" y="236" width="${disabledPassWidth}" height="22" rx="5" fill="#64748b"/>
-  <text x="480" y="252" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.product_contract.disabled_passes}/${result.product_contract.total_per_condition}</text>
+  <rect x="128" y="236" width="${disabledAccuracyWidth}" height="22" rx="5" fill="#64748b"/>
+  <text x="480" y="252" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.summary.disabled.final_accuracy_pct}%</text>
   <text x="32" y="286" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Enabled</text>
-  <rect x="128" y="270" width="${enabledPassWidth}" height="22" rx="5" fill="#22c55e"/>
-  <text x="480" y="286" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.product_contract.enabled_passes}/${result.product_contract.total_per_condition}</text>
-  <text x="32" y="316" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Token delta ${formatSignedPercent(result.summary.delta.total_tokens_pct)} · critical-path delta ${formatSignedPercent(result.summary.delta.critical_path_pct)}</text>
+  <rect x="128" y="270" width="${enabledAccuracyWidth}" height="22" rx="5" fill="#22c55e"/>
+  <text x="480" y="286" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.summary.enabled.final_accuracy_pct}% (${formatSignedNumber(result.comparison.delta_points)}pp)</text>
+  <text x="32" y="316" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Paired p50: tokens ${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)} · critical path ${formatSignedPercent(result.summary.paired.critical_path_pct_p50)}</text>
 </svg>\n`;
 }
 
@@ -1196,7 +1590,6 @@ function parseUsage(value: unknown): WorkAgentTokenUsage | undefined {
 		"input_tokens",
 		"cached_input_tokens",
 		"output_tokens",
-		"total_tokens",
 	] as const;
 	if (
 		!fields.every(
@@ -1208,16 +1601,33 @@ function parseUsage(value: unknown): WorkAgentTokenUsage | undefined {
 	) {
 		return;
 	}
+	const derivedTotal =
+		(record.input_tokens as number) + (record.output_tokens as number);
+	const totalTokens = Object.hasOwn(record, "total_tokens")
+		? record.total_tokens
+		: derivedTotal;
+	if (
+		typeof totalTokens !== "number" ||
+		!Number.isSafeInteger(totalTokens) ||
+		totalTokens < 0 ||
+		totalTokens !== derivedTotal
+	) {
+		return;
+	}
 	return {
 		input_tokens: record.input_tokens as number,
 		cached_input_tokens: record.cached_input_tokens as number,
 		output_tokens: record.output_tokens as number,
-		total_tokens: record.total_tokens as number,
+		total_tokens: totalTokens,
 	};
 }
 
 function formatSignedPercent(value: number): string {
 	return `${value > 0 ? "+" : ""}${value}%`;
+}
+
+function formatSignedNumber(value: number): string {
+	return `${value > 0 ? "+" : ""}${value}`;
 }
 
 function escapeXml(value: string): string {
@@ -1265,6 +1675,22 @@ function average(values: number[]): number {
 	return values.length > 0
 		? values.reduce((sum, value) => sum + value, 0) / values.length
 		: 0;
+}
+
+function median(values: number[]): number {
+	if (values.length === 0) return 0;
+	const sorted = [...values].sort((left, right) => left - right);
+	const middle = Math.floor(sorted.length / 2);
+	return round(
+		sorted.length % 2 === 1
+			? sorted[middle]!
+			: (sorted[middle - 1]! + sorted[middle]!) / 2,
+	);
+}
+
+function medianAbsoluteDeviation(values: number[]): number {
+	const center = median(values);
+	return median(values.map((value) => Math.abs(value - center)));
 }
 
 function percent(before: number, after: number): number {

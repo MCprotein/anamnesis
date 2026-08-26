@@ -2106,10 +2106,13 @@ function reportWorkParallelAgentBenchmark(
 		`  critical path/run: disabled=${result.summary.disabled.critical_path_ms}ms, enabled=${result.summary.enabled.critical_path_ms}ms, delta=${result.summary.delta.critical_path_pct}%`,
 	);
 	console.log(
-		`  product passes: disabled=${result.product_contract.disabled_passes}/${result.runs_per_condition}, enabled=${result.product_contract.enabled_passes}/${result.runs_per_condition}`,
+		`  final accuracy: disabled=${result.summary.disabled.final_accuracy_pct}%, enabled=${result.summary.enabled.final_accuracy_pct}%, delta=${result.comparison.delta_points}pp`,
 	);
 	console.log(
-		`  harness=${result.harness_validity.ok ? "PASS" : "FAIL"}, product=${result.product_contract.ok ? "PASS" : "FAIL"}`,
+		`  paired accuracy: wins=${result.comparison.enabled_pair_wins}, ties=${result.comparison.paired_ties}, losses=${result.comparison.enabled_pair_losses}, verdict=${result.comparison.verdict}`,
+	);
+	console.log(
+		`  harness=${result.harness_validity.ok ? "PASS" : "FAIL"}, enabled-quality=${result.quality.enabled_ready ? "PASS" : "FAIL"}`,
 	);
 	if (result.artifacts.output_dir) {
 		console.log(`  output: ${result.artifacts.output_dir}`);

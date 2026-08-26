@@ -31,12 +31,31 @@ function output(
 	return `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: usage ?? { input_tokens: tokens - 2, cached_input_tokens: 0, output_tokens: 2, total_tokens: tokens } })}`;
 }
 function runner(
-	opts: { malformedUsage?: boolean; overlap?: boolean; wrong?: boolean } = {},
+	opts: {
+		malformedOutputRows?: boolean;
+		malformedUsage?: boolean;
+		overlap?: boolean;
+		repairFinal?: boolean;
+		wrong?: boolean;
+		wrongDisabledIterations?: number[];
+		wrongEnabledIterations?: number[];
+	} = {},
 ): ParallelRunner {
 	let active = 0;
 	let sawOverlap = false;
 	return async (request) => {
 		const stage = request.prompt.match(/\[parallel-stage:([^\]]+)/u)?.[1];
+		const fixture = path
+			.basename(request.cwd)
+			.match(/^(\d+)-(disabled|enabled)$/u);
+		const iteration = Number(fixture?.[1]);
+		const condition = fixture?.[2];
+		const wrong =
+			opts.wrong === true ||
+			(condition === "disabled" &&
+				opts.wrongDisabledIterations?.includes(iteration) === true) ||
+			(condition === "enabled" &&
+				opts.wrongEnabledIterations?.includes(iteration) === true);
 		active += 1;
 		if (active > 1) sawOverlap = true;
 		await new Promise((resolve) =>
@@ -63,13 +82,36 @@ function runner(
 			data = { child_a: ids.slice(0, 2), child_b: ids.slice(2) };
 		else if (stage === "child-a")
 			data = {
-				requirements: (opts.wrong ? [ids[0]] : ids.slice(0, 2)).map(req),
+				requirements: [
+					...(wrong ? [ids[0]] : ids.slice(0, 2)).map(req),
+					...(opts.malformedOutputRows ? [null, 7, []] : []),
+				],
 			};
 		else if (stage === "child-b")
 			data = { requirements: ids.slice(2).map(req) };
 		else if (stage === "reviewer")
-			data = { union_complete: !opts.wrong, duplicates: 0, conflicts: 0 };
-		else data = { requirements: (opts.wrong ? ids.slice(0, 3) : ids).map(req) };
+			data = {
+				requirements: [
+					...ids.map(req),
+					...(opts.malformedOutputRows ? [null, 7, []] : []),
+				],
+				verdict: wrong || opts.malformedOutputRows ? "repair" : "accept",
+				missing_ids: wrong ? ["REQ-B"] : [],
+				duplicate_ids: [],
+				unexpected_ids: [],
+				misassigned_ids: [],
+				status_mismatch_ids: [],
+				summary_mismatch_ids: [],
+				malformed_rows: opts.malformedOutputRows ? 3 : 0,
+				order_ok: !wrong,
+			};
+		else
+			data = {
+				requirements: [
+					...(wrong && !opts.repairFinal ? ids.slice(0, 3) : ids).map(req),
+					...(opts.malformedOutputRows ? [null, 7, []] : []),
+				],
+			};
 		return {
 			status: 0,
 			stdout: opts.malformedUsage
@@ -102,7 +144,8 @@ describe("real parallel-agent benchmark", () => {
 			"disabled",
 		]);
 		expect(result.harness_validity.ok).toBe(true);
-		expect(result.product_contract.ok).toBe(true);
+		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
+		expect(result.quality.enabled_ready).toBe(true);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -114,10 +157,33 @@ describe("real parallel-agent benchmark", () => {
 			runner: runner({ wrong: true }),
 			requirements: REQUIREMENTS,
 		});
-		expect(result.ok).toBe(false);
+		expect(result.ok).toBe(true);
 		expect(result.harness_validity.checks.no_excluded_conditions).toBe(true);
-		expect(result.product_contract.disabled_passes).toBe(0);
-		expect(result.product_contract.enabled_passes).toBe(0);
+		expect(result.quality.disabled_passes).toBe(0);
+		expect(result.quality.enabled_passes).toBe(0);
+		expect(result.summary.disabled.final_accuracy_pct).toBe(75);
+		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
+		expect(
+			result.runs[0]?.disabled.stages.find(
+				(stage) => stage.stage === "reviewer",
+			)?.output_correct,
+		).toBe(true);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("counts a reviewer-repaired final result as product success while retaining process defects", async () => {
+		const root = tempRoot();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: runner({ wrong: true, repairFinal: true }),
+			requirements: REQUIREMENTS,
+		});
+		expect(result.quality.disabled_passes).toBe(3);
+		expect(result.quality.enabled_passes).toBe(3);
+		expect(result.summary.disabled.process_perfect_pct).toBe(0);
+		expect(result.summary.disabled.final_accuracy_pct).toBe(100);
+		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -135,6 +201,104 @@ describe("real parallel-agent benchmark", () => {
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
+	it("derives total tokens from current Codex usage events", async () => {
+		const root = tempRoot();
+		const currentUsageRunner: ParallelRunner = async (request) => {
+			const result = await runner()(request);
+			return {
+				...result,
+				stdout: result.stdout.replace(/,"total_tokens":10/gu, ""),
+			};
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: currentUsageRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.full_token_accounting).toBe(true);
+		expect(result.runs[0]?.disabled.tokens.total_tokens).toBe(50);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("rejects an explicitly malformed or inconsistent total token field", async () => {
+		for (const total of [null, 11]) {
+			const root = tempRoot();
+			const incompatibleUsageRunner: ParallelRunner = async (request) => {
+				const result = await runner()(request);
+				return {
+					...result,
+					stdout: result.stdout.replace(
+						/"total_tokens":10/gu,
+						`"total_tokens":${JSON.stringify(total)}`,
+					),
+				};
+			};
+			const result = await workParallelAgentBenchmark({
+				projectRoot: root,
+				runs: 3,
+				runner: incompatibleUsageRunner,
+				requirements: REQUIREMENTS,
+			});
+			expect(result.harness_validity.checks.full_token_accounting).toBe(false);
+			fs.rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects null, scalar, and nested-array rows at every scored stage", async () => {
+		const root = tempRoot();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: runner({ malformedOutputRows: true }),
+			requirements: REQUIREMENTS,
+		});
+		const first = result.runs[0]!.disabled;
+		for (const stageName of ["child-a", "reviewer", "leader-integrate"]) {
+			const stage = first.stages.find((record) => record.stage === stageName);
+			expect(stage?.output_correct).toBe(false);
+			expect(stage?.malformed_requirement_rows).toBe(3);
+			expect(stage?.unexpected_requirement_rows).toBe(3);
+		}
+		expect(result.quality.disabled_passes).toBe(0);
+		expect(result.quality.enabled_passes).toBe(0);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("passes the directional comparison on two paired accuracy wins and one tie", async () => {
+		const root = tempRoot();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: runner({ wrongDisabledIterations: [1, 2] }),
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.ok).toBe(true);
+		expect(result.comparison).toMatchObject({
+			verdict: "PASS_DIRECTIONAL",
+			enabled_pair_wins: 2,
+			paired_ties: 1,
+			enabled_pair_losses: 0,
+			median_delta_requirements: 1,
+		});
+		expect(result.quality.enabled_ready).toBe(true);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("reports a directional regression independently of harness validity", async () => {
+		const root = tempRoot();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: runner({ wrongEnabledIterations: [1, 2] }),
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.ok).toBe(true);
+		expect(result.ok).toBe(true);
+		expect(result.comparison.verdict).toBe("FAIL_REGRESSION");
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
 	it("publishes atomically and rejects escaping or symlink destinations", () => {
 		const root = tempRoot();
 		const result = {
@@ -145,15 +309,23 @@ describe("real parallel-agent benchmark", () => {
 			runs_per_condition: 1,
 			harness_validity: { ok: true, checks: {} },
 			summary: {
-				disabled: { total_tokens: 10 },
-				enabled: { total_tokens: 9 },
+				disabled: { total_tokens: 10, final_accuracy_pct: 100 },
+				enabled: { total_tokens: 9, final_accuracy_pct: 100 },
 				delta: { total_tokens_pct: -10, critical_path_pct: 5 },
+				paired: {
+					total_tokens_pct_p50: -10,
+					critical_path_pct_p50: 5,
+				},
 			},
-			product_contract: {
-				ok: true,
+			quality: {
+				enabled_ready: true,
 				disabled_passes: 1,
 				enabled_passes: 1,
 				total_per_condition: 1,
+			},
+			comparison: {
+				verdict: "INCONCLUSIVE",
+				delta_points: 0,
 			},
 		} as Parameters<typeof publishParallelArtifacts>[0];
 		const artifacts = publishParallelArtifacts(result);
@@ -210,15 +382,23 @@ describe("real parallel-agent benchmark", () => {
 			runs_per_condition: 1,
 			harness_validity: { ok: true, checks: {} },
 			summary: {
-				disabled: { total_tokens: 10 },
-				enabled: { total_tokens: 9 },
+				disabled: { total_tokens: 10, final_accuracy_pct: 100 },
+				enabled: { total_tokens: 9, final_accuracy_pct: 100 },
 				delta: { total_tokens_pct: -10, critical_path_pct: 5 },
+				paired: {
+					total_tokens_pct_p50: -10,
+					critical_path_pct_p50: 5,
+				},
 			},
-			product_contract: {
-				ok: true,
+			quality: {
+				enabled_ready: true,
 				disabled_passes: 1,
 				enabled_passes: 1,
 				total_per_condition: 1,
+			},
+			comparison: {
+				verdict: "INCONCLUSIVE",
+				delta_points: 0,
 			},
 		} as Parameters<typeof publishParallelArtifacts>[0];
 		let replaced = false;
