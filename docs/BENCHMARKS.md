@@ -132,21 +132,32 @@ performance guarantees. See the
 Use `benchmark work-parallel-agent-ab --runs 3 --write` for the separate
 harness-orchestrated parallel-agent diagnostic. Each condition executes five
 fully charged Luna stages: leader planning, two child processes launched
-concurrently, a reviewer after both children finish, and final leader
-integration. Disabled and enabled conditions receive the same 24 requirement
-facts; only their context representation differs. The evaluator alternates
-condition order, verifies positive child-process overlap and reviewer ordering,
-requires complete token accounting even on failures, and scores exact
-ID/status/summary reconstruction without retaining prompts or answers.
+concurrently, an authoritative reviewer after both children finish, and final
+leader integration. Disabled and enabled conditions receive the same 24
+requirement facts; only their context representation differs. The evaluator
+alternates condition order, verifies positive child-process overlap and reviewer
+ordering, requires complete token accounting even on failures, and scores every
+requirement's exact ID/status/summary. Malformed, duplicate, unexpected,
+misassigned, and conflicting rows remain visible as defects.
 
-The first three-pair run used 30 calls and 1,014,561 total tokens. Harness
-validity passed every concurrency, ordering, accounting, and no-exclusion
-check. Work changed average tokens by **-0.20%** and critical-path time by
-**+3.38%**, while complete-pipeline success improved from **0/3 to 2/3**. The
-product contract therefore failed: this is directional evidence that Work
-improved accuracy in this scenario, not evidence of a token or latency win.
-It measures separate process orchestration, not same-session native subagent
-spawning or general coding productivity. See the
+The v2 contract separates three questions: harness validity, paired directional
+accuracy, and enabled absolute quality. `PASS_DIRECTIONAL` requires at least two
+of three final-accuracy wins, a median gain of at least one exact requirement,
+and no aggregate unexpected/duplicate defect regression. Absolute quality is a
+separate 3/3 exact reviewed-pipeline gate; tokens and critical-path time are
+reported independently and never change the accuracy verdict.
+
+The fresh three-pair run used 30 calls. Harness validity passed every
+concurrency, ordering, accounting, and no-exclusion check. Work improved final
+exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with
+one tie and a median gain of **24 requirements**, so the directional accuracy
+comparison passed. The enabled absolute-quality gate remained **FAIL at 2/3**.
+Average tokens increased **3.96%** and average critical-path time increased
+**27.63%**; paired medians were **+2.63% tokens** (MAD 3.02pp) and
+**+17.88% time** (MAD 16.29pp). This is an accuracy signal in one scenario, not
+an efficiency, statistical-significance, or release-readiness claim. It measures separate
+process orchestration, not same-session native subagent spawning or general
+coding productivity. See the
 [`parallel-agent artifact`](benchmark-evidence/work-parallel-agent-ab/README.md).
 
 The evaluator requires exact summaries, rejects unexpected or duplicate

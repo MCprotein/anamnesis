@@ -11,12 +11,13 @@ could include breaking changes.
 
 - Added `benchmark work-parallel-agent-ab`, a fail-closed real-Codex Luna
   diagnostic that runs leader planning, two concurrent child processes,
-  independent review, and final integration with complete per-stage token and
-  critical-path accounting. The first three-pair equal-information run passed
-  all harness-validity checks and improved complete-pipeline success from 0/3
-  to 2/3 with Work, while tokens stayed flat (-0.20%) and latency regressed
-  3.38%; the product contract remains explicitly failed rather than presenting
-  the accuracy signal as a performance win.
+  authoritative review, and final integration with exact requirement scoring
+  and complete per-stage token and critical-path accounting. Its v2 contract
+  separates harness validity, paired directional accuracy, and enabled absolute
+  quality. The fresh three-pair run passed the directional accuracy comparison
+  (33.33% to 100%, 2/3 paired wins and one tie) but not the 3/3 quality gate;
+  tokens and critical-path time regressed 3.96% and 27.63%, respectively, and
+  are reported as costs rather than folded into the accuracy claim.
 
 ## [1.19.0] — 2026-08-26
 

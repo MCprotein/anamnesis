@@ -69,13 +69,13 @@ and both `n=3` runs are directional cross-model evidence.
 
 ### Parallel-agent diagnostic
 
-A separate Luna pilot measured an externally orchestrated pipeline: leader
-planning, two concurrently running children, independent review, and final
-leader integration. Work improved complete-pipeline success from **0/3 to 2/3**,
-while tokens were effectively flat (**-0.20%**) and critical-path time was
-**+3.38%**. The harness passed its concurrency and accounting checks, but the
-product contract failed because neither condition reached 3/3; this is evidence
-of an accuracy signal, not a token or latency win.
+A Luna three-pair diagnostic measured an externally orchestrated pipeline with
+two concurrent children, authoritative review, and final leader integration.
+Work improved final exact-requirement accuracy from **33.33% to 100%** and won
+**2/3** paired comparisons with one tie, passing the preregistered directional
+accuracy contract. It did not establish an efficiency or release-quality win:
+average tokens were **+3.96%**, critical-path time was **+27.63%**, and the enabled
+absolute-quality gate finished at **2/3**.
 
 ![Parallel-agent Luna diagnostic](docs/benchmark-evidence/work-parallel-agent-ab/work-parallel-agent-ab-summary.svg)
 

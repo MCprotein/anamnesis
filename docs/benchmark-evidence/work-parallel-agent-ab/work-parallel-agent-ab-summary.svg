@@ -1,22 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="330" viewBox="0 0 760 330" role="img" aria-labelledby="title desc">
   <title id="title">Parallel-agent gpt-5.6-luna Work A/B diagnostic</title>
-  <desc id="desc">Work left token cost nearly flat and improved complete pipeline passes from 0 of 3 to 2 of 3.</desc>
+  <desc id="desc">Final requirement accuracy changed from 33.33 percent to 100 percent; directional verdict PASS_DIRECTIONAL.</desc>
   <rect width="760" height="330" rx="16" fill="#0f172a"/>
   <text x="32" y="42" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Parallel-agent gpt-5.6-luna diagnostic (3 pairs)</text>
-  <text x="32" y="72" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Harness PASS · Product contract FAIL · directional only</text>
+  <text x="32" y="72" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Harness PASS · PASS_DIRECTIONAL · enabled quality FAIL</text>
   <text x="32" y="112" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Average total tokens / pipeline</text>
   <text x="32" y="142" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Disabled</text>
-  <rect x="128" y="126" width="340" height="22" rx="5" fill="#64748b"/>
-  <text x="480" y="142" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">169260</text>
+  <rect x="128" y="126" width="327" height="22" rx="5" fill="#64748b"/>
+  <text x="480" y="142" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">229987.33</text>
   <text x="32" y="176" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Enabled</text>
-  <rect x="128" y="160" width="339" height="22" rx="5" fill="#38bdf8"/>
-  <text x="480" y="176" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">168927 (-0.2%)</text>
-  <text x="32" y="222" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Complete pipeline passes</text>
+  <rect x="128" y="160" width="340" height="22" rx="5" fill="#38bdf8"/>
+  <text x="480" y="176" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">239106 (+3.96%)</text>
+  <text x="32" y="222" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Final exact-requirement accuracy</text>
   <text x="32" y="252" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Disabled</text>
-  <rect x="128" y="236" width="0" height="22" rx="5" fill="#64748b"/>
-  <text x="480" y="252" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">0/3</text>
+  <rect x="128" y="236" width="113" height="22" rx="5" fill="#64748b"/>
+  <text x="480" y="252" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">33.33%</text>
   <text x="32" y="286" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Enabled</text>
-  <rect x="128" y="270" width="227" height="22" rx="5" fill="#22c55e"/>
-  <text x="480" y="286" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">2/3</text>
-  <text x="32" y="316" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Token delta -0.2% · critical-path delta +3.38%</text>
+  <rect x="128" y="270" width="340" height="22" rx="5" fill="#22c55e"/>
+  <text x="480" y="286" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">100% (+66.67pp)</text>
+  <text x="32" y="316" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Paired p50: tokens +2.63% · critical path +17.88%</text>
 </svg>

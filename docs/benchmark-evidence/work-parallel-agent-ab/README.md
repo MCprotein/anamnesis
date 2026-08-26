@@ -1,22 +1,23 @@
 # Harness-orchestrated parallel-agent Work A/B
 
-- Generated: 2026-08-26T10:27:05.606Z
+- Generated: 2026-08-26T11:52:00.815Z
 - Model: `gpt-5.6-luna` (reasoning effort: high)
 - Pairs per condition: 3
-- Topology: leader plan → two concurrent children → reviewer → leader integration
+- Topology: leader plan → two concurrent children → authoritative reviewer repair → leader integration
 - Planned/actual invocations: 30/30
 - Harness validity: **PASS**
-- Product contract: **FAIL**
+- Directional comparison: **PASS_DIRECTIONAL**
+- Enabled absolute-quality gate: **FAIL** (2/3 exact reviewed pipelines)
 
 ![Parallel-agent gpt-5.6-luna diagnostic](work-parallel-agent-ab-summary.svg)
 
-| Condition | Product passes | Critical path/run | Agent elapsed/run | Child overlap/run | Tokens/run |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Work disabled | 0/3 | 44795.83 ms | 57797.9 ms | 13002.48 ms | 169260 |
-| Work enabled | 2/3 | 46310.68 ms | 60815.44 ms | 14505.03 ms | 168927 |
+| Condition | Exact reviewed pipelines | Child accuracy | Reviewer accuracy | Final accuracy | Critical path/run | Tokens/run |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Work disabled | 1/3 | 33.33% | 33.33% | 33.33% | 66479.37 ms | 229987.33 |
+| Work enabled | 2/3 | 100% | 100% | 100% | 84846.55 ms | 239106 |
 
-Descriptive paired-pilot delta with Work: **-0.2% tokens**, **3.38% critical-path time**. Work improved complete-pipeline success from **0/3** to **2/3**, but this pilot does not establish a token or latency win.
+Primary paired comparison: enabled won **2/3**, tied **1/3**, and lost **0/3** on final exact-requirement accuracy; median delta was **+24 requirements**. Paired cost deltas were **+2.63% tokens** (MAD 3.02pp) and **+17.88% critical-path time** (MAD 16.29pp). Cost dimensions are reported separately and do not determine the accuracy verdict.
 
 ## Claim boundary
 
-This is a 3-pair directional diagnostic over one sanitized equal-information state-reconstruction scenario. The harness launches separate Codex processes and proves that the two child intervals overlap; it does not measure same-session native subagent spawning or general coding productivity. All stage costs are charged, and failed or malformed stages are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.
+This is a 3-pair directional diagnostic over one sanitized equal-information state-reconstruction scenario. `PASS_DIRECTIONAL` requires at least 2 paired accuracy wins, a median gain of at least one exact requirement, and no aggregate duplicate/unexpected-row regression. The harness launches separate Codex processes and proves that the two child intervals overlap; the current Codex CLI does not expose a stable automation contract for same-session native child spawning plus per-child token accounting. This result therefore does not measure native subagent spawning, statistical significance, or general coding productivity. All stage costs and failures are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.
