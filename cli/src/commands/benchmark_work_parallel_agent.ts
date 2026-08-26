@@ -10,7 +10,7 @@ import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkExecutionPacket } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v3";
+	"anamnesis.work_parallel_agent_ab.v4";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
 	"docs/benchmark-evidence/work-parallel-agent-ab";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
@@ -69,6 +69,10 @@ export interface ParallelStageRecord {
 	elapsed_ms: number;
 	start_offset_ms: number;
 	end_offset_ms: number;
+	/** Deterministic prompt/context input-size proxy; not a token estimate. */
+	input_bytes: number;
+	input_bytes_complete: boolean;
+	input_contract_ok?: boolean;
 	tokens: WorkAgentTokenUsage;
 	requirement_accuracy_pct?: number;
 	expected_requirements?: number;
@@ -102,6 +106,7 @@ export interface ParallelPairRun {
 	iteration: number;
 	scenario_id: ParallelScenarioFamily;
 	requirement_count: number;
+	fixture_hash: string;
 	seed: string;
 	order: [ParallelCondition, ParallelCondition];
 	disabled: ParallelConditionRun;
@@ -121,6 +126,7 @@ interface ParallelSummary {
 	children_overlap_ms: number;
 	total_tokens: number;
 	stage_tokens: Record<ParallelStage, number>;
+	stage_input_bytes: Record<ParallelStage, number>;
 }
 
 export interface ParallelBenchmarkResult {
@@ -135,7 +141,7 @@ export interface ParallelBenchmarkResult {
 	attempts_before_this_sha: number;
 	scenario_families: ParallelScenarioFamily[];
 	topology: "harness-orchestrated-two-child-reviewer-leader";
-	scoring_version: "parallel-requirement-score.v3";
+	scoring_version: "parallel-requirement-score.v4";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -155,6 +161,10 @@ export interface ParallelBenchmarkResult {
 			total_tokens_pct_p50: number;
 			total_tokens_pct_mad: number;
 			total_tokens_pct_upper_90: number;
+			combined_child_tokens_pct_p50: number;
+			combined_child_tokens_pct_upper_90: number;
+			reviewer_tokens_pct_p50: number;
+			reviewer_tokens_pct_upper_90: number;
 			critical_path_pct_p50: number;
 			critical_path_pct_mad: number;
 			critical_path_pct_upper_90: number;
@@ -184,6 +194,7 @@ export interface ParallelBenchmarkResult {
 		sign_test_p_value: number;
 		accuracy_gate: boolean;
 		critical_quality_gate: boolean;
+		stage_cost_gate: boolean;
 		cost_gate: boolean;
 		latency_gate: boolean;
 	};
@@ -304,8 +315,11 @@ export async function workParallelAgentBenchmark(
 	if (frozenProtocol && options.requirements !== undefined) {
 		throw new Error("requirements cannot override a frozen benchmark protocol");
 	}
-	if (protocol === "final" && options.runner !== undefined) {
-		throw new Error("final protocol requires the real Codex runner");
+	if (
+		(protocol === "shadow" || protocol === "final") &&
+		options.runner !== undefined
+	) {
+		throw new Error(`${protocol} protocol requires the real Codex runner`);
 	}
 	const runs =
 		protocol === "final"
@@ -328,11 +342,11 @@ export async function workParallelAgentBenchmark(
 	const requirements = options.requirements ?? defaultRequirements();
 	const reproducibility = collectReproducibility(projectRoot);
 	if (
-		protocol === "final" &&
+		(protocol === "shadow" || protocol === "final") &&
 		options.implementationSha !== undefined &&
 		options.implementationSha !== reproducibility.git_sha
 	) {
-		throw new Error("final implementation SHA must match HEAD");
+		throw new Error(`${protocol} implementation SHA must match HEAD`);
 	}
 	const finalGuard = prepareFinalProtocol(
 		projectRoot,
@@ -347,17 +361,25 @@ export async function workParallelAgentBenchmark(
 		topology: TOPOLOGY,
 		stages: STAGES,
 		reasoning_effort: REASONING_EFFORT,
-		scoring_version: "parallel-requirement-score.v3",
+		scoring_version: "parallel-requirement-score.v4",
 		families: scenarioFamilies,
 		final_pairs_per_family: 3,
 		accuracy: { mean_delta_points: 5, one_sided_p: 0.05, wins: 6, family_floor: -2 },
 		quality: { exact_overall: "8/9", exact_per_family: "2/3", final_defects: 0 },
 		tokens: { aggregate_pct: 5, median_pct: 5, bootstrap_upper_90_pct: 10 },
+		stage_tokens: {
+			combined_children: { median_pct: 0, bootstrap_upper_90_pct: 5 },
+			reviewer: { median_pct: 0, bootstrap_upper_90_pct: 5 },
+		},
 		latency: { median_pct: 10, bootstrap_upper_90_pct: 20 },
 		reviewer_schema: REVIEW_SCHEMA,
 	});
 	const fixtureHash = digest(
-		scenarioFamilies.map((family) => buildScenarioFixture(requirements, family)),
+		scenarioFamilies.flatMap((family) =>
+			Array.from({ length: runs }, (_, index) =>
+				buildScenarioFixture(requirements, family, frozenProtocol ? index + 1 : 0),
+			),
+		),
 	);
 	const plannedInitialInvocations =
 		runs * scenarioFamilies.length * 2 * STAGES.length;
@@ -374,7 +396,11 @@ export async function workParallelAgentBenchmark(
 			for (let iteration = 1; iteration <= runs; iteration += 1) {
 				const pairOrdinal =
 					scenarioFamilies.indexOf(scenario_id) * runs + iteration;
-				const scenario = buildScenarioFixture(requirements, scenario_id);
+				const scenario = buildScenarioFixture(
+					requirements,
+					scenario_id,
+					frozenProtocol ? iteration : 0,
+				);
 				const scenarioRequirements = scenario.requirements;
 				const order: [ParallelCondition, ParallelCondition] =
 					pairOrdinal % 2 === 1
@@ -396,7 +422,7 @@ export async function workParallelAgentBenchmark(
 							: `case-${iteration}-${digest({ scenario_id, condition }).slice(0, 12)}`,
 					);
 					fs.mkdirSync(cwd);
-					const rendered =
+					const rendered: { context: string; factHash: string; childPackets?: string[] } =
 						condition === "enabled"
 							? materializeWorkContext(cwd, scenarioRequirements)
 							: {
@@ -404,6 +430,16 @@ export async function workParallelAgentBenchmark(
 									factHash: digest(scenarioRequirements),
 								};
 					fs.writeFileSync(path.join(cwd, "CONTEXT.md"), rendered.context);
+					if (condition === "enabled") {
+						fs.writeFileSync(
+			path.join(cwd, "CHILD_A.md"),
+			rendered.childPackets![0]!,
+						);
+						fs.writeFileSync(
+							path.join(cwd, "CHILD_B.md"),
+			rendered.childPackets![1]!,
+						);
+					}
 					fixtures[condition] = { cwd, factHash: rendered.factHash };
 				}
 				const pairFactsEqual =
@@ -436,6 +472,7 @@ export async function workParallelAgentBenchmark(
 					iteration,
 					scenario_id,
 					requirement_count: scenarioRequirements.length,
+					fixture_hash: digest(scenario),
 					seed: digest({
 					harness: harnessHash,
 						implementation:
@@ -464,6 +501,18 @@ export async function workParallelAgentBenchmark(
 	const pairedCriticalPathDeltas = pairs.map((pair) =>
 		percent(pair.disabled.critical_path_ms, pair.enabled.critical_path_ms),
 	);
+	const pairedCombinedChildTokenDeltas = pairs.map((pair) =>
+		percent(
+			stageTokens(pair.disabled, ["child-a", "child-b"]),
+			stageTokens(pair.enabled, ["child-a", "child-b"]),
+		),
+	);
+	const pairedReviewerTokenDeltas = pairs.map((pair) =>
+		percent(
+			stageTokens(pair.disabled, ["reviewer"]),
+			stageTokens(pair.enabled, ["reviewer"]),
+		),
+	);
 	const checks = {
 		equal_authoritative_facts: equalAuthoritativeFacts,
 		exactly_five_stages: allRuns.every(
@@ -481,7 +530,25 @@ export async function workParallelAgentBenchmark(
 					0,
 				) === run.tokens.total_tokens,
 		),
+		full_input_byte_accounting: allRuns.every((run) =>
+			run.stages.every((stage) => stage.input_bytes_complete),
+		),
 		children_overlapped: allRuns.every((run) => run.children_overlap_ms > 0),
+		leader_plan_exact: allRuns.every(
+			(run) =>
+				run.stages.find((stage) => stage.stage === "leader-plan")
+					?.output_correct === true,
+		),
+		enabled_child_packets_exact: pairs.every((pair) =>
+			pair.enabled.stages
+				.filter(
+					(stage) => stage.stage === "child-a" || stage.stage === "child-b",
+				)
+				.every((stage) => stage.input_contract_ok === true),
+		),
+		unique_pair_fixtures:
+			!frozenProtocol ||
+			new Set(pairs.map((pair) => pair.fixture_hash)).size === pairs.length,
 		reviewer_after_children: allRuns.every(
 			(run) => run.reviewer_started_after_children,
 		),
@@ -491,6 +558,18 @@ export async function workParallelAgentBenchmark(
 		condition_order_alternated: pairs.every(
 			(pair, index) =>
 				pair.order[0] === (index % 2 === 0 ? "disabled" : "enabled"),
+		),
+		enabled_child_inputs_shrink: !frozenProtocol || pairs.every((pair) =>
+			pair.enabled.stages
+				.filter((stage) => stage.stage === "child-a" || stage.stage === "child-b")
+				.reduce((total, stage) => total + stage.input_bytes, 0) <
+			pair.disabled.stages
+				.filter((stage) => stage.stage === "child-a" || stage.stage === "child-b")
+				.reduce((total, stage) => total + stage.input_bytes, 0),
+		),
+		enabled_reviewer_input_shrinks: !frozenProtocol || pairs.every((pair) =>
+			(pair.enabled.stages.find((stage) => stage.stage === "reviewer")?.input_bytes ?? 0) <
+			(pair.disabled.stages.find((stage) => stage.stage === "reviewer")?.input_bytes ?? 0),
 		),
 		scenario_contract_frozen:
 			protocol === undefined ||
@@ -605,13 +684,31 @@ export async function workParallelAgentBenchmark(
 	const tokenUpper90 = stratifiedBootstrapUpper90(pairs, (pair) =>
 		percent(pair.disabled.tokens.total_tokens, pair.enabled.tokens.total_tokens),
 	);
+	const combinedChildTokenUpper90 = stratifiedBootstrapUpper90(pairs, (pair) =>
+		percent(
+			stageTokens(pair.disabled, ["child-a", "child-b"]),
+			stageTokens(pair.enabled, ["child-a", "child-b"]),
+		),
+	);
+	const reviewerTokenUpper90 = stratifiedBootstrapUpper90(pairs, (pair) =>
+		percent(
+			stageTokens(pair.disabled, ["reviewer"]),
+			stageTokens(pair.enabled, ["reviewer"]),
+		),
+	);
 	const latencyUpper90 = stratifiedBootstrapUpper90(pairs, (pair) =>
 		percent(pair.disabled.critical_path_ms, pair.enabled.critical_path_ms),
 	);
+	const stageCostGate =
+		median(pairedCombinedChildTokenDeltas) <= 0 &&
+		combinedChildTokenUpper90 <= 5 &&
+		median(pairedReviewerTokenDeltas) <= 0 &&
+		reviewerTokenUpper90 <= 5;
 	const costGate =
 		percent(disabled.total_tokens, enabled.total_tokens) <= 5 &&
 		median(pairedTokenDeltas) <= 5 &&
-		tokenUpper90 <= 10;
+		tokenUpper90 <= 10 &&
+		stageCostGate;
 	const latencyGate =
 		median(pairedCriticalPathDeltas) <= 10 && latencyUpper90 <= 20;
 	const efficiencyGate =
@@ -657,7 +754,7 @@ export async function workParallelAgentBenchmark(
 		protocol: protocol ?? "legacy",
 		scenario_families: scenarioFamilies,
 		runs_per_condition: runs,
-		scoring_version: "parallel-requirement-score.v3",
+		scoring_version: "parallel-requirement-score.v4",
 		planned_initial_invocations: plannedInitialInvocations,
 		actual_invocations: allRuns.reduce(
 			(total, run) => total + run.stages.length,
@@ -681,6 +778,12 @@ export async function workParallelAgentBenchmark(
 				total_tokens_pct_p50: median(pairedTokenDeltas),
 				total_tokens_pct_mad: medianAbsoluteDeviation(pairedTokenDeltas),
 				total_tokens_pct_upper_90: tokenUpper90,
+				combined_child_tokens_pct_p50: median(
+					pairedCombinedChildTokenDeltas,
+				),
+				combined_child_tokens_pct_upper_90: combinedChildTokenUpper90,
+				reviewer_tokens_pct_p50: median(pairedReviewerTokenDeltas),
+				reviewer_tokens_pct_upper_90: reviewerTokenUpper90,
 				critical_path_pct_p50: median(pairedCriticalPathDeltas),
 				critical_path_pct_mad: medianAbsoluteDeviation(
 					pairedCriticalPathDeltas,
@@ -707,6 +810,7 @@ export async function workParallelAgentBenchmark(
 			sign_test_p_value: signTestPValue,
 			accuracy_gate: accuracyGate,
 			critical_quality_gate: criticalQualityGate,
+			stage_cost_gate: stageCostGate,
 			cost_gate: costGate,
 			latency_gate: latencyGate,
 		},
@@ -719,7 +823,10 @@ export async function workParallelAgentBenchmark(
 		artifacts: {},
 		markdown: "",
 	};
-	result.markdown = renderParallelBenchmarkMarkdown(result);
+	result.markdown = addStageCostRows(
+		renderParallelBenchmarkMarkdown(result),
+		result,
+	);
 	if (options.write) {
 		result.artifacts = publishParallelArtifacts(
 			result,
@@ -752,6 +859,7 @@ async function executeCondition(input: {
 	const invoke = async (
 		stage: ParallelStage,
 		prompt: string,
+		inputPaths: string[] = [],
 	): Promise<{
 		record: ParallelStageRecord;
 		data: Record<string, unknown>;
@@ -767,6 +875,7 @@ async function executeCondition(input: {
 			});
 		} catch {
 			const ended = performance.now();
+			const measuredInput = measureInputBytes(prompt, inputPaths);
 			const record: ParallelStageRecord = {
 				stage,
 				execution_ok: false,
@@ -775,6 +884,8 @@ async function executeCondition(input: {
 				elapsed_ms: round(ended - started),
 				start_offset_ms: round(started - conditionStart),
 				end_offset_ms: round(ended - conditionStart),
+				input_bytes: measuredInput.bytes,
+				input_bytes_complete: measuredInput.complete,
 				tokens: { ...EMPTY_USAGE },
 				error: "runner-threw",
 			};
@@ -783,6 +894,7 @@ async function executeCondition(input: {
 		}
 		const ended = performance.now();
 		const parsed = parseStageJsonl(response.stdout);
+		const measuredInput = measureInputBytes(prompt, inputPaths);
 		const record: ParallelStageRecord = {
 			stage,
 			execution_ok: response.status === 0 && parsed.data !== undefined,
@@ -791,6 +903,8 @@ async function executeCondition(input: {
 			elapsed_ms: round(response.elapsedMs),
 			start_offset_ms: round(started - conditionStart),
 			end_offset_ms: round(ended - conditionStart),
+			input_bytes: measuredInput.bytes,
+			input_bytes_complete: measuredInput.complete,
 			tokens: parsed.usage ?? { ...EMPTY_USAGE },
 			...(response.status === 0 && parsed.data !== undefined
 				? {}
@@ -802,36 +916,65 @@ async function executeCondition(input: {
 	const plan = await invoke(
 		"leader-plan",
 		`Scenario ${input.scenarioId}; replicate seed ${input.seed}. Read CONTEXT.md. Partition all authoritative requirement IDs in source order into two contiguous groups of ${expectedA.length} and ${expectedB.length}. Return only child_a and child_b arrays.`,
+		[path.join(input.cwd, "CONTEXT.md")],
 	);
-	const planA = stringArray(plan.data.child_a) ?? expectedA;
-	const planB = stringArray(plan.data.child_b) ?? expectedB;
+	const planExact =
+		equalStringArrays(plan.data.child_a, expectedA) &&
+		equalStringArrays(plan.data.child_b, expectedB);
+	const planA = planExact ? (plan.data.child_a as string[]) : expectedA;
+	const planB = planExact ? (plan.data.child_b as string[]) : expectedB;
+	const childAInputExact =
+		input.condition !== "enabled" ||
+		workPacketSubsetExact(
+			input.cwd,
+			"CHILD_A.md",
+			input.requirements.slice(0, half),
+		);
+	const childBInputExact =
+		input.condition !== "enabled" ||
+		workPacketSubsetExact(
+			input.cwd,
+			"CHILD_B.md",
+			input.requirements.slice(half),
+		);
 	const [childA, childB] = await Promise.all([
 		invoke(
 			"child-a",
-			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. Read CONTEXT.md. Return exact id, status, and summary for only these assigned requirements, in this order: ${planA.join(", ")}.`,
+			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. ${input.condition === "enabled" ? "Read CHILD_A.md, the assigned Work execution packet subset." : "Read CONTEXT.md, the authoritative context."} Return exact id, status, and summary for only these assigned requirements, in this order: ${planA.join(", ")}.`,
+			input.condition === "enabled"
+				? [path.join(input.cwd, "CHILD_A.md")]
+				: [path.join(input.cwd, "CONTEXT.md")],
 		),
 		invoke(
 			"child-b",
-			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. Read CONTEXT.md. Return exact id, status, and summary for only these assigned requirements, in this order: ${planB.join(", ")}.`,
+			`Scenario ${input.scenarioId}; replicate seed ${input.seed}. ${input.condition === "enabled" ? "Read CHILD_B.md, the assigned Work execution packet subset." : "Read CONTEXT.md, the authoritative context."} Return exact id, status, and summary for only these assigned requirements, in this order: ${planB.join(", ")}.`,
+			input.condition === "enabled"
+				? [path.join(input.cwd, "CHILD_B.md")]
+				: [path.join(input.cwd, "CONTEXT.md")],
 		),
 	]);
+	childA.record.input_contract_ok = childAInputExact;
+	childB.record.input_contract_ok = childBInputExact;
 	const reviewedInputs = perturbReviewInputs(
 		input.scenarioId,
 		childA.data.requirements,
 		childB.data.requirements,
 	);
+	const reviewPacketPath = path.join(input.cwd, "CHILD_REPORTS.json");
+	fs.writeFileSync(
+		reviewPacketPath,
+		`${renderCompactReviewPacket(reviewedInputs.childA, reviewedInputs.childB)}\n`,
+	);
 	const reviewer = await invoke(
 		"reviewer",
-		`Read CONTEXT.md as authoritative truth, then review both child reports. Child A is assigned: ${expectedA.join(", ")}. Child B is assigned: ${expectedB.join(", ")}. Child A requirements: ${JSON.stringify(reviewedInputs.childA)} Child B requirements: ${JSON.stringify(reviewedInputs.childB)}. Return corrected exact requirements in source order plus the exact issue-ID arrays, malformed_rows count, order_ok, and verdict=accept only when every issue array is empty, malformed_rows is zero, and order is correct; otherwise verdict=repair.`,
+		`Read ${input.condition === "enabled" ? "CONTEXT.md" : "CONTEXT.md (legacy context)"} as authoritative truth and CHILD_REPORTS.json as compact [id,status,summary] child tuples. Child A is assigned: ${expectedA.join(", ")}. Child B is assigned: ${expectedB.join(", ")}. Return corrected exact requirements in source order plus the exact issue-ID arrays, malformed_rows count, order_ok, and verdict=accept only when every issue array is empty, malformed_rows is zero, and order is correct; otherwise verdict=repair.`,
+		[path.join(input.cwd, "CONTEXT.md"), reviewPacketPath],
 	);
 	const final = await invoke(
 		"leader-integrate",
-		`Read CONTEXT.md and use the authoritative reviewer result: ${JSON.stringify(reviewer.data)}. Return every requirement exactly once in expected order: ${ids.join(", ")}.`,
+		`Use only the authoritative reviewer requirements (do not reread CONTEXT.md and do not use reviewer issue metadata): ${JSON.stringify(reviewer.data.requirements ?? [])}. Return every requirement exactly once in expected order: ${ids.join(", ")}.`,
 	);
-	plan.record.output_correct =
-		plan.record.execution_ok &&
-		equalStringArrays(plan.data.child_a, expectedA) &&
-		equalStringArrays(plan.data.child_b, expectedB);
+	plan.record.output_correct = plan.record.execution_ok && planExact;
 	const expectedChildA = input.requirements.slice(0, half);
 	const expectedChildB = input.requirements.slice(half);
 	const childAScore = scoreRequirements(
@@ -992,7 +1135,7 @@ function parseStageJsonl(stdout: string): {
 function materializeWorkContext(
 	projectRoot: string,
 	requirements: ParallelRequirement[],
-): { context: string; factHash: string } {
+): { context: string; factHash: string; childPackets: string[] } {
 	fs.writeFileSync(
 		path.join(projectRoot, "Agentfile"),
 		YAML.stringify({
@@ -1082,8 +1225,47 @@ function materializeWorkContext(
 			brief.briefing,
 			{ max_bytes: 50_000 },
 		)}\n`,
+		childPackets: [
+			renderWorkExecutionPacket(brief.briefing, {
+				requirement_ids: requirements.slice(0, Math.ceil(requirements.length / 2)).map((requirement) => requirement.id),
+				max_bytes: 50_000,
+			}),
+			renderWorkExecutionPacket(brief.briefing, {
+				requirement_ids: requirements.slice(Math.ceil(requirements.length / 2)).map((requirement) => requirement.id),
+				max_bytes: 50_000,
+			}),
+		],
 		factHash: digest(briefingFacts),
 	};
+}
+
+function renderCompactReviewPacket(childA: unknown, childB: unknown): string {
+	const encode = (value: unknown): unknown[] => {
+		if (!Array.isArray(value)) return [["$malformed"]];
+		return value.map((row) => {
+			if (!row || typeof row !== "object" || Array.isArray(row)) {
+				return ["$malformed"];
+			}
+			const record = row as Record<string, unknown>;
+			return [record.id ?? null, record.status ?? null, record.summary ?? null];
+		});
+	};
+	return JSON.stringify({ child_a: encode(childA), child_b: encode(childB) });
+}
+
+function measureInputBytes(
+	prompt: string,
+	inputPaths: string[],
+): { bytes: number; complete: boolean } {
+	let bytes = Buffer.byteLength(prompt, "utf8");
+	for (const file of inputPaths) {
+		try {
+			bytes += fs.statSync(file).size;
+		} catch {
+			return { bytes, complete: false };
+		}
+	}
+	return { bytes, complete: true };
 }
 
 function renderLegacyContext(requirements: ParallelRequirement[]): string {
@@ -1111,18 +1293,27 @@ interface ParallelScenarioFixture {
 function buildScenarioFixture(
 	base: ParallelRequirement[],
 	family: ParallelScenarioFamily,
+	iteration = 1,
 ): ParallelScenarioFixture {
+	const variant = iteration > 0 ? ` (fixture variant ${iteration})` : "";
 	if (family === "clean-partition") {
-		return { requirements: base, legacyContext: renderLegacyContext(base) };
+		const requirements = base.map((requirement, index) => ({
+			...requirement,
+			summary: `${requirement.summary}${variant}${iteration > 0 ? ` (lane ${index % 3})` : ""}`,
+		}));
+		return { requirements, legacyContext: renderLegacyContext(requirements) };
 	}
 	const count = family === "stale-cross-session-conflict" ? 32 : 48;
 	const requirements = Array.from({ length: count }, (_, index) => ({
 		id: `REQ-${String(index + 1).padStart(3, "0")}`,
-		status: index % 5 === 0 ? ("pending" as const) : ("verified" as const),
+		status:
+			(index + iteration) % 5 === 0
+				? ("pending" as const)
+				: ("verified" as const),
 		summary:
 			family === "stale-cross-session-conflict"
-				? `current cross-session requirement ${index + 1}`
-				: `review recovery ${index % 4 === 0 ? "blocked dependency" : "required gate"} ${index + 1}`,
+				? `current cross-session requirement ${index + 1}${variant}${iteration > 0 ? ` (delta ${index % 4})` : ""}`
+				: `review recovery ${index % 4 === 0 ? "blocked dependency" : "required gate"} ${index + 1}${variant}${iteration > 0 ? ` (gate ${index % 5})` : ""}`,
 	}));
 	if (family === "review-gate-recovery") {
 		return { requirements, legacyContext: renderLegacyContext(requirements) };
@@ -1135,9 +1326,9 @@ function buildScenarioFixture(
 		.concat(removed.map((id) => `Requirement ${id}: obsolete requirement. Current status: pending.`));
 	const secondSession = requirements.slice(0, 8).map(
 		(requirement, index) =>
-			`Update ${requirement.id}: status verified; summary ${index < 4 ? JSON.stringify(requirement.summary) : "unchanged"}.`,
+			`Update ${requirement.id}: status ${requirement.status}; summary ${index < 4 ? JSON.stringify(requirement.summary) : "unchanged"}.`,
 	);
-	const legacyContext = `# Legacy chronological handoffs\n\nSession 1 (older):\n${firstSession.join("\n")}\n\nSession 2 (newer updates):\n${secondSession.join("\n")}\nRemoved after session 2: ${removed.join(", ")}\n\nSession 3 (authoritative current projection):\n${renderLegacyContext(requirements)}`;
+	const legacyContext = `# Legacy chronological handoffs\n\nSession 1 (older):\n${firstSession.join("\n")}\n\nSession 2 (newer updates):\n${secondSession.join("\n")}\nRemoved after session 2: ${removed.join(", ")}\n\nReconstruct the current projection from the chronological deltas above; no final projection is provided.`;
 	return { requirements, legacyContext };
 }
 
@@ -1431,6 +1622,21 @@ function summarize(runs: ParallelConditionRun[]): ParallelSummary {
 			),
 		]),
 	) as Record<ParallelStage, number>;
+	const stage_input_bytes = Object.fromEntries(
+		STAGES.map((stage) => [
+			stage,
+			round(
+				average(
+					runs
+					.flatMap((run) =>
+						run.stages
+							.filter((record) => record.stage === stage)
+							.map((record) => record.input_bytes),
+					),
+				),
+			),
+		]),
+	) as Record<ParallelStage, number>;
 	return {
 		runs: runs.length,
 		complete_passes: runs.filter((run) => run.product_pass).length,
@@ -1459,7 +1665,20 @@ function summarize(runs: ParallelConditionRun[]): ParallelSummary {
 		),
 		total_tokens: round(average(runs.map((run) => run.tokens.total_tokens))),
 		stage_tokens,
+		stage_input_bytes,
 	};
+}
+
+function stageTokens(
+	run: ParallelConditionRun,
+	stages: ParallelStage[],
+): number {
+	const selected = new Set(stages);
+	return run.stages.reduce(
+		(total, stage) =>
+			total + (selected.has(stage.stage) ? stage.tokens.total_tokens : 0),
+		0,
+	);
 }
 
 export function renderParallelBenchmarkMarkdown(
@@ -1473,6 +1692,17 @@ export function renderParallelBenchmarkMarkdown(
 		})
 		.join("\n");
 	return `# Harness-orchestrated parallel-agent Work A/B\n\n- Generated: ${result.generated_at}\n- Protocol: \`${result.protocol}\`${result.claim_eligible ? " (claim eligible)" : " (diagnostic only)"}\n- Model: \`${result.model}\` (reasoning effort: ${result.reasoning_effort})\n- Implementation: \`${result.implementation_git_sha}\`\n- Prior final attempts: ${result.attempts_before_this_sha}\n- Scenarios: ${result.scenario_families.join(", ")}\n- Pairs: ${result.comparison.total_pairs}\n- Planned/actual invocations: ${result.planned_initial_invocations}/${result.actual_invocations}\n- Harness validity: **${result.harness_validity.ok ? "PASS" : "FAIL"}**\n- Product verdict: **${result.comparison.verdict}**\n- Enabled absolute-quality gate: **${result.quality.enabled_ready ? "PASS" : "FAIL"}** (${result.quality.enabled_passes}/${result.quality.total_per_condition})\n\n![Parallel-agent ${escapeMarkdownAlt(result.model)} benchmark](work-parallel-agent-ab-summary.svg)\n\n| Condition | Exact reviewed pipelines | Child accuracy | Reviewer accuracy | Final accuracy | Critical path/run | Tokens/run |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n| Work disabled | ${result.quality.disabled_passes}/${result.quality.total_per_condition} | ${result.summary.disabled.child_accuracy_pct}% | ${result.summary.disabled.reviewer_accuracy_pct}% | ${result.summary.disabled.final_accuracy_pct}% | ${result.summary.disabled.critical_path_ms} ms | ${result.summary.disabled.total_tokens} |\n| Work enabled | ${result.quality.enabled_passes}/${result.quality.total_per_condition} | ${result.summary.enabled.child_accuracy_pct}% | ${result.summary.enabled.reviewer_accuracy_pct}% | ${result.summary.enabled.final_accuracy_pct}% | ${result.summary.enabled.critical_path_ms} ms | ${result.summary.enabled.total_tokens} |\n\n| Scenario family | Pairs | Disabled accuracy | Enabled accuracy | Delta | Reviewer exact | Final exact |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n${familyRows}\n\nEnabled won **${result.comparison.enabled_pair_wins}/${result.comparison.total_pairs}**, tied **${result.comparison.paired_ties}/${result.comparison.total_pairs}**, and lost **${result.comparison.enabled_pair_losses}/${result.comparison.total_pairs}**. Mean final-accuracy delta: **${formatSignedNumber(result.comparison.delta_points)}pp**; exact one-sided sign-test p-value: **${result.comparison.sign_test_p_value}**.\n\n| Preregistered gate | Result |\n| --- | --- |\n| Harness validity | ${result.harness_validity.ok ? "PASS" : "FAIL"} |\n| Accuracy and per-family floor | ${result.comparison.accuracy_gate ? "PASS" : "FAIL"} |\n| Absolute quality | ${result.comparison.critical_quality_gate ? "PASS" : "FAIL"} |\n| Tokens (aggregate ≤+5%, p50 ≤+5%, bootstrap upper ≤+10%) | ${result.comparison.cost_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.total_tokens_pct_upper_90)} |\n| Critical path (p50 ≤+10%, bootstrap upper ≤+20%) | ${result.comparison.latency_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.critical_path_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.critical_path_pct_upper_90)} |\n\n## Claim boundary\n\n${finalProtocol ? "This is the single held-out claim-eligible attempt for the recorded implementation commit. A pass means only that the preregistered three-scenario contract passed; it is not a general productivity or model-independent claim." : "Validate and shadow protocols are never claim eligible. Their verdict remains INCONCLUSIVE even when harness and quality checks pass."} The harness launches separate Codex processes and proves child interval overlap; it does not measure same-session native subagent spawning. All stage costs and failures are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.\n`;
+}
+
+function addStageCostRows(
+	markdown: string,
+	result: Pick<ParallelBenchmarkResult, "summary" | "comparison">,
+): string {
+	const stageRows = `| Combined child tokens (p50 ≤0%, bootstrap upper ≤+5%) | p50 ${formatSignedPercent(result.summary.paired.combined_child_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.combined_child_tokens_pct_upper_90)} |\n| Reviewer tokens (p50 ≤0%, bootstrap upper ≤+5%) | p50 ${formatSignedPercent(result.summary.paired.reviewer_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.reviewer_tokens_pct_upper_90)} |\n| Stage token gate | ${result.comparison.stage_cost_gate ? "PASS" : "FAIL"} |`;
+	return markdown.replace(
+		"\n| Critical path (",
+		`\n${stageRows}\n| Critical path (`,
+	);
 }
 
 export function publishParallelArtifacts(
@@ -1604,10 +1834,10 @@ function renderSummarySvg(
 		(340 * result.summary.enabled.final_accuracy_pct) / 100,
 	);
 	const model = escapeXml(result.model);
-	return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="330" viewBox="0 0 760 330" role="img" aria-labelledby="title desc">
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="348" viewBox="0 0 760 348" role="img" aria-labelledby="title desc">
   <title id="title">Parallel-agent ${model} Work A/B benchmark</title>
   <desc id="desc">Final requirement accuracy changed from ${result.summary.disabled.final_accuracy_pct} percent to ${result.summary.enabled.final_accuracy_pct} percent; product verdict ${result.comparison.verdict}.</desc>
-  <rect width="760" height="330" rx="16" fill="#0f172a"/>
+	  <rect width="760" height="348" rx="16" fill="#0f172a"/>
   <text x="32" y="42" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Parallel-agent ${model} benchmark (${result.comparison.total_pairs} pairs)</text>
   <text x="32" y="72" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Harness ${result.harness_validity.ok ? "PASS" : "FAIL"} · ${result.comparison.verdict} · enabled quality ${result.quality.enabled_ready ? "PASS" : "FAIL"}</text>
   <text x="32" y="112" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Average total tokens / pipeline</text>
@@ -1624,7 +1854,8 @@ function renderSummarySvg(
   <text x="32" y="286" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">Enabled</text>
   <rect x="128" y="270" width="${enabledAccuracyWidth}" height="22" rx="5" fill="#22c55e"/>
   <text x="480" y="286" fill="#f8fafc" font-family="ui-monospace,monospace" font-size="14">${result.summary.enabled.final_accuracy_pct}% (${formatSignedNumber(result.comparison.delta_points)}pp)</text>
-  <text x="32" y="316" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Paired p50: tokens ${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)} · critical path ${formatSignedPercent(result.summary.paired.critical_path_pct_p50)}</text>
+	  <text x="32" y="316" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Paired p50: total ${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)} · children ${formatSignedPercent(result.summary.paired.combined_child_tokens_pct_p50)} · reviewer ${formatSignedPercent(result.summary.paired.reviewer_tokens_pct_p50)}</text>
+	  <text x="32" y="334" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Stage token gate ${result.comparison.stage_cost_gate ? "PASS" : "FAIL"} · critical path ${formatSignedPercent(result.summary.paired.critical_path_pct_p50)}</text>
 </svg>\n`;
 }
 
@@ -1818,7 +2049,13 @@ function assertNoSymlinkPath(root: string, destination: string): void {
 /** Local, deterministic runner used by `validate`; it never starts Codex. */
 const validationRunner: ParallelRunner = (request) => {
 	const stage = request.prompt.match(/\[parallel-stage:([^\]]+)/u)?.[1];
-	const requirements = requirementsFromContext(request.cwd);
+	const contextFile =
+		stage === "child-a" && request.prompt.includes("CHILD_A.md")
+			? "CHILD_A.md"
+			: stage === "child-b" && request.prompt.includes("CHILD_B.md")
+				? "CHILD_B.md"
+				: "CONTEXT.md";
+	const requirements = requirementsFromContext(request.cwd, contextFile);
 	const ids = requirements.map((requirement) => requirement.id);
 	const assignedIds = request.prompt.match(/assigned requirements, in this order: ([^.]+)\./u)?.[1]
 		?.split(/,\s*/u)
@@ -1831,11 +2068,16 @@ const validationRunner: ParallelRunner = (request) => {
 		const half = Math.ceil(ids.length / 2);
 		data = { child_a: ids.slice(0, half), child_b: ids.slice(half) };
 	} else if (stage === "reviewer") {
-		const match = request.prompt.match(
-			/Child A requirements: (\[[\s\S]*?\]) Child B requirements: (\[[\s\S]*?\])\. Return/u,
-		);
-		const childA = match ? (JSON.parse(match[1]!) as unknown) : [];
-		const childB = match ? (JSON.parse(match[2]!) as unknown) : [];
+		let packet: Record<string, unknown> = {};
+		try {
+			packet = JSON.parse(
+				fs.readFileSync(path.join(request.cwd, "CHILD_REPORTS.json"), "utf8"),
+			) as Record<string, unknown>;
+		} catch {
+			packet = {};
+		}
+		const childA = parseCompactRequirementRows(packet.child_a);
+		const childB = parseCompactRequirementRows(packet.child_b);
 		const half = Math.ceil(requirements.length / 2);
 		const issues = analyzeChildReports(
 			childA,
@@ -1872,8 +2114,16 @@ const validationRunner: ParallelRunner = (request) => {
 	);
 };
 
-function requirementsFromContext(cwd: string): ParallelRequirement[] {
-	const context = fs.readFileSync(path.join(cwd, "CONTEXT.md"), "utf8");
+function requirementsFromContext(
+	cwd: string,
+	filename = "CONTEXT.md",
+): ParallelRequirement[] {
+	let context: string;
+	try {
+		context = fs.readFileSync(path.join(cwd, filename), "utf8");
+	} catch {
+		return [];
+	}
 	const jsonStart = context.indexOf("{");
 	if (jsonStart >= 0) {
 		try {
@@ -1891,10 +2141,85 @@ function requirementsFromContext(cwd: string): ParallelRequirement[] {
 		}
 	}
 	const marker = "# Legacy parallel handoff";
+	const chronologicalMarker = "# Legacy chronological handoffs";
+	if (context.includes(chronologicalMarker)) {
+		const body = context.slice(context.indexOf(chronologicalMarker));
+		const current = [...body.matchAll(/^Requirement ([^:]+): (.*)\. Current status: (verified|pending)\.$/gmu)].map(
+			(match) => ({ id: match[1]!, summary: match[2]!, status: match[3]! as ParallelRequirement["status"] }),
+		);
+		for (const update of body.matchAll(/^Update ([^:]+): status (verified|pending); summary (.*)\.$/gmu)) {
+			const target = current.find((requirement) => requirement.id === update[1]);
+			if (target) {
+				target.status = update[2] as ParallelRequirement["status"];
+				const summary = update[3]!;
+				target.summary = summary.startsWith('"') ? JSON.parse(summary) as string : target.summary;
+			}
+		}
+		const removed = body.match(/Removed after session 2: (.+)$/mu)?.[1]?.split(", ") ?? [];
+		return current.filter((requirement) => !removed.includes(requirement.id));
+	}
 	const current = context.slice(Math.max(0, context.lastIndexOf(marker)));
 	return [...current.matchAll(/^Requirement ([^:]+): (.*)\. Current status: (verified|pending)\.$/gmu)].map(
 		(match) => ({ id: match[1]!, summary: match[2]!, status: match[3]! as ParallelRequirement["status"] }),
 	);
+}
+
+function readWorkExecutionPacket(
+	cwd: string,
+	filename: string,
+): Record<string, unknown> | undefined {
+	let context: string;
+	try {
+		context = fs.readFileSync(path.join(cwd, filename), "utf8");
+	} catch {
+		return undefined;
+	}
+	const jsonStart = context.indexOf("{");
+	if (jsonStart < 0) return undefined;
+	try {
+		const parsed = JSON.parse(context.slice(jsonStart)) as unknown;
+		return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function workPacketSubsetExact(
+	cwd: string,
+	filename: string,
+	expected: ParallelRequirement[],
+): boolean {
+	const full = readWorkExecutionPacket(cwd, "CONTEXT.md");
+	const subset = readWorkExecutionPacket(cwd, filename);
+	if (!full || !subset) return false;
+	const sameMetadata = [
+		"schema_version",
+		"work_id",
+		"contract_revision",
+		"contract",
+		"blocker_ids",
+		"required_gates",
+	].every(
+		(key) =>
+			Object.hasOwn(full, key) &&
+			Object.hasOwn(subset, key) &&
+			digest(full[key]) === digest(subset[key]),
+	);
+	return (
+		sameMetadata &&
+		subset.authoritative_completeness === false &&
+		digest(requirementsFromContext(cwd, filename)) === digest(expected)
+	);
+}
+
+function parseCompactRequirementRows(value: unknown): unknown[] {
+	if (!Array.isArray(value)) return [];
+	return value.map((row) => {
+		if (!Array.isArray(row) || row.length !== 3) return null;
+		return { id: row[0], status: row[1], summary: row[2] };
+	});
 }
 
 function outputJsonl(data: Record<string, unknown>): string {
@@ -1990,16 +2315,23 @@ function prepareFinalProtocol(
 	outputPath: string | undefined,
 	gitSha: string,
 ): { attemptsBefore: number } {
-	if (protocol !== "final") return { attemptsBefore: 0 };
-	if (!write) throw new Error("final protocol requires --write to retain every outcome");
-	if (gitSha === "unknown") throw new Error("final protocol requires a Git commit");
+	if (protocol !== "shadow" && protocol !== "final") {
+		return { attemptsBefore: 0 };
+	}
+	if (protocol === "final" && !write) {
+		throw new Error("final protocol requires --write to retain every outcome");
+	}
+	if (gitSha === "unknown") {
+		throw new Error(`${protocol} protocol requires a Git commit`);
+	}
 	const status = spawnSync("git", ["status", "--porcelain"], {
 		cwd: projectRoot,
 		encoding: "utf8",
 	});
 	if (status.status !== 0 || status.stdout.trim() !== "") {
-		throw new Error("final protocol requires a clean worktree");
+		throw new Error(`${protocol} protocol requires a clean worktree`);
 	}
+	if (protocol === "shadow") return { attemptsBefore: 0 };
 	const indexPath = finalAttemptIndexPath(projectRoot, outputPath);
 	fs.mkdirSync(path.dirname(indexPath), { recursive: true });
 	const attemptsBefore = appendFinalAttemptLocked(indexPath, {

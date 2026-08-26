@@ -37,6 +37,7 @@ function runner(
 		overlap?: boolean;
 		repairFinal?: boolean;
 		wrong?: boolean;
+		wrongPlan?: boolean;
 		wrongDisabledIterations?: number[];
 		wrongEnabledIterations?: number[];
 	} = {},
@@ -79,7 +80,9 @@ function runner(
 			summary: `sanitized parallel condition ${ids.indexOf(id) + 1}`,
 		});
 		if (stage === "leader-plan")
-			data = { child_a: ids.slice(0, 2), child_b: ids.slice(2) };
+			data = opts.wrongPlan
+				? { child_a: ids.slice(2), child_b: ids.slice(0, 2) }
+				: { child_a: ids.slice(0, 2), child_b: ids.slice(2) };
 		else if (stage === "child-a")
 			data = {
 				requirements: [
@@ -147,8 +150,131 @@ describe("real parallel-agent benchmark", () => {
 		expect(result.comparison.total_pairs).toBe(9);
 		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		expect(result.summary.paired.total_tokens_pct_upper_90).toBe(0);
+		expect(result.summary.paired.combined_child_tokens_pct_p50).toBe(0);
+		expect(result.summary.paired.combined_child_tokens_pct_upper_90).toBe(0);
+		expect(result.summary.paired.reviewer_tokens_pct_p50).toBe(0);
+		expect(result.summary.paired.reviewer_tokens_pct_upper_90).toBe(0);
+		expect(result.comparison.stage_cost_gate).toBe(true);
+		expect(result.markdown).toContain("Combined child tokens");
+		expect(result.markdown).toContain("Reviewer tokens");
+		expect(result.markdown).toContain("Stage token gate");
+		expect(result.harness_validity.checks.enabled_child_inputs_shrink).toBe(true);
+		expect(result.harness_validity.checks.enabled_reviewer_input_shrinks).toBe(true);
+		expect(result.runs[0]?.enabled.stages.every((stage) => stage.input_bytes > 0)).toBe(true);
+		expect(result.runs[0]?.seed).not.toBe(result.runs[1]?.seed);
+		expect(new Set(result.runs.map((run) => run.fixture_hash)).size).toBe(9);
 		fs.rmSync(root, { recursive: true, force: true });
-	}, 30_000);
+	}, 60_000);
+
+	it("fails closed when the leader plan does not match the frozen child packets", async () => {
+		const root = tempRoot();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: runner({ wrongPlan: true }),
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.leader_plan_exact).toBe(false);
+		expect(result.harness_validity.ok).toBe(false);
+		expect(result.actual_invocations).toBe(30);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("detects a missing enabled child packet before accepting the harness", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const deletingRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			if (
+				request.prompt.includes("[parallel-stage:leader-plan]") &&
+				request.cwd.endsWith("-enabled")
+			) {
+				fs.rmSync(path.join(request.cwd, "CHILD_A.md"), { force: true });
+			}
+			return response;
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: deletingRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.enabled_child_packets_exact).toBe(
+			false,
+		);
+		expect(result.harness_validity.checks.full_input_byte_accounting).toBe(false);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("rejects child packet fact or contract metadata drift", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const tamperingRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			if (
+				request.prompt.includes("[parallel-stage:leader-plan]") &&
+				request.cwd.endsWith("-enabled")
+			) {
+				const packetPath = path.join(request.cwd, "CHILD_A.md");
+				const packet = JSON.parse(fs.readFileSync(packetPath, "utf8")) as {
+					contract: { contract_hash: string };
+					requirements: string[];
+				};
+				packet.contract.contract_hash = "sha256:tampered";
+				packet.requirements[0] = packet.requirements[0]!.replace(
+					"|verified|",
+					"|pending|",
+				);
+				fs.writeFileSync(packetPath, JSON.stringify(packet));
+			}
+			return response;
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: tamperingRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.enabled_child_packets_exact).toBe(
+			false,
+		);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("rejects metadata omitted from both full and child packets", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const deletingRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			if (
+				request.prompt.includes("[parallel-stage:leader-plan]") &&
+				request.cwd.endsWith("-enabled")
+			) {
+				for (const filename of ["CONTEXT.md", "CHILD_A.md", "CHILD_B.md"]) {
+					const packetPath = path.join(request.cwd, filename);
+					const text = fs.readFileSync(packetPath, "utf8");
+					const jsonStart = text.indexOf("{");
+					const packet = JSON.parse(text.slice(jsonStart)) as Record<string, unknown>;
+					delete packet.required_gates;
+					fs.writeFileSync(packetPath, JSON.stringify(packet));
+				}
+			}
+			return response;
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: deletingRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.enabled_child_packets_exact).toBe(
+			false,
+		);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
 
 	it("refuses an unrecorded or uncommitted claim-eligible final run", async () => {
 		const root = tempRoot();
@@ -179,13 +305,39 @@ describe("real parallel-agent benchmark", () => {
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
+	it("requires a committed clean worktree for a paid shadow run", async () => {
+		const root = tempRoot();
+		await expect(
+			workParallelAgentBenchmark({
+				projectRoot: root,
+				protocol: "shadow",
+				runner: runner(),
+			}),
+		).rejects.toThrow(/requires the real Codex runner/iu);
+		await expect(
+			workParallelAgentBenchmark({ projectRoot: root, protocol: "shadow" }),
+		).rejects.toThrow(/requires a Git commit/iu);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
 	it("runs child stages concurrently and aggregates all five stage token costs", async () => {
 		const root = tempRoot();
+		let disabledReviewerPrompt = "";
+		const baseRunner = runner();
+		const observingRunner: ParallelRunner = async (request) => {
+			if (
+				request.cwd.endsWith("-disabled") &&
+				request.prompt.includes("[parallel-stage:reviewer]")
+			) {
+				disabledReviewerPrompt = request.prompt;
+			}
+			return baseRunner(request);
+		};
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
 			runs: 3,
 			model: "test",
-			runner: runner(),
+			runner: observingRunner,
 			requirements: REQUIREMENTS,
 		});
 		expect(result.planned_initial_invocations).toBe(30);
@@ -199,6 +351,9 @@ describe("real parallel-agent benchmark", () => {
 			"disabled",
 		]);
 		expect(result.harness_validity.ok).toBe(true);
+		expect(disabledReviewerPrompt).toContain(
+			"Read CONTEXT.md (legacy context) as authoritative truth",
+		);
 		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		expect(result.quality.enabled_ready).toBe(true);
 		fs.rmSync(root, { recursive: true, force: true });
@@ -395,6 +550,7 @@ describe("real parallel-agent benchmark", () => {
 		);
 		expect(original[1]).toContain("Work A/B benchmark");
 		expect(original[1]).toContain("product verdict INCONCLUSIVE");
+		expect(original[1]).toContain("Stage token gate");
 		expect(original[1]).not.toContain("directional verdict");
 		let renames = 0;
 		expect(() =>

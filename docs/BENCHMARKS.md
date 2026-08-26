@@ -168,6 +168,30 @@ a new frozen contract; the recorded v3 attempt will not be rerun or selected
 away. The product follow-up is to compact reviewer/child inputs and preserve
 review issue-set exactness before spending another held-out run.
 
+### Frozen v4 follow-up contract
+
+The next claim-eligible attempt is a new protocol and implementation commit;
+it does not replace or rerun the v3 failure. V4 uses nine distinct deterministic
+fixtures rather than repeating one fixture per family. The stale-history family
+contains complete chronological facts but no final folded projection, so it
+measures reconstruction rather than a ceiling case. Each enabled child consumes
+an actual `renderWorkExecutionPacket` subset containing only its assigned
+requirements; the reviewer receives a condition-symmetric compact JSON tuple
+file, and final integration receives only reviewer requirements.
+
+Before any paid run, local validation must prove exact child packet facts and
+contract metadata, unique pair fixture hashes, complete prompt/file byte-proxy
+accounting, concurrency, reviewer ordering, five-stage accounting, and exact
+adversarial repair behavior. Both paid protocols require the real runner and a
+clean committed worktree, including a diagnostic shadow run. The byte proxy is
+structural evidence only—not a token or monetary estimate. Paid gates continue
+to use actual Codex token usage.
+In addition to the v3 aggregate limits, combined-child and reviewer paired token
+p50 must each be at most 0%, with deterministic stratified bootstrap upper 90%
+at most +5%. The public claim remains limited to the external
+harness-orchestrated packet experiment; it does not establish native same-session
+subagent performance or monetary savings.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

@@ -33,6 +33,18 @@ could include breaking changes.
   increased 9.14%, paired token p50 increased 8.70%, and paired critical-path
   p50 increased 10.86%. The published artifact preserves this negative result
   and identifies reviewer/child context cost as the next optimization target.
+- Prepared a frozen v4 follow-up without altering or rerunning the v3 result.
+  Every pair now has a distinct fixture hash, the stale-history family requires
+  reconstruction from chronological deltas instead of providing a ceiling-prone
+  final projection, and each enabled child consumes the real bounded Work
+  execution-packet subset for its assigned IDs. Reviewer reports use the same
+  compact JSON-tuple transport in both conditions, final integration consumes
+  reviewer requirements without rereading context, packet facts and metadata
+  fail closed on drift, and deterministic input-byte accounting fails closed on
+  missing files. New preregistered stage gates require both combined-child and
+  reviewer token p50 at or below 0% with bootstrap upper 90% at or below +5%;
+  paid shadow and final protocols also require the real runner and a clean,
+  committed implementation so results cannot be attributed to an older HEAD.
 
 ## [1.19.0] — 2026-08-26
 
