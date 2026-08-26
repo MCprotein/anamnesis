@@ -108,6 +108,17 @@ summary recall with no hallucinated or duplicate requirements. The strict
 contract also passed paired token and elapsed non-regression gates for the
 multi-session handoff and delegation/review scenarios.
 
+An additional `gpt-5.6-terra` cross-model diagnostic uses three paired
+repetitions across the same six scenarios. Its 36 initial calls and 46 total
+invocations consumed 2,840,394 tokens. Work reduced average tokens by 50.80%
+and elapsed time by 44.56%, reached 100% enabled requirement/status/summary
+recall, and won all 18 token pairs. This is directional evidence rather than a
+strict result: scenario dispersion was substantial, most visibly
+delegation/review at a -0.19% paired token median. See the
+[`terra-3pair` artifact](benchmark-evidence/work-agent-ab/terra-3pair/README.md)
+and the
+[`cross-model chart`](benchmark-evidence/work-agent-ab/work-agent-ab-cross-model.svg).
+
 The evaluator requires exact summaries, rejects unexpected or duplicate
 requirements, separates comparison classes, and records paired p50/p95/MAD and
 deterministic 90% bootstrap intervals. It stores no prompts, model answers,

@@ -1,0 +1,1843 @@
+{
+  "schema_version": "anamnesis.work_agent_ab_benchmark.v2",
+  "generated_at": "2026-08-26T08:35:41.259Z",
+  "project_root": ".",
+  "model": "gpt-5.6-terra",
+  "runs_per_scenario": 3,
+  "scenarios": [
+    "perfect-handoff",
+    "bounded-loss",
+    "stale-conflict",
+    "multi-session-handoff",
+    "delegation-review",
+    "requirement-scale-100"
+  ],
+  "scenario_classes": {
+    "equal_information": [
+      "perfect-handoff",
+      "delegation-review",
+      "requirement-scale-100"
+    ],
+    "resilience": [
+      "bounded-loss",
+      "stale-conflict",
+      "multi-session-handoff"
+    ]
+  },
+  "planned_invocations": 36,
+  "actual_invocations": 46,
+  "runs": [
+    {
+      "iteration": 1,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 23205,
+        "tokens": {
+          "input_tokens": 72477,
+          "cached_input_tokens": 46592,
+          "output_tokens": 914,
+          "total_tokens": 73391
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18880.13,
+        "tokens": {
+          "input_tokens": 48058,
+          "cached_input_tokens": 23296,
+          "output_tokens": 753,
+          "total_tokens": 48811
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 43253.14,
+        "tokens": {
+          "input_tokens": 144256,
+          "cached_input_tokens": 93184,
+          "output_tokens": 1522,
+          "total_tokens": 145778
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 12,
+        "requirement_recall_pct": 60,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 8,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 12
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 21933.46,
+        "tokens": {
+          "input_tokens": 48183,
+          "cached_input_tokens": 35328,
+          "output_tokens": 945,
+          "total_tokens": 49128
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 44827.94,
+        "tokens": {
+          "input_tokens": 120318,
+          "cached_input_tokens": 69888,
+          "output_tokens": 1761,
+          "total_tokens": 122079
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19305.32,
+        "tokens": {
+          "input_tokens": 48037,
+          "cached_input_tokens": 37376,
+          "output_tokens": 745,
+          "total_tokens": 48782
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 53416.34,
+        "tokens": {
+          "input_tokens": 172545,
+          "cached_input_tokens": 131584,
+          "output_tokens": 2089,
+          "total_tokens": 174634
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18770.78,
+        "tokens": {
+          "input_tokens": 47990,
+          "cached_input_tokens": 37376,
+          "output_tokens": 758,
+          "total_tokens": 48748
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 20077.81,
+        "tokens": {
+          "input_tokens": 48008,
+          "cached_input_tokens": 23296,
+          "output_tokens": 783,
+          "total_tokens": 48791
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19337.55,
+        "tokens": {
+          "input_tokens": 48041,
+          "cached_input_tokens": 37376,
+          "output_tokens": 742,
+          "total_tokens": 48783
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 1,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 115624.28,
+        "tokens": {
+          "input_tokens": 130740,
+          "cached_input_tokens": 72960,
+          "output_tokens": 5655,
+          "total_tokens": 136395
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 100
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 56143.55,
+        "tokens": {
+          "input_tokens": 49427,
+          "cached_input_tokens": 46592,
+          "output_tokens": 2552,
+          "total_tokens": 51979
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 25685.59,
+        "tokens": {
+          "input_tokens": 72771,
+          "cached_input_tokens": 46592,
+          "output_tokens": 968,
+          "total_tokens": 73739
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 20251.7,
+        "tokens": {
+          "input_tokens": 48202,
+          "cached_input_tokens": 46592,
+          "output_tokens": 829,
+          "total_tokens": 49031
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 40310.56,
+        "tokens": {
+          "input_tokens": 119469,
+          "cached_input_tokens": 107264,
+          "output_tokens": 1535,
+          "total_tokens": 121004
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 0,
+        "summary_recall_pct": 0,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 12
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 22630.34,
+        "tokens": {
+          "input_tokens": 72097,
+          "cached_input_tokens": 58624,
+          "output_tokens": 869,
+          "total_tokens": 72966
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 48795.15,
+        "tokens": {
+          "input_tokens": 120890,
+          "cached_input_tokens": 107264,
+          "output_tokens": 1909,
+          "total_tokens": 122799
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19270.63,
+        "tokens": {
+          "input_tokens": 48050,
+          "cached_input_tokens": 37376,
+          "output_tokens": 770,
+          "total_tokens": 48820
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 46173.74,
+        "tokens": {
+          "input_tokens": 122044,
+          "cached_input_tokens": 94976,
+          "output_tokens": 1788,
+          "total_tokens": 123832
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18858.39,
+        "tokens": {
+          "input_tokens": 47975,
+          "cached_input_tokens": 37376,
+          "output_tokens": 740,
+          "total_tokens": 48715
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 20074.16,
+        "tokens": {
+          "input_tokens": 48013,
+          "cached_input_tokens": 37376,
+          "output_tokens": 800,
+          "total_tokens": 48813
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 17966.41,
+        "tokens": {
+          "input_tokens": 48023,
+          "cached_input_tokens": 37376,
+          "output_tokens": 699,
+          "total_tokens": 48722
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 64496.06,
+        "tokens": {
+          "input_tokens": 107643,
+          "cached_input_tokens": 90112,
+          "output_tokens": 3107,
+          "total_tokens": 110750
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 52638.69,
+        "tokens": {
+          "input_tokens": 49238,
+          "cached_input_tokens": 23296,
+          "output_tokens": 2598,
+          "total_tokens": 51836
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "perfect-handoff",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 23217.48,
+        "tokens": {
+          "input_tokens": 48211,
+          "cached_input_tokens": 46592,
+          "output_tokens": 969,
+          "total_tokens": 49180
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 19011.37,
+        "tokens": {
+          "input_tokens": 48057,
+          "cached_input_tokens": 37376,
+          "output_tokens": 749,
+          "total_tokens": 48806
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "bounded-loss",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 36767.15,
+        "tokens": {
+          "input_tokens": 95731,
+          "cached_input_tokens": 72704,
+          "output_tokens": 1304,
+          "total_tokens": 97035
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 8,
+        "status_recall_pct": 40,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 21930.1,
+        "tokens": {
+          "input_tokens": 48010,
+          "cached_input_tokens": 37376,
+          "output_tokens": 735,
+          "total_tokens": 48745
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "stale-conflict",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 49472.98,
+        "tokens": {
+          "input_tokens": 144548,
+          "cached_input_tokens": 119296,
+          "output_tokens": 1805,
+          "total_tokens": 146353
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 0,
+        "status_recall_pct": 0,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 20
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 25611.45,
+        "tokens": {
+          "input_tokens": 72147,
+          "cached_input_tokens": 60672,
+          "output_tokens": 906,
+          "total_tokens": 73053
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "multi-session-handoff",
+      "scenario_class": "resilience",
+      "requirements": 20,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 35279.61,
+        "tokens": {
+          "input_tokens": 123678,
+          "cached_input_tokens": 108288,
+          "output_tokens": 1298,
+          "total_tokens": 124976
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18544.85,
+        "tokens": {
+          "input_tokens": 48152,
+          "cached_input_tokens": 46592,
+          "output_tokens": 733,
+          "total_tokens": 48885
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "delegation-review",
+      "scenario_class": "equal_information",
+      "requirements": 20,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 23854.83,
+        "tokens": {
+          "input_tokens": 48017,
+          "cached_input_tokens": 37376,
+          "output_tokens": 961,
+          "total_tokens": 48978
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 18008.27,
+        "tokens": {
+          "input_tokens": 48045,
+          "cached_input_tokens": 37376,
+          "output_tokens": 717,
+          "total_tokens": 48762
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 20,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 20,
+        "status_recall_pct": 100,
+        "summaries_correct": 20,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "requirement-scale-100",
+      "scenario_class": "equal_information",
+      "requirements": 100,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "elapsed_ms": 116833.25,
+        "tokens": {
+          "input_tokens": 129582,
+          "cached_input_tokens": 110336,
+          "output_tokens": 5644,
+          "total_tokens": 135226
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 1,
+        "reexplained_requirements": 0
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "elapsed_ms": 51823.88,
+        "tokens": {
+          "input_tokens": 49458,
+          "cached_input_tokens": 46592,
+          "output_tokens": 2611,
+          "total_tokens": 52069
+        },
+        "completion_correct": true,
+        "gate_correct": true,
+        "requirements_recovered": 100,
+        "requirement_recall_pct": 100,
+        "statuses_correct": 100,
+        "status_recall_pct": 100,
+        "summaries_correct": 100,
+        "summary_recall_pct": 100,
+        "missed_requirements": 0,
+        "hallucinated_requirements": 0,
+        "duplicate_requirement_ids": 0,
+        "reminders_or_reexplanations": 0,
+        "reexplained_requirements": 0
+      }
+    }
+  ],
+  "summary": {
+    "disabled": {
+      "runs": 18,
+      "execution_success_pct": 100,
+      "elapsed_ms": 46186.95,
+      "input_tokens": 103830.06,
+      "cached_input_tokens": 78648.89,
+      "output_tokens": 1934,
+      "total_tokens": 105764.06,
+      "completion_correct_pct": 100,
+      "gate_correct_pct": 100,
+      "requirement_recall_pct": 97.78,
+      "status_recall_pct": 71.11,
+      "summary_recall_pct": 88.89,
+      "reminders_or_reexplanations": 0.56,
+      "reexplained_requirements": 13.56,
+      "missed_requirements": 0.44,
+      "hallucinated_requirements": 0,
+      "duplicate_requirement_ids": 0
+    },
+    "enabled": {
+      "runs": 18,
+      "execution_success_pct": 100,
+      "elapsed_ms": 25606.49,
+      "input_tokens": 50955,
+      "cached_input_tokens": 40220.44,
+      "output_tokens": 1080.61,
+      "total_tokens": 52035.61,
+      "completion_correct_pct": 100,
+      "gate_correct_pct": 100,
+      "requirement_recall_pct": 100,
+      "status_recall_pct": 100,
+      "summary_recall_pct": 100,
+      "reminders_or_reexplanations": 0,
+      "reexplained_requirements": 0,
+      "missed_requirements": 0,
+      "hallucinated_requirements": 0,
+      "duplicate_requirement_ids": 0
+    },
+    "delta": {
+      "total_tokens_pct": -50.8,
+      "elapsed_pct": -44.56,
+      "requirement_recall_points": 2.22,
+      "status_recall_points": 28.89,
+      "completion_correct_points": 0,
+      "missed_requirements": -0.44,
+      "reminders_or_reexplanations": -0.56
+    }
+  },
+  "analysis": {
+    "overall": {
+      "token_delta_pct": {
+        "average": -42.49,
+        "p50": -51.64,
+        "p95": -0.16,
+        "min": -72.09,
+        "max": -0.02,
+        "mad": 11.1,
+        "bootstrap_90_ci": {
+          "low": -60.45,
+          "high": -36.59
+        }
+      },
+      "elapsed_delta_pct": {
+        "average": -38.48,
+        "p50": -45.64,
+        "p95": -9.48,
+        "min": -64.86,
+        "max": -3.69,
+        "mad": 14.19,
+        "bootstrap_90_ci": {
+          "low": -50.36,
+          "high": -22.83
+        }
+      },
+      "token_pair_wins": 18,
+      "elapsed_pair_wins": 18,
+      "pairs": 18
+    },
+    "classes": [
+      {
+        "class": "equal_information",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 48118.72,
+          "input_tokens": 78384.67,
+          "cached_input_tokens": 56803.56,
+          "output_tokens": 2200.11,
+          "total_tokens": 80584.78,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0.22,
+          "reexplained_requirements": 11.11,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 30451.28,
+          "input_tokens": 48505.44,
+          "cached_input_tokens": 37319.11,
+          "output_tokens": 1361.11,
+          "total_tokens": 49866.56,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -27.22,
+            "p50": -33.49,
+            "p95": -0.09,
+            "min": -61.89,
+            "max": -0.02,
+            "mad": 28.4,
+            "bootstrap_90_ci": {
+              "low": -53.2,
+              "high": -0.44
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -24.68,
+            "p50": -18.64,
+            "p95": -6.41,
+            "min": -55.64,
+            "max": -3.69,
+            "mad": 5.87,
+            "bootstrap_90_ci": {
+              "low": -24.51,
+              "high": -18.12
+            }
+          },
+          "token_pair_wins": 9,
+          "elapsed_pair_wins": 9,
+          "pairs": 9
+        }
+      },
+      {
+        "class": "resilience",
+        "disabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 44255.18,
+          "input_tokens": 129275.44,
+          "cached_input_tokens": 100494.22,
+          "output_tokens": 1667.89,
+          "total_tokens": 130943.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 95.56,
+          "status_recall_pct": 42.22,
+          "summary_recall_pct": 77.78,
+          "reminders_or_reexplanations": 0.89,
+          "reexplained_requirements": 16,
+          "missed_requirements": 0.89,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 9,
+          "execution_success_pct": 100,
+          "elapsed_ms": 20761.7,
+          "input_tokens": 53404.56,
+          "cached_input_tokens": 43121.78,
+          "output_tokens": 800.11,
+          "total_tokens": 54204.67,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -57.75,
+            "p50": -60.24,
+            "p95": -43.73,
+            "min": -72.09,
+            "max": -39.7,
+            "mad": 6.06,
+            "bootstrap_90_ci": {
+              "low": -60.88,
+              "high": -50.08
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -52.29,
+            "p50": -49.29,
+            "p95": -41.75,
+            "min": -64.86,
+            "max": -40.35,
+            "mad": 7.64,
+            "bootstrap_90_ci": {
+              "low": -59.16,
+              "high": -47.43
+            }
+          },
+          "token_pair_wins": 9,
+          "elapsed_pair_wins": 9,
+          "pairs": 9
+        }
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "perfect-handoff",
+        "class": "equal_information",
+        "disabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 24036.02,
+          "input_tokens": 64486.33,
+          "cached_input_tokens": 46592,
+          "output_tokens": 950.33,
+          "total_tokens": 65436.67,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 19381.07,
+          "input_tokens": 48105.67,
+          "cached_input_tokens": 35754.67,
+          "output_tokens": 777,
+          "total_tokens": 48882.67,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -22.59,
+            "p50": -33.49,
+            "p95": -4.03,
+            "min": -33.51,
+            "max": -0.76,
+            "mad": 0.02,
+            "bootstrap_90_ci": {
+              "low": -33.51,
+              "high": -0.76
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -19.31,
+            "p50": -18.64,
+            "p95": -18.17,
+            "min": -21.16,
+            "max": -18.12,
+            "mad": 0.52,
+            "bootstrap_90_ci": {
+              "low": -21.16,
+              "high": -18.12
+            }
+          },
+          "token_pair_wins": 3,
+          "elapsed_pair_wins": 3,
+          "pairs": 3
+        }
+      },
+      {
+        "id": "bounded-loss",
+        "class": "resilience",
+        "disabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 40110.28,
+          "input_tokens": 119818.67,
+          "cached_input_tokens": 91050.67,
+          "output_tokens": 1453.67,
+          "total_tokens": 121272.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 86.67,
+          "status_recall_pct": 26.67,
+          "summary_recall_pct": 33.33,
+          "reminders_or_reexplanations": 1,
+          "reexplained_requirements": 14.67,
+          "missed_requirements": 2.67,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 22164.63,
+          "input_tokens": 56096.67,
+          "cached_input_tokens": 43776,
+          "output_tokens": 849.67,
+          "total_tokens": 56946.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -51.92,
+            "p50": -49.77,
+            "p95": -40.71,
+            "min": -66.3,
+            "max": -39.7,
+            "mad": 10.07,
+            "bootstrap_90_ci": {
+              "low": -66.3,
+              "high": -39.7
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -44.5,
+            "p50": -43.86,
+            "p95": -40.7,
+            "min": -49.29,
+            "max": -40.35,
+            "mad": 3.51,
+            "bootstrap_90_ci": {
+              "low": -49.29,
+              "high": -40.35
+            }
+          },
+          "token_pair_wins": 3,
+          "elapsed_pair_wins": 3,
+          "pairs": 3
+        }
+      },
+      {
+        "id": "stale-conflict",
+        "class": "resilience",
+        "disabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 47698.69,
+          "input_tokens": 128585.33,
+          "cached_input_tokens": 98816,
+          "output_tokens": 1825,
+          "total_tokens": 130410.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 0,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 1,
+          "reexplained_requirements": 20,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 21395.8,
+          "input_tokens": 56078,
+          "cached_input_tokens": 45141.33,
+          "output_tokens": 807,
+          "total_tokens": 56885,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -56.79,
+            "p50": -60.04,
+            "p95": -51.08,
+            "min": -60.24,
+            "max": -50.08,
+            "mad": 0.2,
+            "bootstrap_90_ci": {
+              "low": -60.24,
+              "high": -50.08
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -55.22,
+            "p50": -56.93,
+            "p95": -49.1,
+            "min": -60.51,
+            "max": -48.23,
+            "mad": 3.58,
+            "bootstrap_90_ci": {
+              "low": -60.51,
+              "high": -48.23
+            }
+          },
+          "token_pair_wins": 3,
+          "elapsed_pair_wins": 3,
+          "pairs": 3
+        }
+      },
+      {
+        "id": "multi-session-handoff",
+        "class": "resilience",
+        "disabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 44956.56,
+          "input_tokens": 139422.33,
+          "cached_input_tokens": 111616,
+          "output_tokens": 1725,
+          "total_tokens": 141147.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0.67,
+          "reexplained_requirements": 13.33,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 18724.67,
+          "input_tokens": 48039,
+          "cached_input_tokens": 40448,
+          "output_tokens": 743.67,
+          "total_tokens": 48782.67,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -64.54,
+            "p50": -60.88,
+            "p95": -60.68,
+            "min": -72.09,
+            "max": -60.66,
+            "mad": 0.22,
+            "bootstrap_90_ci": {
+              "low": -72.09,
+              "high": -60.66
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -57.15,
+            "p50": -59.16,
+            "p95": -48.6,
+            "min": -64.86,
+            "max": -47.43,
+            "mad": 5.7,
+            "bootstrap_90_ci": {
+              "low": -64.86,
+              "high": -47.43
+            }
+          },
+          "token_pair_wins": 3,
+          "elapsed_pair_wins": 3,
+          "pairs": 3
+        }
+      },
+      {
+        "id": "delegation-review",
+        "class": "equal_information",
+        "disabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 21335.6,
+          "input_tokens": 48012.67,
+          "cached_input_tokens": 32682.67,
+          "output_tokens": 848,
+          "total_tokens": 48860.67,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 18437.41,
+          "input_tokens": 48036.33,
+          "cached_input_tokens": 37376,
+          "output_tokens": 719.33,
+          "total_tokens": 48755.67,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -0.22,
+            "p50": -0.19,
+            "p95": -0.04,
+            "min": -0.44,
+            "max": -0.02,
+            "mad": 0.17,
+            "bootstrap_90_ci": {
+              "low": -0.44,
+              "high": -0.02
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -12.9,
+            "p50": -10.5,
+            "p95": -4.37,
+            "min": -24.51,
+            "max": -3.69,
+            "mad": 6.81,
+            "bootstrap_90_ci": {
+              "low": -24.51,
+              "high": -3.69
+            }
+          },
+          "token_pair_wins": 3,
+          "elapsed_pair_wins": 3,
+          "pairs": 3
+        }
+      },
+      {
+        "id": "requirement-scale-100",
+        "class": "equal_information",
+        "disabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 98984.53,
+          "input_tokens": 122655,
+          "cached_input_tokens": 91136,
+          "output_tokens": 4802,
+          "total_tokens": 127457,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0.67,
+          "reexplained_requirements": 33.33,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "enabled": {
+          "runs": 3,
+          "execution_success_pct": 100,
+          "elapsed_ms": 53535.37,
+          "input_tokens": 49374.33,
+          "cached_input_tokens": 38826.67,
+          "output_tokens": 2587,
+          "total_tokens": 51961.33,
+          "completion_correct_pct": 100,
+          "gate_correct_pct": 100,
+          "requirement_recall_pct": 100,
+          "status_recall_pct": 100,
+          "summary_recall_pct": 100,
+          "reminders_or_reexplanations": 0,
+          "reexplained_requirements": 0,
+          "missed_requirements": 0,
+          "hallucinated_requirements": 0,
+          "duplicate_requirement_ids": 0
+        },
+        "paired": {
+          "token_delta_pct": {
+            "average": -58.86,
+            "p50": -61.49,
+            "p95": -54.03,
+            "min": -61.89,
+            "max": -53.2,
+            "mad": 0.4,
+            "bootstrap_90_ci": {
+              "low": -61.89,
+              "high": -53.2
+            }
+          },
+          "elapsed_delta_pct": {
+            "average": -41.82,
+            "p50": -51.44,
+            "p95": -21.69,
+            "min": -55.64,
+            "max": -18.38,
+            "mad": 4.2,
+            "bootstrap_90_ci": {
+              "low": -55.64,
+              "high": -18.38
+            }
+          },
+          "token_pair_wins": 3,
+          "elapsed_pair_wins": 3,
+          "pairs": 3
+        }
+      }
+    ],
+    "excluded_model_failures": 0
+  },
+  "strict": false,
+  "contract": {
+    "ok": true,
+    "checks": [
+      {
+        "id": "enabled-execution-success",
+        "ok": true,
+        "actual": 100,
+        "limit": 100,
+        "comparison": "gte"
+      },
+      {
+        "id": "enabled-completion-correct",
+        "ok": true,
+        "actual": 100,
+        "limit": 100,
+        "comparison": "gte"
+      },
+      {
+        "id": "enabled-gate-correct",
+        "ok": true,
+        "actual": 100,
+        "limit": 100,
+        "comparison": "gte"
+      },
+      {
+        "id": "enabled-requirement-recall",
+        "ok": true,
+        "actual": 100,
+        "limit": 100,
+        "comparison": "gte"
+      },
+      {
+        "id": "enabled-status-recall",
+        "ok": true,
+        "actual": 100,
+        "limit": 100,
+        "comparison": "gte"
+      },
+      {
+        "id": "enabled-summary-recall",
+        "ok": true,
+        "actual": 100,
+        "limit": 100,
+        "comparison": "gte"
+      },
+      {
+        "id": "enabled-hallucinated-requirements",
+        "ok": true,
+        "actual": 0,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "enabled-duplicate-requirement-ids",
+        "ok": true,
+        "actual": 0,
+        "limit": 0,
+        "comparison": "lte"
+      },
+      {
+        "id": "requirement-recall-noninferiority",
+        "ok": true,
+        "actual": 100,
+        "limit": 97.78,
+        "comparison": "gte"
+      },
+      {
+        "id": "status-recall-noninferiority",
+        "ok": true,
+        "actual": 100,
+        "limit": 71.11,
+        "comparison": "gte"
+      },
+      {
+        "id": "summary-recall-noninferiority",
+        "ok": true,
+        "actual": 100,
+        "limit": 88.89,
+        "comparison": "gte"
+      },
+      {
+        "id": "reminder-noninferiority",
+        "ok": true,
+        "actual": 0,
+        "limit": 0.56,
+        "comparison": "lte"
+      },
+      {
+        "id": "total-token-budget",
+        "ok": true,
+        "actual": 52035.61,
+        "limit": 116340.47,
+        "comparison": "lte"
+      },
+      {
+        "id": "elapsed-budget",
+        "ok": true,
+        "actual": 25606.49,
+        "limit": 57733.69,
+        "comparison": "lte"
+      }
+    ],
+    "limits": {
+      "enabled_total_tokens_ratio": 1.1,
+      "enabled_elapsed_ratio": 1.25,
+      "strict_minimum_pairs": 9,
+      "strict_regression_token_median_pct": 0.1
+    }
+  },
+  "ok": true,
+  "artifacts": {
+    "output_dir": ".",
+    "json": "work-agent-ab.json",
+    "markdown": "README.md"
+  },
+  "markdown": "# Work agent A/B benchmark\n\n- Generated: 2026-08-26T08:35:41.259Z\n- Model: gpt-5.6-terra\n- Repetitions per scenario: 3\n- Strict contract: disabled\n- Planned initial Codex invocations: 36\n- Actual invocations including oracle corrections: 46\n- Equal-information scenarios: perfect-handoff, delegation-review, requirement-scale-100\n- Resilience scenarios: bounded-loss, stale-conflict, multi-session-handoff\n- Excluded model failures: 0\n- Contract: PASS\n\n| Metric | Disabled | Enabled | Delta |\n| --- | ---: | ---: | ---: |\n| Total tokens (average/run) | 105764.06 | 52035.61 | -50.8% |\n| Elapsed ms (average/run) | 46186.95 | 25606.49 | -44.56% |\n| Paired token delta | — | — | p50 -51.64%, p95 -0.16%, MAD 11.1% |\n| Paired elapsed delta | — | — | p50 -45.64%, p95 -9.48%, MAD 14.19% |\n| Completion correctness | 100% | 100% | 0pp |\n| Gate correctness | 100% | 100% | — |\n| Requirement recall | 97.78% | 100% | 2.22pp |\n| Status recall | 71.11% | 100% | 28.89pp |\n| Summary recall | 88.89% | 100% | — |\n| Hallucinated requirements (average/run) | 0 | 0 | — |\n| Duplicate requirement IDs (average/run) | 0 | 0 | — |\n| Missed requirements (average/run) | 0.44 | 0 | -0.44 |\n| Actual correction rounds (average/run) | 0.56 | 0 | -0.56 |\n| Re-explained requirements (average/run) | 13.56 | 0 | — |\n\n## Comparison classes\n\n| Class | Token p50 (90% bootstrap CI) | Elapsed p50 (90% bootstrap CI) | Token wins |\n| --- | ---: | ---: | ---: |\n| equal_information | -33.49% (-53.2% to -0.44%) | -18.64% (-24.51% to -18.12%) | 9/9 |\n| resilience | -60.24% (-60.88% to -50.08%) | -49.29% (-59.16% to -47.43%) | 9/9 |\n\n## Scenario breakdown\n\n| Scenario | Class | Token p50 (p95) | Elapsed p50 (p95) | Token wins | Disabled → enabled status accuracy | Disabled → enabled corrections/run |\n| --- | --- | ---: | ---: | ---: | ---: | ---: |\n| perfect-handoff | equal_information | -33.49% (-4.03%) | -18.64% (-18.17%) | 3/3 | 100% → 100% | 0 → 0 |\n| bounded-loss | resilience | -49.77% (-40.71%) | -43.86% (-40.7%) | 3/3 | 26.67% → 100% | 1 → 0 |\n| stale-conflict | resilience | -60.04% (-51.08%) | -56.93% (-49.1%) | 3/3 | 0% → 100% | 1 → 0 |\n| multi-session-handoff | resilience | -60.88% (-60.68%) | -59.16% (-48.6%) | 3/3 | 100% → 100% | 0.67 → 0 |\n| delegation-review | equal_information | -0.19% (-0.04%) | -10.5% (-4.37%) | 3/3 | 100% → 100% | 0 → 0 |\n| requirement-scale-100 | equal_information | -61.49% (-54.03%) | -51.44% (-21.69%) | 3/3 | 100% → 100% | 0.67 → 0 |\n\nEvery accepted answer contains each expected requirement exactly once with an exact ID, status, and summary; hallucinated or duplicate rows trigger deterministic correction. Each paired distribution also records min, max, MAD, and a deterministic 90% bootstrap interval in the JSON artifact. Model failures are scored, never excluded. Prompts, fixture bodies, model answers, and stderr are intentionally excluded from artifacts.\n"
+}
