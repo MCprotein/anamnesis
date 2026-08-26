@@ -75,6 +75,10 @@ import {
 	workAgentBenchmark,
 } from "./commands/benchmark_work_agent.js";
 import {
+	type ParallelBenchmarkResult,
+	workParallelAgentBenchmark,
+} from "./commands/benchmark_work_parallel_agent.js";
+import {
 	type ContextDiagnosticsResult,
 	contextDiagnostics,
 } from "./commands/context_diagnostics.js";
@@ -546,6 +550,9 @@ Commands:
                                   Work continuity disabled and enabled
   benchmark work-agent-ab     Run repeated real Codex disabled/enabled Work
                                   continuity scenarios with token accounting
+  benchmark work-parallel-agent-ab
+                                Run a real two-child parallel Luna Work A/B
+                                  diagnostic with reviewer and leader integration
   benchmark task               Record a model-dependent agent task benchmark
                                   separately from deterministic scorecards
   benchmark task-compare       Compare paired full/compact agent task
@@ -828,6 +835,15 @@ Flags (benchmark work-agent-ab):
   --json                        Print structured JSON
   --write                       Write aggregate-only JSON and markdown under
                                   docs/benchmark-evidence/work-agent-ab
+  --output <path>               Override artifact output directory
+
+Flags (benchmark work-parallel-agent-ab):
+  --project-root <path>         Target directory (default: cwd)
+  --runs <n>                    Paired repetitions (minimum/default: 3)
+  --model <id>                  Codex model (default: gpt-5.6-luna)
+  --json                        Print structured JSON
+  --write                       Write aggregate-only JSON and markdown under
+                                  docs/benchmark-evidence/work-parallel-agent-ab
   --output <path>               Override artifact output directory
 
 Flags (benchmark task):
@@ -2074,6 +2090,30 @@ function reportWorkAgentBenchmark(result: WorkAgentBenchmarkResult): void {
 	console.log(`  contract: ${result.ok ? "PASS" : "FAIL"}`);
 	if (result.artifacts.output_dir)
 		console.log(`  output: ${result.artifacts.output_dir}`);
+}
+
+function reportWorkParallelAgentBenchmark(
+	result: ParallelBenchmarkResult,
+): void {
+	console.log("anamnesis benchmark work-parallel-agent-ab");
+	console.log(
+		`  model=${result.model}, pairs=${result.runs_per_condition}, invocations=${result.actual_invocations}`,
+	);
+	console.log(
+		`  tokens/run: disabled=${result.summary.disabled.total_tokens}, enabled=${result.summary.enabled.total_tokens}, delta=${result.summary.delta.total_tokens_pct}%`,
+	);
+	console.log(
+		`  critical path/run: disabled=${result.summary.disabled.critical_path_ms}ms, enabled=${result.summary.enabled.critical_path_ms}ms, delta=${result.summary.delta.critical_path_pct}%`,
+	);
+	console.log(
+		`  product passes: disabled=${result.product_contract.disabled_passes}/${result.runs_per_condition}, enabled=${result.product_contract.enabled_passes}/${result.runs_per_condition}`,
+	);
+	console.log(
+		`  harness=${result.harness_validity.ok ? "PASS" : "FAIL"}, product=${result.product_contract.ok ? "PASS" : "FAIL"}`,
+	);
+	if (result.artifacts.output_dir) {
+		console.log(`  output: ${result.artifacts.output_dir}`);
+	}
 }
 
 function reportAgentTaskBenchmark(result: AgentTaskBenchmarkResult): void {
@@ -4045,6 +4085,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "upgrade" &&
         sub !== "work-continuity" &&
 		sub !== "work-agent-ab" &&
+		sub !== "work-parallel-agent-ab" &&
         sub !== "task" &&
         sub !== "task-compare" &&
         sub !== "task-series" &&
@@ -4076,6 +4117,9 @@ async function main(argv: string[]): Promise<number> {
         );
 		console.error(
 			`       anamnesis benchmark work-agent-ab [--json] [--write] [--runs=<n>] [--model=<id>] [--output=<dir>]`,
+		);
+		console.error(
+			`       anamnesis benchmark work-parallel-agent-ab [--json] [--write] [--runs=<n>] [--model=<id>] [--output=<dir>]`,
 		);
         console.error(
           `       anamnesis benchmark task --input <path> [--json] [--append] [--output=<path>]`,
@@ -4336,6 +4380,30 @@ async function main(argv: string[]): Promise<number> {
 				console.log(JSON.stringify(result, null, 2));
 			} else {
 				reportWorkAgentBenchmark(result);
+			}
+			return result.ok ? 0 : 1;
+		}
+
+		if (sub === "work-parallel-agent-ab") {
+			const result = await workParallelAgentBenchmark({
+				projectRoot:
+					(flags["project-root"] as string | undefined) ?? process.cwd(),
+				runs: parseWorkContinuityBenchmarkFlag(flags["runs"], "--runs"),
+				model: flags["model"] as string | undefined,
+				write: flags["write"] === true,
+				outputPath: flags["output"] as string | undefined,
+				onPlan: ({ runs, invocations }) => {
+					if (flags["json"] !== true) {
+						console.error(
+							`planning ${invocations} Codex invocations (${runs} pairs x 2 conditions x 5 stages)`,
+						);
+					}
+				},
+			});
+			if (flags["json"] === true) {
+				console.log(JSON.stringify(result, null, 2));
+			} else {
+				reportWorkParallelAgentBenchmark(result);
 			}
 			return result.ok ? 0 : 1;
 		}

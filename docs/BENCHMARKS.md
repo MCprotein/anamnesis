@@ -23,6 +23,7 @@ anamnesis benchmark prompt-gate
 anamnesis benchmark session-context --write
 anamnesis benchmark work-continuity --runs 5 --write
 anamnesis benchmark work-agent-ab --runs 3 --write
+anamnesis benchmark work-parallel-agent-ab --runs 3 --write
 anamnesis context subagent-preamble
 anamnesis benchmark subagent-injection --attempts 20 --write --append
 anamnesis benchmark task-compare --template
@@ -127,6 +128,26 @@ delegation/review paired token median; the difference reinforces that both
 three-pair results are directional diagnostics rather than model-independent
 performance guarantees. See the
 [`sol-3pair` artifact](benchmark-evidence/work-agent-ab/sol-3pair/README.md).
+
+Use `benchmark work-parallel-agent-ab --runs 3 --write` for the separate
+harness-orchestrated parallel-agent diagnostic. Each condition executes five
+fully charged Luna stages: leader planning, two child processes launched
+concurrently, a reviewer after both children finish, and final leader
+integration. Disabled and enabled conditions receive the same 24 requirement
+facts; only their context representation differs. The evaluator alternates
+condition order, verifies positive child-process overlap and reviewer ordering,
+requires complete token accounting even on failures, and scores exact
+ID/status/summary reconstruction without retaining prompts or answers.
+
+The first three-pair run used 30 calls and 1,014,561 total tokens. Harness
+validity passed every concurrency, ordering, accounting, and no-exclusion
+check. Work changed average tokens by **-0.20%** and critical-path time by
+**+3.38%**, while complete-pipeline success improved from **0/3 to 2/3**. The
+product contract therefore failed: this is directional evidence that Work
+improved accuracy in this scenario, not evidence of a token or latency win.
+It measures separate process orchestration, not same-session native subagent
+spawning or general coding productivity. See the
+[`parallel-agent artifact`](benchmark-evidence/work-parallel-agent-ab/README.md).
 
 The evaluator requires exact summaries, rejects unexpected or duplicate
 requirements, separates comparison classes, and records paired p50/p95/MAD and

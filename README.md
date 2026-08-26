@@ -67,6 +67,20 @@ and both `n=3` runs are directional cross-model evidence.
 [Terra diagnostic evidence](docs/benchmark-evidence/work-agent-ab/terra-3pair/README.md) ·
 [Sol diagnostic evidence](docs/benchmark-evidence/work-agent-ab/sol-3pair/README.md)
 
+### Parallel-agent diagnostic
+
+A separate Luna pilot measured an externally orchestrated pipeline: leader
+planning, two concurrently running children, independent review, and final
+leader integration. Work improved complete-pipeline success from **0/3 to 2/3**,
+while tokens were effectively flat (**-0.20%**) and critical-path time was
+**+3.38%**. The harness passed its concurrency and accounting checks, but the
+product contract failed because neither condition reached 3/3; this is evidence
+of an accuracy signal, not a token or latency win.
+
+![Parallel-agent Luna diagnostic](docs/benchmark-evidence/work-parallel-agent-ab/work-parallel-agent-ab-summary.svg)
+
+[Parallel-agent methodology and evidence](docs/benchmark-evidence/work-parallel-agent-ab/README.md)
+
 ## Quickstart
 
 Install the scoped package (`anamnesis` without the scope is an unrelated npm
@@ -169,6 +183,7 @@ for the detailed trust and execution model.
 - [Work A/B evidence](docs/benchmark-evidence/work-agent-ab/README.md) — scenario results and limitations
 - [Terra Work A/B diagnostic](docs/benchmark-evidence/work-agent-ab/terra-3pair/README.md) — three-pair cross-model evidence
 - [Sol Work A/B diagnostic](docs/benchmark-evidence/work-agent-ab/sol-3pair/README.md) — three-pair cross-model evidence
+- [Parallel-agent Luna diagnostic](docs/benchmark-evidence/work-parallel-agent-ab/README.md) — two concurrent children, review, and leader integration
 - [Roadmap](docs/ROADMAP.md) — shipped and deferred work
 - [Contributing](CONTRIBUTING.md) — fragments and project development
 - [Changelog](CHANGELOG.md) — release history

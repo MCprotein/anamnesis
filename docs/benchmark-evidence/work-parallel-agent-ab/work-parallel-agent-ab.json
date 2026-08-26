@@ -1,0 +1,653 @@
+{
+  "schema_version": "anamnesis.work_parallel_agent_ab.v1",
+  "generated_at": "2026-08-26T10:27:05.606Z",
+  "project_root": ".",
+  "model": "gpt-5.6-luna",
+  "reasoning_effort": "high",
+  "topology": "harness-orchestrated-two-child-reviewer-leader",
+  "runs_per_condition": 3,
+  "planned_initial_invocations": 30,
+  "actual_invocations": 30,
+  "fixture_hash": "a6d0f4c51646ecea45d2d492e22e2f595451ad210e2b125ee60b78db1ea2b876",
+  "harness_hash": "a3123efd2af320b48fb86045d8229505ca9f0c00d5c1a9e4ac378355f329705a",
+  "reproducibility": {
+    "package_version": "1.19.0",
+    "git_sha": "d47477ca027081935084e335d465cb1452b02db0",
+    "codex_cli_version": "codex-cli 0.149.1"
+  },
+  "runs": [
+    {
+      "iteration": 1,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "product_pass": false,
+        "token_accounting_complete": true,
+        "critical_path_ms": 42469.94,
+        "agent_elapsed_ms": 55628.13,
+        "children_overlap_ms": 13158.87,
+        "children_overlap_ratio": 0.91,
+        "reviewer_started_after_children": true,
+        "tokens": {
+          "input_tokens": 167619,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1943,
+          "total_tokens": 169562
+        },
+        "stages": [
+          {
+            "stage": "leader-plan",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 10698.81,
+            "start_offset_ms": 0.03,
+            "end_offset_ms": 10698.9,
+            "tokens": {
+              "input_tokens": 41702,
+              "cached_input_tokens": 20224,
+              "output_tokens": 322,
+              "total_tokens": 42024
+            }
+          },
+          {
+            "stage": "child-b",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 13158.85,
+            "start_offset_ms": 10700.22,
+            "end_offset_ms": 23859.09,
+            "tokens": {
+              "input_tokens": 41851,
+              "cached_input_tokens": 20224,
+              "output_tokens": 466,
+              "total_tokens": 42317
+            }
+          },
+          {
+            "stage": "child-a",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 14504.78,
+            "start_offset_ms": 10699.14,
+            "end_offset_ms": 25203.93,
+            "tokens": {
+              "input_tokens": 41921,
+              "cached_input_tokens": 20224,
+              "output_tokens": 538,
+              "total_tokens": 42459
+            }
+          },
+          {
+            "stage": "reviewer",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 4339.12,
+            "start_offset_ms": 25204.05,
+            "end_offset_ms": 29543.18,
+            "tokens": {
+              "input_tokens": 21046,
+              "cached_input_tokens": 0,
+              "output_tokens": 75,
+              "total_tokens": 21121
+            }
+          },
+          {
+            "stage": "leader-integrate",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 12926.57,
+            "start_offset_ms": 29543.22,
+            "end_offset_ms": 42469.8,
+            "tokens": {
+              "input_tokens": 21099,
+              "cached_input_tokens": 0,
+              "output_tokens": 542,
+              "total_tokens": 21641
+            }
+          }
+        ]
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "product_pass": false,
+        "token_accounting_complete": true,
+        "critical_path_ms": 46571.49,
+        "agent_elapsed_ms": 61860.68,
+        "children_overlap_ms": 15289.49,
+        "children_overlap_ratio": 0.94,
+        "reviewer_started_after_children": true,
+        "tokens": {
+          "input_tokens": 166807,
+          "cached_input_tokens": 60672,
+          "output_tokens": 2070,
+          "total_tokens": 168877
+        },
+        "stages": [
+          {
+            "stage": "leader-plan",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 10982.49,
+            "start_offset_ms": 0.01,
+            "end_offset_ms": 10982.51,
+            "tokens": {
+              "input_tokens": 41431,
+              "cached_input_tokens": 20224,
+              "output_tokens": 303,
+              "total_tokens": 41734
+            }
+          },
+          {
+            "stage": "child-b",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 15289.48,
+            "start_offset_ms": 10984.1,
+            "end_offset_ms": 26273.59,
+            "tokens": {
+              "input_tokens": 41613,
+              "cached_input_tokens": 20224,
+              "output_tokens": 580,
+              "total_tokens": 42193
+            }
+          },
+          {
+            "stage": "child-a",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 16243.43,
+            "start_offset_ms": 10982.58,
+            "end_offset_ms": 27226.01,
+            "tokens": {
+              "input_tokens": 41636,
+              "cached_input_tokens": 20224,
+              "output_tokens": 586,
+              "total_tokens": 42222
+            }
+          },
+          {
+            "stage": "reviewer",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 6519.41,
+            "start_offset_ms": 27226.07,
+            "end_offset_ms": 33745.49,
+            "tokens": {
+              "input_tokens": 21037,
+              "cached_input_tokens": 0,
+              "output_tokens": 76,
+              "total_tokens": 21113
+            }
+          },
+          {
+            "stage": "leader-integrate",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 12825.87,
+            "start_offset_ms": 33745.55,
+            "end_offset_ms": 46571.43,
+            "tokens": {
+              "input_tokens": 21090,
+              "cached_input_tokens": 0,
+              "output_tokens": 525,
+              "total_tokens": 21615
+            }
+          }
+        ]
+      }
+    },
+    {
+      "iteration": 2,
+      "order": [
+        "enabled",
+        "disabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "product_pass": false,
+        "token_accounting_complete": true,
+        "critical_path_ms": 49004.77,
+        "agent_elapsed_ms": 61664.38,
+        "children_overlap_ms": 12659.87,
+        "children_overlap_ratio": 0.83,
+        "reviewer_started_after_children": true,
+        "tokens": {
+          "input_tokens": 167168,
+          "cached_input_tokens": 81664,
+          "output_tokens": 1972,
+          "total_tokens": 169140
+        },
+        "stages": [
+          {
+            "stage": "leader-plan",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 14969.55,
+            "start_offset_ms": 0.01,
+            "end_offset_ms": 14969.57,
+            "tokens": {
+              "input_tokens": 41564,
+              "cached_input_tokens": 20224,
+              "output_tokens": 381,
+              "total_tokens": 41945
+            }
+          },
+          {
+            "stage": "child-b",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 12659.86,
+            "start_offset_ms": 14970.75,
+            "end_offset_ms": 27630.62,
+            "tokens": {
+              "input_tokens": 41659,
+              "cached_input_tokens": 32256,
+              "output_tokens": 467,
+              "total_tokens": 42126
+            }
+          },
+          {
+            "stage": "child-a",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 15304.82,
+            "start_offset_ms": 14969.62,
+            "end_offset_ms": 30274.45,
+            "tokens": {
+              "input_tokens": 41685,
+              "cached_input_tokens": 20224,
+              "output_tokens": 509,
+              "total_tokens": 42194
+            }
+          },
+          {
+            "stage": "reviewer",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 5549.51,
+            "start_offset_ms": 30274.51,
+            "end_offset_ms": 35824.03,
+            "tokens": {
+              "input_tokens": 21149,
+              "cached_input_tokens": 8960,
+              "output_tokens": 72,
+              "total_tokens": 21221
+            }
+          },
+          {
+            "stage": "leader-integrate",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 13180.64,
+            "start_offset_ms": 35824.07,
+            "end_offset_ms": 49004.71,
+            "tokens": {
+              "input_tokens": 21111,
+              "cached_input_tokens": 0,
+              "output_tokens": 543,
+              "total_tokens": 21654
+            }
+          }
+        ]
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "product_pass": true,
+        "token_accounting_complete": true,
+        "critical_path_ms": 45386.77,
+        "agent_elapsed_ms": 58982.22,
+        "children_overlap_ms": 13595.72,
+        "children_overlap_ratio": 0.8,
+        "reviewer_started_after_children": true,
+        "tokens": {
+          "input_tokens": 166794,
+          "cached_input_tokens": 72704,
+          "output_tokens": 1987,
+          "total_tokens": 168781
+        },
+        "stages": [
+          {
+            "stage": "leader-plan",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 11496.59,
+            "start_offset_ms": 0.01,
+            "end_offset_ms": 11496.6,
+            "tokens": {
+              "input_tokens": 41431,
+              "cached_input_tokens": 20224,
+              "output_tokens": 302,
+              "total_tokens": 41733
+            }
+          },
+          {
+            "stage": "child-b",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 13595.71,
+            "start_offset_ms": 11497.61,
+            "end_offset_ms": 25093.33,
+            "tokens": {
+              "input_tokens": 41605,
+              "cached_input_tokens": 32256,
+              "output_tokens": 511,
+              "total_tokens": 42116
+            }
+          },
+          {
+            "stage": "child-a",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 16962.16,
+            "start_offset_ms": 11496.65,
+            "end_offset_ms": 28458.82,
+            "tokens": {
+              "input_tokens": 41637,
+              "cached_input_tokens": 20224,
+              "output_tokens": 576,
+              "total_tokens": 42213
+            }
+          },
+          {
+            "stage": "reviewer",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 4461.27,
+            "start_offset_ms": 28458.89,
+            "end_offset_ms": 32920.16,
+            "tokens": {
+              "input_tokens": 21034,
+              "cached_input_tokens": 0,
+              "output_tokens": 78,
+              "total_tokens": 21112
+            }
+          },
+          {
+            "stage": "leader-integrate",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 12466.49,
+            "start_offset_ms": 32920.2,
+            "end_offset_ms": 45386.7,
+            "tokens": {
+              "input_tokens": 21087,
+              "cached_input_tokens": 0,
+              "output_tokens": 520,
+              "total_tokens": 21607
+            }
+          }
+        ]
+      }
+    },
+    {
+      "iteration": 3,
+      "order": [
+        "disabled",
+        "enabled"
+      ],
+      "disabled": {
+        "condition": "disabled",
+        "execution_ok": true,
+        "product_pass": false,
+        "token_accounting_complete": true,
+        "critical_path_ms": 42912.79,
+        "agent_elapsed_ms": 56101.19,
+        "children_overlap_ms": 13188.71,
+        "children_overlap_ratio": 0.98,
+        "reviewer_started_after_children": true,
+        "tokens": {
+          "input_tokens": 167189,
+          "cached_input_tokens": 60672,
+          "output_tokens": 1889,
+          "total_tokens": 169078
+        },
+        "stages": [
+          {
+            "stage": "leader-plan",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 10658.04,
+            "start_offset_ms": 0.01,
+            "end_offset_ms": 10658.05,
+            "tokens": {
+              "input_tokens": 41713,
+              "cached_input_tokens": 20224,
+              "output_tokens": 325,
+              "total_tokens": 42038
+            }
+          },
+          {
+            "stage": "child-b",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 13188.7,
+            "start_offset_ms": 10659,
+            "end_offset_ms": 23847.71,
+            "tokens": {
+              "input_tokens": 41669,
+              "cached_input_tokens": 20224,
+              "output_tokens": 474,
+              "total_tokens": 42143
+            }
+          },
+          {
+            "stage": "child-a",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 13422.73,
+            "start_offset_ms": 10658.1,
+            "end_offset_ms": 24080.83,
+            "tokens": {
+              "input_tokens": 41663,
+              "cached_input_tokens": 20224,
+              "output_tokens": 463,
+              "total_tokens": 42126
+            }
+          },
+          {
+            "stage": "reviewer",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 5005.23,
+            "start_offset_ms": 24080.91,
+            "end_offset_ms": 29086.17,
+            "tokens": {
+              "input_tokens": 21045,
+              "cached_input_tokens": 0,
+              "output_tokens": 79,
+              "total_tokens": 21124
+            }
+          },
+          {
+            "stage": "leader-integrate",
+            "execution_ok": true,
+            "output_correct": false,
+            "token_accounting_complete": true,
+            "elapsed_ms": 13826.49,
+            "start_offset_ms": 29086.23,
+            "end_offset_ms": 42912.73,
+            "tokens": {
+              "input_tokens": 21099,
+              "cached_input_tokens": 0,
+              "output_tokens": 548,
+              "total_tokens": 21647
+            }
+          }
+        ]
+      },
+      "enabled": {
+        "condition": "enabled",
+        "execution_ok": true,
+        "product_pass": true,
+        "token_accounting_complete": true,
+        "critical_path_ms": 46973.77,
+        "agent_elapsed_ms": 61603.41,
+        "children_overlap_ms": 14629.89,
+        "children_overlap_ratio": 0.81,
+        "reviewer_started_after_children": true,
+        "tokens": {
+          "input_tokens": 166842,
+          "cached_input_tokens": 69632,
+          "output_tokens": 2281,
+          "total_tokens": 169123
+        },
+        "stages": [
+          {
+            "stage": "leader-plan",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 11587.42,
+            "start_offset_ms": 0.01,
+            "end_offset_ms": 11587.44,
+            "tokens": {
+              "input_tokens": 41496,
+              "cached_input_tokens": 20224,
+              "output_tokens": 392,
+              "total_tokens": 41888
+            }
+          },
+          {
+            "stage": "child-a",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 14630.78,
+            "start_offset_ms": 11587.5,
+            "end_offset_ms": 26218.28,
+            "tokens": {
+              "input_tokens": 41605,
+              "cached_input_tokens": 20224,
+              "output_tokens": 516,
+              "total_tokens": 42121
+            }
+          },
+          {
+            "stage": "child-b",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 17993.53,
+            "start_offset_ms": 11588.39,
+            "end_offset_ms": 29581.93,
+            "tokens": {
+              "input_tokens": 41620,
+              "cached_input_tokens": 20224,
+              "output_tokens": 765,
+              "total_tokens": 42385
+            }
+          },
+          {
+            "stage": "reviewer",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 4341.15,
+            "start_offset_ms": 29581.99,
+            "end_offset_ms": 33923.14,
+            "tokens": {
+              "input_tokens": 21034,
+              "cached_input_tokens": 8960,
+              "output_tokens": 77,
+              "total_tokens": 21111
+            }
+          },
+          {
+            "stage": "leader-integrate",
+            "execution_ok": true,
+            "output_correct": true,
+            "token_accounting_complete": true,
+            "elapsed_ms": 13050.53,
+            "start_offset_ms": 33923.19,
+            "end_offset_ms": 46973.72,
+            "tokens": {
+              "input_tokens": 21087,
+              "cached_input_tokens": 0,
+              "output_tokens": 531,
+              "total_tokens": 21618
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "disabled": {
+      "runs": 3,
+      "product_pass_pct": 0,
+      "critical_path_ms": 44795.83,
+      "agent_elapsed_ms": 57797.9,
+      "children_overlap_ms": 13002.48,
+      "total_tokens": 169260
+    },
+    "enabled": {
+      "runs": 3,
+      "product_pass_pct": 66.67,
+      "critical_path_ms": 46310.68,
+      "agent_elapsed_ms": 60815.44,
+      "children_overlap_ms": 14505.03,
+      "total_tokens": 168927
+    },
+    "delta": {
+      "total_tokens_pct": -0.2,
+      "critical_path_pct": 3.38
+    }
+  },
+  "harness_validity": {
+    "ok": true,
+    "checks": {
+      "equal_authoritative_facts": true,
+      "exactly_five_stages": true,
+      "full_token_accounting": true,
+      "children_overlapped": true,
+      "reviewer_after_children": true,
+      "all_processes_returned": true,
+      "no_excluded_conditions": true,
+      "condition_order_alternated": true
+    }
+  },
+  "product_contract": {
+    "ok": false,
+    "disabled_passes": 0,
+    "enabled_passes": 2,
+    "total_per_condition": 3
+  },
+  "ok": false,
+  "artifacts": {
+    "output_dir": "docs/benchmark-evidence/work-parallel-agent-ab",
+    "json": "docs/benchmark-evidence/work-parallel-agent-ab/work-parallel-agent-ab.json",
+    "markdown": "docs/benchmark-evidence/work-parallel-agent-ab/README.md",
+    "summary_svg": "docs/benchmark-evidence/work-parallel-agent-ab/work-parallel-agent-ab-summary.svg"
+  }
+}
