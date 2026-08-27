@@ -112,6 +112,12 @@ could include breaking changes.
   a new schema, harness hash, output root, and
   one-shot paid-attempt ledger while preserving all quality and efficiency
   gates.
+- Preserved the single v9 Luna shadow without rerunning it. All 24 calls ran
+  and every event envelope passed, but each reviewer produced two completed
+  agent-message items in one completed turn, so v9's single-message assumption
+  made the artifact `INVALID`. The counters exposed that protocol mismatch
+  without raw answers. A review-recovery enabled reviewer token outlier also
+  failed aggregate and stage-cost gates, so no performance claim follows.
 
 ## [1.19.0] — 2026-08-26
 

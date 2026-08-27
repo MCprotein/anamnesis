@@ -343,6 +343,20 @@ a new schema, scoring version, harness hash, default `v9/` output root, and
 canonical `v9-attempts.jsonl` ledger. All v8 accuracy, quality, cost, latency,
 one-shot, and no-nine-pair constraints remain unchanged.
 
+The single v9 shadow is preserved without rerunning it at
+[`v9-shadow`](benchmark-evidence/work-parallel-agent-ab/v9-shadow/README.md).
+It completed **24/24** calls, and every event envelope passed, but the run is
+still **`INVALID`**: all six reviewers emitted two completed agent-message
+items within one successfully completed turn, while v9 required exactly one.
+The new aggregate counters made this failure observable without retaining raw
+answers. Enabled reviewer cost also had a review-recovery outlier (96,484
+tokens versus 45,786 disabled), leaving average total tokens at **+11.96%** and
+critical path at **+10.15%**. Those deltas remain invalid-run diagnostics, not
+performance evidence. The canonical
+[`v9-attempts.jsonl`](benchmark-evidence/work-parallel-agent-ab/v9-attempts.jsonl)
+records one started, evaluated, and published outcome; v9 will not be rerun or
+promoted to a nine-pair final.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with
