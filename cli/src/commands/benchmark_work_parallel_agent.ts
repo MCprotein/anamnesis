@@ -10,11 +10,11 @@ import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkExecutionPacket } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v9";
+	"anamnesis.work_parallel_agent_ab.v10";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
-	"docs/benchmark-evidence/work-parallel-agent-ab/v9";
+	"docs/benchmark-evidence/work-parallel-agent-ab/v10";
 export const WORK_PARALLEL_AGENT_ATTEMPT_LEDGER =
-	"docs/benchmark-evidence/work-parallel-agent-ab/v9-attempts.jsonl";
+	"docs/benchmark-evidence/work-parallel-agent-ab/v10-attempts.jsonl";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
 
 export type ParallelCondition = "disabled" | "enabled";
@@ -90,6 +90,7 @@ export interface ParallelStageRecord {
 		invalid_envelopes: number;
 		unknown_events: number;
 		failure_events: number;
+		forbidden_command_events: number;
 	};
 	output_schema_valid?: boolean;
 	output_correct: boolean;
@@ -183,7 +184,7 @@ export interface ParallelBenchmarkResult {
 	attempts_before_this_sha: number;
 	scenario_families: ParallelScenarioFamily[];
 	topology: "harness-orchestrated-two-child-reviewer-leader";
-	scoring_version: "parallel-requirement-score.v9";
+	scoring_version: "parallel-requirement-score.v10";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -457,7 +458,7 @@ export async function workParallelAgentBenchmark(
 		topology: TOPOLOGY,
 		stages: STAGES,
 		reasoning_effort: REASONING_EFFORT,
-		scoring_version: "parallel-requirement-score.v9",
+		scoring_version: "parallel-requirement-score.v10",
 		families: scenarioFamilies,
 		final_pairs_per_family: 3,
 		accuracy: {
@@ -1002,7 +1003,7 @@ export async function workParallelAgentBenchmark(
 		protocol: protocol ?? "legacy",
 		scenario_families: scenarioFamilies,
 		runs_per_condition: runs,
-		scoring_version: "parallel-requirement-score.v9",
+		scoring_version: "parallel-requirement-score.v10",
 		planned_initial_invocations: plannedInitialInvocations,
 		actual_invocations: actualInvocations,
 		fixture_hash: fixtureHash,
@@ -1260,15 +1261,20 @@ async function executeCondition(input: {
 		childA.data.requirements,
 		childB.data.requirements,
 	);
-	const reviewPacketPath = path.join(input.cwd, "CHILD_REPORTS.json");
-	fs.writeFileSync(
-		reviewPacketPath,
-		`${renderCompactReviewPacket(reviewedInputs.childA, reviewedInputs.childB)}\n`,
+	const reviewerTruth = readInlineInput(path.join(input.cwd, "CONTEXT.md"));
+	const reviewPacket = renderCompactReviewPacket(
+		reviewedInputs.childA,
+		reviewedInputs.childB,
 	);
+	const reviewerPrompt = `Use only the two framed payloads below; do not read files or run commands. The authoritative truth overrides child reports.\n${renderNamedInlinePayload("authoritative-truth", reviewerTruth.content)}\n${renderNamedInlinePayload("child-reports", reviewPacket)}\nReturn only corrected exact requirements in source order.`;
 	const reviewer = await invoke(
 		"reviewer",
-		`Read ${input.condition === "enabled" ? "CONTEXT.md" : "CONTEXT.md (legacy context)"} as authoritative truth and CHILD_REPORTS.json as compact [id,status,summary] child tuples. Return only corrected exact requirements in source order.`,
-		[path.join(input.cwd, "CONTEXT.md"), reviewPacketPath],
+		reviewerPrompt,
+		[],
+		reviewerTruth.complete &&
+			parseNamedInlinePayload(reviewerPrompt, "authoritative-truth") ===
+				reviewerTruth.content &&
+			parseNamedInlinePayload(reviewerPrompt, "child-reports") === reviewPacket,
 	);
 	const auditStarted = performance.now();
 	const auditInput = JSON.stringify({
@@ -1438,6 +1444,7 @@ function parseStageJsonl(
 	let protocolValid = true;
 	let usage: WorkAgentTokenUsage | undefined;
 	let completedTurns = 0;
+	let terminalSeen = false;
 	let runnerFailed = false;
 	const summary = {
 		events: 0,
@@ -1448,6 +1455,7 @@ function parseStageJsonl(
 		invalid_envelopes: 0,
 		unknown_events: 0,
 		failure_events: 0,
+		forbidden_command_events: 0,
 	};
 	for (const raw of stdout.split(/\r?\n/u)) {
 		if (!raw.trim()) continue;
@@ -1471,10 +1479,23 @@ function parseStageJsonl(
 			runnerFailed = true;
 			summary.failure_events += 1;
 		}
+		if (terminalSeen) {
+			protocolValid = false;
+			summary.invalid_envelopes += 1;
+			continue;
+		}
 		if (!runnerEventEnvelopeValid(record)) {
 			protocolValid = false;
 			summary.invalid_envelopes += 1;
 			continue;
+		}
+		const itemRecord = isObjectRecord(record.item) ? record.item : undefined;
+		if (
+			itemRecord?.type === "command_execution" &&
+			(stage === "child-a" || stage === "child-b" || stage === "reviewer")
+		) {
+			protocolValid = false;
+			summary.forbidden_command_events += 1;
 		}
 		if (record.type === "item.updated") summary.item_updates += 1;
 		const item = record.item;
@@ -1489,6 +1510,7 @@ function parseStageJsonl(
 			summary.agent_messages += 1;
 		}
 		if (record.type === "turn.completed") {
+			terminalSeen = true;
 			completedTurns += 1;
 			summary.completed_turns += 1;
 			usage = parseUsage(record.usage);
@@ -1498,12 +1520,12 @@ function parseStageJsonl(
 	protocolValid =
 		protocolValid &&
 		!runnerFailed &&
-		messages.length === 1 &&
+		messages.length >= 1 &&
 		completedTurns === 1;
 	let data: Record<string, unknown> | undefined;
 	if (protocolValid) {
 		try {
-			const parsed = JSON.parse(messages[0]!) as unknown;
+			const parsed = JSON.parse(messages.at(-1)!) as unknown;
 			if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
 				data = parsed as Record<string, unknown>;
 			}
@@ -1811,6 +1833,39 @@ function parseInlinePayload(prompt: string): string | undefined {
 		Buffer.byteLength(content, "utf8") === declaredBytes
 		? content
 		: undefined;
+}
+
+export function renderNamedInlinePayload(
+	name: string,
+	content: string,
+): string {
+	return `<${name} bytes="${Buffer.byteLength(content, "utf8")}">\n${content}\n</${name}>`;
+}
+
+export function parseNamedInlinePayload(
+	prompt: string,
+	name: string,
+): string | undefined {
+	const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+	const opening = new RegExp(`<${escapedName} bytes="([0-9]+)">\\n`, "u").exec(
+		prompt,
+	);
+	if (!opening) return undefined;
+	if (opening.index === undefined) return undefined;
+	const contentStart = opening.index + opening[0].length;
+	const declaredBytes = Number(opening[1]);
+	if (!Number.isSafeInteger(declaredBytes) || declaredBytes < 0)
+		return undefined;
+	const remainder = Buffer.from(prompt.slice(contentStart), "utf8");
+	if (declaredBytes > remainder.length) return undefined;
+	const content = remainder.subarray(0, declaredBytes).toString("utf8");
+	if (Buffer.byteLength(content, "utf8") !== declaredBytes) return undefined;
+	const closing = Buffer.from(`\n</${name}>`, "utf8");
+	const suffix = remainder.subarray(
+		declaredBytes,
+		declaredBytes + closing.length,
+	);
+	return suffix.equals(closing) ? content : undefined;
 }
 
 function renderLegacyContext(requirements: ParallelRequirement[]): string {
@@ -2699,12 +2754,20 @@ const validationRunner: ParallelRunner = (request) => {
 		stage === "child-a" || stage === "child-b"
 			? parseInlinePayload(request.prompt)
 			: undefined;
+	const reviewerTruth =
+		stage === "reviewer"
+			? parseNamedInlinePayload(request.prompt, "authoritative-truth")
+			: undefined;
 	const requirements =
 		stage === "child-a" || stage === "child-b"
 			? inlinePayload === undefined
 				? []
 				: requirementsFromText(inlinePayload)
-			: requirementsFromContext(request.cwd);
+			: stage === "reviewer"
+				? reviewerTruth === undefined
+					? []
+					: requirementsFromText(reviewerTruth)
+				: requirementsFromContext(request.cwd);
 	const ids = requirements.map((requirement) => requirement.id);
 	const assignedIds = request.prompt
 		.match(/assigned requirements, in this order: ([^.]+)\./u)?.[1]
@@ -2718,35 +2781,17 @@ const validationRunner: ParallelRunner = (request) => {
 		const half = Math.ceil(ids.length / 2);
 		data = { child_a: ids.slice(0, half), child_b: ids.slice(half) };
 	} else if (stage === "reviewer") {
-		let packet: Record<string, unknown> = {};
+		let reviewPacketValid = false;
 		try {
-			packet = JSON.parse(
-				fs.readFileSync(path.join(request.cwd, "CHILD_REPORTS.json"), "utf8"),
+			const packet = JSON.parse(
+				parseNamedInlinePayload(request.prompt, "child-reports") ?? "{}",
 			) as Record<string, unknown>;
+			reviewPacketValid =
+				Array.isArray(packet.child_a) && Array.isArray(packet.child_b);
 		} catch {
-			packet = {};
+			reviewPacketValid = false;
 		}
-		const childA = parseCompactRequirementRows(packet.child_a);
-		const childB = parseCompactRequirementRows(packet.child_b);
-		const half = Math.ceil(requirements.length / 2);
-		const issues = analyzeChildReports(
-			childA,
-			childB,
-			requirements.slice(0, half),
-			requirements.slice(half),
-		);
-		data = {
-			requirements,
-			verdict: issues.verdict,
-			missing_ids: issues.missingIds,
-			duplicate_ids: issues.duplicateIds,
-			unexpected_ids: issues.unexpectedIds,
-			misassigned_ids: issues.misassignedIds,
-			status_mismatch_ids: issues.statusMismatchIds,
-			summary_mismatch_ids: issues.summaryMismatchIds,
-			malformed_rows: issues.malformedRows,
-			order_ok: issues.orderOk,
-		};
+		data = { requirements: reviewPacketValid ? requirements : [] };
 	} else {
 		data = { requirements: rows };
 	}
@@ -2897,14 +2942,6 @@ function workPacketSubsetExact(
 		subset.authoritative_completeness === false &&
 		digest(requirementsFromContext(cwd, filename)) === digest(expected)
 	);
-}
-
-function parseCompactRequirementRows(value: unknown): unknown[] {
-	if (!Array.isArray(value)) return [];
-	return value.map((row) => {
-		if (!Array.isArray(row) || row.length !== 3) return null;
-		return { id: row[0], status: row[1], summary: row[2] };
-	});
 }
 
 function outputJsonl(data: Record<string, unknown>): string {

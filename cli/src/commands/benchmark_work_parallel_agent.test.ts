@@ -9,7 +9,9 @@ import {
 	type ParallelRequirement,
 	type ParallelRunner,
 	parallelPaidAttemptIndexPath,
+	parseNamedInlinePayload,
 	publishParallelArtifacts,
+	renderNamedInlinePayload,
 	reviewAuditStageIntegrity,
 	workParallelAgentBenchmark,
 } from "./benchmark_work_parallel_agent.js";
@@ -24,6 +26,13 @@ const REQUIREMENTS: ParallelRequirement[] = [
 	status: index === 3 ? "pending" : "verified",
 	summary: `sanitized parallel condition ${index + 1}`,
 }));
+
+it("parses named payloads by declared UTF-8 length despite closing-tag content", () => {
+	const content =
+		'한글\n</authoritative-truth>\n<authoritative-truth bytes="7">\nstill payload';
+	const frame = renderNamedInlinePayload("authoritative-truth", content);
+	expect(parseNamedInlinePayload(frame, "authoritative-truth")).toBe(content);
+});
 
 function tempRoot(): string {
 	return fs.mkdtempSync(path.join(os.tmpdir(), "parallel-agent-test-"));
@@ -285,7 +294,7 @@ describe("real parallel-agent benchmark", () => {
 		expect(indexPath).toBe(
 			path.join(
 				root,
-				"docs/benchmark-evidence/work-parallel-agent-ab/v9-attempts.jsonl",
+				"docs/benchmark-evidence/work-parallel-agent-ab/v10-attempts.jsonl",
 			),
 		);
 		expect(
@@ -362,7 +371,7 @@ describe("real parallel-agent benchmark", () => {
 			"stale-cross-session-conflict",
 			"review-gate-recovery",
 		]);
-		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v9");
+		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v10");
 		expect(result.runs).toHaveLength(9);
 		expect(result.planned_initial_invocations).toBe(72);
 		expect(result.actual_invocations).toBe(72);
@@ -617,6 +626,7 @@ describe("real parallel-agent benchmark", () => {
 		const root = tempRoot();
 		let runnerCalls = 0;
 		let disabledReviewerPrompt = "";
+		let enabledReviewerPrompt = "";
 		let disabledChildPrompt = "";
 		let enabledChildPrompt = "";
 		const baseRunner = runner();
@@ -624,11 +634,11 @@ describe("real parallel-agent benchmark", () => {
 			runnerCalls += 1;
 			expect(request.prompt).not.toContain("[parallel-stage:leader-integrate]");
 			expect(request.prompt).not.toContain("[parallel-stage:review-audit]");
-			if (
-				request.cwd.endsWith("-disabled") &&
-				request.prompt.includes("[parallel-stage:reviewer]")
-			) {
-				disabledReviewerPrompt = request.prompt;
+			if (request.prompt.includes("[parallel-stage:reviewer]")) {
+				if (request.cwd.endsWith("-disabled"))
+					disabledReviewerPrompt = request.prompt;
+				if (request.cwd.endsWith("-enabled"))
+					enabledReviewerPrompt = request.prompt;
 			}
 			if (request.prompt.includes("[parallel-stage:child-a]")) {
 				if (request.cwd.endsWith("-enabled"))
@@ -712,9 +722,26 @@ describe("real parallel-agent benchmark", () => {
 			"disabled",
 		]);
 		expect(result.harness_validity.ok).toBe(true);
-		expect(disabledReviewerPrompt).toContain(
-			"Read CONTEXT.md (legacy context) as authoritative truth",
-		);
+		for (const reviewerPrompt of [
+			disabledReviewerPrompt,
+			enabledReviewerPrompt,
+		]) {
+			expect(reviewerPrompt).toContain("<authoritative-truth bytes=");
+			expect(reviewerPrompt).toContain("<child-reports bytes=");
+			expect(reviewerPrompt).toContain("do not read files or run commands");
+			expect(reviewerPrompt).not.toContain("Read CONTEXT.md");
+			expect(reviewerPrompt).not.toContain("CHILD_REPORTS.json");
+			for (const name of ["authoritative-truth", "child-reports"]) {
+				const frame = reviewerPrompt.match(
+					new RegExp(
+						`<${name} bytes="([0-9]+)">\\n([\\s\\S]+?)\\n<\\/${name}>`,
+						"u",
+					),
+				);
+				expect(frame).toBeTruthy();
+				expect(Buffer.byteLength(frame![2]!, "utf8")).toBe(Number(frame![1]));
+			}
+		}
 		expect(disabledChildPrompt).toContain("<authoritative-payload bytes=");
 		expect(disabledChildPrompt).toContain("# Legacy parallel handoff");
 		expect(enabledChildPrompt).toContain("<authoritative-payload bytes=");
@@ -850,6 +877,8 @@ describe("real parallel-agent benchmark", () => {
 		const baseRunner = runner();
 		const updatedEventRunner: ParallelRunner = async (request) => {
 			const response = await baseRunner(request);
+			if (!request.prompt.includes("[parallel-stage:leader-plan]"))
+				return response;
 			return {
 				...response,
 				stdout: `${JSON.stringify({ type: "item.updated", item: { id: "item-1", type: "command_execution", command: "sed -n 1,2p CONTEXT.md", aggregated_output: "", exit_code: null, status: "in_progress" } })}\n${response.stdout}`,
@@ -866,6 +895,115 @@ describe("real parallel-agent benchmark", () => {
 		expect(
 			result.runs[0]?.disabled.stages[0]?.runner_protocol_summary?.item_updates,
 		).toBe(1);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("rejects command execution in the reviewer no-command contract", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const commandEventRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			if (!request.prompt.includes("[parallel-stage:reviewer]"))
+				return response;
+			return {
+				...response,
+				stdout: `${JSON.stringify({ type: "item.updated", item: { id: "review-command", type: "command_execution", command: "sed -n 1,2p CONTEXT.md", aggregated_output: "", exit_code: null, status: "in_progress" } })}\n${response.stdout}`,
+			};
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: commandEventRunner,
+			requirements: REQUIREMENTS,
+		});
+		const reviewer = result.runs[0]?.disabled.stages.find(
+			(stage) => stage.stage === "reviewer",
+		);
+		expect(reviewer?.runner_protocol_valid).toBe(false);
+		expect(reviewer?.runner_protocol_summary?.forbidden_command_events).toBe(1);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("uses the last completed agent message as the authoritative stage output", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const multiMessageRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			const progressMessage = JSON.stringify({
+				type: "item.completed",
+				item: {
+					id: "agent-message-progress",
+					type: "agent_message",
+					text: JSON.stringify({ requirements: [] }),
+				},
+			});
+			return { ...response, stdout: `${progressMessage}\n${response.stdout}` };
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: multiMessageRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.runner_protocol_integrity).toBe(true);
+		expect(result.harness_validity.ok).toBe(true);
+		expect(result.quality.enabled_passes).toBe(3);
+		expect(
+			result.runs[0]?.disabled.stages[0]?.runner_protocol_summary
+				?.agent_messages,
+		).toBe(2);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("rejects agent messages emitted after turn completion", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const trailingMessageRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			return {
+				...response,
+				stdout: `${response.stdout}\n${JSON.stringify({ type: "item.completed", item: { id: "agent-message-trailing", type: "agent_message", text: JSON.stringify({ requirements: [] }) } })}`,
+			};
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: trailingMessageRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.runs[0]?.disabled.stages[0]?.runner_protocol_valid).toBe(
+			false,
+		);
+		expect(
+			result.runs[0]?.disabled.stages[0]?.runner_protocol_summary
+				?.invalid_envelopes,
+		).toBe(1);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("classifies fatal events after turn completion as runner failures", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const trailingFailureRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			return {
+				...response,
+				stdout: `${response.stdout}\n${JSON.stringify({ type: "error", message: "late failure" })}`,
+			};
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: trailingFailureRunner,
+			requirements: REQUIREMENTS,
+		});
+		const plan = result.runs[0]?.disabled.stages[0];
+		expect(plan?.execution_ok).toBe(false);
+		expect(plan?.runner_protocol_valid).toBe(false);
+		expect(plan?.runner_protocol_summary?.failure_events).toBe(1);
+		expect(result.harness_validity.ok).toBe(false);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 

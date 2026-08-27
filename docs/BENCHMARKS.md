@@ -357,6 +357,22 @@ performance evidence. The canonical
 records one started, evaluated, and published outcome; v9 will not be rerun or
 promoted to a nine-pair final.
 
+Frozen v10 corrects the two remaining measured transport assumptions rather
+than relaxing any quality or efficiency gate. A successful Codex turn may emit
+multiple completed agent messages, so the final completed agent message before
+`turn.completed` is authoritative and every preceding message remains counted
+in the privacy-safe protocol summary. Reviewer truth and compact child reports
+are now supplied as separate byte-length-framed inline payloads with an
+explicit no-file/no-command contract. This removes reviewer file-discovery
+round trips while preserving identical disabled/enabled transport and exact
+input-byte accounting; reviewer or child command events and any event after the
+single terminal turn event invalidate the runner protocol. Frame parsing uses
+the declared UTF-8 byte count, so delimiter-like payload text is not mistaken
+for the frame boundary. V10 uses a new schema, scoring version, harness hash,
+default `v10/` output root, and canonical `v10-attempts.jsonl` ledger. All v9
+accuracy, audit, quality, aggregate/stage cost, latency, one-shot, and
+no-nine-pair constraints remain unchanged.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

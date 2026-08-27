@@ -118,6 +118,15 @@ could include breaking changes.
   made the artifact `INVALID`. The counters exposed that protocol mismatch
   without raw answers. A review-recovery enabled reviewer token outlier also
   failed aggregate and stage-cost gates, so no performance claim follows.
+- Prepared frozen v10 from the retained v9 evidence. Successful turns may now
+  contain multiple completed agent messages, with the last message treated as
+  the authoritative schema-constrained output and all messages still counted.
+  Reviewers receive authoritative truth and child reports as two validated,
+  byte-length-framed inline payloads under a no-file/no-command contract,
+  removing measured file-discovery round trips without weakening any quality,
+  cost, latency, one-shot, or no-nine-pair gate. Child/reviewer command events
+  and post-terminal events now fail the runner protocol, and byte frames are
+  parsed by the declared UTF-8 length rather than delimiter search.
 
 ## [1.19.0] — 2026-08-26
 
