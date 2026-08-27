@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.20.0] — 2026-08-27
+
 ### Added
 
 - Added `benchmark work-parallel-agent-ab`, a fail-closed real-Codex Luna
