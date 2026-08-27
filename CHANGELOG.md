@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.20.1] — 2026-08-27
+
 ### Fixed
 
 - Stabilized the retrieval benchmark regression tests under shared GitHub CI
