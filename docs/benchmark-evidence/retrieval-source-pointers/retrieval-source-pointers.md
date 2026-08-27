@@ -1,8 +1,8 @@
-# Retrieval Source-Pointer Benchmark — 2026-08-27T16:47:57.929Z
+# Retrieval Source-Pointer Benchmark — 2026-08-27T17:02:33.149Z
 
 Deterministic unfiltered benchmark for `context query` source-pointer ranking over public-safe mixed context sources.
 
-Package: 1.20.1
+Package: 1.20.2
 Fixture hash: sha256:dc0edb75114705edb47d6b36dbeb44868bf02f12f6f02a4df90b3993ea6fe796
 Ranker hash: sha256:b0737ddbcb78b1c5bbb5fd21c00c8fd82df6114cd5800fd3ba0457659755441e
 Ranker inputs: src/commands/context_index.ts, src/commands/context_docs.ts, src/core/handoff_active_text.ts

@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.20.2] — 2026-08-27
+
 ### Fixed
 
 - Added explicit CI time budgets to the switching-agent matrix and Work cursor
