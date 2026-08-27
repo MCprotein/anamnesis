@@ -33,6 +33,8 @@ import {
 	type WorkHookClient,
 } from "./work_hook.js";
 
+const WORK_HOOK_RETRY_TEST_TIMEOUT_MS = 60_000;
+
 const roots: string[] = [];
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -263,7 +265,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			reason: "capture_staged",
 			context: expect.stringContaining(captureId),
 		});
-	});
+	}, WORK_HOOK_RETRY_TEST_TIMEOUT_MS);
 
 	it("fails closed without exposing prompt-derived data on a stable-boundary collision", () => {
 		const root = projectRoot("off", "off", true);

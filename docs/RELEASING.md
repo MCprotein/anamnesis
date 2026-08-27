@@ -144,6 +144,10 @@ tag, npm publish, or GitHub Release steps unless the recovery section applies.
    Packages, checks registry parity, then creates or updates the GitHub
    Release for the tag. Manual runs are also available from the GitHub Actions
    UI via `workflow_dispatch`, but only tag runs create a GitHub Release.
+   After those explicit gates and an executable `cli/dist/index.js` check, the
+   workflow publishes with lifecycle scripts disabled so `prepublishOnly` does
+   not rerun the same full suite for each registry. Direct/manual publishes keep
+   the package-level `prepublishOnly` safety gate.
 
 5. Verify the public release:
 

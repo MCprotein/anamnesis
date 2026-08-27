@@ -19,6 +19,8 @@ import {
   switchingScenarioId,
 } from "./switching.js";
 
+const SWITCHING_INTEGRATION_TEST_TIMEOUT_MS = 60_000;
+
 function setupSwitchingProject(): { project: string; library: string } {
   const library = process.cwd();
   const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-switching-"));
@@ -287,7 +289,7 @@ describe("3x3 switching-agent scenarios", () => {
     } finally {
       fs.rmSync(project, { recursive: true, force: true });
     }
-  });
+  }, SWITCHING_INTEGRATION_TEST_TIMEOUT_MS);
 
   it("verifies stale active handoff detection for every ordered switch", () => {
     const { project, library } = setupSwitchingProject();
@@ -312,5 +314,5 @@ describe("3x3 switching-agent scenarios", () => {
     } finally {
       fs.rmSync(project, { recursive: true, force: true });
     }
-  });
+  }, SWITCHING_INTEGRATION_TEST_TIMEOUT_MS);
 });

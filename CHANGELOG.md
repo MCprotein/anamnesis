@@ -7,6 +7,18 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Added explicit CI time budgets to the switching-agent matrix and Work cursor
+  retry regression tests without changing their assertions. The `v1.20.1` tag
+  passed the normal workflow test job but stopped when `npm publish` reran the
+  full suite under heavier contention, so it was not published to either
+  registry and is superseded by this patch.
+- Removed that redundant publish-time suite rerun from GitHub Actions while
+  retaining the explicit lint, typecheck, test, and build gates. CI now verifies
+  the built CLI artifact before publishing it with lifecycle scripts disabled;
+  local and incident-recovery publishes keep the `prepublishOnly` safety gate.
+
 ## [1.20.1] — 2026-08-27
 
 ### Fixed

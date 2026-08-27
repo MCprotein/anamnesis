@@ -42,7 +42,9 @@ jobs:
         run: npm test
 
       - name: Build
-        run: npm run build
+        run: |
+          npm run build
+          test -x cli/dist/index.js
 
       - name: Validate tag version
         if: startsWith(github.ref, 'refs/tags/v')
@@ -76,7 +78,7 @@ jobs:
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
           publish_log="$(mktemp)"
 
-          if npm publish --access public 2>&1 | tee "$publish_log"; then
+          if npm publish --ignore-scripts --access public 2>&1 | tee "$publish_log"; then
             exit 0
           fi
 
@@ -125,7 +127,7 @@ jobs:
 
           npm pkg set publishConfig.registry=https://npm.pkg.github.com
 
-          if npm publish --access public --registry https://npm.pkg.github.com 2>&1 | tee "$publish_log"; then
+          if npm publish --ignore-scripts --access public --registry https://npm.pkg.github.com 2>&1 | tee "$publish_log"; then
             exit 0
           fi
 
