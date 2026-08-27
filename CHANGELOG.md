@@ -7,6 +7,14 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Raised the repository-wide Vitest timeout budget from the 5-second default
+  to 30 seconds for integration-heavy suites, while retaining 60-second
+  overrides for the known multi-step matrix and retry cases. The `v1.20.2` tag
+  stopped at another default-timeout-only CI failure before any registry write,
+  so it was not published and is superseded by this patch.
+
 ## [1.20.2] — 2026-08-27
 
 ### Fixed
