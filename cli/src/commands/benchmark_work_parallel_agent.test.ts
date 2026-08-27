@@ -3,6 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+	auditParallelReviewConsistency,
 	type ParallelRequirement,
 	type ParallelRunner,
 	publishParallelArtifacts,
@@ -32,6 +33,7 @@ function output(
 }
 function runner(
 	opts: {
+		childAContainer?: "missing" | "null" | "scalar";
 		malformedOutputRows?: boolean;
 		malformedUsage?: boolean;
 		overlap?: boolean;
@@ -94,14 +96,19 @@ function runner(
 			data = opts.wrongPlan
 				? { child_a: ids.slice(2), child_b: ids.slice(0, 2) }
 				: { child_a: ids.slice(0, 2), child_b: ids.slice(2) };
-		else if (stage === "child-a")
-			data = {
-				requirements: [
-					...(wrong ? [ids[0]] : ids.slice(0, 2)).map(req),
-					...(opts.malformedOutputRows ? [null, 7, []] : []),
-				],
-			};
-		else if (stage === "child-b")
+		else if (stage === "child-a") {
+			if (opts.childAContainer === "missing") data = {};
+			else if (opts.childAContainer === "null") data = { requirements: null };
+			else if (opts.childAContainer === "scalar")
+				data = { requirements: "not-an-array" };
+			else
+				data = {
+					requirements: [
+						...(wrong ? [ids[0]] : ids.slice(0, 2)).map(req),
+						...(opts.malformedOutputRows ? [null, 7, []] : []),
+					],
+				};
+		} else if (stage === "child-b")
 			data = { requirements: ids.slice(2).map(req) };
 		else if (stage === "reviewer") {
 			const reviewerIds = reviewerWrong ? ids.slice(0, -1) : ids;
@@ -113,15 +120,6 @@ function runner(
 					...reviewerRequirements,
 					...(opts.malformedOutputRows ? [null, 7, []] : []),
 				],
-				verdict: wrong || opts.malformedOutputRows ? "repair" : "accept",
-				missing_ids: wrong ? ["REQ-B"] : [],
-				duplicate_ids: [],
-				unexpected_ids: [],
-				misassigned_ids: [],
-				status_mismatch_ids: [],
-				summary_mismatch_ids: [],
-				malformed_rows: opts.malformedOutputRows ? 3 : 0,
-				order_ok: !wrong,
 			};
 		} else
 			data = {
@@ -141,6 +139,114 @@ function runner(
 	};
 }
 
+describe("parallel review audit", () => {
+	const cleanChildA = REQUIREMENTS.slice(0, 2);
+	const cleanChildB = REQUIREMENTS.slice(2);
+	const emptyIssues = {
+		missingIds: [],
+		duplicateIds: [],
+		unexpectedIds: [],
+		misassignedIds: [],
+		statusMismatchIds: [],
+		summaryMismatchIds: [],
+		malformedRows: 0,
+		orderOk: true,
+	};
+	const cases: Array<{
+		name: string;
+		childA: unknown;
+		childB: unknown;
+		expected: Partial<typeof emptyIssues>;
+	}> = [
+		{ name: "clean", childA: cleanChildA, childB: cleanChildB, expected: {} },
+		{
+			name: "omission",
+			childA: [cleanChildA[0]],
+			childB: cleanChildB,
+			expected: { missingIds: ["REQ-B"], orderOk: false },
+		},
+		{
+			name: "duplicate",
+			childA: [cleanChildA[0], cleanChildA[0], cleanChildA[1]],
+			childB: cleanChildB,
+			expected: { duplicateIds: ["REQ-A"], orderOk: false },
+		},
+		{
+			name: "unexpected",
+			childA: [
+				...cleanChildA,
+				{ id: "REQ-X", status: "pending", summary: "unexpected" },
+			],
+			childB: cleanChildB,
+			expected: { unexpectedIds: ["REQ-X"], orderOk: false },
+		},
+		{
+			name: "misassignment",
+			childA: [cleanChildA[0]],
+			childB: [cleanChildA[1], ...cleanChildB],
+			expected: { misassignedIds: ["REQ-B"], orderOk: false },
+		},
+		{
+			name: "status mismatch",
+			childA: [{ ...cleanChildA[0], status: "pending" }, cleanChildA[1]],
+			childB: cleanChildB,
+			expected: { statusMismatchIds: ["REQ-A"] },
+		},
+		{
+			name: "summary mismatch",
+			childA: [cleanChildA[0], { ...cleanChildA[1], summary: "stale" }],
+			childB: cleanChildB,
+			expected: { summaryMismatchIds: ["REQ-B"] },
+		},
+		{
+			name: "malformed row",
+			childA: [...cleanChildA, null],
+			childB: cleanChildB,
+			expected: { malformedRows: 1 },
+		},
+		{
+			name: "wrong order",
+			childA: [cleanChildA[1], cleanChildA[0]],
+			childB: cleanChildB,
+			expected: { orderOk: false },
+		},
+		...([null, "not-an-array", undefined] as unknown[]).map(
+			(childA, index) => ({
+				name: ["null container", "scalar container", "missing container"][
+					index
+				]!,
+				childA,
+				childB: cleanChildB,
+				expected: {
+					missingIds: ["REQ-A", "REQ-B"],
+					malformedRows: 1,
+					orderOk: false,
+				},
+			}),
+		),
+	];
+
+	for (const testCase of cases) {
+		it(`detects ${testCase.name} without mutating inputs`, () => {
+			const input = {
+				reviewerRequirements: structuredClone(REQUIREMENTS),
+				childA: structuredClone(testCase.childA),
+				childB: structuredClone(testCase.childB),
+				childAAssignment: ["REQ-A", "REQ-B"],
+				childBAssignment: ["REQ-C", "REQ-D"],
+			};
+			const before = JSON.stringify(input);
+			const result = auditParallelReviewConsistency(input);
+			expect(result).toEqual({
+				verdict: testCase.name === "clean" ? "accept" : "repair",
+				...emptyIssues,
+				...testCase.expected,
+			});
+			expect(JSON.stringify(input)).toBe(before);
+		});
+	}
+});
+
 describe("real parallel-agent benchmark", () => {
 	it("validates the frozen three-family, nine-pair contract without Codex", async () => {
 		const root = tempRoot();
@@ -157,7 +263,7 @@ describe("real parallel-agent benchmark", () => {
 			"stale-cross-session-conflict",
 			"review-gate-recovery",
 		]);
-		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v6");
+		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v7");
 		expect(result.runs).toHaveLength(9);
 		expect(result.planned_initial_invocations).toBe(72);
 		expect(result.actual_invocations).toBe(72);
@@ -202,7 +308,16 @@ describe("real parallel-agent benchmark", () => {
 		});
 		expect(result.harness_validity.checks.leader_plan_exact).toBe(false);
 		expect(result.harness_validity.ok).toBe(false);
-		expect(result.actual_invocations).toBe(24);
+		expect(result.actual_invocations).toBe(6);
+		expect(
+			result.runs.every(
+				(pair) =>
+					pair.disabled.stages.length === 1 &&
+					pair.enabled.stages.length === 1 &&
+					pair.disabled.stages[0]?.stage === "leader-plan" &&
+					pair.enabled.stages[0]?.stage === "leader-plan",
+			),
+		).toBe(true);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -387,7 +502,7 @@ describe("real parallel-agent benchmark", () => {
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
-	it("runs child stages concurrently and aggregates four model stages plus deterministic integration", async () => {
+	it("runs child stages concurrently and aggregates four model stages plus two deterministic stages", async () => {
 		const root = tempRoot();
 		let runnerCalls = 0;
 		let disabledReviewerPrompt = "";
@@ -397,6 +512,7 @@ describe("real parallel-agent benchmark", () => {
 		const observingRunner: ParallelRunner = async (request) => {
 			runnerCalls += 1;
 			expect(request.prompt).not.toContain("[parallel-stage:leader-integrate]");
+			expect(request.prompt).not.toContain("[parallel-stage:review-audit]");
 			if (
 				request.cwd.endsWith("-disabled") &&
 				request.prompt.includes("[parallel-stage:reviewer]")
@@ -424,7 +540,10 @@ describe("real parallel-agent benchmark", () => {
 		expect(result.runs[0]?.disabled.children_overlap_ms).toBeGreaterThan(0);
 		expect(result.runs[0]?.enabled.children_overlap_ms).toBeGreaterThan(0);
 		expect(result.runs[0]?.disabled.tokens.total_tokens).toBe(40);
-		const deterministicFinal = result.runs[0]?.disabled.stages.find(
+		const deterministicStages = result.runs[0]?.disabled.stages.filter(
+			(stage) => stage.execution_mode === "deterministic",
+		);
+		const deterministicFinal = deterministicStages?.find(
 			(stage) => stage.stage === "leader-integrate",
 		);
 		expect(deterministicFinal).toMatchObject({
@@ -438,10 +557,18 @@ describe("real parallel-agent benchmark", () => {
 				total_tokens: 0,
 			},
 		});
-		expect(deterministicFinal?.elapsed_ms).toBeGreaterThanOrEqual(0);
-		expect(deterministicFinal?.end_offset_ms).toBeGreaterThanOrEqual(
-			deterministicFinal?.start_offset_ms ?? 0,
-		);
+		expect(deterministicStages).toHaveLength(2);
+		for (const stage of deterministicStages ?? []) {
+			expect(stage.elapsed_ms).toBeGreaterThanOrEqual(0);
+			expect(stage.input_bytes).toBeGreaterThan(0);
+			expect(stage.end_offset_ms).toBeGreaterThanOrEqual(stage.start_offset_ms);
+			expect(stage.tokens).toEqual({
+				input_tokens: 0,
+				cached_input_tokens: 0,
+				output_tokens: 0,
+				total_tokens: 0,
+			});
+		}
 		expect(result.runs.map((r) => r.order[0])).toEqual([
 			"disabled",
 			"enabled",
@@ -468,6 +595,34 @@ describe("real parallel-agent benchmark", () => {
 		]);
 		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		expect(result.quality.enabled_ready).toBe(true);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("keeps review audit out of the reviewer model contract", async () => {
+		const root = tempRoot();
+		let reviewerSchema = "";
+		const observingRunner: ParallelRunner = async (request) => {
+			if (request.prompt.includes("[parallel-stage:reviewer]")) {
+				reviewerSchema = fs.readFileSync(request.outputSchemaPath, "utf8");
+			}
+			return runner()(request);
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: observingRunner,
+			requirements: REQUIREMENTS,
+		});
+		const schema = JSON.parse(reviewerSchema) as {
+			properties: Record<string, unknown>;
+		};
+		expect(schema.properties).toEqual({ requirements: expect.any(Object) });
+		expect(result.runs[0]?.disabled.review_audit_exact).toBe(true);
+		expect(
+			result.runs[0]?.disabled.stages.filter(
+				(stage) => stage.execution_mode === "deterministic",
+			),
+		).toHaveLength(2);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -591,7 +746,35 @@ describe("real parallel-agent benchmark", () => {
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
-	it("passes the directional comparison on two reviewer accuracy wins and one tie", async () => {
+	it("preserves non-array child containers as malformed process defects", async () => {
+		for (const childAContainer of ["null", "scalar", "missing"] as const) {
+			const root = tempRoot();
+			const result = await workParallelAgentBenchmark({
+				projectRoot: root,
+				runs: 3,
+				runner: runner({ childAContainer }),
+				requirements: REQUIREMENTS,
+			});
+			const first = result.runs[0]!.disabled;
+			const child = first.stages.find((stage) => stage.stage === "child-a");
+			const audit = first.stages.find(
+				(stage) => stage.stage === "review-audit",
+			);
+			expect(child?.malformed_requirement_rows).toBe(1);
+			expect(child?.output_correct).toBe(false);
+			expect(audit?.review_audit_summary).toMatchObject({
+				verdict: "repair",
+				malformed_rows: 1,
+				order_ok: false,
+			});
+			expect(first.review_audit_exact).toBe(true);
+			expect(first.product_pass).toBe(true);
+			expect(result.summary.disabled.process_perfect_pct).toBe(0);
+			fs.rmSync(root, { recursive: true, force: true });
+		}
+	}, 15_000);
+
+	it("invalidates comparison when deterministic audit detects reviewer omission", async () => {
 		const root = tempRoot();
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
@@ -599,13 +782,13 @@ describe("real parallel-agent benchmark", () => {
 			runner: runner({ reviewerWrongDisabledIterations: [1, 2] }),
 			requirements: REQUIREMENTS,
 		});
-		expect(result.harness_validity.ok).toBe(true);
-		expect(result.comparison.verdict).toBe("PASS_DIRECTIONAL");
+		expect(result.harness_validity.ok).toBe(false);
+		expect(result.comparison.verdict).toBe("INVALID");
 		expect(result.quality.enabled_ready).toBe(true);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
-	it("reports a directional regression independently of harness validity", async () => {
+	it("invalidates comparison when enabled reviewer data fails audit", async () => {
 		const root = tempRoot();
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
@@ -613,9 +796,9 @@ describe("real parallel-agent benchmark", () => {
 			runner: runner({ reviewerWrongEnabledIterations: [1, 2] }),
 			requirements: REQUIREMENTS,
 		});
-		expect(result.harness_validity.ok).toBe(true);
-		expect(result.ok).toBe(true);
-		expect(result.comparison.verdict).toBe("FAIL_REGRESSION");
+		expect(result.harness_validity.ok).toBe(false);
+		expect(result.ok).toBe(false);
+		expect(result.comparison.verdict).toBe("INVALID");
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -643,11 +826,15 @@ describe("real parallel-agent benchmark", () => {
 			expect(final?.duplicate_requirement_ids).toBe(
 				reviewer?.duplicate_requirement_ids,
 			);
+			expect(first.product_pass).toBe(false);
+			if ("reviewerOmitLast" in options) {
+				expect(first.review_audit_exact).toBe(false);
+			}
 			expect(result.quality.disabled_passes).toBe(0);
 			expect(result.quality.enabled_passes).toBe(0);
 			fs.rmSync(root, { recursive: true, force: true });
 		}
-	});
+	}, 15_000);
 
 	it("publishes atomically and rejects escaping or symlink destinations", () => {
 		const root = tempRoot();

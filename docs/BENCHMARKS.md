@@ -251,6 +251,29 @@ preregistered accuracy-improvement gate also failed. The diagnostic is retained
 at [`v6-shadow`](benchmark-evidence/work-parallel-agent-ab/v6-shadow/README.md);
 it does not authorize a nine-pair final or a release claim.
 
+Frozen v7 fixes the validity problem exposed by v6 instead of asking the
+reviewer model to reproduce benchmark-only audit metadata. The reviewer schema
+contains only the ordered requirements. A separate deterministic `review-audit`
+stage receives the raw reviewer requirements, both raw child reports, and the
+leader plan's actual assignments; it has no fixture-oracle input and cannot
+change the reviewer or final payload. After both deterministic stages have
+finished, the harness compares that audit with an oracle-derived expected audit
+for scoring only. Harness validity therefore requires six logical stages per
+condition, exactly four charged model calls, two zero-token deterministic
+records, exact audit output, complete byte/token accounting, and the existing
+concurrency and packet-integrity checks.
+
+V7 also replaces the ceiling-incompatible improvement test with a
+non-inferiority gate: enabled final accuracy must not fall, no enabled pair may
+lose, and enabled aggregate defects may not exceed disabled defects. Absolute
+quality, per-family floors, aggregate/stage cost limits, and latency limits
+remain required. `PASS_PRODUCT` additionally needs a directional efficiency
+signal: paired token or critical-path p50 below zero with its deterministic
+bootstrap upper 90% at or below zero. The stronger 10% threshold remains
+`PASS_EFFICIENCY`. The default artifact root is `v7/`; the single bounded
+diagnostic writes to `v7-shadow/`, uses at most 24 real Luna calls, is never
+claim-eligible, and does not authorize a nine-pair run.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

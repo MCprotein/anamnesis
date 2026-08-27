@@ -66,6 +66,16 @@ could include breaking changes.
   final requirements in all six conditions. It remains diagnostic-only because
   enabled absolute quality was 2/3: one review-recovery reviewer returned all 48
   requirements exactly but failed the structured audit-metadata contract.
+- Prepared a frozen v7 diagnostic that removes synthetic audit metadata from
+  the reviewer model contract. A deterministic, zero-token review-audit stage
+  now checks the raw reviewer requirements, raw child reports, and actual
+  leader assignments; fixture truth is unavailable to that stage and is used
+  only after all stages finish to score audit exactness. V7 separately requires
+  exact audit output for harness validity, preserves reviewer/final defects
+  without repair, counts four model invocations plus two deterministic stages,
+  and uses non-inferior final accuracy plus an observed token-or-latency signal
+  before any product-level pass. Its bounded Luna shadow remains diagnostic and
+  is limited to 24 real calls; no nine-pair run is authorized by this change.
 
 ## [1.19.0] — 2026-08-26
 

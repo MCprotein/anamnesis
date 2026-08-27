@@ -10,9 +10,9 @@ import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkExecutionPacket } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v6";
+	"anamnesis.work_parallel_agent_ab.v7";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
-	"docs/benchmark-evidence/work-parallel-agent-ab/v6";
+	"docs/benchmark-evidence/work-parallel-agent-ab/v7";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
 
 export type ParallelCondition = "disabled" | "enabled";
@@ -35,12 +35,25 @@ export type ParallelStage =
 	| "child-a"
 	| "child-b"
 	| "reviewer"
+	| "review-audit"
 	| "leader-integrate";
 
 export interface ParallelRequirement {
 	id: string;
 	status: "verified" | "pending";
 	summary: string;
+}
+
+export interface ParallelReviewAudit {
+	verdict: "accept" | "repair";
+	missingIds: string[];
+	duplicateIds: string[];
+	unexpectedIds: string[];
+	misassignedIds: string[];
+	statusMismatchIds: string[];
+	summaryMismatchIds: string[];
+	malformedRows: number;
+	orderOk: boolean;
 }
 
 export interface ParallelRunnerRequest {
@@ -81,6 +94,17 @@ export interface ParallelStageRecord {
 	unexpected_requirement_rows?: number;
 	duplicate_requirement_ids?: number;
 	malformed_requirement_rows?: number;
+	review_audit_summary?: {
+		verdict: "accept" | "repair";
+		missing: number;
+		duplicate: number;
+		unexpected: number;
+		misassigned: number;
+		status_mismatch: number;
+		summary_mismatch: number;
+		malformed_rows: number;
+		order_ok: boolean;
+	};
 	error?: string;
 }
 
@@ -96,6 +120,7 @@ export interface ParallelConditionRun {
 	reviewer_started_after_children: boolean;
 	child_accuracy_pct: number;
 	reviewer_accuracy_pct: number;
+	review_audit_exact: boolean;
 	final_accuracy_pct: number;
 	final_exact_requirements: number;
 	final_defects: number;
@@ -142,7 +167,7 @@ export interface ParallelBenchmarkResult {
 	attempts_before_this_sha: number;
 	scenario_families: ParallelScenarioFamily[];
 	topology: "harness-orchestrated-two-child-reviewer-leader";
-	scoring_version: "parallel-requirement-score.v6";
+	scoring_version: "parallel-requirement-score.v7";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -198,6 +223,7 @@ export interface ParallelBenchmarkResult {
 		stage_cost_gate: boolean;
 		cost_gate: boolean;
 		latency_gate: boolean;
+		efficiency_signal_gate: boolean;
 	};
 	family_summaries: Record<
 		ParallelScenarioFamily,
@@ -253,6 +279,7 @@ const STAGES: ParallelStage[] = [
 	"child-a",
 	"child-b",
 	"reviewer",
+	"review-audit",
 	"leader-integrate",
 ];
 
@@ -271,9 +298,11 @@ const REQUIREMENTS_ARRAY_SCHEMA = {
 const REQUIREMENTS_SCHEMA = strictObject(["requirements"], {
 	requirements: REQUIREMENTS_ARRAY_SCHEMA,
 });
-const REVIEW_SCHEMA = strictObject(
+const REVIEW_SCHEMA = strictObject(["requirements"], {
+	requirements: REQUIREMENTS_ARRAY_SCHEMA,
+});
+const REVIEW_AUDIT_SCHEMA = strictObject(
 	[
-		"requirements",
 		"verdict",
 		"missing_ids",
 		"duplicate_ids",
@@ -285,7 +314,6 @@ const REVIEW_SCHEMA = strictObject(
 		"order_ok",
 	],
 	{
-		requirements: REQUIREMENTS_ARRAY_SCHEMA,
 		verdict: { type: "string", enum: ["accept", "repair"] },
 		missing_ids: { type: "array", items: { type: "string" } },
 		duplicate_ids: { type: "array", items: { type: "string" } },
@@ -362,13 +390,13 @@ export async function workParallelAgentBenchmark(
 		topology: TOPOLOGY,
 		stages: STAGES,
 		reasoning_effort: REASONING_EFFORT,
-		scoring_version: "parallel-requirement-score.v6",
+		scoring_version: "parallel-requirement-score.v7",
 		families: scenarioFamilies,
 		final_pairs_per_family: 3,
 		accuracy: {
-			mean_delta_points: 5,
-			one_sided_p: 0.05,
-			wins: 6,
+			noninferiority_delta_points: 0,
+			maximum_pair_losses: 0,
+			aggregate_defects: "enabled<=disabled",
 			family_floor: -2,
 		},
 		quality: {
@@ -378,6 +406,17 @@ export async function workParallelAgentBenchmark(
 		},
 		child_transport: "inline-authoritative-payload-v1",
 		final_transport: "deterministic-reviewer-pass-through-v1",
+		review_audit: {
+			version: "review-audit.v1",
+			inputs: [
+				"reviewer-raw-requirements",
+				"raw-child-a",
+				"raw-child-b",
+				"actual-plan-assignments",
+			],
+			oracle: "post-execution-scoring-only",
+			product_quality: "separate-required-harness-gate",
+		},
 		model_stages_per_condition: 4,
 		tokens: { aggregate_pct: 5, median_pct: 5, bootstrap_upper_90_pct: 10 },
 		stage_tokens: {
@@ -401,6 +440,7 @@ export async function workParallelAgentBenchmark(
 	const modelStagesPerCondition = 4;
 	const plannedInitialInvocations =
 		runs * scenarioFamilies.length * 2 * modelStagesPerCondition;
+	let actualInvocations = 0;
 	options.onPlan?.({ runs, invocations: plannedInitialInvocations });
 
 	const tempRoot = fs.mkdtempSync(
@@ -488,6 +528,9 @@ export async function workParallelAgentBenchmark(
 						runner,
 						schemas,
 						requirements: scenarioRequirements,
+						onModelInvocation: () => {
+							actualInvocations += 1;
+						},
 					});
 				}
 				pairs.push({
@@ -535,19 +578,41 @@ export async function workParallelAgentBenchmark(
 		),
 	);
 	const checks = {
+		invocation_count_matches_plan:
+			actualInvocations === plannedInitialInvocations,
 		no_hidden_model_calls: allRuns.every(
 			(run) =>
 				run.stages.filter((stage) => stage.execution_mode === "model")
 					.length === modelStagesPerCondition &&
 				run.stages.filter((stage) => stage.execution_mode === "deterministic")
-					.length === 1,
+					.length === 2,
+		),
+		review_audit_exact: allRuns.every((run) =>
+			run.stages.some(
+				(stage) => stage.stage === "review-audit" && stage.output_correct,
+			),
 		),
 		deterministic_stage_integrity: allRuns.every((run) => {
-			const finals = run.stages.filter(
+			const deterministic = run.stages.filter(
+				(stage) => stage.execution_mode === "deterministic",
+			);
+			const finals = deterministic.filter(
 				(stage) => stage.stage === "leader-integrate",
 			);
 			const final = finals[0];
 			return (
+				deterministic.length === 2 &&
+				deterministic.every(
+					(stage) =>
+						stage.execution_ok &&
+						stage.token_accounting_complete &&
+						stage.input_bytes_complete &&
+						stage.input_bytes > 0 &&
+						stage.elapsed_ms >= 0 &&
+						stage.start_offset_ms >= 0 &&
+						stage.end_offset_ms >= stage.start_offset_ms &&
+						Object.values(stage.tokens).every((tokens) => tokens === 0),
+				) &&
 				finals.length === 1 &&
 				final?.execution_mode === "deterministic" &&
 				final.execution_ok &&
@@ -559,7 +624,7 @@ export async function workParallelAgentBenchmark(
 			);
 		}),
 		equal_authoritative_facts: equalAuthoritativeFacts,
-		exactly_five_stages: allRuns.every(
+		exactly_six_stages: allRuns.every(
 			(run) =>
 				run.stages.length === STAGES.length &&
 				STAGES.every((stage) =>
@@ -725,9 +790,9 @@ export async function workParallelAgentBenchmark(
 		enabledPairLosses,
 	);
 	const accuracyGate =
-		accuracyDeltaPoints >= 5 &&
-		signTestPValue <= 0.05 &&
-		enabledPairWins >= Math.min(6, minimumPairWins);
+		accuracyDeltaPoints >= 0 &&
+		enabledPairLosses === 0 &&
+		enabledAggregateDefects <= disabledAggregateDefects;
 	const criticalQualityGate =
 		enabledPasses >= Math.ceil((pairs.length * 8) / 9) &&
 		enabledAggregateDefects === 0 &&
@@ -775,6 +840,9 @@ export async function workParallelAgentBenchmark(
 	const efficiencyGate =
 		(median(pairedTokenDeltas) <= -10 && tokenUpper90 < 0) ||
 		(median(pairedCriticalPathDeltas) <= -10 && latencyUpper90 < 0);
+	const efficiencySignalGate =
+		(median(pairedTokenDeltas) < 0 && tokenUpper90 <= 0) ||
+		(median(pairedCriticalPathDeltas) < 0 && latencyUpper90 <= 0);
 	const comparisonVerdict: ParallelComparisonVerdict | LegacyVerdict =
 		protocol === undefined || protocol === "legacy"
 			? !harnessValidity.ok
@@ -799,9 +867,11 @@ export async function workParallelAgentBenchmark(
 								? "FAIL_COST"
 								: !latencyGate
 									? "INCONCLUSIVE"
-									: efficiencyGate
-										? "PASS_EFFICIENCY"
-										: "PASS_PRODUCT";
+									: !efficiencySignalGate
+										? "INCONCLUSIVE"
+										: efficiencyGate
+											? "PASS_EFFICIENCY"
+											: "PASS_PRODUCT";
 	const result: ParallelBenchmarkResult = {
 		schema_version: WORK_PARALLEL_AGENT_SCHEMA_VERSION,
 		generated_at: (options.now ?? (() => new Date()))().toISOString(),
@@ -815,14 +885,9 @@ export async function workParallelAgentBenchmark(
 		protocol: protocol ?? "legacy",
 		scenario_families: scenarioFamilies,
 		runs_per_condition: runs,
-		scoring_version: "parallel-requirement-score.v6",
+		scoring_version: "parallel-requirement-score.v7",
 		planned_initial_invocations: plannedInitialInvocations,
-		actual_invocations: allRuns.reduce(
-			(total, run) =>
-				total +
-				run.stages.filter((stage) => stage.execution_mode === "model").length,
-			0,
-		),
+		actual_invocations: actualInvocations,
 		fixture_hash: fixtureHash,
 		harness_hash: harnessHash,
 		reproducibility,
@@ -874,6 +939,7 @@ export async function workParallelAgentBenchmark(
 			stage_cost_gate: stageCostGate,
 			cost_gate: costGate,
 			latency_gate: latencyGate,
+			efficiency_signal_gate: efficiencySignalGate,
 		},
 		family_summaries: familySummaries,
 		ok:
@@ -910,6 +976,7 @@ async function executeCondition(input: {
 	runner: ParallelRunner;
 	schemas: Record<ParallelStage, string>;
 	requirements: ParallelRequirement[];
+	onModelInvocation: () => void;
 }): Promise<ParallelConditionRun> {
 	const conditionStart = performance.now();
 	const records: ParallelStageRecord[] = [];
@@ -926,6 +993,7 @@ async function executeCondition(input: {
 		record: ParallelStageRecord;
 		data: Record<string, unknown>;
 	}> => {
+		input.onModelInvocation();
 		const started = performance.now();
 		let response: ParallelRunnerResponse;
 		try {
@@ -985,8 +1053,32 @@ async function executeCondition(input: {
 	const planExact =
 		equalStringArrays(plan.data.child_a, expectedA) &&
 		equalStringArrays(plan.data.child_b, expectedB);
-	const planA = planExact ? (plan.data.child_a as string[]) : expectedA;
-	const planB = planExact ? (plan.data.child_b as string[]) : expectedB;
+	if (!planExact) {
+		plan.record.output_correct = false;
+		return {
+			condition: input.condition,
+			execution_ok: false,
+			product_pass: false,
+			token_accounting_complete: false,
+			critical_path_ms: round(performance.now() - conditionStart),
+			agent_elapsed_ms: round(plan.record.elapsed_ms),
+			children_overlap_ms: 0,
+			children_overlap_ratio: 0,
+			reviewer_started_after_children: false,
+			child_accuracy_pct: 0,
+			reviewer_accuracy_pct: 0,
+			review_audit_exact: false,
+			final_accuracy_pct: 0,
+			final_exact_requirements: 0,
+			final_defects: input.requirements.length,
+			tokens: { ...plan.record.tokens },
+			stages: records,
+		};
+	}
+	const planA = plan.data.child_a as string[];
+	const planB = plan.data.child_b as string[];
+	const expectedChildA = expectedChildRequirements(input.requirements, planA);
+	const expectedChildB = expectedChildRequirements(input.requirements, planB);
 	const childAInput = readInlineInput(
 		path.join(
 			input.cwd,
@@ -1037,9 +1129,49 @@ async function executeCondition(input: {
 	);
 	const reviewer = await invoke(
 		"reviewer",
-		`Read ${input.condition === "enabled" ? "CONTEXT.md" : "CONTEXT.md (legacy context)"} as authoritative truth and CHILD_REPORTS.json as compact [id,status,summary] child tuples. Child A is assigned: ${expectedA.join(", ")}. Child B is assigned: ${expectedB.join(", ")}. Return corrected exact requirements in source order plus the exact issue-ID arrays, malformed_rows count, order_ok, and verdict=accept only when every issue array is empty, malformed_rows is zero, and order is correct; otherwise verdict=repair.`,
+		`Read ${input.condition === "enabled" ? "CONTEXT.md" : "CONTEXT.md (legacy context)"} as authoritative truth and CHILD_REPORTS.json as compact [id,status,summary] child tuples. Return only corrected exact requirements in source order.`,
 		[path.join(input.cwd, "CONTEXT.md"), reviewPacketPath],
 	);
+	const auditStarted = performance.now();
+	const auditInput = JSON.stringify({
+		reviewer_requirements: reviewer.data.requirements,
+		child_a: reviewedInputs.childA,
+		child_b: reviewedInputs.childB,
+		plan: { child_a: planA, child_b: planB },
+	});
+	const audit = auditParallelReviewConsistency({
+		reviewerRequirements: reviewer.data.requirements,
+		childA: reviewedInputs.childA,
+		childB: reviewedInputs.childB,
+		childAAssignment: planA,
+		childBAssignment: planB,
+	});
+	const auditEnded = performance.now();
+	const auditRecord: ParallelStageRecord = {
+		stage: "review-audit",
+		execution_mode: "deterministic",
+		execution_ok: true,
+		output_correct: false,
+		token_accounting_complete: true,
+		elapsed_ms: round(auditEnded - auditStarted),
+		start_offset_ms: round(auditStarted - conditionStart),
+		end_offset_ms: round(auditEnded - conditionStart),
+		input_bytes: Buffer.byteLength(auditInput, "utf8"),
+		input_bytes_complete: true,
+		tokens: { ...EMPTY_USAGE },
+		review_audit_summary: {
+			verdict: audit.verdict,
+			missing: audit.missingIds.length,
+			duplicate: audit.duplicateIds.length,
+			unexpected: audit.unexpectedIds.length,
+			misassigned: audit.misassignedIds.length,
+			status_mismatch: audit.statusMismatchIds.length,
+			summary_mismatch: audit.summaryMismatchIds.length,
+			malformed_rows: audit.malformedRows,
+			order_ok: audit.orderOk,
+		},
+	};
+	records.push(auditRecord);
 	// Serialize and parse the reviewer envelope to make this a real clone boundary.
 	// Missing, malformed, duplicate, or misordered rows remain exactly as supplied;
 	// expected requirements are never consulted by this deterministic stage.
@@ -1066,9 +1198,17 @@ async function executeCondition(input: {
 	};
 	const final = { record: finalRecord, data: finalEnvelope };
 	records.push(finalRecord);
+	// The fixture oracle is consulted only after every execution stage has
+	// completed. It scores the already-produced audit; it never enters the audit
+	// helper or any model prompt.
+	const expectedAudit = analyzeChildReports(
+		reviewedInputs.childA,
+		reviewedInputs.childB,
+		expectedChildRequirements(input.requirements, planA),
+		expectedChildRequirements(input.requirements, planB),
+	);
+	auditRecord.output_correct = reviewAuditEqual(audit, expectedAudit);
 	plan.record.output_correct = plan.record.execution_ok && planExact;
-	const expectedChildA = input.requirements.slice(0, half);
-	const expectedChildB = input.requirements.slice(half);
 	const childAScore = scoreRequirements(
 		childA.data.requirements,
 		expectedChildA,
@@ -1083,47 +1223,13 @@ async function executeCondition(input: {
 		childA.record.execution_ok && childAScore.exact;
 	childB.record.output_correct =
 		childB.record.execution_ok && childBScore.exact;
-	const childReportAnalysis = analyzeChildReports(
-		reviewedInputs.childA,
-		reviewedInputs.childB,
-		expectedChildA,
-		expectedChildB,
-	);
 	const reviewerScore = scoreRequirements(
 		reviewer.data.requirements,
 		input.requirements,
 	);
 	applyRequirementScore(reviewer.record, reviewerScore);
 	reviewer.record.output_correct =
-		reviewer.record.execution_ok &&
-		reviewerScore.exact &&
-		reviewer.data.verdict === childReportAnalysis.verdict &&
-		equalStringArrays(
-			reviewer.data.missing_ids,
-			childReportAnalysis.missingIds,
-		) &&
-		equalStringArrays(
-			reviewer.data.duplicate_ids,
-			childReportAnalysis.duplicateIds,
-		) &&
-		equalStringArrays(
-			reviewer.data.unexpected_ids,
-			childReportAnalysis.unexpectedIds,
-		) &&
-		equalStringArrays(
-			reviewer.data.misassigned_ids,
-			childReportAnalysis.misassignedIds,
-		) &&
-		equalStringArrays(
-			reviewer.data.status_mismatch_ids,
-			childReportAnalysis.statusMismatchIds,
-		) &&
-		equalStringArrays(
-			reviewer.data.summary_mismatch_ids,
-			childReportAnalysis.summaryMismatchIds,
-		) &&
-		reviewer.data.malformed_rows === childReportAnalysis.malformedRows &&
-		reviewer.data.order_ok === childReportAnalysis.orderOk;
+		reviewer.record.execution_ok && reviewerScore.exact;
 	const finalScore = scoreRequirements(
 		final.data.requirements,
 		input.requirements,
@@ -1168,6 +1274,7 @@ async function executeCondition(input: {
 				input.requirements.length,
 		),
 		reviewer_accuracy_pct: reviewerScore.accuracyPct,
+		review_audit_exact: auditRecord.output_correct,
 		final_accuracy_pct: finalScore.accuracyPct,
 		final_exact_requirements: finalScore.exactRequirements,
 		final_defects: finalScore.unexpectedRows + finalScore.duplicateIds,
@@ -1474,6 +1581,7 @@ function writeSchemas(tempRoot: string): Record<ParallelStage, string> {
 		"child-a": REQUIREMENTS_SCHEMA,
 		"child-b": REQUIREMENTS_SCHEMA,
 		reviewer: REVIEW_SCHEMA,
+		"review-audit": REVIEW_AUDIT_SCHEMA,
 		"leader-integrate": REQUIREMENTS_SCHEMA,
 	};
 	return Object.fromEntries(
@@ -1517,7 +1625,8 @@ function scoreRequirements(
 		(item): item is Record<string, unknown> =>
 			item !== null && typeof item === "object" && !Array.isArray(item),
 	);
-	const malformedRows = rawRows.length - rows.length;
+	const malformedRows =
+		(Array.isArray(value) ? 0 : 1) + rawRows.length - rows.length;
 	const expectedIds = new Set(expected.map((requirement) => requirement.id));
 	const idCounts = new Map<string, number>();
 	for (const row of rows) {
@@ -1588,10 +1697,15 @@ function perturbReviewInputs(
 	family: ParallelScenarioFamily,
 	childA: unknown,
 	childB: unknown,
-): { childA: unknown[]; childB: unknown[] } {
-	const left = Array.isArray(childA) ? structuredClone(childA) : [];
-	const right = Array.isArray(childB) ? structuredClone(childB) : [];
-	if (family !== "review-gate-recovery" || left.length < 4) {
+): { childA: unknown; childB: unknown } {
+	const left = structuredClone(childA);
+	const right = structuredClone(childB);
+	if (
+		family !== "review-gate-recovery" ||
+		!Array.isArray(left) ||
+		!Array.isArray(right) ||
+		left.length < 4
+	) {
 		return { childA: left, childB: right };
 	}
 	const omitted = left.shift();
@@ -1608,23 +1722,37 @@ function perturbReviewInputs(
 	return { childA: left, childB: right };
 }
 
+export function auditParallelReviewConsistency(input: {
+	reviewerRequirements: unknown;
+	childA: unknown;
+	childB: unknown;
+	childAAssignment: string[];
+	childBAssignment: string[];
+}): ParallelReviewAudit {
+	const expectedChildA = input.childAAssignment.flatMap((id) => {
+		const requirement = requirementFromRow(input.reviewerRequirements, id);
+		return requirement === undefined ? [] : [requirement];
+	});
+	const expectedChildB = input.childBAssignment.flatMap((id) => {
+		const requirement = requirementFromRow(input.reviewerRequirements, id);
+		return requirement === undefined ? [] : [requirement];
+	});
+	return analyzeChildReports(
+		input.childA,
+		input.childB,
+		expectedChildA,
+		expectedChildB,
+	);
+}
+
 function analyzeChildReports(
 	childA: unknown,
 	childB: unknown,
 	expectedChildA: ParallelRequirement[],
 	expectedChildB: ParallelRequirement[],
-): {
-	verdict: "accept" | "repair";
-	missingIds: string[];
-	duplicateIds: string[];
-	unexpectedIds: string[];
-	misassignedIds: string[];
-	statusMismatchIds: string[];
-	summaryMismatchIds: string[];
-	malformedRows: number;
-	orderOk: boolean;
-} {
-	const rawRowsByChild = [childA, childB].map((value) =>
+): ParallelReviewAudit {
+	const rawChildValues = [childA, childB];
+	const rawRowsByChild = rawChildValues.map((value) =>
 		Array.isArray(value) ? value : [],
 	);
 	const rowsByChild = rawRowsByChild.map((rows) =>
@@ -1635,7 +1763,10 @@ function analyzeChildReports(
 	);
 	const malformedRows = rawRowsByChild.reduce(
 		(total, rawRows, index) =>
-			total + rawRows.length - rowsByChild[index]!.length,
+			total +
+			(Array.isArray(rawChildValues[index]) ? 0 : 1) +
+			rawRows.length -
+			rowsByChild[index]!.length,
 		0,
 	);
 	const rows = rowsByChild.flat();
@@ -1726,6 +1857,58 @@ function analyzeChildReports(
 		malformedRows,
 		orderOk,
 	};
+}
+
+function requirementFromRow(
+	value: unknown,
+	id: string,
+): ParallelRequirement | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const row = value.find(
+		(item): item is Record<string, unknown> =>
+			item !== null &&
+			typeof item === "object" &&
+			!Array.isArray(item) &&
+			item.id === id,
+	);
+	if (
+		!row ||
+		(row.status !== "verified" && row.status !== "pending") ||
+		typeof row.summary !== "string"
+	) {
+		return undefined;
+	}
+	return { id, status: row.status, summary: row.summary };
+}
+
+function expectedChildRequirements(
+	requirements: ParallelRequirement[],
+	assignment: string[],
+): ParallelRequirement[] {
+	const byId = new Map(
+		requirements.map((requirement) => [requirement.id, requirement]),
+	);
+	return assignment.flatMap((id) => {
+		const requirement = byId.get(id);
+		return requirement === undefined ? [] : [requirement];
+	});
+}
+
+function reviewAuditEqual(
+	actual: ReturnType<typeof analyzeChildReports>,
+	expected: ReturnType<typeof analyzeChildReports>,
+): boolean {
+	return (
+		actual.verdict === expected.verdict &&
+		equalStringArrays(actual.missingIds, expected.missingIds) &&
+		equalStringArrays(actual.duplicateIds, expected.duplicateIds) &&
+		equalStringArrays(actual.unexpectedIds, expected.unexpectedIds) &&
+		equalStringArrays(actual.misassignedIds, expected.misassignedIds) &&
+		equalStringArrays(actual.statusMismatchIds, expected.statusMismatchIds) &&
+		equalStringArrays(actual.summaryMismatchIds, expected.summaryMismatchIds) &&
+		actual.malformedRows === expected.malformedRows &&
+		actual.orderOk === expected.orderOk
+	);
 }
 
 function stringArray(value: unknown): string[] | undefined {
