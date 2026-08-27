@@ -69,18 +69,21 @@ and both `n=3` runs are directional cross-model evidence.
 
 ### Parallel-agent benchmark
 
-A held-out Luna benchmark measured nine paired, externally orchestrated
-pipelines: leader planning, two concurrent children, authoritative review, and
-final integration. Work raised final exact-requirement accuracy from **55.56%
-to 100%** with no paired losses, but the preregistered product contract failed:
-only **4/9** pairs were wins (five tied), tokens were **+9.14%**, and paired
-critical-path p50 was **+10.86%**. This is evidence of an accuracy benefit in
-the two discriminating scenario families—not an efficiency or general
-parallel-agent performance claim.
+The latest bounded Luna diagnostic measured three paired, externally
+orchestrated pipelines: leader planning, two concurrent children,
+authoritative review, and final integration. Both conditions were exact in all
+three pairs, while Work reduced paired total-token p50 by **1.19%** (90%
+bootstrap upper bound **-0.98%**), combined-child tokens by **2.78%**, and
+reviewer tokens by **0.27%**. Critical-path p50 was **+0.64%** and passed its
+preregistered non-regression gate. The 24-call harness, quality, stage-cost,
+latency, and diagnostic-efficiency contracts all passed. This is a small,
+scenario-bounded efficiency signal—not a release-quality or general native
+subagent performance claim.
 
-![Parallel-agent Luna benchmark](docs/benchmark-evidence/work-parallel-agent-ab/work-parallel-agent-ab-summary.svg)
+![Parallel-agent Luna V10 diagnostic](docs/benchmark-evidence/work-parallel-agent-ab/v10-shadow/work-parallel-agent-ab-summary.svg)
 
-[Parallel-agent methodology and evidence](docs/benchmark-evidence/work-parallel-agent-ab/README.md)
+[V10 diagnostic evidence](docs/benchmark-evidence/work-parallel-agent-ab/v10-shadow/README.md) ·
+[Parallel-agent methodology and historical evidence](docs/benchmark-evidence/work-parallel-agent-ab/README.md)
 
 ## Quickstart
 

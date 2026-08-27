@@ -373,6 +373,22 @@ default `v10/` output root, and canonical `v10-attempts.jsonl` ledger. All v9
 accuracy, audit, quality, aggregate/stage cost, latency, one-shot, and
 no-nine-pair constraints remain unchanged.
 
+The single committed v10 shadow is preserved without rerunning it at
+[`v10-shadow`](benchmark-evidence/work-parallel-agent-ab/v10-shadow/README.md).
+It completed **24/24** calls with harness validity and enabled
+audit/reviewer/final quality all **PASS (3/3)** and zero enabled final defects.
+Final accuracy was 100% in both conditions with three ties and no losses.
+Aggregate, combined-child, reviewer, stage-cost, and latency gates all passed:
+paired total-token p50 was **-1.19%** with a **-0.98%** bootstrap upper-90;
+combined-child token p50 was **-2.78%** and reviewer token p50 was **-0.27%**.
+Critical-path p50 was **+0.64%**. The preregistered diagnostic contract passed,
+but the shadow remains `INCONCLUSIVE` and not claim-eligible by design. This is
+a small scenario-bounded efficiency signal, not a release-quality, statistical
+generalization, or same-session native-subagent claim. The canonical
+[`v10-attempts.jsonl`](benchmark-evidence/work-parallel-agent-ab/v10-attempts.jsonl)
+records exactly one started, evaluated, and published outcome; v10 will not be
+rerun or promoted to a nine-pair final.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

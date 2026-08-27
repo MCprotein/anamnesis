@@ -127,6 +127,14 @@ could include breaking changes.
   cost, latency, one-shot, or no-nine-pair gate. Child/reviewer command events
   and post-terminal events now fail the runner protocol, and byte frames are
   parsed by the declared UTF-8 length rather than delimiter search.
+- Preserved the single committed v10 Luna shadow without rerunning it. All
+  24/24 calls, harness checks, and enabled audit/reviewer/final quality checks
+  passed with zero enabled final defects and no paired accuracy losses. Paired
+  total-token p50 improved 1.19% (bootstrap upper-90 -0.98%), combined-child
+  tokens improved 2.78%, reviewer tokens improved 0.27%, and critical-path p50
+  was +0.64%; every preregistered diagnostic gate passed. The shadow remains
+  `INCONCLUSIVE` and not claim-eligible by design, so this is retained as a
+  bounded efficiency signal rather than a release or native-subagent claim.
 
 ## [1.19.0] — 2026-08-26
 
