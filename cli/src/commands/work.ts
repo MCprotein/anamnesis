@@ -8,6 +8,7 @@ import {
 	parseWorkContractDraft,
 	parseWorkPromptRetainDraft,
 	type WorkContractDraft,
+	workCloseDraftSchema,
 	workTransitionDraftSchema,
 } from "../core/work_command_draft.js";
 import {
@@ -81,6 +82,7 @@ import {
 	type WorkBriefingSnapshot,
 } from "../core/work_reconciliation.js";
 import {
+	appendCanonicalTypedWorkEventWithPublishedSource,
 	appendCanonicalTypedWorkEvidenceEvent,
 	appendCanonicalTypedWorkProgressEvent,
 	type PublishedWorkSourceAllocation,
@@ -221,6 +223,9 @@ const delegationWaiveDraftSchema = z
 const transitionWithExecutionInputsSchema = workTransitionDraftSchema.extend({
 	execution_inputs: workExecutionInputsSchema.optional(),
 });
+const closeWithExecutionInputsSchema = workCloseDraftSchema.extend({
+	execution_inputs: workExecutionInputsSchema.optional(),
+});
 
 export interface WorkRawSource {
 	event_id: string;
@@ -246,6 +251,11 @@ export interface WorkMutationInput extends WorkCommandSourceSelection {
 	occurred_at: string;
 	draft: Buffer;
 	expected_head: string | null;
+}
+
+export interface WorkCloseInput extends WorkEvidenceMutationInput {
+	expected_contract_revision: number;
+	expected_contract_hash: string;
 }
 
 export interface WorkMutationResult {
@@ -826,6 +836,132 @@ export function transitionWork(input: WorkMutationInput): WorkMutationResult {
 		allocation: null,
 		projection: nextProjection,
 		...(readiness ? { readiness } : {}),
+	};
+}
+
+export function closeWork(input: WorkCloseInput): WorkMutationResult {
+	assertSafeId(input.work_id, "work ID");
+	const draft = parseSingleWorkDraft(
+		input.draft,
+		closeWithExecutionInputsSchema,
+	);
+	const context = executionMutationContext(input);
+	const { projection } = context;
+	const canonicalInputs = resolveCanonicalInputs(
+		input,
+		projection,
+		draft.execution_inputs,
+	);
+	const completionReviewInputHash =
+		canonicalInputs.completion_review &&
+		"review_input_hash" in canonicalInputs.completion_review
+			? canonicalInputs.completion_review.review_input_hash
+			: null;
+	const storedIndex = context.ledger.records.findIndex(
+		(record) => record.event_id === input.event_id,
+	);
+	const basisProjectionHash =
+		storedIndex >= 0
+			? foldWorkProjection(context.ledger.records.slice(0, storedIndex))
+					.projection_hash
+			: projection.projection_hash;
+	const retry = exactStoredRetry(
+		input,
+		context,
+		"work_lifecycle_changed",
+		(event) =>
+			event.kind === "work_lifecycle_changed" &&
+			event.payload.lifecycle === "completed" &&
+			event.payload.basis_contract_revision ===
+				input.expected_contract_revision &&
+			event.payload.basis_contract_hash === input.expected_contract_hash &&
+			event.payload.basis_projection_hash === basisProjectionHash &&
+			event.payload.authority_kind === draft.authority.kind &&
+			event.payload.authority_ref === draft.authority.authority_ref &&
+			event.payload.source_event_id === draft.authority.source_event_id &&
+			event.payload.completion_review_input_hash ===
+				completionReviewInputHash &&
+			JSON.stringify(event.payload.evidence_refs) ===
+				JSON.stringify(draft.evidence_refs),
+	);
+	if (retry) {
+		const stored = context.ledger.records[storedIndex];
+		if (!stored) throw new Error("stored Work close retry is unavailable");
+		const allocation = appendCanonicalTypedWorkEventWithPublishedSource({
+			stateRoot: context.locations.stateRoot,
+			sourceEventId: draft.authority.source_event_id,
+			ledgerPath: context.locations.ledgerPath,
+			ledgerEvent: parseTypedWorkEvent(stored),
+			expectedHead: input.expected_head,
+		});
+		return { ...retry, allocation };
+	}
+	if (projection.contract_revision !== input.expected_contract_revision) {
+		throw new Error("Work close expected contract revision is stale");
+	}
+	if (projection.contract_hash !== input.expected_contract_hash) {
+		throw new Error("Work close expected contract hash is stale");
+	}
+	if (projection.lifecycle !== "open") {
+		throw new Error("Work is already terminal and cannot be closed again");
+	}
+	const authorityIsBound = projection.requirements.some((requirement) =>
+		requirement.source_event_ids.includes(draft.authority.source_event_id),
+	);
+	if (!authorityIsBound) {
+		throw new Error(
+			"Work close authority source must be referenced by the current contract",
+		);
+	}
+	if (!projection.requirements_ready) {
+		throw new Error(
+			"Work close requires every applicable requirement verified or waived, an accepted boundary, and no open conflicts",
+		);
+	}
+	const readiness = readinessForProjection(
+		input,
+		projection,
+		"completion",
+		draft.execution_inputs,
+	);
+	if (!readiness.allowed) {
+		throw new Error(`Work close is blocked: ${readiness.blockers.join(", ")}`);
+	}
+	const event: Extract<TypedWorkEvent, { kind: "work_lifecycle_changed" }> = {
+		event_id: input.event_id,
+		occurred_at: input.occurred_at,
+		kind: "work_lifecycle_changed",
+		payload: {
+			schema_version: "anamnesis.work-lifecycle-event.v1",
+			...executionBasis(projection),
+			basis_projection_hash: basisProjectionHash,
+			lifecycle: "completed",
+			authority_kind: draft.authority.kind,
+			authority_ref: draft.authority.authority_ref,
+			evidence_refs: draft.evidence_refs,
+			completion_review_input_hash: completionReviewInputHash,
+			source_event_id: draft.authority.source_event_id,
+		},
+	};
+	const allocation = appendCanonicalTypedWorkEventWithPublishedSource({
+		stateRoot: context.locations.stateRoot,
+		sourceEventId: draft.authority.source_event_id,
+		ledgerPath: context.locations.ledgerPath,
+		ledgerEvent: event,
+		expectedHead: input.expected_head,
+	});
+	const nextProjection = rebuildWorkProjection(
+		context.locations.ledgerPath,
+		context.locations.projectionPath,
+	);
+	return {
+		schema_version: "anamnesis.work-command-result.v1",
+		work_id: nextProjection.work_id,
+		ledger_path: context.locations.ledgerPath,
+		projection_path: context.locations.projectionPath,
+		allocation,
+		projection: nextProjection,
+		readiness,
 	};
 }
 

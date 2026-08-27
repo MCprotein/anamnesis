@@ -721,6 +721,96 @@ describe("anamnesis work CLI", () => {
 		expect(cursor?.reconciliation?.last_reconciled_head).toBeNull();
 	});
 
+	it("closes a verified Work through the public CLI without exposing source bytes", () => {
+		const root = project();
+		writeDraft(root, "src_close_cli");
+		const created = run(
+			root,
+			[
+				"create",
+				"--work",
+				"wu_close_cli",
+				"--event-id",
+				"evt_create_close_cli",
+				"--source-event-id",
+				"src_close_cli",
+				"--occurred-at",
+				"2026-08-14T02:00:00.000Z",
+				"--draft",
+				"draft.yaml",
+				"--source-stdin",
+				"--json",
+			],
+			Buffer.from("private close authority"),
+		);
+		expect(created.status, created.stderr).toBe(0);
+		const initial = JSON.parse(created.stdout).projection;
+		fs.writeFileSync(
+			path.join(root, "verify.yaml"),
+			YAML.stringify({
+				requirement_id: "req_raw",
+				status: "verified",
+				evidence_refs: ["test:cli-pass"],
+			}),
+		);
+		const verified = run(root, [
+			"transition",
+			"--work",
+			"wu_close_cli",
+			"--event-id",
+			"evt_verify_close_cli",
+			"--occurred-at",
+			"2026-08-14T02:01:00.000Z",
+			"--expected-head",
+			initial.ledger_head,
+			"--draft",
+			"verify.yaml",
+			"--json",
+		]);
+		expect(verified.status, verified.stderr).toBe(0);
+		const ready = JSON.parse(verified.stdout).projection;
+		fs.writeFileSync(
+			path.join(root, "close.yaml"),
+			YAML.stringify({
+				lifecycle: "completed",
+				authority: {
+					kind: "delegated_objective_completion",
+					source_event_id: "src_close_cli",
+					authority_ref: "user-request:complete-objective",
+				},
+				evidence_refs: ["test:cli-pass"],
+			}),
+		);
+		const closeArgs = [
+			"close",
+			"--work",
+			"wu_close_cli",
+			"--event-id",
+			"evt_close_cli",
+			"--occurred-at",
+			"2026-08-14T02:02:00.000Z",
+			"--expected-head",
+			ready.ledger_head,
+			"--expected-contract-revision",
+			String(ready.contract_revision),
+			"--expected-contract-hash",
+			ready.contract_hash,
+			"--draft",
+			"close.yaml",
+			"--json",
+		];
+		const closed = run(root, closeArgs);
+		expect(closed.status, closed.stderr).toBe(0);
+		expect(JSON.parse(closed.stdout).projection).toMatchObject({
+			lifecycle: "completed",
+			requirements_ready: false,
+		});
+		expect(closed.stdout).not.toContain("private close authority");
+		const retry = run(root, closeArgs);
+		expect(retry.status, retry.stderr).toBe(0);
+		expect(JSON.parse(retry.stdout).projection.lifecycle).toBe("completed");
+	}, 20_000);
+
 	it("deduplicates identical concurrent post-tool hooks without losing distinct actions", async () => {
 		const root = project();
 		fs.writeFileSync(

@@ -769,6 +769,17 @@ requires explicit cancel intent; `superseded` requires an evidenced replacement
 relation. Premature completion is revoked and reopened append-only. New scope
 after valid completion becomes a successor Work instead.
 
+The shipped completion boundary is `anamnesis work close`. It currently accepts
+only `lifecycle: completed`; `abandoned`, `superseded`, and reopen remain
+fail-closed until their separate authority and cross-Work lineage contracts are
+implemented. Completion requires exact expected ledger head, contract revision,
+and contract hash values; an accepted requirements-ready projection with no open
+conflicts; current completion-review readiness; non-empty evidence; and either
+explicit user acceptance or an earlier objective-completion delegation source
+already bound to the current contract. The close event binds that immutable
+source envelope and freezes subsequent contract, requirement, review, and
+delegation mutations. Exact same-event retries are idempotent.
+
 ## Privacy and portability
 
 Raw prompt objects are local-private and ignored by version control by

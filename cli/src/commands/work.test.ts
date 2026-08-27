@@ -10,6 +10,7 @@ import {
 	assertProgressRetryIsAppendCompatible,
 	assessWorkDelegation,
 	briefWork,
+	closeWork,
 	confirmWorkBrief,
 	createWork,
 	publicWorkExecutionMutation,
@@ -99,6 +100,20 @@ function mutation(
 		},
 		...overrides,
 	};
+}
+
+function closeDraft(authoritySourceEventId = "src_create"): Buffer {
+	return Buffer.from(
+		YAML.stringify({
+			lifecycle: "completed",
+			authority: {
+				kind: "delegated_objective_completion",
+				source_event_id: authoritySourceEventId,
+				authority_ref: "user-request:complete-objective",
+			},
+			evidence_refs: ["test:all-pass"],
+		}),
+	);
 }
 
 describe("Work command service", () => {
@@ -689,6 +704,83 @@ describe("Work command service", () => {
 				confirmed_at: "2026-08-13T00:03:02.000Z",
 			}),
 		).toThrow("token mismatch");
+	});
+
+	it("closes a requirements-ready Work exactly once and freezes later mutations", () => {
+		const projectRoot = root();
+		const created = createWork(mutation(projectRoot));
+		const verified = transitionWork(
+			mutation(projectRoot, {
+				event_id: "evt_verify_before_close",
+				occurred_at: "2026-08-13T00:01:00.000Z",
+				draft: Buffer.from(
+					YAML.stringify({
+						requirement_id: "req_a",
+						status: "verified",
+						evidence_refs: ["test:pass"],
+					}),
+				),
+				expected_head: created.projection.ledger_head,
+				source_stdin: undefined,
+			}),
+		);
+		const input = {
+			project_root: projectRoot,
+			work_id: "wu_one",
+			event_id: "evt_close_completed",
+			occurred_at: "2026-08-13T00:02:00.000Z",
+			expected_head: verified.projection.ledger_head!,
+			expected_contract_revision: verified.projection.contract_revision,
+			expected_contract_hash: verified.projection.contract_hash!,
+			draft: closeDraft(),
+		};
+		const closed = closeWork(input);
+		expect(closed.projection.lifecycle).toBe("completed");
+		expect(closed.projection.requirements_ready).toBe(false);
+		expect(closeWork(input).projection.lifecycle).toBe("completed");
+		expect(readWorkLedger(closed.ledger_path).records).toHaveLength(3);
+		expect(() =>
+			transitionWork(
+				mutation(projectRoot, {
+					event_id: "evt_after_close",
+					occurred_at: "2026-08-13T00:03:00.000Z",
+					expected_head: closed.projection.ledger_head,
+					draft: Buffer.from(
+						YAML.stringify({
+							requirement_id: "req_a",
+							status: "verified",
+							evidence_refs: ["test:still-pass"],
+						}),
+					),
+					source_stdin: undefined,
+				}),
+			),
+		).toThrow(/terminal lifecycle history/);
+		fs.writeFileSync(created.allocation!.source.object_path, "tampered source");
+		expect(() => closeWork(input)).toThrow(/object hash mismatch/);
+	});
+
+	it("rejects Work close before readiness or with stale contract authority", () => {
+		const projectRoot = root();
+		const created = createWork(mutation(projectRoot));
+		const base = {
+			project_root: projectRoot,
+			work_id: "wu_one",
+			event_id: "evt_close_rejected",
+			occurred_at: "2026-08-13T00:01:00.000Z",
+			expected_head: created.projection.ledger_head!,
+			expected_contract_revision: created.projection.contract_revision,
+			expected_contract_hash: created.projection.contract_hash!,
+			draft: closeDraft(),
+		};
+		expect(() => closeWork(base)).toThrow(/every applicable requirement/);
+		expect(() => closeWork({ ...base, expected_contract_revision: 2 })).toThrow(
+			/revision is stale/,
+		);
+		expect(() =>
+			closeWork({ ...base, draft: closeDraft("src_unknown") }),
+		).toThrow(/authority source/);
+		expect(readWorkLedger(created.ledger_path).records).toHaveLength(1);
 	});
 
 	it("retries an already committed event idempotently", () => {

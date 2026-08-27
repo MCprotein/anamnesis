@@ -179,6 +179,7 @@ import {
   amendWork,
 	assessWorkDelegation,
   briefWork,
+  closeWork,
   confirmWorkBrief,
   createWork,
   discardStagedPrompt,
@@ -194,7 +195,8 @@ import {
   switchWork,
   transitionWork,
   type WorkBriefResult,
-	type WorkEvidenceMutationInput,
+  type WorkCloseInput,
+  type WorkEvidenceMutationInput,
   type WorkMutationInput,
   type WorkMutationResult,
   type WorkPromptResolutionResult,
@@ -576,6 +578,7 @@ Commands:
   work create                   Create a Work from an exact source + contract draft
   work amend                    Append a contract revision to an existing Work
   work transition               Transition one requirement with evidence
+  work close                    Close a requirements-ready Work as completed
   work review request|record    Prepare or record bounded review evidence
   work delegation assess|record|waive
                                 Record parallelism/delegation evidence
@@ -678,6 +681,10 @@ Flags (work):
   --occurred-at <ISO>           Stable event time; defaults to now for cursor-only actions
   --draft <path>                Strict single-document YAML draft (mutations)
   --expected-head <hash>        Required CAS head for every existing-Work mutation
+  --expected-contract-revision <n>
+                                Required current contract revision (work close)
+  --expected-contract-hash <hash>
+                                Required current contract hash (work close)
   --inputs <path>               Strict execution-input YAML/JSON (readiness)
   --gate <planning|completion>  Review gate (review request)
   --activity-id <id>            Review activity identifier (review request)
@@ -2891,6 +2898,17 @@ function workEvidenceMutationInput(
 	};
 }
 
+function workCloseInput(flags: ParsedArgs["flags"]): WorkCloseInput {
+	return {
+		...workEvidenceMutationInput(flags),
+		expected_contract_revision: requiredWorkPositiveIntegerFlag(
+			flags,
+			"expected-contract-revision",
+		),
+		expected_contract_hash: requiredWorkFlag(flags, "expected-contract-hash"),
+	};
+}
+
 function workEvidenceSource(
 	flags: ParsedArgs["flags"],
 	projectRoot: string,
@@ -3397,6 +3415,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "create" &&
         sub !== "amend" &&
         sub !== "transition" &&
+        sub !== "close" &&
 				sub !== "review" &&
 				sub !== "delegation" &&
 				sub !== "readiness" &&
@@ -3411,7 +3430,7 @@ async function main(argv: string[]): Promise<number> {
       ) {
         console.error(`error: unknown 'work' subcommand: ${sub}`);
 				console.error(
-					"usage: anamnesis work <create|amend|transition|review|delegation|readiness|status|brief|confirm|switch> [options]",
+					"usage: anamnesis work <create|amend|transition|close|review|delegation|readiness|status|brief|confirm|switch> [options]",
 				);
         return 1;
       }
@@ -3677,6 +3696,16 @@ async function main(argv: string[]): Promise<number> {
               : sub === "amend"
                 ? amendWork(input)
                 : transitionWork(input);
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+          } else {
+            reportWorkMutation(result);
+          }
+          return 0;
+        }
+
+        if (sub === "close") {
+          const result = closeWork(workCloseInput(flags));
           if (flags.json === true) {
             await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
           } else {

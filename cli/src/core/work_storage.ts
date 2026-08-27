@@ -410,6 +410,12 @@ export function appendCanonicalTypedWorkEventWithPublishedSource(
 	const deadline = Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
 	return withSourceEventLocks(stateRoot, orderedIds, options, deadline, () => {
 		const source = readPublishedWorkSourceEventUnlocked(stateRoot, input.sourceEventId);
+		if (
+			typedEvent?.kind === "work_lifecycle_changed" &&
+			source.envelope.allocation_status !== "allocated"
+		) {
+			throw new Error("Work close authority source must be allocated");
+		}
 		const payload: Record<string, unknown> = {
 			...(waiverDraft ?? typedEvent!.payload),
 			source_event_id: source.envelope.event_id,
@@ -790,6 +796,60 @@ function appendPublishedLedgerUnlocked(
 		throw new Error(
 			`work ledger head conflict: expected ${options.expectedHead ?? "null"}, actual ${current.head ?? "null"}`,
 		);
+	if (
+		options.event.kind === "work_lifecycle_changed" &&
+		options.event.payload.schema_version === "anamnesis.work-lifecycle-event.v1"
+	) {
+		const lifecycleEvent = parseTypedWorkEvent(options.event);
+		if (lifecycleEvent.kind !== "work_lifecycle_changed") {
+			throw new Error("invalid typed Work lifecycle event");
+		}
+		const authoritySource = readPublishedWorkSourceEventUnlocked(
+			stateRoot,
+			lifecycleEvent.payload.source_event_id,
+		);
+		if (authoritySource.envelope.allocation_status !== "allocated") {
+			throw new Error("Work close authority source must be allocated");
+		}
+		const basisProjection = foldWorkProjection(current.records);
+		if (
+			lifecycleEvent.payload.basis_projection_hash !==
+			basisProjection.projection_hash
+		) {
+			throw new Error("typed Work lifecycle basis_projection_hash is stale");
+		}
+		const completionGate =
+			basisProjection.policy_snapshot?.policy.review.gates.find(
+				(gate) => gate.gate === "completion",
+			);
+		if (!completionGate) {
+			throw new Error("Work completion review gate is unavailable");
+		}
+		if (
+			completionGate.enforcement === "required" &&
+			completionGate.waived_by === null
+		) {
+			const reviewState = basisProjection.review_gates.find(
+				(gate) => gate.gate === "completion",
+			);
+			const distinctReviewers = new Set(
+				(reviewState?.passing_reviewer_refs ?? []).map((ref) =>
+					JSON.stringify(ref),
+				),
+			);
+			if (
+				lifecycleEvent.payload.completion_review_input_hash === null ||
+				reviewState?.state !== "passed" ||
+				reviewState.recorded_input_hash !==
+					lifecycleEvent.payload.completion_review_input_hash ||
+				distinctReviewers.size < completionGate.minimum_reviewers
+			) {
+				throw new Error(
+					"required Work completion review is not satisfied for the close input",
+				);
+			}
+		}
+	}
 	validateWorkEventAppend(current.records, options.event);
 	const unsigned = {
 		schema_version: WORK_LEDGER_SCHEMA_VERSION,

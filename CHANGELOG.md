@@ -7,6 +7,22 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added `anamnesis work close` for source-authorized, evidence-backed
+  `open → completed` lifecycle transitions. Closure requires an accepted,
+  requirements-ready contract, exact ledger/contract CAS inputs, current
+  completion-review readiness, and a published authority source already bound
+  to the Work. Exact retries are idempotent, while all semantic, progress, and
+  review/delegation mutations after terminal history fail closed.
+
+### Security
+
+- Kept `abandoned`, `superseded`, and reopen transitions unavailable until
+  their cancel authority, cross-Work replacement, and revocation contracts are
+  implemented; unsupported lifecycle values remain rejected by strict drafts
+  and ledger validation.
+
 ## [1.20.3] — 2026-08-27
 
 ### Fixed

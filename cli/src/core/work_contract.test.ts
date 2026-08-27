@@ -32,7 +32,9 @@ import {
 	type WorkLedgerRecord,
 } from "./work_ledger.js";
 import { createWorkPolicySnapshot, resolveWorkPolicy } from "./work_policy.js";
+import { foldWorkProjection } from "./work_projection.js";
 import {
+	appendCanonicalTypedWorkProgressEvent,
 	assertPublishedWorkSourceEvent,
 	publishAndAppendCanonicalTypedWorkSourceEvent as publishAndAppendTypedWorkSourceEvent,
 	publishAndAppendWorkSourceEvent,
@@ -725,7 +727,7 @@ describe("typed Work contract", () => {
 		expect(readWorkLedger(ledgerPath).records).toHaveLength(1);
 	});
 
-	it("rejects waived transitions without authority and all lifecycle writes", () => {
+	it("rejects waived transitions without authority and incomplete lifecycle writes", () => {
 		const { root, ledgerPath } = temporaryLedger();
 		const created = creation();
 		const first = appendContractSource(root, ledgerPath, created, null);
@@ -757,8 +759,235 @@ describe("typed Work contract", () => {
 		] as TypedWorkEvent[]) {
 			expect(() =>
 				appendTypedWorkEvent({ ledgerPath, expectedHead: first.head, event }),
-			).toThrow(/waived|lifecycle/);
+			).toThrow(/waived|basis_contract_revision|lifecycle/);
 		}
+	});
+
+	it("accepts completed lifecycle only after verified requirements and freezes history", () => {
+		const { root, ledgerPath } = temporaryLedger();
+		const created = creation();
+		const first = appendContractSource(root, ledgerPath, created, null);
+		const verified = appendCanonicalTypedWorkProgressEvent({
+			stateRoot: root,
+			ledgerPath,
+			expectedHead: first.head,
+			ledgerEvent: {
+				event_id: "verify_before_close",
+				occurred_at: "2026-08-13T00:01:00.000Z",
+				kind: "work_requirement_transitioned",
+				payload: {
+					schema_version: "anamnesis.work-progress-event.v1",
+					work_id: "wu_one",
+					requirement_id: "req_one",
+					basis_contract_hash: created.payload.contract_hash,
+					status: "verified",
+					evidence_refs: ["test:pass"],
+				},
+			},
+		});
+		const basisProjectionHash = foldWorkProjection(
+			readWorkLedger(ledgerPath).records,
+		).projection_hash;
+		const closeEvent = {
+			event_id: "close_completed",
+			occurred_at: "2026-08-13T00:02:00.000Z",
+			kind: "work_lifecycle_changed",
+			payload: {
+				schema_version: "anamnesis.work-lifecycle-event.v1",
+				work_id: "wu_one",
+				basis_contract_revision: 1,
+				basis_contract_hash: created.payload.contract_hash,
+				basis_projection_hash: basisProjectionHash,
+				policy_hash: created.payload.contract.policy_snapshot.policy_hash,
+				lifecycle: "completed",
+				authority_kind: "delegated_objective_completion",
+				authority_ref: "user-request:complete-objective",
+				evidence_refs: ["test:pass"],
+				completion_review_input_hash: null,
+				source_event_id: "src_one",
+			},
+		} satisfies TypedWorkEvent;
+		expect(() =>
+			appendContractSource(
+				root,
+				ledgerPath,
+				{
+					...closeEvent,
+					payload: {
+						...closeEvent.payload,
+						basis_projection_hash: `sha256:${"1".repeat(64)}`,
+					},
+				},
+				verified.head,
+			),
+		).toThrow(/basis_projection_hash is stale/);
+		const closed = appendContractSource(
+			root,
+			ledgerPath,
+			closeEvent,
+			verified.head,
+		);
+		expect(() =>
+			appendCanonicalTypedWorkProgressEvent({
+				stateRoot: root,
+				ledgerPath,
+				expectedHead: closed.head,
+				ledgerEvent: {
+					event_id: "mutate_after_close",
+					occurred_at: "2026-08-13T00:03:00.000Z",
+					kind: "work_requirement_transitioned",
+					payload: {
+						schema_version: "anamnesis.work-progress-event.v1",
+						work_id: "wu_one",
+						requirement_id: "req_one",
+						basis_contract_hash: created.payload.contract_hash,
+						status: "verified",
+						evidence_refs: ["test:pass-again"],
+					},
+				},
+			}),
+		).toThrow(/terminal lifecycle history/);
+	});
+
+	it("enforces required completion review and allocated authority at the append boundary", () => {
+		const strictDefinition = contract(1);
+		strictDefinition.policy_snapshot = createWorkPolicySnapshot(
+			1,
+			resolveWorkPolicy([
+				{
+					kind: "project",
+					config: { review: { preset: "strict" } },
+					source_refs: [{ source: "Agentfile", ref: "settings.work_policy" }],
+				},
+			]),
+		);
+		const strictCreated: TypedWorkEvent = {
+			...creation(),
+			payload: {
+				...creation().payload,
+				contract_hash: calculateWorkContractHash(strictDefinition),
+				contract: strictDefinition,
+			},
+		};
+		const strictLedger = temporaryLedger();
+		const strictFirst = appendContractSource(
+			strictLedger.root,
+			strictLedger.ledgerPath,
+			strictCreated,
+			null,
+		);
+		const strictVerified = appendCanonicalTypedWorkProgressEvent({
+			stateRoot: strictLedger.root,
+			ledgerPath: strictLedger.ledgerPath,
+			expectedHead: strictFirst.head,
+			ledgerEvent: {
+				event_id: "verify_strict_before_close",
+				occurred_at: "2026-08-13T00:01:00.000Z",
+				kind: "work_requirement_transitioned",
+				payload: {
+					schema_version: "anamnesis.work-progress-event.v1",
+					work_id: "wu_one",
+					requirement_id: "req_one",
+					basis_contract_hash: strictCreated.payload.contract_hash,
+					status: "verified",
+					evidence_refs: ["test:pass"],
+				},
+			},
+		});
+		const strictProjection = foldWorkProjection(
+			readWorkLedger(strictLedger.ledgerPath).records,
+		);
+		const strictClose: TypedWorkEvent = {
+			event_id: "close_without_required_review",
+			occurred_at: "2026-08-13T00:02:00.000Z",
+			kind: "work_lifecycle_changed",
+			payload: {
+				schema_version: "anamnesis.work-lifecycle-event.v1",
+				work_id: "wu_one",
+				basis_contract_revision: 1,
+				basis_contract_hash: strictCreated.payload.contract_hash,
+				basis_projection_hash: strictProjection.projection_hash,
+				policy_hash: strictDefinition.policy_snapshot.policy_hash,
+				lifecycle: "completed",
+				authority_kind: "delegated_objective_completion",
+				authority_ref: "user-request:complete-objective",
+				evidence_refs: ["test:pass"],
+				completion_review_input_hash: null,
+				source_event_id: "src_one",
+			},
+		};
+		expect(() =>
+			appendContractSource(
+				strictLedger.root,
+				strictLedger.ledgerPath,
+				strictClose,
+				strictVerified.head,
+			),
+		).toThrow(/required Work completion review/);
+
+		const provisionalLedger = temporaryLedger();
+		const provisionalFirst = publishAndAppendTypedWorkSourceEvent({
+			source: {
+				stateRoot: provisionalLedger.root,
+				eventId: "src_one",
+				capturedAt: "2026-08-13T00:00:00.000Z",
+				client: "test",
+				contentType: "text/plain",
+				fidelity: "native_exact",
+				allocationStatus: "provisional",
+				body: "provisional request",
+			},
+			ledgerPath: provisionalLedger.ledgerPath,
+			ledgerEvent: creation(),
+			expectedHead: null,
+		}).ledger;
+		const provisionalVerified = appendCanonicalTypedWorkProgressEvent({
+			stateRoot: provisionalLedger.root,
+			ledgerPath: provisionalLedger.ledgerPath,
+			expectedHead: provisionalFirst.head,
+			ledgerEvent: {
+				event_id: "verify_provisional_before_close",
+				occurred_at: "2026-08-13T00:01:00.000Z",
+				kind: "work_requirement_transitioned",
+				payload: {
+					schema_version: "anamnesis.work-progress-event.v1",
+					work_id: "wu_one",
+					requirement_id: "req_one",
+					basis_contract_hash: creation().payload.contract_hash,
+					status: "verified",
+					evidence_refs: ["test:pass"],
+				},
+			},
+		});
+		const provisionalClose: TypedWorkEvent = {
+			...strictClose,
+			event_id: "close_with_provisional_authority",
+			payload: {
+				...strictClose.payload,
+				basis_contract_hash: creation().payload.contract_hash,
+				basis_projection_hash: foldWorkProjection(
+					readWorkLedger(provisionalLedger.ledgerPath).records,
+				).projection_hash,
+				policy_hash: creation().payload.contract.policy_snapshot.policy_hash,
+			},
+		};
+		expect(() =>
+			publishAndAppendTypedWorkSourceEvent({
+				source: {
+					stateRoot: provisionalLedger.root,
+					eventId: "src_one",
+					capturedAt: "2026-08-13T00:00:00.000Z",
+					client: "test",
+					contentType: "text/plain",
+					fidelity: "native_exact",
+					allocationStatus: "provisional",
+					body: "provisional request",
+				},
+				ledgerPath: provisionalLedger.ledgerPath,
+				ledgerEvent: provisionalClose,
+				expectedHead: provisionalVerified.head,
+			}),
+		).toThrow(/authority source must be allocated/);
 	});
 
 	it("canonicalizes set-like contract arrays and rejects semantic reorder revisions", () => {

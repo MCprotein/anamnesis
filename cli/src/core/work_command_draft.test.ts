@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	parseStagedWorkContractDraft,
+	parseWorkCloseDraft,
 	parseWorkContractDraft,
 	parseWorkPromptRetainDraft,
 	parseWorkTransitionDraft,
@@ -28,6 +29,59 @@ describe("Work command drafts", () => {
 		expect(() => parseWorkContractDraft(Buffer.from([0xff]))).toThrow(
 			"valid UTF-8",
 		);
+	});
+
+	it("parses a strict completed Work close draft", () => {
+		expect(
+			parseWorkCloseDraft(
+				Buffer.from(`
+lifecycle: completed
+authority:
+  kind: explicit_user_acceptance
+  source_event_id: src_user_acceptance
+  authority_ref: user-message:close-work
+evidence_refs: [test:all-pass, git:abc123]
+`),
+			),
+		).toEqual({
+			lifecycle: "completed",
+			authority: {
+				kind: "explicit_user_acceptance",
+				source_event_id: "src_user_acceptance",
+				authority_ref: "user-message:close-work",
+			},
+			evidence_refs: ["test:all-pass", "git:abc123"],
+		});
+	});
+
+	it("rejects incomplete, duplicate, computed, and unsupported close fields", () => {
+		const valid = `
+lifecycle: completed
+authority:
+  kind: delegated_objective_completion
+  source_event_id: src_completion
+  authority_ref: objective:release
+evidence_refs: [test:all-pass]
+`;
+		expect(() =>
+			parseWorkCloseDraft(Buffer.from(valid.replace("completed", "open"))),
+		).toThrow();
+		expect(() =>
+			parseWorkCloseDraft(Buffer.from(valid.replace("[test:all-pass]", "[]"))),
+		).toThrow();
+		expect(() =>
+			parseWorkCloseDraft(
+				Buffer.from(
+					valid.replace("[test:all-pass]", "[test:all-pass, test:all-pass]"),
+				),
+			),
+		).toThrow();
+		expect(() =>
+			parseWorkCloseDraft(Buffer.from(`${valid}execution_inputs: {}`)),
+		).toThrow();
+		expect(() =>
+			parseWorkCloseDraft(Buffer.from(`${valid}computed_status: completed`)),
+		).toThrow();
 	});
 
 	it("resolves only explicit staged source placeholders", () => {

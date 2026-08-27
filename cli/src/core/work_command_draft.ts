@@ -89,6 +89,24 @@ export const workTransitionDraftSchema = z
 	})
 	.strict();
 
+/** Strict, user-authorized draft for closing a Work lifecycle. */
+export const workCloseDraftSchema = z
+	.object({
+		lifecycle: z.literal("completed"),
+		authority: z
+			.object({
+				kind: z.enum([
+					"explicit_user_acceptance",
+					"delegated_objective_completion",
+				]),
+				source_event_id: nonEmpty,
+				authority_ref: nonEmpty,
+			})
+			.strict(),
+		evidence_refs: uniqueNonEmpty.min(1),
+	})
+	.strict();
+
 export const workPromptRetainDraftSchema = z
 	.object({
 		boundary: z
@@ -105,9 +123,8 @@ export const workPromptRetainDraftSchema = z
 
 export type WorkContractDraft = z.infer<typeof workContractDraftSchema>;
 export type WorkTransitionDraft = z.infer<typeof workTransitionDraftSchema>;
-export type WorkPromptRetainDraft = z.infer<
-	typeof workPromptRetainDraftSchema
->;
+export type WorkCloseDraft = z.infer<typeof workCloseDraftSchema>;
+export type WorkPromptRetainDraft = z.infer<typeof workPromptRetainDraftSchema>;
 
 export const STAGED_WORK_SOURCE_PLACEHOLDER = "@staged";
 
@@ -139,6 +156,10 @@ export function parseWorkContractDraft(bytes: Buffer): WorkContractDraft {
 
 export function parseWorkTransitionDraft(bytes: Buffer): WorkTransitionDraft {
 	return parseSingleWorkDraft(bytes, workTransitionDraftSchema);
+}
+
+export function parseWorkCloseDraft(bytes: Buffer): WorkCloseDraft {
+	return parseSingleWorkDraft(bytes, workCloseDraftSchema);
 }
 
 /**

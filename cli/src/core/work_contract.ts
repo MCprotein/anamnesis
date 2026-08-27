@@ -409,9 +409,26 @@ const lifecyclePayloadSchema = z
 	.object({
 		schema_version: z.literal(WORK_LIFECYCLE_EVENT_SCHEMA_VERSION),
 		work_id: nonEmpty,
+		basis_contract_revision: positiveInteger,
 		basis_contract_hash: hash,
+		basis_projection_hash: hash,
+		policy_hash: hash,
 		lifecycle: z.enum(["open", "completed", "abandoned", "superseded"]),
-		...captureRefShape,
+		authority_kind: z.enum([
+			"explicit_user_acceptance",
+			"delegated_objective_completion",
+		]),
+		authority_ref: boundedRef,
+		evidence_refs: boundedList(
+			boundedRef,
+			WORK_EXECUTION_LIMITS.maxEvidenceRefs,
+			String,
+		).min(1),
+		completion_review_input_hash: hash.nullable(),
+		source_event_id: nonEmpty,
+		source_envelope_hash: hash.optional(),
+		source_object_hash: hash.optional(),
+		source_object_path: nonEmpty.optional(),
 	})
 	.strict();
 
@@ -848,6 +865,11 @@ export function validateWorkEventAppend(
 	if (parsed.payload.work_id !== state.work_id) {
 		throw new Error("typed Work event targets a different work ID");
 	}
+	if (state.terminal_history) {
+		throw new Error(
+			"typed Work semantic, progress, and evidence mutation is forbidden after terminal lifecycle history",
+		);
+	}
 	if (parsed.kind === "work_contract_revised") {
 		assertContractRevision(parsed.payload, state.revision, state.contract_hash);
 		assertContractLineage(
@@ -897,9 +919,22 @@ export function validateWorkEventAppend(
 		}
 	}
 	if (parsed.kind === "work_lifecycle_changed") {
-		throw new Error(
-			"typed Work lifecycle transitions are not supported until closure orchestration is available",
-		);
+		if (parsed.payload.lifecycle !== "completed") {
+			throw new Error("only completed Work lifecycle closure is supported");
+		}
+		if (
+			!state.requirements.some((requirement) =>
+				requirement.source_event_ids.includes(parsed.payload.source_event_id),
+			)
+		) {
+			throw new Error(
+				"Work close authority source must be referenced by the current contract",
+			);
+		}
+		assertCompletedLifecycleReady(state);
+		if (state.terminal_history) {
+			throw new Error("terminal Work lifecycle cannot be changed or reopened");
+		}
 	}
 	if (
 		parsed.kind === "work_requirement_transitioned" &&
@@ -1045,6 +1080,17 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 	contract_hash: string;
 	requirement_ids: Set<string>;
 	requirements: WorkRequirementDefinition[];
+	requirement_statuses: Map<
+		string,
+		| "pending"
+		| "in_progress"
+		| "implemented_unverified"
+		| "verified"
+		| "blocked"
+		| "waived"
+	>;
+	boundary_state: WorkContractDefinition["boundary"]["state"];
+	open_conflicts: Set<string>;
 	policy_snapshot: WorkPolicySnapshot;
 	terminal_history: boolean;
 } | null {
@@ -1081,6 +1127,10 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 		} else if (parsed.kind === "work_contract_revised") {
 			if (!state)
 				throw new Error("typed contract revision precedes typed work_created");
+			if (state.terminal_history)
+				throw new Error(
+					"typed Work semantic mutation is forbidden after terminal lifecycle history",
+				);
 			assertContractRevision(
 				parsed.payload,
 				state.revision,
@@ -1093,7 +1143,7 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 				state.requirements,
 				parsed.payload.contract.requirements,
 			);
-			state = contractState(parsed.payload);
+			state = contractState(parsed.payload, state);
 		} else if (
 			parsed.kind === "work_requirement_transitioned" ||
 			parsed.kind === "work_lifecycle_changed"
@@ -1128,18 +1178,42 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 					throw new Error(
 						"Work requirement waiver metadata is only valid for waived transitions",
 					);
-			} else {
-				if (parsed.payload.lifecycle !== "open")
-					throw new Error(
-						"typed Work terminal lifecycle transitions are not supported",
-					);
-				throw new Error(
-					"typed Work lifecycle no-op/reopen transitions are not supported",
+				state.requirement_statuses.set(
+					parsed.payload.requirement_id,
+					parsed.payload.status,
 				);
+			} else {
+				if (parsed.payload.lifecycle !== "completed")
+					throw new Error("only completed Work lifecycle closure is supported");
+				if (
+					parsed.payload.basis_contract_revision !== state.revision ||
+					parsed.payload.policy_hash !== state.policy_snapshot.policy_hash
+				)
+					throw new Error("invalid typed Work lifecycle execution basis");
+				if (
+					!state.requirements.some((requirement) =>
+						requirement.source_event_ids.includes(
+							parsed.payload.source_event_id,
+						),
+					)
+				)
+					throw new Error(
+						"Work close authority source must be referenced by the current contract",
+					);
+				assertCompletedLifecycleReady(state);
+				if (state.terminal_history)
+					throw new Error(
+						"terminal Work lifecycle cannot be changed or reopened",
+					);
+				state.terminal_history = true;
 			}
 		} else {
 			if (!state)
 				throw new Error("typed Work evidence precedes typed work_created");
+			if (state.terminal_history)
+				throw new Error(
+					"typed Work evidence mutation is forbidden after terminal lifecycle history",
+				);
 			if (
 				parsed.payload.work_id !== state.work_id ||
 				!("basis_contract_hash" in parsed.payload) ||
@@ -1157,7 +1231,15 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 	return state;
 }
 
-function contractState(payload: WorkContractPayload) {
+function contractState(
+	payload: WorkContractPayload,
+	previous?: NonNullable<ReturnType<typeof typedState>>,
+) {
+	const superseded = new Set(
+		payload.contract.requirements.flatMap(
+			(requirement) => requirement.supersedes ?? [],
+		),
+	);
 	return {
 		work_id: payload.work_id,
 		revision: payload.contract_revision,
@@ -1170,9 +1252,40 @@ function contractState(payload: WorkContractPayload) {
 			source_event_ids: [...item.source_event_ids],
 			...(item.supersedes ? { supersedes: [...item.supersedes] } : {}),
 		})),
+		requirement_statuses: new Map(
+			payload.contract.requirements.map((requirement) => [
+				requirement.id,
+				superseded.has(requirement.id) || requirement.superseded_by
+					? ("waived" as const)
+					: (previous?.requirement_statuses.get(requirement.id) ??
+						("pending" as const)),
+			]),
+		),
+		boundary_state: payload.contract.boundary.state,
+		open_conflicts: new Set(
+			payload.contract.open_conflicts.map((conflict) => conflict.id),
+		),
 		policy_snapshot: payload.contract.policy_snapshot,
-		terminal_history: false,
+		terminal_history: previous?.terminal_history ?? false,
 	};
+}
+
+function assertCompletedLifecycleReady(
+	state: NonNullable<ReturnType<typeof typedState>>,
+): void {
+	const applicableStatuses = [...state.requirement_statuses.values()].filter(
+		(status) => status !== "waived",
+	);
+	if (
+		state.boundary_state !== "accepted" ||
+		state.open_conflicts.size > 0 ||
+		applicableStatuses.length === 0 ||
+		applicableStatuses.some((status) => status !== "verified")
+	) {
+		throw new Error(
+			"completed Work lifecycle requires requirements-ready state",
+		);
+	}
 }
 
 function assertExecutionEvidenceEvent(

@@ -294,6 +294,11 @@ function namespaceRows(namespace: HelpNamespace) {
 						"Record one requirement status transition with evidence.",
 				},
 				{
+					command: "work close",
+					description:
+						"Close a requirements-ready Work as completed with source-backed authority.",
+				},
+				{
 					command: "work review request|record --expected-head <hash>",
 					description: "Prepare or record bounded independent-review evidence.",
 				},
