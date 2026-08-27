@@ -95,6 +95,12 @@ could include breaking changes.
   shadow from being mistaken for a release claim. Paid shadow attempts require
   retained output, use one output-path-independent canonical ledger, and are
   refused for a repeated implementation SHA.
+- Preserved the single v8 Luna shadow without rerunning it. The run stopped at
+  21/24 planned calls and is `INVALID`: every reached reviewer stage and one
+  enabled leader-plan stage failed the runner-JSONL protocol check despite
+  zero process exit status. Harness validity and enabled quality therefore
+  failed, so the apparent token and latency reductions are not performance
+  evidence and no nine-pair run or release claim follows.
 
 ## [1.19.0] — 2026-08-26
 

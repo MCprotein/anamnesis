@@ -316,6 +316,19 @@ whether it passes or fails; v8 does not authorize a nine-pair final. Raw model
 answers remain private, so those opaque fingerprints are not independently
 recomputable or enough to reconstruct the answers externally.
 
+The single v8 shadow is preserved without rerunning it at
+[`v8-shadow`](benchmark-evidence/work-parallel-agent-ab/v8-shadow/README.md).
+It completed **21/24** planned model calls and is **`INVALID`**: every reviewer
+stage that was reached returned process status zero but failed the frozen
+runner-JSONL protocol check, and one enabled leader-plan stage failed the same
+check. That early leader failure skipped its downstream child and reviewer
+calls. Consequently harness validity failed, enabled audit/reviewer/final
+quality was **0/3**, and the apparent average token (**-16.93%**) and critical
+path (**-3.41%**) deltas are not performance evidence. The canonical
+[`v8-attempts.jsonl`](benchmark-evidence/work-parallel-agent-ab/v8-attempts.jsonl)
+records exactly one started, evaluated, and published outcome for the committed
+implementation SHA; v8 will not be rerun or promoted to a nine-pair final.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with
