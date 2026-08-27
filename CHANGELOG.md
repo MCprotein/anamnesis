@@ -76,6 +76,15 @@ could include breaking changes.
   and uses non-inferior final accuracy plus an observed token-or-latency signal
   before any product-level pass. Its bounded Luna shadow remains diagnostic and
   is limited to 24 real calls; no nine-pair run is authorized by this change.
+- Preserved the one v7 Luna shadow without rerunning it. Work reached exact
+  enabled quality at 3/3, improved average tokens by 17.08%, improved paired
+  critical-path p50 by 6.10%, and passed every accuracy, quality, cost, stage,
+  and latency gate. The overall artifact is still `INVALID`: the disabled
+  review-recovery reviewer returned only 1/48 exact requirements, so its
+  oracle-scored audit differed from the expected child-fault audit and failed
+  the all-condition audit-exact harness gate. This is retained as evidence that
+  v7 fixed the enabled reviewer path but conflated baseline reviewer failure
+  with harness validity; no release claim or nine-pair run follows from it.
 
 ## [1.19.0] — 2026-08-26
 

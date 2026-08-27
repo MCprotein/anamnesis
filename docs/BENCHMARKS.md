@@ -274,6 +274,21 @@ bootstrap upper 90% at or below zero. The stronger 10% threshold remains
 diagnostic writes to `v7-shadow/`, uses at most 24 real Luna calls, is never
 claim-eligible, and does not authorize a nine-pair run.
 
+The single v7 shadow used exactly **24/24** planned Luna calls. Work passed
+enabled quality at **3/3**, raised final accuracy from **67.36% to 100%**, and
+passed every registered accuracy, quality, cost, stage-cost, and latency gate.
+Average tokens improved **17.08%**; paired token p50 was **-1.05%** with upper
+90% **-12.83%**. Paired critical-path p50 was **-6.10%** with upper 90%
+**-3.61%**. The result is nevertheless **`INVALID`**, not a performance pass:
+the disabled review-recovery reviewer returned only one of 48 exact
+requirements. The deterministic audit correctly described that reviewer's
+reduced truth, but therefore differed from the fixture-oracle audit, and the
+all-condition `review_audit_exact` harness gate failed. This shows an enabled
+accuracy and efficiency signal while exposing that v7 still mixes baseline
+reviewer quality into harness validity. The artifact is preserved at
+[`v7-shadow`](benchmark-evidence/work-parallel-agent-ab/v7-shadow/README.md);
+it will not be rerun or promoted to a nine-pair claim.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with
