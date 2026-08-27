@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.20.4] — 2026-08-27
+
 ### Added
 
 - Added `anamnesis work close` for source-authorized, evidence-backed
