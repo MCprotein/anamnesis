@@ -33,7 +33,7 @@ function output(
 	tokens = 10,
 	usage?: Record<string, unknown>,
 ): string {
-	return `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: usage ?? { input_tokens: tokens - 2, cached_input_tokens: 0, output_tokens: 2, total_tokens: tokens } })}`;
+	return `${JSON.stringify({ type: "item.completed", item: { id: "agent-message-1", type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: usage ?? { input_tokens: tokens - 2, cached_input_tokens: 0, output_tokens: 2, total_tokens: tokens } })}`;
 }
 function runner(
 	opts: {
@@ -141,9 +141,9 @@ function runner(
 		return {
 			status: 0,
 			stdout: invalidReviewerEnvelope
-				? `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "not-json" } })}\n${JSON.stringify({ type: "turn.completed", usage: { input_tokens: tokens - 2, cached_input_tokens: 0, output_tokens: 2, total_tokens: tokens } })}`
+				? `${JSON.stringify({ type: "item.completed", item: { id: "agent-message-1", type: "agent_message", text: "not-json" } })}\n${JSON.stringify({ type: "turn.completed", usage: { input_tokens: tokens - 2, cached_input_tokens: 0, output_tokens: 2, total_tokens: tokens } })}`
 				: opts.malformedUsage
-					? `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: {} })}`
+					? `${JSON.stringify({ type: "item.completed", item: { id: "agent-message-1", type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: {} })}`
 					: output(data, tokens),
 			stderr: sawOverlap ? "" : "",
 			elapsedMs: 1,
@@ -285,7 +285,7 @@ describe("real parallel-agent benchmark", () => {
 		expect(indexPath).toBe(
 			path.join(
 				root,
-				"docs/benchmark-evidence/work-parallel-agent-ab/v8-attempts.jsonl",
+				"docs/benchmark-evidence/work-parallel-agent-ab/v9-attempts.jsonl",
 			),
 		);
 		expect(
@@ -362,7 +362,7 @@ describe("real parallel-agent benchmark", () => {
 			"stale-cross-session-conflict",
 			"review-gate-recovery",
 		]);
-		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v8");
+		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v9");
 		expect(result.runs).toHaveLength(9);
 		expect(result.planned_initial_invocations).toBe(72);
 		expect(result.actual_invocations).toBe(72);
@@ -837,6 +837,156 @@ describe("real parallel-agent benchmark", () => {
 		expect(result.harness_validity.checks.runner_protocol_integrity).toBe(
 			false,
 		);
+		expect(
+			result.runs[0]?.disabled.stages[0]?.runner_protocol_summary
+				?.unknown_events,
+		).toBe(1);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("accepts the current Codex item.updated progress event", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const updatedEventRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			return {
+				...response,
+				stdout: `${JSON.stringify({ type: "item.updated", item: { id: "item-1", type: "command_execution", command: "sed -n 1,2p CONTEXT.md", aggregated_output: "", exit_code: null, status: "in_progress" } })}\n${response.stdout}`,
+			};
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: updatedEventRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.runner_protocol_integrity).toBe(true);
+		expect(result.harness_validity.ok).toBe(true);
+		expect(
+			result.runs[0]?.disabled.stages[0]?.runner_protocol_summary?.item_updates,
+		).toBe(1);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("rejects a malformed item.updated progress event", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const malformedUpdateRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			return {
+				...response,
+				stdout: `${JSON.stringify({ type: "item.updated", item: { id: "item-1", type: "command_execution" } })}\n${response.stdout}`,
+			};
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: malformedUpdateRunner,
+			requirements: REQUIREMENTS,
+		});
+		const plan = result.runs[0]?.disabled.stages[0];
+		expect(plan?.runner_protocol_valid).toBe(false);
+		expect(plan?.runner_protocol_summary?.invalid_envelopes).toBe(1);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it.each([
+		"mcp_tool_call",
+		"collab_tool_call",
+		"web_search",
+		"todo_list",
+	])("fails closed for unsupported %s benchmark items", async (itemType) => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: async (request) => {
+				const response = await baseRunner(request);
+				return {
+					...response,
+					stdout: `${JSON.stringify({ type: "item.updated", item: { id: "item-1", type: itemType } })}\n${response.stdout}`,
+				};
+			},
+			requirements: REQUIREMENTS,
+		});
+		expect(
+			result.runs[0]?.disabled.stages[0]?.runner_protocol_summary
+				?.invalid_envelopes,
+		).toBe(1);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it.each([
+		JSON.stringify({ type: "turn.failed", error: { message: "failed" } }),
+		JSON.stringify({ type: "error", message: "failed" }),
+	])("records a valid Codex failure event explicitly", async (failureEvent) => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const failureEventRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			return { ...response, stdout: `${failureEvent}\n${response.stdout}` };
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: failureEventRunner,
+			requirements: REQUIREMENTS,
+		});
+		const plan = result.runs[0]?.disabled.stages[0];
+		expect(plan?.execution_ok).toBe(false);
+		expect(plan?.runner_protocol_valid).toBe(false);
+		expect(plan?.error).toBe("codex-runner-reported-failure");
+		expect(plan?.runner_protocol_summary?.failure_events).toBe(1);
+		expect(result.harness_validity.ok).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it.each([
+		JSON.stringify({ type: "turn.failed", error: {} }),
+		JSON.stringify({ type: "error", message: 7 }),
+	])("classifies a malformed Codex failure event", async (failureEvent) => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: async (request) => {
+				const response = await baseRunner(request);
+				return { ...response, stdout: `${failureEvent}\n${response.stdout}` };
+			},
+			requirements: REQUIREMENTS,
+		});
+		const plan = result.runs[0]?.disabled.stages[0];
+		expect(plan?.execution_ok).toBe(false);
+		expect(plan?.runner_protocol_valid).toBe(false);
+		expect(plan?.error).toBe("codex-runner-reported-failure");
+		expect(plan?.runner_protocol_summary).toMatchObject({
+			failure_events: 1,
+			invalid_envelopes: 1,
+		});
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("counts a parsed non-object JSONL record as an invalid envelope", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: async (request) => {
+				const response = await baseRunner(request);
+				return { ...response, stdout: `[]\n${response.stdout}` };
+			},
+			requirements: REQUIREMENTS,
+		});
+		expect(
+			result.runs[0]?.disabled.stages[0]?.runner_protocol_summary
+				?.invalid_envelopes,
+		).toBe(1);
 		expect(result.harness_validity.ok).toBe(false);
 		fs.rmSync(root, { recursive: true, force: true });
 	});

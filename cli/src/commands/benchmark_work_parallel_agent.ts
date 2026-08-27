@@ -10,11 +10,11 @@ import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkExecutionPacket } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v8";
+	"anamnesis.work_parallel_agent_ab.v9";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
-	"docs/benchmark-evidence/work-parallel-agent-ab/v8";
+	"docs/benchmark-evidence/work-parallel-agent-ab/v9";
 export const WORK_PARALLEL_AGENT_ATTEMPT_LEDGER =
-	"docs/benchmark-evidence/work-parallel-agent-ab/v8-attempts.jsonl";
+	"docs/benchmark-evidence/work-parallel-agent-ab/v9-attempts.jsonl";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
 
 export type ParallelCondition = "disabled" | "enabled";
@@ -81,6 +81,16 @@ export interface ParallelStageRecord {
 	execution_mode: "model" | "deterministic";
 	execution_ok: boolean;
 	runner_protocol_valid?: boolean;
+	runner_protocol_summary?: {
+		events: number;
+		item_updates: number;
+		agent_messages: number;
+		completed_turns: number;
+		malformed_lines: number;
+		invalid_envelopes: number;
+		unknown_events: number;
+		failure_events: number;
+	};
 	output_schema_valid?: boolean;
 	output_correct: boolean;
 	token_accounting_complete: boolean;
@@ -173,7 +183,7 @@ export interface ParallelBenchmarkResult {
 	attempts_before_this_sha: number;
 	scenario_families: ParallelScenarioFamily[];
 	topology: "harness-orchestrated-two-child-reviewer-leader";
-	scoring_version: "parallel-requirement-score.v8";
+	scoring_version: "parallel-requirement-score.v9";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -447,7 +457,7 @@ export async function workParallelAgentBenchmark(
 		topology: TOPOLOGY,
 		stages: STAGES,
 		reasoning_effort: REASONING_EFFORT,
-		scoring_version: "parallel-requirement-score.v8",
+		scoring_version: "parallel-requirement-score.v9",
 		families: scenarioFamilies,
 		final_pairs_per_family: 3,
 		accuracy: {
@@ -992,7 +1002,7 @@ export async function workParallelAgentBenchmark(
 		protocol: protocol ?? "legacy",
 		scenario_families: scenarioFamilies,
 		runs_per_condition: runs,
-		scoring_version: "parallel-requirement-score.v8",
+		scoring_version: "parallel-requirement-score.v9",
 		planned_initial_invocations: plannedInitialInvocations,
 		actual_invocations: actualInvocations,
 		fixture_hash: fixtureHash,
@@ -1144,12 +1154,14 @@ async function executeCondition(input: {
 		const ended = performance.now();
 		const parsed = parseStageJsonl(response.stdout, stage);
 		const measuredInput = measureInputBytes(prompt, inputPaths);
+		const processSucceeded = response.status === 0 && !parsed.runnerFailed;
 		const record: ParallelStageRecord = {
 			stage,
 			execution_mode: "model",
-			execution_ok: response.status === 0,
+			execution_ok: processSucceeded,
 			runner_protocol_valid: parsed.protocolValid,
 			output_schema_valid: parsed.outputSchemaValid,
+			runner_protocol_summary: parsed.summary,
 			output_correct: false,
 			token_accounting_complete: parsed.usage !== undefined,
 			elapsed_ms: round(response.elapsedMs),
@@ -1160,11 +1172,13 @@ async function executeCondition(input: {
 			tokens: parsed.usage ?? { ...EMPTY_USAGE },
 			...(response.status !== 0
 				? { error: "codex-process-failed" }
-				: !parsed.protocolValid
-					? { error: "codex-runner-protocol-invalid" }
-					: !parsed.outputSchemaValid
-						? { error: "codex-output-invalid" }
-						: {}),
+				: parsed.runnerFailed
+					? { error: "codex-runner-reported-failure" }
+					: !parsed.protocolValid
+						? { error: "codex-runner-protocol-invalid" }
+						: !parsed.outputSchemaValid
+							? { error: "codex-output-invalid" }
+							: {}),
 		};
 		records.push(record);
 		return { record, data: parsed.data ?? {} };
@@ -1417,11 +1431,24 @@ function parseStageJsonl(
 	usage?: WorkAgentTokenUsage;
 	protocolValid: boolean;
 	outputSchemaValid: boolean;
+	runnerFailed: boolean;
+	summary: NonNullable<ParallelStageRecord["runner_protocol_summary"]>;
 } {
 	const messages: string[] = [];
 	let protocolValid = true;
 	let usage: WorkAgentTokenUsage | undefined;
 	let completedTurns = 0;
+	let runnerFailed = false;
+	const summary = {
+		events: 0,
+		item_updates: 0,
+		agent_messages: 0,
+		completed_turns: 0,
+		malformed_lines: 0,
+		invalid_envelopes: 0,
+		unknown_events: 0,
+		failure_events: 0,
+	};
 	for (const raw of stdout.split(/\r?\n/u)) {
 		if (!raw.trim()) continue;
 		let event: unknown;
@@ -1429,17 +1456,27 @@ function parseStageJsonl(
 			event = JSON.parse(raw);
 		} catch {
 			protocolValid = false;
+			summary.malformed_lines += 1;
 			continue;
 		}
 		if (!event || typeof event !== "object" || Array.isArray(event)) {
 			protocolValid = false;
+			summary.invalid_envelopes += 1;
 			continue;
 		}
 		const record = event as Record<string, unknown>;
+		summary.events += 1;
+		if (!runnerEventTypeKnown(record.type)) summary.unknown_events += 1;
+		if (record.type === "turn.failed" || record.type === "error") {
+			runnerFailed = true;
+			summary.failure_events += 1;
+		}
 		if (!runnerEventEnvelopeValid(record)) {
 			protocolValid = false;
+			summary.invalid_envelopes += 1;
 			continue;
 		}
+		if (record.type === "item.updated") summary.item_updates += 1;
 		const item = record.item;
 		if (
 			record.type === "item.completed" &&
@@ -1449,15 +1486,20 @@ function parseStageJsonl(
 			typeof (item as Record<string, unknown>).text === "string"
 		) {
 			messages.push((item as Record<string, unknown>).text as string);
+			summary.agent_messages += 1;
 		}
 		if (record.type === "turn.completed") {
 			completedTurns += 1;
+			summary.completed_turns += 1;
 			usage = parseUsage(record.usage);
 			if (usage === undefined) protocolValid = false;
 		}
 	}
 	protocolValid =
-		protocolValid && messages.length === 1 && completedTurns === 1;
+		protocolValid &&
+		!runnerFailed &&
+		messages.length === 1 &&
+		completedTurns === 1;
 	let data: Record<string, unknown> | undefined;
 	if (protocolValid) {
 		try {
@@ -1473,32 +1515,38 @@ function parseStageJsonl(
 		data,
 		usage,
 		protocolValid,
+		runnerFailed,
+		summary,
 		outputSchemaValid:
 			protocolValid && data !== undefined && stagePayloadValid(stage, data),
 	};
 }
 
+function runnerEventTypeKnown(type: unknown): boolean {
+	return (
+		type === "thread.started" ||
+		type === "turn.started" ||
+		type === "item.started" ||
+		type === "item.updated" ||
+		type === "item.completed" ||
+		type === "turn.completed" ||
+		type === "turn.failed" ||
+		type === "error"
+	);
+}
+
 function runnerEventEnvelopeValid(record: Record<string, unknown>): boolean {
 	const type = record.type;
-	if (
-		type !== "thread.started" &&
-		type !== "turn.started" &&
-		type !== "item.started" &&
-		type !== "item.completed" &&
-		type !== "turn.completed"
-	) {
-		return false;
-	}
+	if (!runnerEventTypeKnown(type)) return false;
 	if (type === "thread.started") {
 		return typeof record.thread_id === "string";
 	}
-	if (type === "item.started" || type === "item.completed") {
-		return (
-			record.item !== null &&
-			typeof record.item === "object" &&
-			!Array.isArray(record.item) &&
-			typeof (record.item as Record<string, unknown>).type === "string"
-		);
+	if (
+		type === "item.started" ||
+		type === "item.updated" ||
+		type === "item.completed"
+	) {
+		return runnerItemEnvelopeValid(record.item);
 	}
 	if (type === "turn.completed") {
 		return (
@@ -1507,7 +1555,48 @@ function runnerEventEnvelopeValid(record: Record<string, unknown>): boolean {
 			!Array.isArray(record.usage)
 		);
 	}
+	if (type === "turn.failed") {
+		return runnerErrorEnvelopeValid(record.error);
+	}
+	if (type === "error") {
+		return typeof record.message === "string";
+	}
 	return true;
+}
+
+function runnerItemEnvelopeValid(item: unknown): boolean {
+	if (!isObjectRecord(item) || typeof item.id !== "string") return false;
+	switch (item.type) {
+		case "agent_message":
+		case "reasoning":
+			return typeof item.text === "string";
+		case "command_execution":
+			return (
+				typeof item.command === "string" &&
+				typeof item.aggregated_output === "string" &&
+				(item.exit_code === null || Number.isInteger(item.exit_code)) &&
+				isOneOf(item.status, ["in_progress", "completed", "failed", "declined"])
+			);
+		default:
+			return false;
+	}
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isOneOf(value: unknown, allowed: string[]): value is string {
+	return typeof value === "string" && allowed.includes(value);
+}
+
+function runnerErrorEnvelopeValid(error: unknown): boolean {
+	return (
+		error !== null &&
+		typeof error === "object" &&
+		!Array.isArray(error) &&
+		typeof (error as Record<string, unknown>).message === "string"
+	);
 }
 
 function stagePayloadValid(
@@ -2819,7 +2908,7 @@ function parseCompactRequirementRows(value: unknown): unknown[] {
 }
 
 function outputJsonl(data: Record<string, unknown>): string {
-	return `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, cached_input_tokens: 0, output_tokens: 1, total_tokens: 2 } })}`;
+	return `${JSON.stringify({ type: "item.completed", item: { id: "agent-message-1", type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, cached_input_tokens: 0, output_tokens: 1, total_tokens: 2 } })}`;
 }
 
 function runCodexExec(

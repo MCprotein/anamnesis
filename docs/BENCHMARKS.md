@@ -329,6 +329,20 @@ path (**-3.41%**) deltas are not performance evidence. The canonical
 records exactly one started, evaluated, and published outcome for the committed
 implementation SHA; v8 will not be rerun or promoted to a nine-pair final.
 
+Frozen v9 is a protocol-compatibility correction for that invalid run. The
+Codex exec JSONL contract includes `item.updated` progress events in addition
+to started/completed items; v8 rejected that documented event type, which is
+the strongest available explanation for its reviewer-only failure pattern.
+Raw v8 JSONL was intentionally not retained, so that causal attribution remains
+an inference. V9 accepts and validates `item.updated` for the local benchmark's
+agent-message, reasoning, and command-execution item types; every other item
+type fails closed. It handles `turn.failed` and top-level `error` events as
+explicit execution failures and publishes only privacy-safe event counters so
+a future protocol failure can be diagnosed without retaining raw JSONL. It uses
+a new schema, scoring version, harness hash, default `v9/` output root, and
+canonical `v9-attempts.jsonl` ledger. All v8 accuracy, quality, cost, latency,
+one-shot, and no-nine-pair constraints remain unchanged.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

@@ -101,6 +101,17 @@ could include breaking changes.
   zero process exit status. Harness validity and enabled quality therefore
   failed, so the apparent token and latency reductions are not performance
   evidence and no nine-pair run or release claim follows.
+- Prepared frozen v9 after the v8 invalid result exposed an incomplete Codex
+  exec JSONL event allowlist as the strongest available failure explanation.
+  Raw v8 JSONL remains intentionally private and was not retained, so the exact
+  rejected event cannot be reconstructed. V9 accepts and validates documented
+  `item.updated` progress for the benchmark's agent-message, reasoning, and
+  command-execution items while failing closed for every other item type. It
+  records `turn.failed` and top-level `error` events as explicit execution
+  failures and retains only privacy-safe event counters for diagnosis. It uses
+  a new schema, harness hash, output root, and
+  one-shot paid-attempt ledger while preserving all quality and efficiency
+  gates.
 
 ## [1.19.0] — 2026-08-26
 
