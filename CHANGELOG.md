@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.20.3] — 2026-08-27
+
 ### Fixed
 
 - Raised the repository-wide Vitest timeout budget from the 5-second default
