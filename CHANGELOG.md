@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Stabilized the retrieval benchmark regression tests under shared GitHub CI
+  load by giving both unchanged assertion paths an explicit timeout budget.
+  The `v1.20.0` tag stopped at this pre-publish test timeout, so that version
+  was not published to either package registry and is superseded by this patch.
+
 ## [1.20.0] — 2026-08-27
 
 ### Added

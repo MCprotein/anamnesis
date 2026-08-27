@@ -6,6 +6,8 @@ import { promptDeltaGate } from "./benchmark_prompt_gate.js";
 import { retrievalBenchmark } from "./benchmark_retrieval.js";
 import { init } from "./init.js";
 
+const RETRIEVAL_BENCHMARK_TEST_TIMEOUT_MS = 60_000;
+
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
@@ -78,7 +80,7 @@ describe("retrievalBenchmark", () => {
         "utf8",
       ),
     ).toContain('"kind":"retrieval-benchmark"');
-  });
+  }, RETRIEVAL_BENCHMARK_TEST_TIMEOUT_MS);
 
   it("feeds deterministic retrieval evidence into prompt-gate", () => {
     const project = tmpDir("anamnesis-retrieval-prompt-gate-");
@@ -125,5 +127,5 @@ describe("retrievalBenchmark", () => {
     expect(gate.markdown).toContain(
       "- source-pointer retrieval benchmarks: 1 (failures 0)",
     );
-  });
+  }, RETRIEVAL_BENCHMARK_TEST_TIMEOUT_MS);
 });
