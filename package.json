@@ -63,7 +63,7 @@
     "benchmark:work-agent-ab:strict": "tsx cli/src/index.ts benchmark work-agent-ab --runs 9 --strict --write",
     "benchmark:work-agent-ab:diagnostic": "tsx cli/src/index.ts benchmark work-agent-ab --runs 3 --scenarios multi-session-handoff,delegation-review",
     "benchmark:work-parallel-agent-ab": "tsx cli/src/index.ts benchmark work-parallel-agent-ab --protocol validate",
-    "benchmark:work-parallel-agent-ab:shadow": "tsx cli/src/index.ts benchmark work-parallel-agent-ab --protocol shadow --model gpt-5.6-luna",
+    "benchmark:work-parallel-agent-ab:shadow": "tsx cli/src/index.ts benchmark work-parallel-agent-ab --protocol shadow --model gpt-5.6-luna --write",
     "benchmark:work-parallel-agent-ab:final": "tsx cli/src/index.ts benchmark work-parallel-agent-ab --protocol final --model gpt-5.6-luna --write",
     "dogfood": "tsx cli/src/index.ts dogfood check --append",
     "dogfood:check": "tsx cli/src/index.ts dogfood check",

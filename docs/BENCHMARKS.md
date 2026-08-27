@@ -289,6 +289,33 @@ reviewer quality into harness validity. The artifact is preserved at
 [`v7-shadow`](benchmark-evidence/work-parallel-agent-ab/v7-shadow/README.md);
 it will not be rerun or promoted to a nine-pair claim.
 
+Frozen v8 corrects that evaluator-category error without reinterpreting or
+rerunning v7. `review_audit_stage_integrity` checks only whether each condition
+executed exactly one deterministic audit with a valid zero-token record,
+complete byte/timing accounting, a runtime-valid summary, and privacy-safe
+code-generated actual/oracle fingerprints. Fixture-oracle agreement is recorded separately as
+`review_audit_oracle_exact`, a product outcome. The enabled condition must have
+exact audit, reviewer, and final output in every pair and every family (3/3 in
+the shadow); no V8 protocol permits an 8/9 exception. Disabled reviewer,
+audit-oracle, and final-output failures remain visible comparison data. Leader
+plan, runner protocol/process, packet, stage, concurrency, and accounting
+failures make the harness `INVALID`, because the downstream comparison cannot
+be executed on the frozen topology. A final output
+with one exact row out of 48 now records 47 defects instead of zero.
+
+V8 also exposes separate machine-readable `harness_pass`,
+`enabled_quality_pass`, `diagnostic_contract_pass`, and `claim_eligible`
+values. The shadow verdict remains `INCONCLUSIVE` even if its diagnostic
+contract passes. The first committed v8 implementation may run one retained
+three-pair shadow—exactly 24 Luna model calls—and the canonical
+`v8-attempts.jsonl` ledger (independent of artifact `--output`) refuses a second
+paid run for the same implementation SHA. The evaluated gate outcome is
+appended to that canonical ledger before artifact publication, so a publication
+failure cannot erase the paid result. The outcome is preserved
+whether it passes or fails; v8 does not authorize a nine-pair final. Raw model
+answers remain private, so those opaque fingerprints are not independently
+recomputable or enough to reconstruct the answers externally.
+
 The historical v2 three-pair run used 30 calls. Harness validity passed every
 concurrency, ordering, accounting, and no-exclusion check. Work improved final
 exact-requirement accuracy from **33.33% to 100%**, winning **2/3** pairs with

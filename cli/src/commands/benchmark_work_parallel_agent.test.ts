@@ -3,10 +3,14 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+	appendParallelPaidAttemptLocked,
 	auditParallelReviewConsistency,
+	countFinalRequirementDefects,
 	type ParallelRequirement,
 	type ParallelRunner,
+	parallelPaidAttemptIndexPath,
 	publishParallelArtifacts,
+	reviewAuditStageIntegrity,
 	workParallelAgentBenchmark,
 } from "./benchmark_work_parallel_agent.js";
 
@@ -47,6 +51,8 @@ function runner(
 		wrongEnabledIterations?: number[];
 		reviewerWrongDisabledIterations?: number[];
 		reviewerWrongEnabledIterations?: number[];
+		enabledTokens?: number;
+		invalidReviewerEnvelopeCondition?: "disabled" | "enabled";
 	} = {},
 ): ParallelRunner {
 	let active = 0;
@@ -128,11 +134,17 @@ function runner(
 					...(opts.malformedOutputRows ? [null, 7, []] : []),
 				],
 			};
+		const invalidReviewerEnvelope =
+			stage === "reviewer" &&
+			condition === opts.invalidReviewerEnvelopeCondition;
+		const tokens = condition === "enabled" ? (opts.enabledTokens ?? 10) : 10;
 		return {
 			status: 0,
-			stdout: opts.malformedUsage
-				? `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: {} })}`
-				: output(data),
+			stdout: invalidReviewerEnvelope
+				? `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "not-json" } })}\n${JSON.stringify({ type: "turn.completed", usage: { input_tokens: tokens - 2, cached_input_tokens: 0, output_tokens: 2, total_tokens: tokens } })}`
+				: opts.malformedUsage
+					? `${JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: {} })}`
+					: output(data, tokens),
 			stderr: sawOverlap ? "" : "",
 			elapsedMs: 1,
 		};
@@ -248,6 +260,93 @@ describe("parallel review audit", () => {
 });
 
 describe("real parallel-agent benchmark", () => {
+	it("counts every missing expected requirement as a final defect", () => {
+		expect(
+			countFinalRequirementDefects({
+				expectedRequirements: 48,
+				exactRequirements: 1,
+				unexpectedRows: 0,
+				duplicateIds: 0,
+			}),
+		).toBe(47);
+		expect(
+			countFinalRequirementDefects({
+				expectedRequirements: 4,
+				exactRequirements: 3,
+				unexpectedRows: 2,
+				duplicateIds: 1,
+			}),
+		).toBe(4);
+	});
+
+	it("refuses a second paid attempt for the same implementation SHA", () => {
+		const root = tempRoot();
+		const indexPath = parallelPaidAttemptIndexPath(root);
+		expect(indexPath).toBe(
+			path.join(
+				root,
+				"docs/benchmark-evidence/work-parallel-agent-ab/v8-attempts.jsonl",
+			),
+		);
+		expect(
+			appendParallelPaidAttemptLocked(
+				indexPath,
+				{
+					phase: "started",
+					implementation_git_sha: "abc123",
+				},
+				"abc123",
+			),
+		).toBe(0);
+		expect(() =>
+			appendParallelPaidAttemptLocked(
+				indexPath,
+				{
+					phase: "started",
+					implementation_git_sha: "abc123",
+				},
+				"abc123",
+			),
+		).toThrow(/already ran/iu);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("recovers only a stale paid-attempt lock owned by a dead process", () => {
+		const root = tempRoot();
+		const indexPath = parallelPaidAttemptIndexPath(root);
+		fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+		const lockPath = `${indexPath}.lock`;
+		fs.writeFileSync(
+			lockPath,
+			JSON.stringify({
+				pid: 2_147_483_647,
+				created_at: "2000-01-01T00:00:00.000Z",
+			}),
+		);
+		expect(
+			appendParallelPaidAttemptLocked(indexPath, {
+				phase: "started",
+				implementation_git_sha: "recovered-sha",
+			}),
+		).toBe(0);
+		expect(fs.existsSync(lockPath)).toBe(false);
+		fs.writeFileSync(
+			lockPath,
+			JSON.stringify({
+				pid: process.pid,
+				created_at: "2000-01-01T00:00:00.000Z",
+			}),
+		);
+		expect(() =>
+			appendParallelPaidAttemptLocked(indexPath, {
+				phase: "started",
+				implementation_git_sha: "blocked-sha",
+			}),
+		).toThrow(/another paid benchmark attempt/iu);
+		expect(fs.existsSync(lockPath)).toBe(true);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
 	it("validates the frozen three-family, nine-pair contract without Codex", async () => {
 		const root = tempRoot();
 		fs.writeFileSync(
@@ -263,7 +362,7 @@ describe("real parallel-agent benchmark", () => {
 			"stale-cross-session-conflict",
 			"review-gate-recovery",
 		]);
-		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v7");
+		expect(result.schema_version).toBe("anamnesis.work_parallel_agent_ab.v8");
 		expect(result.runs).toHaveLength(9);
 		expect(result.planned_initial_invocations).toBe(72);
 		expect(result.actual_invocations).toBe(72);
@@ -271,8 +370,13 @@ describe("real parallel-agent benchmark", () => {
 		expect(result.harness_validity.checks.deterministic_stage_integrity).toBe(
 			true,
 		);
+		expect(result.harness_validity.checks.runner_protocol_integrity).toBe(true);
 		expect(result.harness_validity.ok).toBe(true);
 		expect(result.quality.enabled_passes).toBe(9);
+		expect(result.quality.enabled_complete_passes).toBe(9);
+		expect(result.quality.enabled_review_audit_oracle_exact_passes).toBe(9);
+		expect(result.evaluation.harness_pass).toBe(true);
+		expect(result.evaluation.enabled_quality_pass).toBe(true);
 		expect(result.comparison.total_pairs).toBe(9);
 		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		expect(result.summary.paired.total_tokens_pct_upper_90).toBe(0);
@@ -498,6 +602,13 @@ describe("real parallel-agent benchmark", () => {
 		).rejects.toThrow(/requires the real Codex runner/iu);
 		await expect(
 			workParallelAgentBenchmark({ projectRoot: root, protocol: "shadow" }),
+		).rejects.toThrow(/requires --write/iu);
+		await expect(
+			workParallelAgentBenchmark({
+				projectRoot: root,
+				protocol: "shadow",
+				write: true,
+			}),
 		).rejects.toThrow(/requires a Git commit/iu);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
@@ -558,6 +669,32 @@ describe("real parallel-agent benchmark", () => {
 			},
 		});
 		expect(deterministicStages).toHaveLength(2);
+		expect(reviewAuditStageIntegrity(result.runs[0]!.disabled.stages)).toBe(
+			true,
+		);
+		const duplicateAuditStages = structuredClone(
+			result.runs[0]!.disabled.stages,
+		);
+		duplicateAuditStages.push(
+			structuredClone(
+				duplicateAuditStages.find((stage) => stage.stage === "review-audit")!,
+			),
+		);
+		expect(reviewAuditStageIntegrity(duplicateAuditStages)).toBe(false);
+		const corruptAuditStages = structuredClone(result.runs[0]!.disabled.stages);
+		const corruptAudit = corruptAuditStages.find(
+			(stage) => stage.stage === "review-audit",
+		)!;
+		corruptAudit.tokens.total_tokens = 1;
+		expect(reviewAuditStageIntegrity(corruptAuditStages)).toBe(false);
+		const malformedAuditStages = structuredClone(
+			result.runs[0]!.disabled.stages,
+		);
+		const malformedAudit = malformedAuditStages.find(
+			(stage) => stage.stage === "review-audit",
+		)!;
+		delete malformedAudit.review_audit_summary!.oracle_digest;
+		expect(reviewAuditStageIntegrity(malformedAuditStages)).toBe(false);
 		for (const stage of deterministicStages ?? []) {
 			expect(stage.elapsed_ms).toBeGreaterThanOrEqual(0);
 			expect(stage.input_bytes).toBeGreaterThan(0);
@@ -617,7 +754,7 @@ describe("real parallel-agent benchmark", () => {
 			properties: Record<string, unknown>;
 		};
 		expect(schema.properties).toEqual({ requirements: expect.any(Object) });
-		expect(result.runs[0]?.disabled.review_audit_exact).toBe(true);
+		expect(result.runs[0]?.disabled.review_audit_oracle_exact).toBe(true);
 		expect(
 			result.runs[0]?.disabled.stages.filter(
 				(stage) => stage.execution_mode === "deterministic",
@@ -673,8 +810,34 @@ describe("real parallel-agent benchmark", () => {
 			requirements: REQUIREMENTS,
 		});
 		expect(result.harness_validity.checks.full_token_accounting).toBe(false);
+		expect(result.harness_validity.checks.runner_protocol_integrity).toBe(
+			false,
+		);
 		expect(result.harness_validity.ok).toBe(false);
 		expect(result.runs[0]?.disabled.token_accounting_complete).toBe(false);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("invalidates the harness for an unknown runner event", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const unknownEventRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			return {
+				...response,
+				stdout: `${JSON.stringify({ type: "runner.corrupted" })}\n${response.stdout}`,
+			};
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: unknownEventRunner,
+			requirements: REQUIREMENTS,
+		});
+		expect(result.harness_validity.checks.runner_protocol_integrity).toBe(
+			false,
+		);
+		expect(result.harness_validity.ok).toBe(false);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -720,7 +883,7 @@ describe("real parallel-agent benchmark", () => {
 			expect(result.harness_validity.checks.full_token_accounting).toBe(false);
 			fs.rmSync(root, { recursive: true, force: true });
 		}
-	});
+	}, 10_000);
 
 	it("rejects null, scalar, and nested-array rows at every scored stage", async () => {
 		const root = tempRoot();
@@ -744,7 +907,7 @@ describe("real parallel-agent benchmark", () => {
 		expect(result.quality.disabled_passes).toBe(0);
 		expect(result.quality.enabled_passes).toBe(0);
 		fs.rmSync(root, { recursive: true, force: true });
-	});
+	}, 10_000);
 
 	it("preserves non-array child containers as malformed process defects", async () => {
 		for (const childAContainer of ["null", "scalar", "missing"] as const) {
@@ -767,14 +930,14 @@ describe("real parallel-agent benchmark", () => {
 				malformed_rows: 1,
 				order_ok: false,
 			});
-			expect(first.review_audit_exact).toBe(true);
+			expect(first.review_audit_oracle_exact).toBe(true);
 			expect(first.product_pass).toBe(true);
 			expect(result.summary.disabled.process_perfect_pct).toBe(0);
 			fs.rmSync(root, { recursive: true, force: true });
 		}
 	}, 15_000);
 
-	it("invalidates comparison when deterministic audit detects reviewer omission", async () => {
+	it("scores disabled reviewer omissions without invalidating the harness", async () => {
 		const root = tempRoot();
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
@@ -782,13 +945,68 @@ describe("real parallel-agent benchmark", () => {
 			runner: runner({ reviewerWrongDisabledIterations: [1, 2] }),
 			requirements: REQUIREMENTS,
 		});
-		expect(result.harness_validity.ok).toBe(false);
-		expect(result.comparison.verdict).toBe("INVALID");
+		expect(result.harness_validity.ok).toBe(true);
+		expect(result.comparison.verdict).toBe("PASS_DIRECTIONAL");
+		expect(result.quality.enabled_ready).toBe(true);
+		expect(result.quality.disabled_review_audit_oracle_exact_passes).toBe(1);
+		expect(result.quality.enabled_review_audit_oracle_exact_passes).toBe(3);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("scores a disabled invalid reviewer envelope as product failure", async () => {
+		const root = tempRoot();
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: runner({ invalidReviewerEnvelopeCondition: "disabled" }),
+			requirements: REQUIREMENTS,
+		});
+		const reviewer = result.runs[0]!.disabled.stages.find(
+			(stage) => stage.stage === "reviewer",
+		)!;
+		expect(reviewer.execution_ok).toBe(true);
+		expect(reviewer.runner_protocol_valid).toBe(true);
+		expect(reviewer.output_schema_valid).toBe(false);
+		expect(reviewer.output_correct).toBe(false);
+		expect(result.harness_validity.ok).toBe(true);
+		expect(result.quality.disabled_passes).toBe(0);
 		expect(result.quality.enabled_ready).toBe(true);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
-	it("invalidates comparison when enabled reviewer data fails audit", async () => {
+	it("invalidates the harness for malformed runner JSONL", async () => {
+		const root = tempRoot();
+		const baseRunner = runner();
+		const malformedJsonlRunner: ParallelRunner = async (request) => {
+			const response = await baseRunner(request);
+			return request.cwd.endsWith("-disabled") &&
+				request.prompt.includes("[parallel-stage:reviewer]")
+				? { ...response, stdout: `not-json\n${response.stdout}` }
+				: response;
+		};
+		const result = await workParallelAgentBenchmark({
+			projectRoot: root,
+			runs: 3,
+			runner: malformedJsonlRunner,
+			requirements: REQUIREMENTS,
+		});
+		const reviewer = result.runs[0]!.disabled.stages.find(
+			(stage) => stage.stage === "reviewer",
+		)!;
+		expect(reviewer.execution_ok).toBe(true);
+		expect(reviewer.runner_protocol_valid).toBe(false);
+		expect(reviewer.output_schema_valid).toBe(false);
+		expect(reviewer.error).toBe("codex-runner-protocol-invalid");
+		expect(result.harness_validity.checks.runner_protocol_integrity).toBe(
+			false,
+		);
+		expect(result.harness_validity.ok).toBe(false);
+		expect(result.quality.disabled_passes).toBe(0);
+		expect(result.quality.enabled_ready).toBe(true);
+		fs.rmSync(root, { recursive: true, force: true });
+	});
+
+	it("fails enabled quality without misclassifying it as a harness failure", async () => {
 		const root = tempRoot();
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
@@ -796,9 +1014,11 @@ describe("real parallel-agent benchmark", () => {
 			runner: runner({ reviewerWrongEnabledIterations: [1, 2] }),
 			requirements: REQUIREMENTS,
 		});
-		expect(result.harness_validity.ok).toBe(false);
-		expect(result.ok).toBe(false);
-		expect(result.comparison.verdict).toBe("INVALID");
+		expect(result.harness_validity.ok).toBe(true);
+		expect(result.comparison.verdict).toBe("FAIL_REGRESSION");
+		expect(result.quality.enabled_ready).toBe(false);
+		expect(result.quality.enabled_review_audit_oracle_exact_passes).toBe(1);
+		expect(result.evaluation.enabled_quality_pass).toBe(false);
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
@@ -828,7 +1048,8 @@ describe("real parallel-agent benchmark", () => {
 			);
 			expect(first.product_pass).toBe(false);
 			if ("reviewerOmitLast" in options) {
-				expect(first.review_audit_exact).toBe(false);
+				expect(first.review_audit_oracle_exact).toBe(false);
+				expect(first.final_defects).toBe(1);
 			}
 			expect(result.quality.disabled_passes).toBe(0);
 			expect(result.quality.enabled_passes).toBe(0);

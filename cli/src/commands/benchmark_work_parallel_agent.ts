@@ -10,9 +10,11 @@ import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkExecutionPacket } from "./work_hook.js";
 
 export const WORK_PARALLEL_AGENT_SCHEMA_VERSION =
-	"anamnesis.work_parallel_agent_ab.v7";
+	"anamnesis.work_parallel_agent_ab.v8";
 export const WORK_PARALLEL_AGENT_OUTPUT_DIR =
-	"docs/benchmark-evidence/work-parallel-agent-ab/v7";
+	"docs/benchmark-evidence/work-parallel-agent-ab/v8";
+export const WORK_PARALLEL_AGENT_ATTEMPT_LEDGER =
+	"docs/benchmark-evidence/work-parallel-agent-ab/v8-attempts.jsonl";
 export const DEFAULT_WORK_PARALLEL_AGENT_MODEL = "gpt-5.6-luna";
 
 export type ParallelCondition = "disabled" | "enabled";
@@ -78,6 +80,8 @@ export interface ParallelStageRecord {
 	stage: ParallelStage;
 	execution_mode: "model" | "deterministic";
 	execution_ok: boolean;
+	runner_protocol_valid?: boolean;
+	output_schema_valid?: boolean;
 	output_correct: boolean;
 	token_accounting_complete: boolean;
 	elapsed_ms: number;
@@ -104,6 +108,8 @@ export interface ParallelStageRecord {
 		summary_mismatch: number;
 		malformed_rows: number;
 		order_ok: boolean;
+		actual_digest?: string;
+		oracle_digest?: string;
 	};
 	error?: string;
 }
@@ -120,7 +126,7 @@ export interface ParallelConditionRun {
 	reviewer_started_after_children: boolean;
 	child_accuracy_pct: number;
 	reviewer_accuracy_pct: number;
-	review_audit_exact: boolean;
+	review_audit_oracle_exact: boolean;
 	final_accuracy_pct: number;
 	final_exact_requirements: number;
 	final_defects: number;
@@ -167,7 +173,7 @@ export interface ParallelBenchmarkResult {
 	attempts_before_this_sha: number;
 	scenario_families: ParallelScenarioFamily[];
 	topology: "harness-orchestrated-two-child-reviewer-leader";
-	scoring_version: "parallel-requirement-score.v7";
+	scoring_version: "parallel-requirement-score.v8";
 	runs_per_condition: number;
 	planned_initial_invocations: number;
 	actual_invocations: number;
@@ -201,7 +207,20 @@ export interface ParallelBenchmarkResult {
 		enabled_ready: boolean;
 		disabled_passes: number;
 		enabled_passes: number;
+		disabled_review_audit_oracle_exact_passes: number;
+		enabled_review_audit_oracle_exact_passes: number;
+		disabled_reviewer_exact_passes: number;
+		enabled_reviewer_exact_passes: number;
+		disabled_final_exact_passes: number;
+		enabled_final_exact_passes: number;
+		enabled_complete_passes: number;
 		total_per_condition: number;
+	};
+	evaluation: {
+		harness_pass: boolean;
+		enabled_quality_pass: boolean;
+		diagnostic_contract_pass: boolean;
+		claim_eligible: boolean;
 	};
 	comparison: {
 		verdict: ParallelComparisonVerdict | LegacyVerdict;
@@ -234,6 +253,7 @@ export interface ParallelBenchmarkResult {
 			accuracy_delta_points: number;
 			enabled_wins: number;
 			reviewer_exact: number;
+			review_audit_oracle_exact: number;
 			final_exact: number;
 		}
 	>;
@@ -326,6 +346,44 @@ const REVIEW_AUDIT_SCHEMA = strictObject(
 	},
 );
 
+export function reviewAuditStageIntegrity(
+	stages: ParallelStageRecord[],
+): boolean {
+	const audits = stages.filter((stage) => stage.stage === "review-audit");
+	if (audits.length !== 1) return false;
+	const audit = audits[0];
+	const summary = audit?.review_audit_summary;
+	if (!audit || !summary) return false;
+	const counts = [
+		summary.missing,
+		summary.duplicate,
+		summary.unexpected,
+		summary.misassigned,
+		summary.status_mismatch,
+		summary.summary_mismatch,
+		summary.malformed_rows,
+	];
+	const zeroIssues = counts.every((count) => count === 0) && summary.order_ok;
+	const digestPattern = /^[a-f0-9]{64}$/u;
+	return (
+		audit.execution_mode === "deterministic" &&
+		audit.execution_ok &&
+		audit.token_accounting_complete &&
+		audit.input_bytes_complete &&
+		audit.input_bytes > 0 &&
+		audit.elapsed_ms >= 0 &&
+		audit.start_offset_ms >= 0 &&
+		audit.end_offset_ms >= audit.start_offset_ms &&
+		Object.values(audit.tokens).every((tokens) => tokens === 0) &&
+		counts.every((count) => Number.isInteger(count) && count >= 0) &&
+		summary.verdict === (zeroIssues ? "accept" : "repair") &&
+		typeof summary.actual_digest === "string" &&
+		digestPattern.test(summary.actual_digest) &&
+		typeof summary.oracle_digest === "string" &&
+		digestPattern.test(summary.oracle_digest)
+	);
+}
+
 export async function workParallelAgentBenchmark(
 	options: ParallelBenchmarkOptions,
 ): Promise<ParallelBenchmarkResult> {
@@ -380,7 +438,6 @@ export async function workParallelAgentBenchmark(
 		projectRoot,
 		protocol,
 		options.write === true,
-		options.outputPath,
 		reproducibility.git_sha,
 	);
 	const implementationSha =
@@ -390,7 +447,7 @@ export async function workParallelAgentBenchmark(
 		topology: TOPOLOGY,
 		stages: STAGES,
 		reasoning_effort: REASONING_EFFORT,
-		scoring_version: "parallel-requirement-score.v7",
+		scoring_version: "parallel-requirement-score.v8",
 		families: scenarioFamilies,
 		final_pairs_per_family: 3,
 		accuracy: {
@@ -400,8 +457,8 @@ export async function workParallelAgentBenchmark(
 			family_floor: -2,
 		},
 		quality: {
-			exact_overall: "8/9",
-			exact_per_family: "2/3",
+			audit_reviewer_final_exact_overall: "all",
+			audit_reviewer_final_exact_per_family: "all",
 			final_defects: 0,
 		},
 		child_transport: "inline-authoritative-payload-v1",
@@ -415,7 +472,8 @@ export async function workParallelAgentBenchmark(
 				"actual-plan-assignments",
 			],
 			oracle: "post-execution-scoring-only",
-			product_quality: "separate-required-harness-gate",
+			oracle_outcome: "separate-enabled-quality-gate",
+			stage_integrity: "all-condition-required-harness-gate",
 		},
 		model_stages_per_condition: 4,
 		tokens: { aggregate_pct: 5, median_pct: 5, bootstrap_upper_90_pct: 10 },
@@ -587,10 +645,13 @@ export async function workParallelAgentBenchmark(
 				run.stages.filter((stage) => stage.execution_mode === "deterministic")
 					.length === 2,
 		),
-		review_audit_exact: allRuns.every((run) =>
-			run.stages.some(
-				(stage) => stage.stage === "review-audit" && stage.output_correct,
-			),
+		runner_protocol_integrity: allRuns.every((run) =>
+			run.stages
+				.filter((stage) => stage.execution_mode === "model")
+				.every((stage) => stage.runner_protocol_valid === true),
+		),
+		review_audit_stage_integrity: allRuns.every((run) =>
+			reviewAuditStageIntegrity(run.stages),
 		),
 		deterministic_stage_integrity: allRuns.every((run) => {
 			const deterministic = run.stages.filter(
@@ -716,10 +777,44 @@ export async function workParallelAgentBenchmark(
 	const enabledPasses = pairs.filter(
 		(pair) => pair.enabled.product_pass,
 	).length;
+	const disabledAuditExactPasses = pairs.filter(
+		(pair) => pair.disabled.review_audit_oracle_exact,
+	).length;
+	const enabledAuditExactPasses = pairs.filter(
+		(pair) => pair.enabled.review_audit_oracle_exact,
+	).length;
+	const disabledReviewerExactPasses = pairs.filter(
+		(pair) =>
+			pair.disabled.stages.find((stage) => stage.stage === "reviewer")
+				?.output_correct === true,
+	).length;
+	const enabledReviewerExactPasses = pairs.filter(
+		(pair) =>
+			pair.enabled.stages.find((stage) => stage.stage === "reviewer")
+				?.output_correct === true,
+	).length;
+	const disabledFinalExactPasses = pairs.filter(
+		(pair) => pair.disabled.final_accuracy_pct === 100,
+	).length;
+	const enabledFinalExactPasses = pairs.filter(
+		(pair) => pair.enabled.final_accuracy_pct === 100,
+	).length;
+	const enabledCompletePasses = pairs.filter(
+		(pair) =>
+			pair.enabled.review_audit_oracle_exact && pair.enabled.product_pass,
+	).length;
+	const enabledQualityThreshold = pairs.length;
 	const quality = {
-		enabled_ready: enabledPasses >= Math.ceil((pairs.length * 8) / 9),
+		enabled_ready: enabledCompletePasses >= enabledQualityThreshold,
 		disabled_passes: disabledPasses,
 		enabled_passes: enabledPasses,
+		disabled_review_audit_oracle_exact_passes: disabledAuditExactPasses,
+		enabled_review_audit_oracle_exact_passes: enabledAuditExactPasses,
+		disabled_reviewer_exact_passes: disabledReviewerExactPasses,
+		enabled_reviewer_exact_passes: enabledReviewerExactPasses,
+		disabled_final_exact_passes: disabledFinalExactPasses,
+		enabled_final_exact_passes: enabledFinalExactPasses,
+		enabled_complete_passes: enabledCompletePasses,
 		total_per_condition: pairs.length,
 	};
 	const familySummaries = Object.fromEntries(
@@ -748,6 +843,9 @@ export async function workParallelAgentBenchmark(
 						(pair) =>
 							pair.enabled.stages.find((stage) => stage.stage === "reviewer")
 								?.output_correct === true,
+					).length,
+					review_audit_oracle_exact: familyPairs.filter(
+						(pair) => pair.enabled.review_audit_oracle_exact,
 					).length,
 					final_exact: familyPairs.filter(
 						(pair) => pair.enabled.final_accuracy_pct === 100,
@@ -794,14 +892,15 @@ export async function workParallelAgentBenchmark(
 		enabledPairLosses === 0 &&
 		enabledAggregateDefects <= disabledAggregateDefects;
 	const criticalQualityGate =
-		enabledPasses >= Math.ceil((pairs.length * 8) / 9) &&
+		enabledCompletePasses >= enabledQualityThreshold &&
 		enabledAggregateDefects === 0 &&
 		scenarioFamilies.every((family) => {
 			const summary = familySummaries[family];
 			return (
 				summary.accuracy_delta_points >= -2 &&
-				summary.reviewer_exact >= Math.ceil((summary.pairs * 2) / 3) &&
-				summary.final_exact >= Math.ceil((summary.pairs * 2) / 3)
+				summary.review_audit_oracle_exact === summary.pairs &&
+				summary.reviewer_exact === summary.pairs &&
+				summary.final_exact === summary.pairs
 			);
 		});
 	const tokenUpper90 = stratifiedBootstrapUpper90(pairs, (pair) =>
@@ -843,6 +942,14 @@ export async function workParallelAgentBenchmark(
 	const efficiencySignalGate =
 		(median(pairedTokenDeltas) < 0 && tokenUpper90 <= 0) ||
 		(median(pairedCriticalPathDeltas) < 0 && latencyUpper90 <= 0);
+	const diagnosticContractPass =
+		harnessValidity.ok &&
+		criticalQualityGate &&
+		accuracyGate &&
+		costGate &&
+		stageCostGate &&
+		latencyGate &&
+		efficiencySignalGate;
 	const comparisonVerdict: ParallelComparisonVerdict | LegacyVerdict =
 		protocol === undefined || protocol === "legacy"
 			? !harnessValidity.ok
@@ -885,7 +992,7 @@ export async function workParallelAgentBenchmark(
 		protocol: protocol ?? "legacy",
 		scenario_families: scenarioFamilies,
 		runs_per_condition: runs,
-		scoring_version: "parallel-requirement-score.v7",
+		scoring_version: "parallel-requirement-score.v8",
 		planned_initial_invocations: plannedInitialInvocations,
 		actual_invocations: actualInvocations,
 		fixture_hash: fixtureHash,
@@ -919,6 +1026,12 @@ export async function workParallelAgentBenchmark(
 		},
 		harness_validity: harnessValidity,
 		quality,
+		evaluation: {
+			harness_pass: harnessValidity.ok,
+			enabled_quality_pass: criticalQualityGate,
+			diagnostic_contract_pass: diagnosticContractPass,
+			claim_eligible: protocol === "final",
+		},
 		comparison: {
 			verdict: comparisonVerdict,
 			primary_metric: "final_requirement_accuracy_pct",
@@ -943,10 +1056,12 @@ export async function workParallelAgentBenchmark(
 		},
 		family_summaries: familySummaries,
 		ok:
-			harnessValidity.ok &&
-			(protocol !== "final" ||
-				comparisonVerdict === "PASS_PRODUCT" ||
-				comparisonVerdict === "PASS_EFFICIENCY"),
+			protocol === "shadow"
+				? diagnosticContractPass
+				: harnessValidity.ok &&
+					(protocol !== "final" ||
+						comparisonVerdict === "PASS_PRODUCT" ||
+						comparisonVerdict === "PASS_EFFICIENCY"),
 		artifacts: {},
 		markdown: "",
 	};
@@ -955,13 +1070,16 @@ export async function workParallelAgentBenchmark(
 		result,
 	);
 	if (options.write) {
+		if (protocol === "shadow" || protocol === "final") {
+			recordPaidAttempt(projectRoot, result, "evaluated");
+		}
 		result.artifacts = publishParallelArtifacts(
 			result,
 			options.outputPath,
 			options.artifactOperations,
 		);
-		if (protocol === "final") {
-			recordFinalAttempt(projectRoot, options.outputPath, result);
+		if (protocol === "shadow" || protocol === "final") {
+			recordPaidAttempt(projectRoot, result, "published");
 		}
 	}
 	return result;
@@ -1024,12 +1142,14 @@ async function executeCondition(input: {
 			return { record, data: {} };
 		}
 		const ended = performance.now();
-		const parsed = parseStageJsonl(response.stdout);
+		const parsed = parseStageJsonl(response.stdout, stage);
 		const measuredInput = measureInputBytes(prompt, inputPaths);
 		const record: ParallelStageRecord = {
 			stage,
 			execution_mode: "model",
-			execution_ok: response.status === 0 && parsed.data !== undefined,
+			execution_ok: response.status === 0,
+			runner_protocol_valid: parsed.protocolValid,
+			output_schema_valid: parsed.outputSchemaValid,
 			output_correct: false,
 			token_accounting_complete: parsed.usage !== undefined,
 			elapsed_ms: round(response.elapsedMs),
@@ -1038,9 +1158,13 @@ async function executeCondition(input: {
 			input_bytes: measuredInput.bytes,
 			input_bytes_complete: measuredInput.complete && inputComplete,
 			tokens: parsed.usage ?? { ...EMPTY_USAGE },
-			...(response.status === 0 && parsed.data !== undefined
-				? {}
-				: { error: "codex-stage-failed" }),
+			...(response.status !== 0
+				? { error: "codex-process-failed" }
+				: !parsed.protocolValid
+					? { error: "codex-runner-protocol-invalid" }
+					: !parsed.outputSchemaValid
+						? { error: "codex-output-invalid" }
+						: {}),
 		};
 		records.push(record);
 		return { record, data: parsed.data ?? {} };
@@ -1067,7 +1191,7 @@ async function executeCondition(input: {
 			reviewer_started_after_children: false,
 			child_accuracy_pct: 0,
 			reviewer_accuracy_pct: 0,
-			review_audit_exact: false,
+			review_audit_oracle_exact: false,
 			final_accuracy_pct: 0,
 			final_exact_requirements: 0,
 			final_defects: input.requirements.length,
@@ -1169,6 +1293,7 @@ async function executeCondition(input: {
 			summary_mismatch: audit.summaryMismatchIds.length,
 			malformed_rows: audit.malformedRows,
 			order_ok: audit.orderOk,
+			actual_digest: digest(audit),
 		},
 	};
 	records.push(auditRecord);
@@ -1207,6 +1332,7 @@ async function executeCondition(input: {
 		expectedChildRequirements(input.requirements, planA),
 		expectedChildRequirements(input.requirements, planB),
 	);
+	auditRecord.review_audit_summary!.oracle_digest = digest(expectedAudit);
 	auditRecord.output_correct = reviewAuditEqual(audit, expectedAudit);
 	plan.record.output_correct = plan.record.execution_ok && planExact;
 	const childAScore = scoreRequirements(
@@ -1274,31 +1400,46 @@ async function executeCondition(input: {
 				input.requirements.length,
 		),
 		reviewer_accuracy_pct: reviewerScore.accuracyPct,
-		review_audit_exact: auditRecord.output_correct,
+		review_audit_oracle_exact: auditRecord.output_correct,
 		final_accuracy_pct: finalScore.accuracyPct,
 		final_exact_requirements: finalScore.exactRequirements,
-		final_defects: finalScore.unexpectedRows + finalScore.duplicateIds,
+		final_defects: countFinalRequirementDefects(finalScore),
 		tokens,
 		stages: records,
 	};
 }
 
-function parseStageJsonl(stdout: string): {
+function parseStageJsonl(
+	stdout: string,
+	stage: ParallelStage,
+): {
 	data?: Record<string, unknown>;
 	usage?: WorkAgentTokenUsage;
+	protocolValid: boolean;
+	outputSchemaValid: boolean;
 } {
-	let text: string | undefined;
+	const messages: string[] = [];
+	let protocolValid = true;
 	let usage: WorkAgentTokenUsage | undefined;
+	let completedTurns = 0;
 	for (const raw of stdout.split(/\r?\n/u)) {
 		if (!raw.trim()) continue;
 		let event: unknown;
 		try {
 			event = JSON.parse(raw);
 		} catch {
+			protocolValid = false;
 			continue;
 		}
-		if (!event || typeof event !== "object") continue;
+		if (!event || typeof event !== "object" || Array.isArray(event)) {
+			protocolValid = false;
+			continue;
+		}
 		const record = event as Record<string, unknown>;
+		if (!runnerEventEnvelopeValid(record)) {
+			protocolValid = false;
+			continue;
+		}
 		const item = record.item;
 		if (
 			record.type === "item.completed" &&
@@ -1307,20 +1448,20 @@ function parseStageJsonl(stdout: string): {
 			(item as Record<string, unknown>).type === "agent_message" &&
 			typeof (item as Record<string, unknown>).text === "string"
 		) {
-			text = (item as Record<string, unknown>).text as string;
+			messages.push((item as Record<string, unknown>).text as string);
 		}
-		if (
-			record.type === "turn.completed" &&
-			record.usage &&
-			typeof record.usage === "object"
-		) {
+		if (record.type === "turn.completed") {
+			completedTurns += 1;
 			usage = parseUsage(record.usage);
+			if (usage === undefined) protocolValid = false;
 		}
 	}
+	protocolValid =
+		protocolValid && messages.length === 1 && completedTurns === 1;
 	let data: Record<string, unknown> | undefined;
-	if (text) {
+	if (protocolValid) {
 		try {
-			const parsed = JSON.parse(text) as unknown;
+			const parsed = JSON.parse(messages[0]!) as unknown;
 			if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
 				data = parsed as Record<string, unknown>;
 			}
@@ -1328,7 +1469,87 @@ function parseStageJsonl(stdout: string): {
 			// A malformed answer remains a product failure; any usage is retained.
 		}
 	}
-	return { data, usage };
+	return {
+		data,
+		usage,
+		protocolValid,
+		outputSchemaValid:
+			protocolValid && data !== undefined && stagePayloadValid(stage, data),
+	};
+}
+
+function runnerEventEnvelopeValid(record: Record<string, unknown>): boolean {
+	const type = record.type;
+	if (
+		type !== "thread.started" &&
+		type !== "turn.started" &&
+		type !== "item.started" &&
+		type !== "item.completed" &&
+		type !== "turn.completed"
+	) {
+		return false;
+	}
+	if (type === "thread.started") {
+		return typeof record.thread_id === "string";
+	}
+	if (type === "item.started" || type === "item.completed") {
+		return (
+			record.item !== null &&
+			typeof record.item === "object" &&
+			!Array.isArray(record.item) &&
+			typeof (record.item as Record<string, unknown>).type === "string"
+		);
+	}
+	if (type === "turn.completed") {
+		return (
+			record.usage !== null &&
+			typeof record.usage === "object" &&
+			!Array.isArray(record.usage)
+		);
+	}
+	return true;
+}
+
+function stagePayloadValid(
+	stage: ParallelStage,
+	data: Record<string, unknown>,
+): boolean {
+	if (stage === "leader-plan") {
+		return (
+			exactObjectKeys(data, ["child_a", "child_b"]) &&
+			Array.isArray(data.child_a) &&
+			data.child_a.every((item) => typeof item === "string") &&
+			Array.isArray(data.child_b) &&
+			data.child_b.every((item) => typeof item === "string")
+		);
+	}
+	if (stage === "child-a" || stage === "child-b" || stage === "reviewer") {
+		return (
+			exactObjectKeys(data, ["requirements"]) &&
+			Array.isArray(data.requirements) &&
+			data.requirements.every(requirementRowValid)
+		);
+	}
+	return false;
+}
+
+function exactObjectKeys(
+	value: Record<string, unknown>,
+	expected: string[],
+): boolean {
+	const keys = Object.keys(value).sort();
+	return equalStringArrays(keys, [...expected].sort());
+}
+
+function requirementRowValid(value: unknown): boolean {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+	const row = value as Record<string, unknown>;
+	return (
+		exactObjectKeys(row, ["id", "status", "summary"]) &&
+		typeof row.id === "string" &&
+		(row.status === "verified" || row.status === "pending") &&
+		typeof row.summary === "string"
+	);
 }
 
 function materializeWorkContext(
@@ -1614,6 +1835,22 @@ interface RequirementScore {
 	unexpectedRows: number;
 	duplicateIds: number;
 	malformedRows: number;
+}
+
+export function countFinalRequirementDefects(
+	score: Pick<
+		RequirementScore,
+		| "expectedRequirements"
+		| "exactRequirements"
+		| "unexpectedRows"
+		| "duplicateIds"
+	>,
+): number {
+	return (
+		Math.max(0, score.expectedRequirements - score.exactRequirements) +
+		score.unexpectedRows +
+		score.duplicateIds
+	);
 }
 
 function scoreRequirements(
@@ -2006,10 +2243,10 @@ export function renderParallelBenchmarkMarkdown(
 	const familyRows = result.scenario_families
 		.map((family) => {
 			const summary = result.family_summaries[family];
-			return `| ${family} | ${summary.pairs} | ${summary.disabled_final_accuracy_pct}% | ${summary.enabled_final_accuracy_pct}% | ${formatSignedNumber(summary.accuracy_delta_points)}pp | ${summary.reviewer_exact}/${summary.pairs} | ${summary.final_exact}/${summary.pairs} |`;
+			return `| ${family} | ${summary.pairs} | ${summary.disabled_final_accuracy_pct}% | ${summary.enabled_final_accuracy_pct}% | ${formatSignedNumber(summary.accuracy_delta_points)}pp | ${summary.review_audit_oracle_exact}/${summary.pairs} | ${summary.reviewer_exact}/${summary.pairs} | ${summary.final_exact}/${summary.pairs} |`;
 		})
 		.join("\n");
-	return `# Harness-orchestrated parallel-agent Work A/B\n\n- Generated: ${result.generated_at}\n- Protocol: \`${result.protocol}\`${result.claim_eligible ? " (claim eligible)" : " (diagnostic only)"}\n- Model: \`${result.model}\` (reasoning effort: ${result.reasoning_effort})\n- Implementation: \`${result.implementation_git_sha}\`\n- Prior final attempts: ${result.attempts_before_this_sha}\n- Scenarios: ${result.scenario_families.join(", ")}\n- Pairs: ${result.comparison.total_pairs}\n- Planned/actual invocations: ${result.planned_initial_invocations}/${result.actual_invocations}\n- Harness validity: **${result.harness_validity.ok ? "PASS" : "FAIL"}**\n- Product verdict: **${result.comparison.verdict}**\n- Enabled absolute-quality gate: **${result.quality.enabled_ready ? "PASS" : "FAIL"}** (${result.quality.enabled_passes}/${result.quality.total_per_condition})\n\n![Parallel-agent ${escapeMarkdownAlt(result.model)} benchmark](work-parallel-agent-ab-summary.svg)\n\n| Condition | Exact reviewed pipelines | Child accuracy | Reviewer accuracy | Final accuracy | Critical path/run | Tokens/run |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n| Work disabled | ${result.quality.disabled_passes}/${result.quality.total_per_condition} | ${result.summary.disabled.child_accuracy_pct}% | ${result.summary.disabled.reviewer_accuracy_pct}% | ${result.summary.disabled.final_accuracy_pct}% | ${result.summary.disabled.critical_path_ms} ms | ${result.summary.disabled.total_tokens} |\n| Work enabled | ${result.quality.enabled_passes}/${result.quality.total_per_condition} | ${result.summary.enabled.child_accuracy_pct}% | ${result.summary.enabled.reviewer_accuracy_pct}% | ${result.summary.enabled.final_accuracy_pct}% | ${result.summary.enabled.critical_path_ms} ms | ${result.summary.enabled.total_tokens} |\n\n| Scenario family | Pairs | Disabled accuracy | Enabled accuracy | Delta | Reviewer exact | Final exact |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n${familyRows}\n\nEnabled won **${result.comparison.enabled_pair_wins}/${result.comparison.total_pairs}**, tied **${result.comparison.paired_ties}/${result.comparison.total_pairs}**, and lost **${result.comparison.enabled_pair_losses}/${result.comparison.total_pairs}**. Mean final-accuracy delta: **${formatSignedNumber(result.comparison.delta_points)}pp**; exact one-sided sign-test p-value: **${result.comparison.sign_test_p_value}**.\n\n| Preregistered gate | Result |\n| --- | --- |\n| Harness validity | ${result.harness_validity.ok ? "PASS" : "FAIL"} |\n| Accuracy and per-family floor | ${result.comparison.accuracy_gate ? "PASS" : "FAIL"} |\n| Absolute quality | ${result.comparison.critical_quality_gate ? "PASS" : "FAIL"} |\n| Tokens (aggregate ≤+5%, p50 ≤+5%, bootstrap upper ≤+10%) | ${result.comparison.cost_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.total_tokens_pct_upper_90)} |\n| Critical path (p50 ≤+10%, bootstrap upper ≤+20%) | ${result.comparison.latency_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.critical_path_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.critical_path_pct_upper_90)} |\n\n## Claim boundary\n\n${finalProtocol ? "This is the single held-out claim-eligible attempt for the recorded implementation commit. A pass means only that the preregistered three-scenario contract passed; it is not a general productivity or model-independent claim." : "Validate and shadow protocols are never claim eligible. Their verdict remains INCONCLUSIVE even when harness and quality checks pass."} The harness launches separate Codex processes and proves child interval overlap; it does not measure same-session native subagent spawning. All stage costs and failures are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.\n`;
+	return `# Harness-orchestrated parallel-agent Work A/B\n\n- Generated: ${result.generated_at}\n- Protocol: \`${result.protocol}\`${result.claim_eligible ? " (claim eligible)" : " (diagnostic only)"}\n- Model: \`${result.model}\` (reasoning effort: ${result.reasoning_effort})\n- Implementation: \`${result.implementation_git_sha}\`\n- Prior paid attempts: ${result.attempts_before_this_sha}\n- Scenarios: ${result.scenario_families.join(", ")}\n- Pairs: ${result.comparison.total_pairs}\n- Planned/actual invocations: ${result.planned_initial_invocations}/${result.actual_invocations}\n- Harness validity: **${result.harness_validity.ok ? "PASS" : "FAIL"}**\n- Diagnostic contract: **${result.evaluation.diagnostic_contract_pass ? "PASS" : "FAIL"}**\n- Product verdict: **${result.comparison.verdict}**\n- Enabled audit/reviewer/final quality gate: **${result.quality.enabled_ready ? "PASS" : "FAIL"}** (${result.quality.enabled_complete_passes}/${result.quality.total_per_condition})\n\n![Parallel-agent ${escapeMarkdownAlt(result.model)} benchmark](work-parallel-agent-ab-summary.svg)\n\n| Condition | Exact reviewed pipelines | Child accuracy | Reviewer accuracy | Final accuracy | Critical path/run | Tokens/run |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n| Work disabled | ${result.quality.disabled_passes}/${result.quality.total_per_condition} | ${result.summary.disabled.child_accuracy_pct}% | ${result.summary.disabled.reviewer_accuracy_pct}% | ${result.summary.disabled.final_accuracy_pct}% | ${result.summary.disabled.critical_path_ms} ms | ${result.summary.disabled.total_tokens} |\n| Work enabled | ${result.quality.enabled_passes}/${result.quality.total_per_condition} | ${result.summary.enabled.child_accuracy_pct}% | ${result.summary.enabled.reviewer_accuracy_pct}% | ${result.summary.enabled.final_accuracy_pct}% | ${result.summary.enabled.critical_path_ms} ms | ${result.summary.enabled.total_tokens} |\n\n| Scenario family | Pairs | Disabled accuracy | Enabled accuracy | Delta | Audit exact | Reviewer exact | Final exact |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n${familyRows}\n\nEnabled won **${result.comparison.enabled_pair_wins}/${result.comparison.total_pairs}**, tied **${result.comparison.paired_ties}/${result.comparison.total_pairs}**, and lost **${result.comparison.enabled_pair_losses}/${result.comparison.total_pairs}**. Mean final-accuracy delta: **${formatSignedNumber(result.comparison.delta_points)}pp**; exact one-sided sign-test p-value: **${result.comparison.sign_test_p_value}**.\n\n| Preregistered gate | Result |\n| --- | --- |\n| Harness validity | ${result.harness_validity.ok ? "PASS" : "FAIL"} |\n| Accuracy and per-family floor | ${result.comparison.accuracy_gate ? "PASS" : "FAIL"} |\n| Absolute quality | ${result.comparison.critical_quality_gate ? "PASS" : "FAIL"} |\n| Tokens (aggregate ≤+5%, p50 ≤+5%, bootstrap upper ≤+10%) | ${result.comparison.cost_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.total_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.total_tokens_pct_upper_90)} |\n| Critical path (p50 ≤+10%, bootstrap upper ≤+20%) | ${result.comparison.latency_gate ? "PASS" : "FAIL"} — p50 ${formatSignedPercent(result.summary.paired.critical_path_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.critical_path_pct_upper_90)} |\n\n## Claim boundary\n\n${finalProtocol ? "This is the single held-out claim-eligible attempt for the recorded implementation commit. A pass means only that the preregistered three-scenario contract passed; it is not a general productivity or model-independent claim." : "Validate and shadow protocols are never claim eligible. Their verdict remains INCONCLUSIVE even when the separate diagnostic contract passes."} The harness launches separate Codex processes and proves child interval overlap; it does not measure same-session native subagent spawning. Audit digests and aggregate summaries are code-verified, but raw model answers are intentionally not published and therefore are not externally reconstructable from this artifact alone. All stage costs and failures are retained. No prompts, answers, stderr, PIDs, fixture bodies, or host paths are published.\n`;
 }
 
 function addStageCostRows(
@@ -2017,10 +2254,12 @@ function addStageCostRows(
 	result: Pick<ParallelBenchmarkResult, "summary" | "comparison">,
 ): string {
 	const stageRows = `| Combined child tokens (p50 ≤0%, bootstrap upper ≤+5%) | p50 ${formatSignedPercent(result.summary.paired.combined_child_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.combined_child_tokens_pct_upper_90)} |\n| Reviewer tokens (p50 ≤0%, bootstrap upper ≤+5%) | p50 ${formatSignedPercent(result.summary.paired.reviewer_tokens_pct_p50)}, upper ${formatSignedPercent(result.summary.paired.reviewer_tokens_pct_upper_90)} |\n| Stage token gate | ${result.comparison.stage_cost_gate ? "PASS" : "FAIL"} |`;
-	return markdown.replace(
-		"\n| Critical path (",
-		`\n${stageRows}\n| Critical path (`,
-	);
+	return markdown
+		.replace("\n| Critical path (", `\n${stageRows}\n| Critical path (`)
+		.replace(
+			"\n## Claim boundary",
+			"\nAudit digests are opaque code-generated fingerprints; the public aggregate artifact does not contain enough raw data to recompute them independently.\n\n## Claim boundary",
+		);
 }
 
 export function publishParallelArtifacts(
@@ -2669,14 +2908,15 @@ function prepareFinalProtocol(
 	projectRoot: string,
 	protocol: ParallelProtocol | undefined,
 	write: boolean,
-	outputPath: string | undefined,
 	gitSha: string,
 ): { attemptsBefore: number } {
 	if (protocol !== "shadow" && protocol !== "final") {
 		return { attemptsBefore: 0 };
 	}
-	if (protocol === "final" && !write) {
-		throw new Error("final protocol requires --write to retain every outcome");
+	if ((protocol === "shadow" || protocol === "final") && !write) {
+		throw new Error(
+			`${protocol} protocol requires --write to retain every outcome`,
+		);
 	}
 	if (gitSha === "unknown") {
 		throw new Error(`${protocol} protocol requires a Git commit`);
@@ -2688,13 +2928,13 @@ function prepareFinalProtocol(
 	if (status.status !== 0 || status.stdout.trim() !== "") {
 		throw new Error(`${protocol} protocol requires a clean worktree`);
 	}
-	if (protocol === "shadow") return { attemptsBefore: 0 };
-	const indexPath = finalAttemptIndexPath(projectRoot, outputPath);
+	const indexPath = parallelPaidAttemptIndexPath(projectRoot);
 	fs.mkdirSync(path.dirname(indexPath), { recursive: true });
-	const attemptsBefore = appendFinalAttemptLocked(
+	const attemptsBefore = appendParallelPaidAttemptLocked(
 		indexPath,
 		{
 			schema_version: "anamnesis.work_parallel_agent_attempt.v1",
+			protocol,
 			phase: "started",
 			generated_at: new Date().toISOString(),
 			implementation_git_sha: gitSha,
@@ -2711,33 +2951,31 @@ interface FinalAttemptRecord {
 	[key: string]: unknown;
 }
 
-function finalAttemptIndexPath(
-	projectRoot: string,
-	outputPath: string | undefined,
-): string {
-	const outputDir = path.resolve(
+export function parallelPaidAttemptIndexPath(projectRoot: string): string {
+	const indexPath = path.resolve(
 		projectRoot,
-		outputPath ?? WORK_PARALLEL_AGENT_OUTPUT_DIR,
+		WORK_PARALLEL_AGENT_ATTEMPT_LEDGER,
 	);
 	if (
-		outputDir === projectRoot ||
-		!outputDir.startsWith(`${path.resolve(projectRoot)}${path.sep}`)
+		indexPath === projectRoot ||
+		!indexPath.startsWith(`${path.resolve(projectRoot)}${path.sep}`)
 	) {
-		throw new Error("benchmark output path escapes project root");
+		throw new Error("benchmark attempt ledger escapes project root");
 	}
-	assertNoSymlinkPath(path.resolve(projectRoot), outputDir);
-	return path.join(outputDir, "attempts.jsonl");
+	assertNoSymlinkPath(path.resolve(projectRoot), path.dirname(indexPath));
+	return indexPath;
 }
 
-function recordFinalAttempt(
+function recordPaidAttempt(
 	projectRoot: string,
-	outputPath: string | undefined,
 	result: ParallelBenchmarkResult,
+	phase: "evaluated" | "published",
 ): void {
-	const indexPath = finalAttemptIndexPath(projectRoot, outputPath);
-	appendFinalAttemptLocked(indexPath, {
+	const indexPath = parallelPaidAttemptIndexPath(projectRoot);
+	appendParallelPaidAttemptLocked(indexPath, {
 		schema_version: "anamnesis.work_parallel_agent_attempt.v1",
-		phase: "completed",
+		protocol: result.protocol,
+		phase,
 		generated_at: result.generated_at,
 		implementation_git_sha: result.implementation_git_sha,
 		harness_hash: result.harness_hash,
@@ -2745,19 +2983,29 @@ function recordFinalAttempt(
 		model: result.model,
 		verdict: result.comparison.verdict,
 		harness_valid: result.harness_validity.ok,
+		diagnostic_contract_pass: result.evaluation.diagnostic_contract_pass,
+		enabled_quality_pass: result.evaluation.enabled_quality_pass,
+		planned_initial_invocations: result.planned_initial_invocations,
+		actual_invocations: result.actual_invocations,
+		enabled_aggregate_defects: result.comparison.enabled_aggregate_defects,
+		accuracy_gate: result.comparison.accuracy_gate,
+		cost_gate: result.comparison.cost_gate,
+		stage_cost_gate: result.comparison.stage_cost_gate,
+		latency_gate: result.comparison.latency_gate,
+		efficiency_signal_gate: result.comparison.efficiency_signal_gate,
 	});
 }
 
-function appendFinalAttemptLocked(
+export function appendParallelPaidAttemptLocked(
 	indexPath: string,
 	record: Record<string, unknown>,
 	uniqueImplementationSha?: string,
 ): number {
 	fs.mkdirSync(path.dirname(indexPath), { recursive: true });
 	const lockPath = `${indexPath}.lock`;
-	let lock: number | undefined;
+	let lock: PaidAttemptLock | undefined;
 	try {
-		lock = fs.openSync(lockPath, "wx", 0o600);
+		lock = acquirePaidAttemptLock(lockPath);
 		const previous = fs.existsSync(indexPath)
 			? fs.readFileSync(indexPath, "utf8")
 			: "";
@@ -2772,7 +3020,7 @@ function appendFinalAttemptLocked(
 			)
 		) {
 			throw new Error(
-				"final protocol already ran for this implementation commit",
+				"paid protocol already ran for this implementation commit",
 			);
 		}
 		const attemptsBefore = attempts.filter(
@@ -2793,16 +3041,107 @@ function appendFinalAttemptLocked(
 		);
 		fs.renameSync(temporary, indexPath);
 		return attemptsBefore;
-	} catch (error) {
-		if (isFileExistsError(error)) {
-			throw new Error("another final benchmark attempt is being recorded");
-		}
-		throw error;
 	} finally {
 		if (lock !== undefined) {
-			fs.closeSync(lock);
-			fs.unlinkSync(lockPath);
+			releasePaidAttemptLock(lockPath, lock);
 		}
+	}
+}
+
+interface PaidAttemptLock {
+	fd: number;
+	dev: number;
+	ino: number;
+}
+
+function acquirePaidAttemptLock(lockPath: string): PaidAttemptLock {
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		let createdFd: number | undefined;
+		try {
+			const fd = fs.openSync(lockPath, "wx", 0o600);
+			createdFd = fd;
+			fs.writeFileSync(
+				fd,
+				`${JSON.stringify({ pid: process.pid, created_at: new Date().toISOString() })}\n`,
+			);
+			const stat = fs.fstatSync(fd);
+			return { fd, dev: stat.dev, ino: stat.ino };
+		} catch (error) {
+			if (createdFd !== undefined) {
+				fs.closeSync(createdFd);
+				fs.rmSync(lockPath, { force: true });
+				throw error;
+			}
+			if (!isFileExistsError(error)) throw error;
+			const staleIdentity =
+				attempt === 0 ? stalePaidAttemptLockIdentity(lockPath) : undefined;
+			if (staleIdentity) {
+				const current = fs.lstatSync(lockPath);
+				if (
+					current.dev !== staleIdentity.dev ||
+					current.ino !== staleIdentity.ino
+				) {
+					throw new Error("paid benchmark lock changed during stale recovery");
+				}
+				fs.unlinkSync(lockPath);
+				continue;
+			}
+			throw new Error("another paid benchmark attempt is being recorded");
+		}
+	}
+	throw new Error("another paid benchmark attempt is being recorded");
+}
+
+function stalePaidAttemptLockIdentity(
+	lockPath: string,
+): { dev: number; ino: number } | undefined {
+	try {
+		const stat = fs.lstatSync(lockPath);
+		if (!stat.isFile() || stat.isSymbolicLink()) return;
+		const parsed = JSON.parse(fs.readFileSync(lockPath, "utf8")) as {
+			pid?: unknown;
+			created_at?: unknown;
+		};
+		if (
+			!Number.isInteger(parsed.pid) ||
+			(parsed.pid as number) <= 0 ||
+			typeof parsed.created_at !== "string"
+		) {
+			return;
+		}
+		const createdAt = Date.parse(parsed.created_at);
+		if (!Number.isFinite(createdAt) || Date.now() - createdAt < 60_000) {
+			return;
+		}
+		return processIsAlive(parsed.pid as number)
+			? undefined
+			: { dev: stat.dev, ino: stat.ino };
+	} catch {
+		return;
+	}
+}
+
+function processIsAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return !(
+			typeof error === "object" &&
+			error !== null &&
+			"code" in error &&
+			error.code === "ESRCH"
+		);
+	}
+}
+
+function releasePaidAttemptLock(lockPath: string, lock: PaidAttemptLock): void {
+	fs.closeSync(lock.fd);
+	try {
+		const stat = fs.lstatSync(lockPath);
+		if (stat.dev === lock.dev && stat.ino === lock.ino) fs.unlinkSync(lockPath);
+	} catch (error) {
+		if (!isFileNotFoundError(error)) throw error;
 	}
 }
 

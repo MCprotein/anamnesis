@@ -85,6 +85,16 @@ could include breaking changes.
   the all-condition audit-exact harness gate. This is retained as evidence that
   v7 fixed the enabled reviewer path but conflated baseline reviewer failure
   with harness validity; no release claim or nine-pair run follows from it.
+- Froze the v8 shadow evaluator before its single paid attempt. V8 separates
+  deterministic review-audit stage integrity from post-execution oracle
+  exactness, so a baseline model-quality failure remains a measured outcome
+  instead of invalidating an otherwise sound harness. Enabled audit, reviewer,
+  and final output must still be exact in every pair and family; missing expected
+  rows now count as final defects. Machine-readable harness, enabled-quality,
+  diagnostic-contract, and claim-eligibility fields prevent a diagnostic
+  shadow from being mistaken for a release claim. Paid shadow attempts require
+  retained output, use one output-path-independent canonical ledger, and are
+  refused for a repeated implementation SHA.
 
 ## [1.19.0] — 2026-08-26
 
