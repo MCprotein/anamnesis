@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.21.0] — 2026-08-28
+
 ### Added
 
 - Added a private user-level project registry. Successful CLI initialization
