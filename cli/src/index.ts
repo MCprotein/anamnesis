@@ -145,6 +145,16 @@ import {
 	promote,
 } from "./commands/promote.js";
 import {
+	ProjectsError,
+	type RegisteredProjectsResult,
+	listRegisteredProjects,
+	pruneRegisteredProjects,
+	registerManagedProject,
+	syncRegisteredProjects,
+	unregisterManagedProject,
+} from "./commands/projects.js";
+import { syncProjectsAfterUpgrade } from "./commands/upgrade_projects.js";
+import {
 	type ReleaseCheckResult,
 	releaseCheck,
 } from "./commands/release_check.js";
@@ -225,6 +235,10 @@ import type { OntologyLifecycleRecommendation } from "./core/ontology-gaps.js";
 import { createTui, type TuiTone } from "./core/tui.js";
 import { PACKAGE_VERSION } from "./core/version.js";
 import { parseSingleWorkDraft } from "./core/work_command_draft.js";
+import {
+	defaultProjectRegistryPath,
+	ProjectRegistryError,
+} from "./core/project_registry.js";
 import {
   newWorkCursor,
   readWorkCursor,
@@ -512,6 +526,12 @@ Commands:
   upgrade plan                  Read-only package + project plan with choices
   upgrade apply-choice <id>     Execute one supported upgrade-plan choice
   upgrade choose                Interactive chooser over upgrade-plan choices
+  projects list                 List globally registered projects
+  projects register             Register an existing managed project
+  projects plan                 Preview safe updates for every registered project
+  projects apply                Apply safe updates across registered projects
+  projects unregister [id|path] Remove one project from the global registry
+  projects prune                Remove stale registrations (--apply required)
   status                        Show installed fragments + drift + suggestions
   doctor                        Diagnose install integrity and adapter wiring
   release check                 Run the read-only release readiness gate
@@ -626,13 +646,22 @@ Flags (apply / deprecated update):
 
 Flags (upgrade):
   --registry <url>              Package registry (default: https://registry.npmjs.org)
-  --apply                       Run npm install -g when a newer version exists
+  --apply                       Upgrade the CLI, then safely sync registered projects
+  --registry-file <path>        Override the user-level project registry file
   --json                        Print structured JSON
 
 Flags (upgrade plan):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
   --registry <url>              Package registry (default: https://registry.npmjs.org)
+  --json                        Print structured JSON
+
+Flags (projects):
+  --project-root <path>         Project to register (default: cwd)
+  --library <path>              Library used for plan/apply (default: bundled)
+  --allow-exec-adapters         Persist executable-adapter consent on register
+  --registry-file <path>        Override the user-level registry file
+  --apply                       Confirm stale-entry removal for projects prune
   --json                        Print structured JSON
 
 Flags (upgrade apply-choice):
@@ -1091,6 +1120,18 @@ function reportInit(
   if (result.writtenToDisk && result.evidencePath) {
     console.log(`  evidence: ${result.evidencePath}`);
   }
+	if (result.registration) {
+		console.log(
+			`  project registry: registered ${result.registration.canonical_root}`,
+		);
+	} else if (result.registrationError) {
+		console.log(
+			ui.note(
+				`project registry: registration failed — ${result.registrationError}`,
+				"warning",
+			),
+		);
+	}
   console.log("  generation boundary:");
   console.log(
     "    cli-generated: AGENTS.md managed context, optional docs regions, static ontology slices, and any .bootstrap.yaml facts above",
@@ -2620,6 +2661,56 @@ function reportUpgrade(
   }
 }
 
+function reportRegisteredProjects(
+	result: ReturnType<typeof listRegisteredProjects>,
+	registryPath?: string,
+): void {
+	const ui = createTui();
+	printLines([
+		...ui.title("anamnesis projects", "registered projects"),
+		...ui.keyValues([
+			{ key: "registry", value: registryPath ?? "user state default" },
+			{ key: "projects", value: String(result.length) },
+		]),
+	]);
+	if (result.length === 0) {
+		console.log(ui.note("no registered projects"));
+		return;
+	}
+	for (const entry of result) {
+		console.log(
+			`  ${entry.valid ? "valid" : "stale"} ${entry.project.project_name} ${entry.project.canonical_root}`,
+		);
+	}
+}
+
+function reportRegisteredProjectSync(result: RegisteredProjectsResult): void {
+	const ui = createTui();
+	printLines([
+		...ui.title(
+			result.apply ? "anamnesis projects apply" : "anamnesis projects plan",
+			"registered projects",
+		),
+		...ui.keyValues([
+			{ key: "registry", value: result.registry_path },
+			{ key: "projects", value: String(result.summary.total) },
+			{ key: "current", value: String(result.summary.current) },
+			{ key: "ready", value: String(result.summary.ready) },
+			{ key: "applied", value: String(result.summary.applied) },
+			{ key: "skipped", value: String(result.summary.skipped) },
+			{ key: "stale", value: String(result.summary.stale) },
+			{ key: "errors", value: String(result.summary.errors) },
+		]),
+	]);
+	for (const entry of result.projects) {
+		const changes = entry.summary ? ` ${changeSummaryLine(entry.summary)}` : "";
+		console.log(
+			`  ${entry.status.padEnd(13)} ${entry.project.project_name} ${entry.project.canonical_root}${changes}`,
+		);
+		if (entry.error) console.log(`    ${entry.error}`);
+	}
+}
+
 function reportUpgradePlan(result: UpgradePlanResult): void {
   const ui = createTui();
   printLines([
@@ -3117,12 +3208,9 @@ async function main(argv: string[]): Promise<number> {
           noContextBootstrap: flags["no-context-bootstrap"] === true,
           scaffoldDocs: flags["scaffold-docs"] === true,
           enhanceDocs: flags["enhance-docs"] === true,
+					projectRegistryPath: defaultProjectRegistryPath(),
         });
-        reportInit(
-          result,
-          projectRoot,
-          flags["allow-exec-adapters"] === true,
-        );
+				reportInit(result, projectRoot, flags["allow-exec-adapters"] === true);
         return 0;
       } catch (e) {
         if (e instanceof InitError) {
@@ -3243,10 +3331,24 @@ async function main(argv: string[]): Promise<number> {
           registry: flags["registry"] as string | undefined,
           apply: flags["apply"] === true,
         });
+				const projectSync =
+					flags["apply"] === true
+						? syncProjectsAfterUpgrade(result, {
+								registryPath: flags["registry-file"] as string | undefined,
+								libraryRoot: resolveLibraryRoot(),
+							})
+						: undefined;
         if (flags["json"] === true) {
-          console.log(JSON.stringify(result, null, 2));
+					console.log(
+						JSON.stringify(
+							projectSync ? { package: result, projects: projectSync } : result,
+							null,
+							2,
+						),
+					);
         } else {
           reportUpgrade(result, process.cwd());
+					if (projectSync) reportRegisteredProjectSync(projectSync);
         }
         return 0;
       } catch (e) {
@@ -3260,6 +3362,96 @@ async function main(argv: string[]): Promise<number> {
         }
         throw e;
       }
+
+		case "projects":
+			try {
+				const action = positional[0] ?? "list";
+				const registryPath = flags["registry-file"] as string | undefined;
+				if (action === "list") {
+					const result = listRegisteredProjects({ registryPath });
+					if (flags.json === true) console.log(JSON.stringify(result, null, 2));
+					else reportRegisteredProjects(result, registryPath);
+					return 0;
+				}
+				if (action === "register") {
+					const registered = registerManagedProject({
+						projectRoot:
+							(flags["project-root"] as string | undefined) ?? process.cwd(),
+						allowExecAdapters: flags["allow-exec-adapters"] === true,
+						registryPath,
+					});
+					if (flags.json === true)
+						console.log(JSON.stringify(registered, null, 2));
+					else
+						console.log(
+							`registered: ${registered.project_name} (${registered.canonical_root})`,
+						);
+					return 0;
+				}
+				if (action === "unregister") {
+					const target = positional[1] ?? process.cwd();
+					const removed = unregisterManagedProject({
+						idOrRoot: target,
+						registryPath,
+					});
+					if (flags.json === true) {
+						console.log(JSON.stringify({ target, removed }, null, 2));
+					} else {
+						console.log(
+							removed ? `unregistered: ${target}` : `not registered: ${target}`,
+						);
+					}
+					return removed ? 0 : 1;
+				}
+				if (action === "prune") {
+					const stale = listRegisteredProjects({ registryPath })
+						.filter((entry) => !entry.valid)
+						.map((entry) => entry.project);
+					const removed =
+						flags.apply === true
+							? pruneRegisteredProjects({ registryPath })
+							: [];
+					const result = {
+						apply: flags.apply === true,
+						stale,
+						removed,
+					};
+					if (flags.json === true) console.log(JSON.stringify(result, null, 2));
+					else {
+						console.log(`stale registrations: ${stale.length}`);
+						console.log(
+							flags.apply === true
+								? `removed: ${removed.length}`
+								: "preview only; re-run with --apply to remove them",
+						);
+					}
+					return 0;
+				}
+				if (["plan", "apply", "sync"].includes(action)) {
+					const apply = action === "apply" || flags.apply === true;
+					const result = syncRegisteredProjects({
+						libraryRoot:
+							(flags.library as string | undefined) ?? resolveLibraryRoot(),
+						registryPath,
+						apply,
+					});
+					if (flags.json === true) console.log(JSON.stringify(result, null, 2));
+					else reportRegisteredProjectSync(result);
+					return result.summary.errors > 0 ? 1 : 0;
+				}
+				throw new ProjectsError(
+					`unknown projects action '${action}'; expected list, register, plan, apply, unregister, or prune`,
+				);
+			} catch (error) {
+				if (
+					error instanceof ProjectsError ||
+					error instanceof ProjectRegistryError
+				) {
+					console.error(`error: ${error.message}`);
+					return 1;
+				}
+				throw error;
+			}
 
     case "status":
       try {
@@ -4424,7 +4616,8 @@ async function main(argv: string[]): Promise<number> {
 			if (explicitProtocol !== undefined && flags["runs"] !== undefined) {
 				throw new Error("--runs cannot be combined with --protocol");
 			}
-			const protocolValue = explicitProtocol ??
+					const protocolValue =
+						explicitProtocol ??
 				(flags["runs"] !== undefined ? "legacy" : "validate");
 			if (
 				typeof protocolValue !== "string" ||

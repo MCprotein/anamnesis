@@ -111,14 +111,17 @@ anamnesis status
 Native hooks, commands, skills, and Cursor rules are written only when
 `--allow-exec-adapters` is explicit. Content-only setup remains the default.
 
-For existing projects, preview before applying updates:
+Successful initialization registers the project in a private user-level index.
+Preview every registered project, or upgrade the CLI and apply only safe plans:
 
 ```bash
-anamnesis upgrade plan
-anamnesis apply --dry-run --allow-exec-adapters
-anamnesis apply --allow-exec-adapters
-anamnesis doctor
+anamnesis projects plan
+anamnesis upgrade --apply
 ```
+
+Moved, replaced, conflicting, or user-modified projects are skipped and
+reported independently. Project-local Agentfiles and manifests remain
+authoritative; the global index is only a discovery and trust-preference layer.
 
 New installs materialize an active Work profile: adaptive continuity
 briefings, advisory independent review, automatic delegation assessment, and

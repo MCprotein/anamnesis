@@ -1214,9 +1214,12 @@ v1.9.0 release blockers.
 
 Baseline behavior from the v1.8 audit, with v1.9 release updates:
 
-- `anamnesis upgrade --apply` upgrades the global CLI package only. It does not
-  automatically run project `update`, `migrate agentfile`, `doctor`, ontology
-  bootstrap, or adapter smoke checks.
+- Before the user-level project registry shipped, `anamnesis upgrade --apply`
+  upgraded the global CLI package only. The current flow reloads the installed
+  CLI and synchronizes the safe registered-project subset; moved, replaced,
+  blocked, or user-modified projects remain reported and skipped. It does not
+  automatically migrate Agentfiles, repair doctor findings, enrich ontology,
+  or run adapter smoke checks for projects that fail the safe apply gate.
 - The v1.9 text pass now hands off from package upgrade to project
   `update` / `doctor` guidance for managed projects, and registry lookups are
   bounded so a slow registry/auth path does not hang indefinitely. Deeper

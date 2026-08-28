@@ -80,13 +80,36 @@ enabled and prints the enabling command when it is not.
 
 ## Updating an existing project
 
-Package upgrades and managed-project updates are separate operations:
+Successful `init` automatically registers the canonical project path, filesystem
+identity, tool selection, and executable-adapter preference in a private
+user-level index. Inspect or update every registered project without visiting
+each directory:
 
 ```bash
-anamnesis upgrade
+anamnesis projects list
+anamnesis projects plan
+anamnesis projects apply
+```
+
+`projects plan` is read-only. `projects apply` updates only entries whose path
+and filesystem identity still match and whose dry-run contains no blocked or
+user-modified managed surfaces. Other projects are skipped without preventing
+safe projects from updating. Use `projects prune --apply` to remove stale
+registrations, or run `projects register --allow-exec-adapters` inside an older
+managed project to add it to the index.
+
+The normal package upgrade now reloads the newly installed CLI and synchronizes
+the safe registered subset automatically:
+
+```bash
+anamnesis upgrade --apply
+```
+
+Project-local updates and guided conflict resolution remain available:
+
+```bash
 anamnesis upgrade plan
 anamnesis upgrade choose
-anamnesis upgrade --apply
 
 anamnesis apply --dry-run --allow-exec-adapters
 anamnesis apply --allow-exec-adapters

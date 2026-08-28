@@ -88,13 +88,14 @@ describe("planChanges — region", () => {
   });
 
   it("classifies new region as create", () => {
-    const { changes, nextManifest } = planChanges([
-      regionAction({ sideEffects: ["read-only"] }),
-    ], {
+		const { changes, nextManifest } = planChanges(
+			[regionAction({ sideEffects: ["read-only"] })],
+			{
       projectRoot: root,
       manifest: emptyManifest(),
       allowExecAdapters: false,
-    });
+			},
+		);
     expect(changes).toHaveLength(1);
     expect(changes[0]!.status).toBe("create");
     expect(changes[0]!.sideEffects).toEqual(["read-only"]);
@@ -128,7 +129,10 @@ describe("planChanges — region", () => {
       allowExecAdapters: false,
     });
     applyChanges(first.changes, { projectRoot: root });
-    const bumped = regionAction({ content: "bumped content", fragmentVersion: 2 });
+		const bumped = regionAction({
+			content: "bumped content",
+			fragmentVersion: 2,
+		});
     const second = planChanges([bumped], {
       projectRoot: root,
       manifest: first.nextManifest,
@@ -138,7 +142,9 @@ describe("planChanges — region", () => {
     const r = second.nextManifest.regions[0]!;
     expect(r.fragment_version).toBe(2);
     // base_rendered_hash must be preserved (original baseline)
-    expect(r.base_rendered_hash).toBe(first.nextManifest.regions[0]!.base_rendered_hash);
+		expect(r.base_rendered_hash).toBe(
+			first.nextManifest.regions[0]!.base_rendered_hash,
+		);
   });
 
   it("detects user edit in region as user-modified", () => {
@@ -216,13 +222,14 @@ describe("planChanges — file", () => {
   });
 
   it("classifies new file as create and records manifest entry", () => {
-    const { changes, nextManifest } = planChanges([
-      fileAction({ sideEffects: ["local-write"] }),
-    ], {
+		const { changes, nextManifest } = planChanges(
+			[fileAction({ sideEffects: ["local-write"] })],
+			{
       projectRoot: root,
       manifest: emptyManifest(),
       allowExecAdapters: false,
-    });
+			},
+		);
     expect(changes[0]!.status).toBe("create");
     expect(changes[0]!.sideEffects).toEqual(["local-write"]);
     expect(nextManifest.files).toHaveLength(1);
@@ -439,7 +446,7 @@ describe("applyChanges", () => {
     root = tmpProject();
   });
 
-  it("writes a region with anchors to disk", () => {
+	it("writes a region with anchors to disk", () => {
     const { changes } = planChanges([regionAction()], {
       projectRoot: root,
       manifest: emptyManifest(),
@@ -448,8 +455,27 @@ describe("applyChanges", () => {
     applyChanges(changes, { projectRoot: root });
     const text = fs.readFileSync(path.join(root, "AGENTS.md"), "utf8");
     expect(text).toContain("anamnesis:region id=prisma fragment=prisma@1");
-    expect(findRegion(text, "prisma")?.content).toContain("initial content");
-  });
+		expect(findRegion(text, "prisma")?.content).toContain("initial content");
+	});
+
+	it("writes multiple planned regions in one file without sparse bytes", () => {
+		const { changes } = planChanges(
+			[
+				regionAction(),
+				regionAction({ regionId: "second", content: "second content" }),
+			],
+			{
+				projectRoot: root,
+				manifest: emptyManifest(),
+				allowExecAdapters: false,
+			},
+		);
+		applyChanges(changes, { projectRoot: root });
+		const text = fs.readFileSync(path.join(root, "AGENTS.md"), "utf8");
+		expect(text).not.toContain("\0");
+		expect(findRegion(text, "prisma")?.content).toContain("initial content");
+		expect(findRegion(text, "second")?.content).toContain("second content");
+	});
 
   it("writes a FileAction with the requested mode", () => {
     const act = fileAction({
@@ -469,6 +495,17 @@ describe("applyChanges", () => {
     const mode = fs.statSync(fp).mode & 0o777;
     expect(mode).toBe(0o755);
   });
+
+	it("preserves the default readable mode for ordinary managed files", () => {
+		const { changes } = planChanges([fileAction()], {
+			projectRoot: root,
+			manifest: emptyManifest(),
+			allowExecAdapters: false,
+		});
+		applyChanges(changes, { projectRoot: root });
+		const mode = fs.statSync(path.join(root, "system_graph.yaml")).mode & 0o777;
+		expect(mode).toBe(0o666 & ~process.umask());
+	});
 
   it("skips blocked/user-modified/noop statuses", () => {
     const act = fileAction({
@@ -499,9 +536,50 @@ describe("applyChanges", () => {
       allowExecAdapters: false,
     });
     applyChanges(changes, { projectRoot: root });
-    expect(
-      fs.existsSync(path.join(root, "deep/nested/path/file.yaml")),
-    ).toBe(true);
+		expect(fs.existsSync(path.join(root, "deep/nested/path/file.yaml"))).toBe(
+			true,
+		);
+	});
+
+	it("rejects a managed target replaced by a symlink after planning", () => {
+		const external = path.join(tmpProject(), "external.yaml");
+		fs.writeFileSync(external, "outside: preserved\n");
+		const { changes } = planChanges([fileAction()], {
+			projectRoot: root,
+			manifest: emptyManifest(),
+			allowExecAdapters: false,
+		});
+		fs.symlinkSync(external, path.join(root, "system_graph.yaml"));
+
+		expect(() => applyChanges(changes, { projectRoot: root })).toThrow(
+			/symlink|appeared after planning/,
+		);
+		expect(fs.readFileSync(external, "utf8")).toBe("outside: preserved\n");
+	});
+
+	it("rejects content changed after planning", () => {
+		const first = planChanges([fileAction()], {
+			projectRoot: root,
+			manifest: emptyManifest(),
+			allowExecAdapters: false,
+		});
+		applyChanges(first.changes, { projectRoot: root });
+		const second = planChanges(
+			[fileAction({ content: "k: next", fragmentVersion: 2 })],
+			{
+				projectRoot: root,
+				manifest: first.nextManifest,
+				allowExecAdapters: false,
+			},
+		);
+		fs.writeFileSync(path.join(root, "system_graph.yaml"), "user: edit\n");
+
+		expect(() => applyChanges(second.changes, { projectRoot: root })).toThrow(
+			/changed after planning/,
+		);
+		expect(fs.readFileSync(path.join(root, "system_graph.yaml"), "utf8")).toBe(
+			"user: edit\n",
+		);
   });
 
   it("dry-run (not calling applyChanges) does not touch disk", () => {

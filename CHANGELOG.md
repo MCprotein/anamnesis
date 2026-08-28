@@ -7,6 +7,18 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added a private user-level project registry. Successful CLI initialization
+  records the project's canonical path, filesystem identity, selected tools,
+  and executable-adapter preference with atomic, locked, symlink-resistant
+  storage.
+- Added `anamnesis projects list|register|plan|apply|unregister|prune` for
+  cross-project discovery and safe bulk updates. Missing, moved, replaced,
+  blocked, and user-modified projects are skipped independently.
+- Extended `anamnesis upgrade --apply` to reload the newly installed CLI and
+  synchronize the safe registered-project subset automatically.
+
 ## [1.20.4] — 2026-08-27
 
 ### Added

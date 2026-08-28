@@ -8,11 +8,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import {
-  findRegion,
-  upsertRegion,
-  normalizeRegionContent,
-} from "./regions.js";
+import { findRegion, upsertRegion, normalizeRegionContent } from "./regions.js";
 import {
   findRegion as findRegionEntry,
   findFile as findFileEntry,
@@ -78,6 +74,8 @@ export interface RegionChange {
   newFileText?: string;
   /** Full file text currently on disk (empty string if file absent). */
   currentFileText?: string;
+	/** Whether the full file existed when this change was planned. */
+	currentFileExists?: boolean;
   sideEffects?: CapabilitySideEffect[];
   reason?: string;
 }
@@ -178,6 +176,9 @@ function planRegion(
   pendingFileTexts: Map<string, string>,
 ): { change: RegionChange; nextManifest: Manifest } {
   const fp = path.join(projectRoot, action.file);
+	assertSafeManagedPath(projectRoot, action.file);
+	const currentFileExists =
+		pendingFileTexts.has(action.file) || fs.existsSync(fp);
   const currentFileText = pendingFileTexts.has(action.file)
     ? pendingFileTexts.get(action.file)!
     : fs.existsSync(fp)
@@ -186,11 +187,7 @@ function planRegion(
   const currentRegion = currentFileText
     ? findRegion(currentFileText, action.regionId)
     : undefined;
-  const manifestEntry = findRegionEntry(
-    manifest,
-    action.file,
-    action.regionId,
-  );
+	const manifestEntry = findRegionEntry(manifest, action.file, action.regionId);
 
   // Hash the *normalized* content — what parseRegions returns after we write.
   // Raw action.content would mismatch the hash read back from disk.
@@ -232,6 +229,7 @@ function planRegion(
         newContent: action.content,
         newFileText,
         currentFileText,
+				currentFileExists,
       },
       nextManifest: upsertRegionEntry(manifest, entry),
     };
@@ -247,6 +245,7 @@ function planRegion(
         newContent: action.content,
         newFileText,
         currentFileText,
+				currentFileExists,
         reason: "region exists in file but not tracked in manifest",
       },
       nextManifest: manifest,
@@ -263,6 +262,7 @@ function planRegion(
         newContent: action.content,
         newFileText,
         currentFileText,
+				currentFileExists,
         reason: "region tracked in manifest but not found on disk",
       },
       nextManifest: manifest,
@@ -280,6 +280,7 @@ function planRegion(
         newContent: action.content,
         newFileText,
         currentFileText,
+				currentFileExists,
         reason: "region content differs from last-applied hash",
       },
       nextManifest: manifest,
@@ -308,6 +309,7 @@ function planRegion(
       newContent: action.content,
       newFileText,
       currentFileText,
+			currentFileExists,
     },
     nextManifest: upsertRegionEntry(manifest, entry),
   };
@@ -320,6 +322,7 @@ function planFile(
   allowExec: boolean,
 ): { change: FileChange; nextManifest: Manifest } {
   const fp = path.join(projectRoot, action.path);
+	assertSafeManagedPath(projectRoot, action.path);
   const exists = fs.existsSync(fp);
   const currentContent = exists ? fs.readFileSync(fp, "utf8") : undefined;
   const manifestEntry = findFileEntry(manifest, action.path);
@@ -327,8 +330,7 @@ function planFile(
   const newContentHash = sha256(action.content);
   const currentHash =
     currentContent !== undefined ? sha256(currentContent) : null;
-  const isExec =
-    isExecAdapterPath(action.path) || action.mode !== undefined;
+	const isExec = isExecAdapterPath(action.path) || action.mode !== undefined;
 
   const base: FileChange = {
     target: "file",
@@ -453,23 +455,27 @@ export function applyChanges(
 
     if (change.target === "region") {
       if (change.newFileText === undefined) {
-        throw new Error(
-          `region change for ${change.file} missing newFileText`,
-        );
+				throw new Error(`region change for ${change.file} missing newFileText`);
       }
-      const fp = path.join(opts.projectRoot, change.file);
-      fs.mkdirSync(path.dirname(fp), { recursive: true });
-      fs.writeFileSync(fp, change.newFileText, "utf8");
+			writeManagedFileSync(
+				opts.projectRoot,
+				change.file,
+				change.newFileText,
+				change.currentFileText,
+				change.currentFileExists,
+			);
     } else {
       if (change.newContent === undefined) {
         throw new Error(`file change for ${change.path} missing newContent`);
       }
-      const fp = path.join(opts.projectRoot, change.path);
-      fs.mkdirSync(path.dirname(fp), { recursive: true });
-      fs.writeFileSync(fp, change.newContent, "utf8");
-      if (change.mode !== undefined) {
-        fs.chmodSync(fp, change.mode);
-      }
+			writeManagedFileSync(
+				opts.projectRoot,
+				change.path,
+				change.newContent,
+				change.currentContent,
+				change.currentContent !== undefined,
+				change.mode,
+			);
     }
   }
 }
@@ -489,6 +495,7 @@ export function backupBeforeApply(
   for (const change of changes) {
     if (change.status !== "update") continue;
     const rel = change.target === "region" ? change.file : change.path;
+		assertSafeManagedPath(opts.projectRoot, rel);
     const source = path.join(opts.projectRoot, rel);
     if (!fs.existsSync(source)) continue;
     const target = path.join(opts.backupDir, rel);
@@ -497,4 +504,114 @@ export function backupBeforeApply(
     backedUp.push(rel);
   }
   return backedUp;
+}
+
+function assertSafeManagedPath(
+	projectRoot: string,
+	relativePath: string,
+): void {
+	const root = path.resolve(projectRoot);
+	const target = path.resolve(root, relativePath);
+	if (target !== root && !target.startsWith(`${root}${path.sep}`)) {
+		throw new Error(`managed path escapes project root: ${relativePath}`);
+	}
+
+	let current = root;
+	for (const component of path
+		.relative(root, target)
+		.split(path.sep)
+		.filter(Boolean)) {
+		current = path.join(current, component);
+		try {
+			if (fs.lstatSync(current).isSymbolicLink()) {
+				throw new Error(`managed path contains a symlink: ${relativePath}`);
+			}
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+			throw error;
+		}
+	}
+}
+
+function writeManagedFileSync(
+	projectRoot: string,
+	relativePath: string,
+	content: string,
+	expectedContent: string | undefined,
+	expectedExists: boolean | undefined,
+	mode?: number,
+): void {
+	assertSafeManagedPath(projectRoot, relativePath);
+	const target = path.resolve(projectRoot, relativePath);
+	fs.mkdirSync(path.dirname(target), { recursive: true });
+	assertSafeManagedPath(projectRoot, relativePath);
+	const parentIdentity = snapshotManagedParents(projectRoot, relativePath);
+	const flags =
+		fs.constants.O_RDWR |
+		fs.constants.O_NOFOLLOW |
+		(expectedExists === false ? fs.constants.O_CREAT | fs.constants.O_EXCL : 0);
+	const fd = fs.openSync(target, flags, 0o666);
+	try {
+		if (!fs.fstatSync(fd).isFile()) {
+			throw new Error(`managed target is not a regular file: ${relativePath}`);
+		}
+		verifyManagedParents(parentIdentity, relativePath);
+		if (
+			expectedContent !== undefined &&
+			fs.readFileSync(fd, "utf8") !== expectedContent
+		) {
+			throw new Error(`managed target changed after planning: ${relativePath}`);
+		}
+		fs.ftruncateSync(fd, 0);
+		fs.writeSync(fd, content, 0, "utf8");
+		if (mode !== undefined) fs.fchmodSync(fd, mode);
+		fs.fsyncSync(fd);
+	} finally {
+		fs.closeSync(fd);
+	}
+}
+
+interface ManagedParentIdentity {
+	path: string;
+	dev: bigint;
+	ino: bigint;
+}
+
+function snapshotManagedParents(
+	projectRoot: string,
+	relativePath: string,
+): ManagedParentIdentity[] {
+	const root = path.resolve(projectRoot);
+	const parent = path.dirname(path.resolve(root, relativePath));
+	const identities: ManagedParentIdentity[] = [];
+	let current = root;
+	for (const component of [
+		"",
+		...path.relative(root, parent).split(path.sep).filter(Boolean),
+	]) {
+		if (component) current = path.join(current, component);
+		const stat = fs.lstatSync(current, { bigint: true });
+		if (stat.isSymbolicLink() || !stat.isDirectory()) {
+			throw new Error(`managed parent is unsafe: ${relativePath}`);
+		}
+		identities.push({ path: current, dev: stat.dev, ino: stat.ino });
+	}
+	return identities;
+}
+
+function verifyManagedParents(
+	identities: readonly ManagedParentIdentity[],
+	relativePath: string,
+): void {
+	for (const expected of identities) {
+		const actual = fs.lstatSync(expected.path, { bigint: true });
+		if (
+			actual.isSymbolicLink() ||
+			!actual.isDirectory() ||
+			actual.dev !== expected.dev ||
+			actual.ino !== expected.ino
+		) {
+			throw new Error(`managed parent changed during write: ${relativePath}`);
+		}
+	}
 }

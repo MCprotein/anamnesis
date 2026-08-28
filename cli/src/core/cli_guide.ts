@@ -43,8 +43,12 @@ export function formatGettingStartedGuide(
     ...ui.section("Upgrade"),
     ...ui.commandRows([
       {
-        command: "anamnesis upgrade plan",
-        description: "Plan CLI package and project apply work.",
+        command: "anamnesis projects plan",
+        description: "Preview updates across every registered project.",
+      },
+      {
+        command: "anamnesis upgrade --apply",
+        description: "Upgrade the CLI and synchronize safe registered projects.",
       },
     ]),
     ...ui.section("Agent Follow-Ups"),
@@ -113,6 +117,10 @@ export function formatCompactHelp(
         command: "upgrade",
         description: "Check or update the installed anamnesis CLI.",
       },
+      {
+        command: "projects",
+        description: "Register, inspect, and safely update managed projects.",
+      },
     ]),
     ...ui.section("Guided Workflows"),
     ...ui.commandRows([
@@ -124,6 +132,10 @@ export function formatCompactHelp(
       {
         command: "upgrade plan",
         description: "Read-only package and project apply plan with choices.",
+      },
+      {
+        command: "projects plan|apply",
+        description: "Preview or apply updates across registered projects.",
       },
     ]),
     ui.note(

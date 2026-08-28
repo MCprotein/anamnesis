@@ -88,6 +88,10 @@ import {
   planProjectDocs,
   type ProjectDocsPlan,
 } from "../core/project_docs.js";
+import {
+  registerProject,
+  type RegisteredProject,
+} from "../core/project_registry.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -136,6 +140,8 @@ export interface InitOptions {
    * This is intentionally opt-in because README/docs are usually user-owned.
    */
   enhanceDocs?: boolean;
+  /** Override the user-level project registry path (primarily for tests). */
+  projectRegistryPath?: string;
   now?: () => Date;
 }
 
@@ -177,6 +183,10 @@ export interface InitResult {
   projectDocs?: ProjectDocsPlan;
   /** Existing project-specific agent surfaces preserved before writing ours. */
   surfaceConflicts: SurfaceConflictResolution[];
+  /** User-level registry entry created after a successful on-disk init. */
+  registration?: RegisteredProject;
+  /** Registration failure does not roll back an otherwise successful init. */
+  registrationError?: string;
 }
 
 export class InitError extends Error {
@@ -514,6 +524,23 @@ export function init(opts: InitOptions): InitResult {
     );
   }
 
+  let registration: RegisteredProject | undefined;
+  let registrationError: string | undefined;
+  if (!opts.dryRun && opts.projectRegistryPath !== undefined) {
+    try {
+      registration = registerProject({
+        projectRoot,
+        projectName: agentfile.project.name,
+        tools: agentfile.tools,
+        allowExecAdapters: opts.allowExecAdapters,
+        registryPath: opts.projectRegistryPath,
+        now: opts.now?.(),
+      });
+    } catch (error) {
+      registrationError = (error as Error).message;
+    }
+  }
+
   return {
     agentfile,
     selectedFragments: rootOrdered,
@@ -529,6 +556,8 @@ export function init(opts: InitOptions): InitResult {
     contextBootstrap,
     projectDocs,
     surfaceConflicts,
+    registration,
+    registrationError,
   };
 }
 
