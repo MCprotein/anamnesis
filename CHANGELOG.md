@@ -7,6 +7,12 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Increased the explicit timeout for the multi-process Work session-switch CLI
+  regression test so loaded GitHub release runners do not fail just above the
+  default ten-second boundary while preserving all assertions.
+
 ## [1.22.0] — 2026-08-31
 
 ### Added

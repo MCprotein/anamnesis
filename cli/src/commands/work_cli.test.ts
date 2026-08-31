@@ -657,7 +657,7 @@ describe("anamnesis work CLI", () => {
 		expect(readWorkCursor(stateRoot, "session_b").cursor?.work_id).toBe(
 			"wu_one",
 		);
-	}, 10_000);
+	}, 20_000);
 
 	it("leaves briefing delivery pending when stdout closes before presentation", async () => {
 		const root = project();
