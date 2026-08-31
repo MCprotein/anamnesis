@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.22.0] — 2026-08-31
+
 ### Added
 
 - Added Codex native hook runtime trust diagnostics to `status` and `doctor`,
