@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.22.1] — 2026-08-31
+
 ### Fixed
 
 - Increased the explicit timeout for the multi-process Work session-switch CLI
