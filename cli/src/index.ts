@@ -221,6 +221,13 @@ import {
 } from "./commands/work_hook.js";
 import { readAgentfile, type ToolName } from "./core/agentfile.js";
 import {
+  CodexHookTrustChangedError,
+  type CodexHookTrustInspection,
+  type TrustCodexHooksResult,
+  inspectCodexHookTrust,
+  trustCodexHooks,
+} from "./core/codex_hook_trust.js";
+import {
   formatCompactHelp,
   formatGettingStartedGuide,
   formatNamespaceHelp,
@@ -537,6 +544,8 @@ Commands:
   release check                 Run the read-only release readiness gate
   hooks summary                 Summarize hook execution logs and optionally
                                   record runtime evidence
+  hooks codex trust             Review or explicitly approve Anamnesis-owned
+                                  Codex native hooks
   dogfood check                 Run continuity self-check and optionally append
                                   a record to docs/DOGFOOD.md
   context index                 Build a local JSONL context index from
@@ -732,6 +741,13 @@ Flags (hooks summary):
   --append                      Append markdown to docs/HOOKS.md and record
                                   runtime evidence
   --output <path>               Override hook summary log path
+
+Flags (hooks codex trust):
+  --project-root <path>         Target directory (default: cwd)
+  --dry-run                     List exact runtime keys/hashes without writing
+  --apply                       Explicitly approve reviewed untrusted/modified
+                                  Anamnesis hooks through Codex app-server
+  --json                        Print structured JSON
 
 Flags (dogfood check):
   --project-root <path>         Target directory (default: cwd)
@@ -1323,6 +1339,17 @@ function reportStatus(result: StatusResult, projectRoot: string): void {
       console.log(`  codex hooks: unavailable (${codexHooks.parseError})`);
     }
   }
+  if (result.codexHookTrust) {
+    reportCodexHookTrustInspection(result.codexHookTrust);
+    if (
+      result.codexHookTrust.summary.untrusted > 0 ||
+      result.codexHookTrust.summary.modified > 0
+    ) {
+      console.log(
+        "    warning: hooks are installed but untrusted/modified definitions may not execute",
+      );
+    }
+  }
   const ontology = result.ontology;
   console.log(
     `  ontology gaps: ${ontology.summary.warnings} warning(s), ${ontology.summary.info} info`,
@@ -1467,6 +1494,9 @@ function reportDoctor(result: DoctorResult): void {
   printOntologyRecommendation(ui, result.ontologyRecommendation, {
     label: "ontology next",
   });
+  if (result.codexHookTrust) {
+    reportCodexHookTrustInspection(result.codexHookTrust);
+  }
   if (result.issues.length === 0) {
     console.log(ui.note("installation integrity checks passed", "success"));
     for (const line of formatGenerationBoundaryLines(
@@ -1569,6 +1599,43 @@ function reportHookSummary(result: HookSummaryResult): void {
     console.log(`    ${event.event}: ${event.total} (${statuses})`);
   }
   reportAppendEvidence(result.appendedPath, result.evidencePath);
+}
+
+function reportCodexHookTrustInspection(
+  inspection: CodexHookTrustInspection,
+): void {
+  const s = inspection.summary;
+  console.log(
+    `  Codex hooks: ${s.registered} registered, ${s.trusted} trusted, ${s.untrusted} untrusted, ${s.modified} modified, ${s.managed} managed, ${s.unknown} unknown`,
+  );
+  for (const hook of inspection.hooks) {
+    const marker = hook.status === "modified" ? "MODIFIED" : hook.status;
+    console.log(`    ${marker.padEnd(9)} ${hook.event} ${hook.command}`);
+    if (hook.key) console.log(`      key: ${hook.key}`);
+    if (hook.currentHash) console.log(`      current hash: ${hook.currentHash}`);
+  }
+  for (const alternate of inspection.alternateProjectSources) {
+    console.log(`    runtime source instead: ${alternate.sourcePath}`);
+  }
+  for (const warning of inspection.warnings) {
+    console.log(`    warning: ${warning}`);
+  }
+  if (!inspection.available && inspection.error) {
+    console.log(`    unavailable: ${inspection.error}`);
+  }
+}
+
+function reportCodexHookTrust(result: TrustCodexHooksResult): void {
+  console.log(`anamnesis hooks codex trust — ${result.mode}`);
+  reportCodexHookTrustInspection(result.inspection);
+  console.log(`  approval candidates: ${result.targets.length}`);
+  if (result.mode === "dry-run" && result.targets.length > 0) {
+    console.log(
+      "  preview only; review every definition, then re-run with --apply to approve",
+    );
+  } else if (result.mode === "apply") {
+    console.log(`  approved: ${result.written.length}`);
+  }
 }
 
 function formatFragmentLine(f: {
@@ -3457,10 +3524,12 @@ async function main(argv: string[]): Promise<number> {
       try {
         const projectRoot =
           (flags["project-root"] as string | undefined) ?? process.cwd();
+        const codexHookTrust = await inspectCodexHookTrust(projectRoot);
         const result = status({
           projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
+          codexHookTrust,
         });
         if (flags["json"] === true) {
           console.log(JSON.stringify(result, null, 2));
@@ -3478,13 +3547,16 @@ async function main(argv: string[]): Promise<number> {
 
     case "doctor":
       try {
+        const projectRoot =
+          (flags["project-root"] as string | undefined) ?? process.cwd();
+        const codexHookTrust = await inspectCodexHookTrust(projectRoot);
         const result = doctor({
-          projectRoot:
-            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           append: flags["append"] === true,
           outputPath: flags["output"] as string | undefined,
+          codexHookTrust,
         });
         reportDoctor(result);
         return result.ok ? 0 : 1;
@@ -3508,12 +3580,15 @@ async function main(argv: string[]): Promise<number> {
         return 1;
       }
       try {
+        const projectRoot =
+          (flags["project-root"] as string | undefined) ?? process.cwd();
+        const codexHookTrust = await inspectCodexHookTrust(projectRoot);
         const result = releaseCheck({
-          projectRoot:
-            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           append: flags["append"] === true,
+          codexHookTrust,
         });
         if (flags["json"] === true) {
           console.log(JSON.stringify(result, null, 2));
@@ -3536,10 +3611,40 @@ async function main(argv: string[]): Promise<number> {
 
     case "hooks": {
       const sub = positional[0];
+      if (sub === "codex" && positional[1] === "trust") {
+        const dryRun = flags["dry-run"] === true;
+        const apply = flags["apply"] === true;
+        if (dryRun === apply) {
+					console.error(
+						"error: choose exactly one of --dry-run or --apply for explicit Codex hook trust review",
+					);
+          console.error(
+            "usage: anamnesis hooks codex trust (--dry-run|--apply) [--json] [--project-root=<path>]",
+          );
+          return 1;
+        }
+        try {
+          const projectRoot =
+            (flags["project-root"] as string | undefined) ?? process.cwd();
+          const result = await trustCodexHooks(projectRoot, { apply });
+          if (flags["json"] === true) {
+            console.log(JSON.stringify(result, null, 2));
+          } else {
+            reportCodexHookTrust(result);
+          }
+          return apply && !result.inspection.available ? 1 : 0;
+        } catch (error) {
+          if (error instanceof CodexHookTrustChangedError) {
+            console.error(`error: ${error.message}`);
+            return 1;
+          }
+          throw error;
+        }
+      }
       if (sub !== "summary") {
 				console.error(`error: unknown 'hooks' subcommand: ${sub ?? "(none)"}`);
         console.error(
-          `usage: anamnesis hooks summary [--json] [--append] [--output=<path>] [--source=<path>]`,
+          `usage: anamnesis hooks summary [--json] [--append] [--output=<path>] [--source=<path>] | anamnesis hooks codex trust (--dry-run|--apply)`,
         );
         return 1;
       }
@@ -3578,13 +3683,16 @@ async function main(argv: string[]): Promise<number> {
         return 1;
       }
       try {
+        const projectRoot =
+          (flags["project-root"] as string | undefined) ?? process.cwd();
+        const codexHookTrust = await inspectCodexHookTrust(projectRoot);
         const result = dogfoodCheck({
-          projectRoot:
-            (flags["project-root"] as string | undefined) ?? process.cwd(),
+          projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),
           append: flags["append"] === true,
           outputPath: flags["output"] as string | undefined,
+          codexHookTrust,
         });
         reportDogfood(result);
         return result.ok ? 0 : 1;

@@ -67,6 +67,47 @@ entries. Repair only duplicated commands, malformed matcher entries, or older
 anamnesis-managed commands that use relative project paths; then re-run
 `anamnesis doctor`.
 
+### Codex runtime trust
+
+Installing a Codex hook and allowing Codex to execute it are two separate
+security steps. `--allow-exec-adapters` only authorizes anamnesis to install or
+refresh `.codex/hooks.json` and its wrappers; it never grants Codex runtime
+trust.
+
+Review the exact runtime-discovered Anamnesis hooks first:
+
+```bash
+anamnesis hooks codex trust --dry-run
+```
+
+The preview lists each hook key, event, command, and current trust state.
+`untrusted` means no approval exists. `modified` means the approved definition
+has changed and must be reviewed again. If the entries are expected, approve
+only those displayed candidates explicitly:
+
+```bash
+anamnesis hooks codex trust --apply
+anamnesis status
+anamnesis doctor
+```
+
+The apply path re-reads the runtime hook list immediately before writing and
+aborts if a key, hash, source, or command changed. It uses Codex's configuration
+API to upsert only the reviewed Anamnesis keys while preserving existing
+`hooks.state` entries and unrelated user configuration. It never approves
+user, OMX, plugin, already trusted, or managed hooks.
+
+In a linked Git worktree, Codex may use the main worktree's hook source instead
+of the local `.codex/hooks.json`. `status` and the trust preview identify this
+case. Do not create a local trust entry by hand: if the local source is absent
+from `hooks/list`, anamnesis intentionally has no writable candidate.
+
+If the installed Codex version has no compatible app-server RPC, or the probe
+times out or returns malformed data, trust is reported as `unknown` and no
+configuration is changed. Update Codex and retry the dry-run, or use Codex's
+own hook review UI/manual trust workflow. Do not treat a successful anamnesis
+install or update as proof that the hooks will execute.
+
 ## Partial Adapter Install
 
 If a project was installed for one agent and later needs all supported agents,

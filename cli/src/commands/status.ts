@@ -64,6 +64,7 @@ import {
   codexNativeNodeCommand,
   type CodexHookOwnershipReport,
 } from "../core/codex_native.js";
+import type { CodexHookTrustInspection } from "../core/codex_hook_trust.js";
 import {
   readEvidenceSummary,
   type RuntimeEvidenceSummary,
@@ -221,6 +222,8 @@ export interface StatusResult {
   continuity: ContinuityStatus;
   /** Ownership and advisory warnings for co-installed Codex native hooks. */
   codexHooks: CodexHookOwnershipReport;
+  /** Optional async Codex runtime trust snapshot injected by the CLI. */
+  codexHookTrust?: CodexHookTrustInspection;
   /** Ontology lifecycle gaps across static, bootstrap, and enriched layers. */
   ontology: OntologyGapStatus;
   /** Single next action for keeping ontology lifecycle current without adding commands. */
@@ -282,6 +285,7 @@ export interface StatusOptions {
   projectRoot: string;
   libraryRoot: string;
   now?: () => Date;
+  codexHookTrust?: CodexHookTrustInspection;
 }
 
 // ---------------------------------------------------------------------------
@@ -609,6 +613,7 @@ export function status(opts: StatusOptions): StatusResult {
     scopes,
     continuity,
     codexHooks,
+    ...(opts.codexHookTrust ? { codexHookTrust: opts.codexHookTrust } : {}),
     ontology,
     ontologyRecommendation,
     evidence,

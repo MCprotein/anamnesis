@@ -18,6 +18,7 @@ import {
 } from "./ontology.js";
 import { init } from "./init.js";
 import type { ToolName } from "../core/agentfile.js";
+import type { CodexHookTrustInspection } from "../core/codex_hook_trust.js";
 import {
   appendEvidenceRecord,
   EVIDENCE_SCHEMA_VERSION,
@@ -78,6 +79,7 @@ export interface DogfoodOptions {
   outputPath?: string;
   now?: () => Date;
   runner?: (cmd: string[], opts: { cwd: string }) => CommandCheck;
+  codexHookTrust?: CodexHookTrustInspection;
 }
 
 export class DogfoodError extends Error {
@@ -102,8 +104,16 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
   let doc: DoctorResult;
   let boot: BootstrapResult;
   try {
-    st = status({ projectRoot, libraryRoot });
-    doc = doctor({ projectRoot, libraryRoot });
+    st = status({
+      projectRoot,
+      libraryRoot,
+      codexHookTrust: opts.codexHookTrust,
+    });
+    doc = doctor({
+      projectRoot,
+      libraryRoot,
+      codexHookTrust: opts.codexHookTrust,
+    });
     boot = bootstrap({ projectRoot, dryRun: true });
   } catch (e) {
     if (
@@ -1549,7 +1559,13 @@ function scoreCriteria(
   const continuity = new Map(st.continuity.checks.map((c) => [c.id, c]));
   const codexHooksReady =
     !tools.has("codex") ||
-    (st.codexHooks.readable && st.codexHooks.summary.warnings === 0);
+    (st.codexHooks.readable &&
+      st.codexHooks.summary.warnings === 0 &&
+      (st.codexHookTrust === undefined ||
+        (st.codexHookTrust.available &&
+          st.codexHookTrust.summary.untrusted === 0 &&
+          st.codexHookTrust.summary.modified === 0 &&
+          st.codexHookTrust.summary.unknown === 0)));
   const failedChecks = checks.filter((c) => c.outcome === "fail");
   const hasPassingCheck = (namePart: string): boolean =>
     checks.some((c) => c.outcome === "pass" && c.name.includes(namePart));
