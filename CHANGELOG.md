@@ -7,6 +7,20 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- Added Codex native hook runtime trust diagnostics to `status` and `doctor`,
+  plus explicit `anamnesis hooks codex trust --dry-run|--apply` review and
+  approval. Approval is limited to exact Anamnesis-owned hooks returned by the
+  current Codex app-server and never extends to user, OMX, or plugin hooks.
+
+### Security
+
+- Kept executable-adapter installation consent separate from Codex runtime
+  trust. Hook changes require renewed explicit approval, writes use the
+  app-server configuration API with pre-write hook/hash revalidation, and
+  linked worktrees never receive synthesized trust keys.
+
 ## [1.21.0] — 2026-08-28
 
 ### Added

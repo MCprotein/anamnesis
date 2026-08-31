@@ -17,6 +17,7 @@ import {
   type RuntimeEvidenceKindSummary,
   type RuntimeEvidenceRecord,
 } from "../core/evidence.js";
+import type { CodexHookTrustInspection } from "../core/codex_hook_trust.js";
 import { doctor, type DoctorIssue, type DoctorResult } from "./doctor.js";
 import { init } from "./init.js";
 import { status, type StatusResult } from "./status.js";
@@ -61,6 +62,7 @@ export interface ReleaseCheckOptions {
   libraryRoot: string;
   append?: boolean;
   now?: () => Date;
+  codexHookTrust?: CodexHookTrustInspection;
 }
 
 const HOOK_DOCTOR_CODES = new Set<string>([
@@ -71,6 +73,10 @@ const HOOK_DOCTOR_CODES = new Set<string>([
   "hook-registration-missing",
   "codex-hook-registration-missing",
   "codex-hook-ownership-warning",
+  "codex-hook-trust-unavailable",
+  "codex-hook-untrusted",
+  "codex-hook-modified",
+  "codex-hook-runtime-source-mismatch",
 ]);
 
 export function releaseCheck(opts: ReleaseCheckOptions): ReleaseCheckResult {
@@ -79,7 +85,12 @@ export function releaseCheck(opts: ReleaseCheckOptions): ReleaseCheckResult {
   const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
   const stableNow = () => new Date(generatedAt);
 
-  const st = status({ projectRoot, libraryRoot, now: stableNow });
+  const st = status({
+    projectRoot,
+    libraryRoot,
+    now: stableNow,
+    codexHookTrust: opts.codexHookTrust,
+  });
   const dryRun = update({
     projectRoot,
     libraryRoot,
@@ -91,6 +102,7 @@ export function releaseCheck(opts: ReleaseCheckOptions): ReleaseCheckResult {
     projectRoot,
     libraryRoot,
     now: stableNow,
+    codexHookTrust: opts.codexHookTrust,
   });
   const updateSummary = summarizePlannedChanges(dryRun.changes);
   const checks = releaseChecks({

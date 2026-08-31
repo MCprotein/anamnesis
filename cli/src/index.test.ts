@@ -86,6 +86,18 @@ describe("CLI entrypoint", () => {
     expect(result.stdout).toContain("Usage:");
     expect(result.stdout).toContain("Commands:");
     expect(result.stdout).toContain("benchmark task-series");
+    expect(result.stdout).toContain("hooks codex trust");
+  });
+
+  it("requires an explicit dry-run or apply mode for Codex hook trust", () => {
+    const result = spawnSync(
+      process.execPath,
+      ["--import", "tsx", indexPath, "hooks", "codex", "trust"],
+      { cwd: repoRoot, encoding: "utf8" },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("choose exactly one of --dry-run or --apply");
   });
 
   it("prints namespace help for bare advanced namespaces", () => {

@@ -37,6 +37,7 @@ import {
   type CodexHookOwnershipWarning,
   type CodexHookRegistration,
 } from "../core/codex_native.js";
+import type { CodexHookTrustInspection } from "../core/codex_hook_trust.js";
 import {
   appendEvidenceRecord,
   EVIDENCE_SCHEMA_VERSION,
@@ -89,6 +90,10 @@ export type DoctorIssueCode =
   | "hook-registration-missing"
   | "codex-hook-registration-missing"
   | "codex-hook-ownership-warning"
+  | "codex-hook-trust-unavailable"
+  | "codex-hook-untrusted"
+  | "codex-hook-modified"
+  | "codex-hook-runtime-source-mismatch"
   | "continuity-project-memory-missing"
   | "continuity-ontology-missing"
   | "continuity-handoff-missing"
@@ -133,6 +138,7 @@ export interface DoctorResult {
   appendedPath?: string;
   evidencePath?: string;
   ontologyRecommendation?: OntologyLifecycleRecommendation;
+  codexHookTrust?: CodexHookTrustInspection;
 }
 
 export interface DoctorOptions {
@@ -141,6 +147,7 @@ export interface DoctorOptions {
   append?: boolean;
   outputPath?: string;
   now?: () => Date;
+  codexHookTrust?: CodexHookTrustInspection;
 }
 
 export class DoctorError extends Error {
@@ -200,7 +207,12 @@ export function doctor(opts: DoctorOptions): DoctorResult {
 
   if (manifestReadable) {
     const stableNow = () => new Date(generatedAt);
-    const st = status({ projectRoot, libraryRoot, now: stableNow });
+    const st = status({
+      projectRoot,
+      libraryRoot,
+      now: stableNow,
+      codexHookTrust: opts.codexHookTrust,
+    });
     ontologyRecommendation = st.ontologyRecommendation;
     addStatusIssues(st.entries, st.fragments, st.partialAdoptions, issues);
     addDependencyIssues(st.dependencies.problems, issues);
@@ -234,6 +246,9 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   );
   addSettingsIssues(projectRoot, manifest, renderActions, issues);
   addCodexHookIssues(projectRoot, manifest, renderActions, issues);
+  if (opts.codexHookTrust) {
+    addCodexHookTrustIssues(opts.codexHookTrust, issues);
+  }
 
   const errors = issues.filter((i) => i.severity === "error").length;
   const warnings = issues.filter((i) => i.severity === "warning").length;
@@ -286,6 +301,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
     appendedPath,
     evidencePath,
     ontologyRecommendation,
+    ...(opts.codexHookTrust ? { codexHookTrust: opts.codexHookTrust } : {}),
   };
 }
 
@@ -835,6 +851,66 @@ function addCodexHookOwnershipWarnings(
       target: CODEX_HOOKS_PATH,
       message: warning.detail,
       repair: codexHookOwnershipRepair(warning),
+    });
+  }
+}
+
+function addCodexHookTrustIssues(
+  trust: CodexHookTrustInspection,
+  issues: DoctorIssue[],
+): void {
+  if (!trust.available) {
+    if (trust.summary.registered === 0) return;
+    issues.push({
+      severity: "warning",
+      code: "codex-hook-trust-unavailable",
+      target: ".codex/hooks.json",
+      message:
+        `Codex runtime hook trust is unavailable; ${trust.summary.registered} Anamnesis hook(s) are registered but their execution trust is unknown`,
+      repair:
+        "Update Codex or review hook trust in Codex. Retry `anamnesis hooks codex trust --dry-run`; anamnesis will not modify trust without a compatible app-server API.",
+    });
+    return;
+  }
+
+  for (const hook of trust.hooks) {
+    if (hook.status === "untrusted") {
+      issues.push({
+        severity: "warning",
+        code: "codex-hook-untrusted",
+        target: ".codex/hooks.json",
+        message: `Codex hook ${hook.event} is registered but untrusted and may not execute: ${hook.command}`,
+        repair:
+          "Review `anamnesis hooks codex trust --dry-run`, then explicitly run it with `--apply` if the hook definition is expected.",
+      });
+    } else if (hook.status === "modified") {
+      issues.push({
+        severity: "warning",
+        code: "codex-hook-modified",
+        target: ".codex/hooks.json",
+        message: `Codex hook ${hook.event} changed after approval and will not execute until it is reviewed again: ${hook.command}`,
+        repair:
+          "Review the modified definition with `anamnesis hooks codex trust --dry-run`, then explicitly re-approve with `--apply`.",
+      });
+    }
+  }
+
+  if (
+    trust.summary.registered > 0 &&
+    trust.summary.discovered < trust.summary.registered
+  ) {
+    const alternate = trust.alternateProjectSources
+      .map((source) => source.sourcePath)
+      .join(", ");
+    issues.push({
+      severity: "warning",
+      code: "codex-hook-runtime-source-mismatch",
+      target: ".codex/hooks.json",
+      message: alternate
+        ? `This worktree's hook file is registered locally but Codex did not discover it as a separate runtime source; Codex returned project hooks from: ${alternate}`
+        : "This worktree's Anamnesis hook registrations were not discovered by the Codex runtime",
+      repair:
+        "Treat `hooks/list` as authoritative. Do not create hook keys manually; review the effective main-worktree source or update Codex and retry.",
     });
   }
 }

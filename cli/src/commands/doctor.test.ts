@@ -12,6 +12,8 @@ import {
   type ToolName,
 } from "../core/agentfile.js";
 import { codexNativeNodeCommand } from "../core/codex_native.js";
+import type { CodexHookTrustInspection } from "../core/codex_hook_trust.js";
+import { status } from "./status.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -988,5 +990,67 @@ fragments:
         targets: [".anamnesis/ontology/prisma.bootstrap.yaml"],
       }),
     );
+  });
+
+  it("distinguishes registered Codex hooks from untrusted and modified runtime state", () => {
+    const { project, library } = installContinuityProject();
+    const ownership = status({ projectRoot: project, libraryRoot: library }).codexHooks;
+    const sourcePath = path.join(project, ".codex", "hooks.json");
+    const trust: CodexHookTrustInspection = {
+      available: true,
+      localHooksPath: sourcePath,
+      ownership,
+      hooks: [
+        {
+          event: "sessionStart",
+          command: "node first.mjs",
+          registered: true,
+          runtimeDiscovered: true,
+          status: "untrusted",
+          key: "first",
+          currentHash: "sha256:first",
+          sourcePath,
+          source: "project",
+          authorizedForTrust: true,
+        },
+        {
+          event: "stop",
+          command: "node second.mjs",
+          registered: true,
+          runtimeDiscovered: true,
+          status: "modified",
+          key: "second",
+          currentHash: "sha256:second",
+          sourcePath,
+          source: "project",
+          authorizedForTrust: true,
+        },
+      ],
+      summary: {
+        registered: 2,
+        discovered: 2,
+        trusted: 0,
+        untrusted: 1,
+        modified: 1,
+        managed: 0,
+        unknown: 0,
+      },
+      alternateProjectSources: [],
+      warnings: [],
+    };
+
+    const result = doctor({
+      projectRoot: project,
+      libraryRoot: library,
+      codexHookTrust: trust,
+    });
+
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "codex-hook-untrusted" }),
+        expect.objectContaining({ code: "codex-hook-modified" }),
+      ]),
+    );
+    expect(result.codexHookTrust?.summary).toEqual(trust.summary);
   });
 });

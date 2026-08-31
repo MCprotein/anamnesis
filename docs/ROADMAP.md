@@ -1903,6 +1903,17 @@ Exit criteria:
 
 > **Theme: evidence-backed work-unit continuity across long agent runs**
 
+### Codex native hook trust boundary
+
+The current unreleased line also closes a runtime safety gap in Codex hook
+installation. `status` and `doctor` distinguish local registration from
+Codex's `trusted`, `untrusted`, `modified`, and `managed` runtime states, and
+`hooks codex trust --dry-run|--apply` provides a separate explicit approval
+step. Approval consumes only app-server-returned keys and hashes for exact
+Anamnesis-owned project hooks, revalidates them immediately before an atomic
+configuration upsert, preserves unrelated state, and fails closed for changed
+definitions, unsupported RPCs, and linked-worktree source substitution.
+
 Long-running agent work has a different continuity failure from switching
 tools or sessions: the original task may contain dozens or hundreds of
 requirements, and repeated context compaction can gradually erase individual

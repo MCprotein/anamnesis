@@ -15,6 +15,7 @@ import {
   EVIDENCE_SCHEMA_VERSION,
 } from "../core/evidence.js";
 import { upsertRegion } from "../core/regions.js";
+import type { CodexHookTrustInspection } from "../core/codex_hook_trust.js";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -919,5 +920,49 @@ describe("status — ontology gap report", () => {
         targets: [".anamnesis/ontology/prisma.bootstrap.yaml"],
       }),
     );
+  });
+
+  it("keeps local registration separate from an injected Codex runtime trust snapshot", () => {
+    const { project, library } = setupFreshlyInstalled();
+    const baseline = status({ projectRoot: project, libraryRoot: library });
+    const trust: CodexHookTrustInspection = {
+      available: true,
+      localHooksPath: path.join(project, ".codex", "hooks.json"),
+      ownership: baseline.codexHooks,
+      hooks: [
+        {
+          event: "sessionStart",
+          command: "node managed.mjs",
+          registered: true,
+          runtimeDiscovered: true,
+          status: "untrusted",
+          key: "project-key",
+          currentHash: "sha256:current",
+          sourcePath: path.join(project, ".codex", "hooks.json"),
+          source: "project",
+          authorizedForTrust: true,
+        },
+      ],
+      summary: {
+        registered: 1,
+        discovered: 1,
+        trusted: 0,
+        untrusted: 1,
+        modified: 0,
+        managed: 0,
+        unknown: 0,
+      },
+      alternateProjectSources: [],
+      warnings: [],
+    };
+
+    const result = status({
+      projectRoot: project,
+      libraryRoot: library,
+      codexHookTrust: trust,
+    });
+
+    expect(result.codexHooks).toEqual(baseline.codexHooks);
+    expect(result.codexHookTrust?.summary).toEqual(trust.summary);
   });
 });

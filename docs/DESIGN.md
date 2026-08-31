@@ -470,11 +470,36 @@ anamnesis update --apply                  # 컨텐츠만 실제 적용
 anamnesis update --apply --allow-exec-adapters  # 훅/커맨드/스킬 스크립트 포함
 ```
 
-### 7.2 Fragment 서명 (v0.2+)
+### 7.2 Codex native hook 런타임 신뢰
+
+`--allow-exec-adapters` 는 프로젝트에 실행 래퍼와 등록 파일을 쓰도록
+허용하는 supply-chain 경계다. Codex가 그 훅을 실제 실행하도록 승인하는
+런타임 신뢰와는 별개이며, `init`·`apply`·`update` 는
+`hooks.state.*.trusted_hash` 를 자동으로 기록하지 않는다.
+
+`status` 와 `doctor` 는 로컬 `.codex/hooks.json` 등록 상태와 Codex
+app-server `hooks/list` 가 보고하는 `trusted`·`untrusted`·`modified`·
+`managed` 상태를 분리해서 보여준다. 승인은 사용자가
+`anamnesis hooks codex trust --apply` 를 직접 실행했을 때만 가능하다.
+승인 대상은 현재 프로젝트의 정확한 hook source와 Anamnesis 소유 등록이
+일치하는 command hook으로 한정하며, app-server가 반환한 opaque key와
+`currentHash`만 `config/batchWrite`의 `hooks.state` upsert에 사용한다.
+쓰기 직전 hook 목록과 사용자 config version을 다시 확인하고 하나라도
+바뀌면 전체 쓰기를 중단한다. 이미 `trusted` 또는 `managed`인 hook과
+사용자·OMX·plugin hook은 변경하지 않는다.
+
+linked Git worktree에서 Codex가 worktree-local `.codex/hooks.json` 대신
+main worktree hook source를 선택할 수 있다. 이때 runtime source가
+정본이며, anamnesis는 대체 source를 진단에 표시하되 local key/hash를
+추측하거나 ghost trust entry를 만들지 않는다. app-server/RPC가 없거나
+호환되지 않으면 설치와 갱신은 계속 가능하지만 trust 상태는 `unknown`으로
+남고 자동 수정은 하지 않는다.
+
+### 7.3 Fragment 서명 (v0.2+)
 
 커뮤니티 fragment 를 받기 시작하면 서명·체크섬·pinning 필요. v0.1 은 로컬 라이브러리만 쓰니까 연기.
 
-### 7.3 Hook 실행 권한
+### 7.4 Hook 실행 권한
 
 생성되는 hook 스크립트는 `chmod 755` 기본. `chmod +x` 필요 없도록 처음부터 실행 권한 부여.
 
