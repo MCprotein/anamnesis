@@ -231,7 +231,12 @@ describe("anamnesis work CLI", () => {
 		expect(recorded.stdout).toContain("finding_refs: finding:approved");
 		expect(recorded.stdout).not.toContain("review this bounded plan");
 		expect(recorded.stdout).not.toContain("private source body");
-		const status = run(root, ["status", "--work", "wu_review_cli"]);
+		const status = run(root, [
+			"status",
+			"--verbose",
+			"--work",
+			"wu_review_cli",
+		]);
 		expect(status.status, status.stderr).toBe(0);
 		expect(status.stdout).toContain("review planning: passed");
 		expect(status.stdout).toContain("reviewers=omx:reviewer:one");

@@ -131,6 +131,9 @@ current behavior; explicit opt-out and trust-boundary details are in the
 
 Running `anamnesis` prints the short first-run guide. Use `anamnesis --help` for
 grouped help and `anamnesis --help --all` for the complete command reference.
+Daily human output is compact and verdict-first; add `--verbose` to supported
+lifecycle, health, hooks, and Work commands for full diagnostic provenance.
+Structured `--json` output remains unchanged for automation.
 
 ## What it manages
 

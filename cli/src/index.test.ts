@@ -67,7 +67,9 @@ describe("CLI entrypoint", () => {
     expect(result.stdout).not.toContain("handoff ...");
     expect(result.stdout).not.toContain("benchmark ...");
     expect(result.stdout).toContain("apply");
-    expect(result.stdout).toContain("Deprecated compatibility command for apply");
+		expect(result.stdout).toContain(
+			"Deprecated compatibility command for apply",
+		);
     expect(result.stdout).not.toContain("benchmark task-series");
   });
 
@@ -97,7 +99,9 @@ describe("CLI entrypoint", () => {
     );
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("choose exactly one of --dry-run or --apply");
+		expect(result.stderr).toContain(
+			"choose exactly one of --dry-run or --apply",
+		);
   });
 
   it("prints namespace help for bare advanced namespaces", () => {
@@ -142,8 +146,14 @@ describe("CLI entrypoint", () => {
 	});
 
   it("prints context docs JSON from the CLI", () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-docs-"));
-    writeFile(project, "README.md", "# Fixture\n\nSee [Guide](docs/guide.md).\n");
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-docs-"),
+		);
+		writeFile(
+			project,
+			"README.md",
+			"# Fixture\n\nSee [Guide](docs/guide.md).\n",
+		);
     writeFile(project, "docs/guide.md", "# Guide\n");
 
     const result = spawnSync(
@@ -176,7 +186,9 @@ describe("CLI entrypoint", () => {
   });
 
   it("prints first-install next steps after init reports", () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-init-"));
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-init-"),
+		);
     const result = spawnSync(
       process.execPath,
       [
@@ -272,7 +284,9 @@ settings:
   });
 
   it("previews project changes through apply --dry-run", () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-apply-"));
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-apply-"),
+		);
     writeMinimalAgentfile(project);
 
     const result = spawnSync(
@@ -305,7 +319,9 @@ settings:
   });
 
   it("applies project changes by default through apply", () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-apply-write-"));
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-apply-write-"),
+		);
     writeMinimalAgentfile(project);
 
     const result = spawnSync(
@@ -331,12 +347,40 @@ settings:
     expect(result.stdout).toContain("anamnesis apply");
     expect(result.stdout).toContain("fixture");
     expect(result.stdout).toContain("applied");
-    expect(result.stdout).toContain("evidence:");
+		expect(result.stdout).not.toContain("evidence:");
     expect(fs.existsSync(path.join(project, "AGENTS.md"))).toBe(true);
   });
 
+	it("reveals apply evidence and backup detail with --verbose", () => {
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-apply-verbose-"),
+		);
+		writeMinimalAgentfile(project);
+
+		const result = spawnSync(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				indexPath,
+				"apply",
+				"--verbose",
+				"--project-root",
+				project,
+				"--library",
+				repoRoot,
+			],
+			{ cwd: repoRoot, encoding: "utf8" },
+		);
+
+		expect(result.status).toBe(0);
+		expect(result.stdout).toContain("evidence:");
+	});
+
   it("keeps update as a deprecated compatibility command", () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-update-"));
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-update-"),
+		);
     writeMinimalAgentfile(project);
 
     const result = spawnSync(
@@ -410,6 +454,80 @@ fragments:
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("ontology next");
     expect(result.stdout).toContain("anamnesis ontology bootstrap --dry-run");
-    expect(result.stdout).toContain(".anamnesis/ontology/prisma.bootstrap.yaml");
+		expect(result.stdout).toContain(
+			".anamnesis/ontology/prisma.bootstrap.yaml",
+		);
+	});
+
+	it("keeps status compact by default and expands diagnostics with --verbose", () => {
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-status-ui-"),
+		);
+		writeMinimalAgentfile(project);
+		const run = (extra: string[] = []) =>
+			spawnSync(
+				process.execPath,
+				[
+					"--import",
+					"tsx",
+					indexPath,
+					"status",
+					"--project-root",
+					project,
+					"--library",
+					repoRoot,
+					...extra,
+				],
+				{
+					cwd: repoRoot,
+					encoding: "utf8",
+					env: { ...process.env, NO_COLOR: "1" },
+				},
+			);
+
+		const compact = run();
+		expect(compact.status).toBe(0);
+		expect(compact.stdout).toContain("anamnesis status");
+		expect(compact.stdout).toContain("Attention needed");
+		expect(compact.stdout).toContain("fragment update issue");
+		expect(compact.stdout).not.toContain("● Ready");
+		expect(compact.stdout).toContain("managed");
+		expect(compact.stdout).toContain("use `--verbose`");
+		expect(compact.stdout).not.toContain("generation boundary:");
+
+		const verbose = run(["--verbose"]);
+		expect(verbose.status).toBe(0);
+		expect(verbose.stdout).toContain("Fragments (");
+		expect(verbose.stdout).toContain("generation boundary:");
+	});
+
+	it("preserves structured status output when human rendering changes", () => {
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-status-json-"),
+		);
+		writeMinimalAgentfile(project);
+		const result = spawnSync(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				indexPath,
+				"status",
+				"--project-root",
+				project,
+				"--library",
+				repoRoot,
+				"--json",
+			],
+			{ cwd: repoRoot, encoding: "utf8" },
+		);
+
+		expect(result.status).toBe(0);
+		const parsed = JSON.parse(result.stdout) as {
+			agentfile: { project: { name: string } };
+			summary: { fragmentTotal: number };
+		};
+		expect(parsed.agentfile.project.name).toBe("fixture");
+		expect(parsed.summary.fragmentTotal).toBe(1);
   });
 });

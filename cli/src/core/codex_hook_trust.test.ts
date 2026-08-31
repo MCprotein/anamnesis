@@ -6,6 +6,7 @@ import { codexNativeNodeCommand } from "./codex_native.js";
 import { sha256 } from "../util/hash.js";
 import {
   analyzeCodexHookTrust,
+	codexHookTrustApprovalOutcome,
   CodexHookTrustChangedError,
   CodexStdioAppServerTransport,
   inspectCodexHookTrust,
@@ -285,6 +286,7 @@ describe("Codex hook trust analysis", () => {
       mainHooksPath,
     );
     expect(result.inspection.warnings.join(" ")).toContain("another worktree");
+		expect(codexHookTrustApprovalOutcome(result)).toBe("incomplete");
     expect(transport.writes).toHaveLength(0);
   });
 });
