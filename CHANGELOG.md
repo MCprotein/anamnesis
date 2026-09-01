@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.23.0] — 2026-09-01
+
 ### Changed
 
 - Redesigned primary human-readable CLI output around a shared, width-aware visual
