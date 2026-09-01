@@ -238,7 +238,7 @@ import {
 	formatBootstrapGenerationBoundaryLines,
 	formatGenerationBoundaryLines,
 } from "./core/generation-boundary.js";
-import { formatInitNextStepLines } from "./core/init_next_steps.js";
+import { initNextSteps } from "./core/init_next_steps.js";
 import type { OntologyLifecycleRecommendation } from "./core/ontology-gaps.js";
 import {
 	defaultProjectRegistryPath,
@@ -1220,13 +1220,20 @@ function reportInit(
       "    agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
     );
   }
-  for (const line of formatInitNextStepLines({
+	printLines(ui.section("Next steps"));
+  for (const step of initNextSteps({
     writtenToDisk: result.writtenToDisk,
     blockedWrites: s.blocked,
     tools: result.agentfile.tools,
     execAdaptersEnabled,
   })) {
-		printWrapped(ui, line.trimStart());
+		if (step.command) {
+			printLines(
+				ui.commandRows([{ command: step.value, description: step.label }]),
+			);
+		} else {
+			printWrapped(ui, `${step.label}: ${step.value}`);
+		}
   }
 }
 
@@ -1244,6 +1251,11 @@ function reportStatus(
 			fragment.status === "library-missing",
 	);
 	const trust = result.codexHookTrust?.summary;
+	const codexHooksRelevant =
+		agentfile.tools.includes("codex") ||
+		result.codexHooks.summary.total > 0 ||
+		(!result.codexHooks.readable &&
+			!result.codexHooks.parseError?.endsWith(" is missing"));
 	const hookTrustNeedsAttention =
 		trust !== undefined && trust.untrusted + trust.modified + trust.unknown > 0;
 	const hasAttention =
@@ -1255,10 +1267,8 @@ function reportStatus(
 		!result.continuity.ready ||
 		result.sessionContextBudget.capExceeded ||
 		result.sessionContextBudget.warnings.length > 0 ||
-		(!result.codexHooks.readable &&
-			(agentfile.tools.includes("codex") ||
-				result.codexHooks.parseError !== undefined)) ||
-		result.codexHooks.summary.warnings > 0 ||
+		(codexHooksRelevant && !result.codexHooks.readable) ||
+		(codexHooksRelevant && result.codexHooks.summary.warnings > 0) ||
 		hookTrustNeedsAttention ||
 		result.ontology.summary.warnings > 0 ||
 		result.evidence.invalid > 0 ||
@@ -1384,7 +1394,7 @@ function reportStatus(
         );
       }
     }
-	if (!result.codexHooks.readable) {
+	if (codexHooksRelevant && !result.codexHooks.readable) {
     console.log(
 			ui.note(
 				`Codex hook registry unavailable: ${result.codexHooks.parseError}`,
@@ -1507,18 +1517,16 @@ function reportStatus(
     console.log(line);
 	} else {
 		printLines(ui.section("Next"));
-		console.log(
-			ui.note(
-				hasAttention
-					? "resolve the items above, then run `anamnesis doctor`"
-					: "no action required",
-				hasAttention ? "warning" : "success",
-			),
+		printWrapped(
+			ui,
+			hasAttention
+				? "resolve the items above, then run `anamnesis doctor`"
+				: "no action required",
+			{ tone: hasAttention ? "warning" : "success" },
 		);
-		console.log(
-			ui.note(
-				"use `--verbose` for fragments, hashes, evidence, and generation details",
-			),
+		printWrapped(
+			ui,
+			"use `--verbose` for fragments, hashes, evidence, and generation details",
 		);
   }
 }
@@ -1603,10 +1611,16 @@ function reportDoctor(
 	)) {
     const scope = issue.scopePath ? ` [${issue.scopePath}]` : "";
     const target = issue.target ? ` ${issue.target}` : "";
-		console.log(`  ${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`);
-    console.log(`    ${issue.message}`);
+		printWrapped(
+			ui,
+			`${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`,
+		);
+		printWrapped(ui, issue.message, { indent: 4 });
     if (issue.repair) {
-      console.log(`    repair: ${issue.repair}`);
+			printWrapped(ui, `repair: ${issue.repair}`, {
+				indent: 4,
+				tone: "warning",
+			});
     }
   }
 	if (opts.verbose) {

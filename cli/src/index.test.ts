@@ -32,6 +32,10 @@ function writeFile(project: string, relPath: string, content: string): void {
   fs.writeFileSync(absPath, content, "utf8");
 }
 
+function visibleLengthForTest(value: string): number {
+	return [...value.replaceAll(/\x1b\[[0-9;]*m/g, "")].length;
+}
+
 describe("CLI entrypoint", () => {
   it("prints the getting-started guide with no command", () => {
     const result = spawnSync(process.execPath, ["--import", "tsx", indexPath], {
@@ -211,15 +215,16 @@ describe("CLI entrypoint", () => {
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout).toContain("  next steps:");
-    expect(result.stdout).toContain(
-      "apply reviewed plan: anamnesis init --tools all --allow-exec-adapters",
-    );
+		expect(result.stdout).toContain("Next steps");
+		expect(result.stdout).toContain(
+			"anamnesis init --tools all --allow-exec-adapters",
+		);
+		expect(result.stdout).toContain("apply reviewed plan");
     expect(result.stdout).toContain(
       "native automation: enabled via --allow-exec-adapters",
     );
-    expect(result.stdout).toContain("semantic ontology: /ontology-enrich");
-    expect(result.stdout).toContain("task handoff: /handoff-prepare");
+		expect(result.stdout).toContain("/ontology-enrich  semantic ontology");
+		expect(result.stdout).toContain("/handoff-prepare  task handoff");
   });
 
   it("probes prompt capture through the strict Agentfile parser", () => {
@@ -529,5 +534,101 @@ fragments:
 		};
 		expect(parsed.agentfile.project.name).toBe("fixture");
 		expect(parsed.summary.fragmentTotal).toBe(1);
-  });
+	});
+
+	it("keeps a freshly initialized Claude-only project ready without Codex warnings", () => {
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-claude-only-"),
+		);
+		const initialized = spawnSync(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				indexPath,
+				"init",
+				"--project-root",
+				project,
+				"--library",
+				repoRoot,
+				"--tools",
+				"claude-code",
+				"--allow-exec-adapters",
+			],
+			{ cwd: repoRoot, encoding: "utf8" },
+		);
+		expect(initialized.status, initialized.stderr).toBe(0);
+
+		const status = spawnSync(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				indexPath,
+				"status",
+				"--project-root",
+				project,
+				"--library",
+				repoRoot,
+			],
+			{
+				cwd: repoRoot,
+				encoding: "utf8",
+				env: { ...process.env, NO_COLOR: "1" },
+			},
+		);
+
+		expect(status.status, status.stderr).toBe(0);
+		expect(status.stdout).toContain("Ready");
+		expect(status.stdout).not.toContain("Codex hook registry unavailable");
+	});
+
+	it("wraps doctor findings and repair actions at 48 columns", () => {
+		const project = fs.mkdtempSync(
+			path.join(os.tmpdir(), "anamnesis-cli-doctor-width-"),
+		);
+		const initialized = spawnSync(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				indexPath,
+				"init",
+				"--project-root",
+				project,
+				"--library",
+				repoRoot,
+				"--tools",
+				"claude-code",
+				"--allow-exec-adapters",
+			],
+			{ cwd: repoRoot, encoding: "utf8" },
+		);
+		expect(initialized.status, initialized.stderr).toBe(0);
+		fs.rmSync(path.join(project, ".claude/hooks/inject-ontology.sh"));
+		const result = spawnSync(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				indexPath,
+				"doctor",
+				"--project-root",
+				project,
+				"--library",
+				repoRoot,
+			],
+			{
+				cwd: repoRoot,
+				encoding: "utf8",
+				env: { ...process.env, NO_COLOR: "1", COLUMNS: "48" },
+			},
+		);
+
+		expect(result.status).toBe(1);
+		expect(result.stdout).toContain("repair:");
+		for (const line of result.stdout.trimEnd().split("\n")) {
+			expect(visibleLengthForTest(line)).toBeLessThanOrEqual(48);
+		}
+	});
 });

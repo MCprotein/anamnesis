@@ -88,7 +88,13 @@ export function createTui(opts: TuiOptions = {}): Tui {
 	const env = opts.env ?? process.env;
 	const color = opts.color ?? shouldUseColor(env, opts.isTTY);
 	const unicode = opts.unicode ?? shouldUseUnicode(env);
-	const width = Math.max(40, opts.width ?? process.stdout.columns ?? 100);
+	const environmentWidth = Number.parseInt(env.COLUMNS ?? "", 10);
+	const width = Math.max(
+		40,
+		opts.width ??
+			process.stdout.columns ??
+			(Number.isFinite(environmentWidth) ? environmentWidth : 100),
+	);
 
 	function style(value: string, tone: TuiTone | "bold"): string {
 		return color ? `${STYLES[tone]}${value}${RESET}` : value;

@@ -7,43 +7,69 @@ export interface InitNextStepInput {
   execAdaptersEnabled: boolean;
 }
 
-export function formatInitNextStepLines(input: InitNextStepInput): string[] {
+export interface InitNextStep {
+  label: string;
+  value: string;
+  command?: boolean;
+}
+
+export function initNextSteps(input: InitNextStepInput): InitNextStep[] {
   const allToolsSelected = ALL_AGENT_TOOLS.every((tool) =>
     input.tools.includes(tool),
   );
   const installCommand = allToolsSelected
     ? "anamnesis init --tools all --allow-exec-adapters"
     : "anamnesis init --allow-exec-adapters";
-
-  const lines = ["  next steps:"];
-  if (input.writtenToDisk) {
-    lines.push("    verify install: anamnesis doctor");
-    lines.push("    inspect status: anamnesis status");
-  } else {
-    lines.push(`    apply reviewed plan: ${installCommand}`);
-  }
+  const steps: InitNextStep[] = input.writtenToDisk
+    ? [
+        { label: "verify install", value: "anamnesis doctor", command: true },
+        { label: "inspect status", value: "anamnesis status", command: true },
+      ]
+    : [{ label: "apply reviewed plan", value: installCommand, command: true }];
 
   if (input.blockedWrites > 0) {
-    lines.push(
-      "    blocked executable surfaces: re-run with --allow-exec-adapters after reviewing hooks/commands/skills",
-    );
+    steps.push({
+      label: "blocked executable surfaces",
+      value:
+        "review hooks/commands/skills, then re-run with --allow-exec-adapters",
+    });
   } else if (!allToolsSelected) {
-    lines.push(
-      "    all agent surfaces on first install: anamnesis init --tools all --allow-exec-adapters",
-    );
+    steps.push({
+      label: "install all agent surfaces",
+      value: "anamnesis init --tools all --allow-exec-adapters",
+      command: true,
+    });
   }
 
-  lines.push(
+  steps.push(
     input.execAdaptersEnabled
-      ? "    native automation: enabled via --allow-exec-adapters"
-      : `    native automation: disabled; enable with ${input.writtenToDisk ? "anamnesis apply --allow-exec-adapters" : installCommand}`,
+      ? { label: "native automation", value: "enabled via --allow-exec-adapters" }
+      : {
+          label: "enable native automation",
+          value: input.writtenToDisk
+            ? "anamnesis apply --allow-exec-adapters"
+            : installCommand,
+          command: true,
+        },
+    {
+      label: "semantic ontology",
+      value: "/ontology-enrich",
+      command: true,
+    },
+    {
+      label: "task handoff",
+      value: "/handoff-prepare",
+      command: true,
+    },
   );
+  return steps;
+}
 
-  lines.push(
-    "    semantic ontology: /ontology-enrich when relationships, flows, intent, or operational rules matter",
-  );
-  lines.push(
-    "    task handoff: /handoff-prepare before switching agents with in-progress work",
-  );
-  return lines;
+export function formatInitNextStepLines(input: InitNextStepInput): string[] {
+  return [
+    "  next steps:",
+    ...initNextSteps(input).map(
+      (step) => `    ${step.label}: ${step.value}`,
+    ),
+  ];
 }
