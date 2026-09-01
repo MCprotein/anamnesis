@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.23.2] — 2026-09-01
+
 ### Fixed
 
 - Applied the explicit CI budget to both init-driven CLI presentation
