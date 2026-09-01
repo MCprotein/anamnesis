@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Applied a shared 90-second CI budget to the deterministic Work-agent
+  benchmark artifact tests. The `v1.23.2` tag stopped on a loaded runner
+  timeout before any registry write, so it is unpublished and superseded by
+  `v1.23.3`.
+
 ## [1.23.2] — 2026-09-01
 
 ### Fixed

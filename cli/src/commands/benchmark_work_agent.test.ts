@@ -16,6 +16,7 @@ import {
 } from "./benchmark_work_agent.js";
 
 const roots: string[] = [];
+const WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS = 90_000;
 
 afterEach(() => {
 	for (const root of roots.splice(0)) {
@@ -222,7 +223,7 @@ describe("Work agent A/B benchmark", () => {
 			/REQ-[A-Z0-9]+\|(verified|pending)\|"\d{2}"/u,
 		);
 		expect(enabledMultiSession?.content.length).toBeLessThan(4_000);
-	}, 30_000);
+	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
 
 	it("does not publish either artifact when a destination is invalid", () => {
 		const projectRoot = root();
@@ -253,7 +254,7 @@ describe("Work agent A/B benchmark", () => {
 				.readdirSync(outputDir)
 				.filter((name) => name.startsWith(".work-agent-ab-publish-")),
 		).toEqual([]);
-	}, 30_000);
+	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
 
 	it("tracks a successful rename before post-publish identity validation", () => {
 		const projectRoot = root();
@@ -291,7 +292,7 @@ describe("Work agent A/B benchmark", () => {
 		expect(
 			fs.readdirSync(path.join(outputDir, recoveryDirs[0]!)),
 		).toContain("README.md.previous-0");
-	}, 30_000);
+	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
 
 	it("restores the first artifact when the second atomic replacement fails", () => {
 		const projectRoot = root();
@@ -333,7 +334,7 @@ describe("Work agent A/B benchmark", () => {
 				.readdirSync(outputDir)
 				.filter((name) => name.startsWith(".work-agent-ab-publish-")),
 		).toEqual([]);
-	}, 30_000);
+	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
 
 	it("preserves recovery files when publication and rollback both fail", () => {
 		const projectRoot = root();
@@ -372,7 +373,7 @@ describe("Work agent A/B benchmark", () => {
 		expect(
 			fs.readdirSync(path.join(outputDir, recoveryDirs[0]!)),
 		).toContain("README.md.previous-0");
-	}, 30_000);
+	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
 
 	it("fails the evaluator when enabled token cost breaches the contract", () => {
 		const condition = {
