@@ -10,6 +10,7 @@ const repoRoot = path.resolve(
   "../..",
 );
 const indexPath = path.join(repoRoot, "cli/src/index.ts");
+const CLI_PROCESS_TEST_TIMEOUT_MS = 90_000;
 
 function writeMinimalAgentfile(project: string): void {
   fs.writeFileSync(
@@ -581,7 +582,7 @@ fragments:
 		expect(status.status, status.stderr).toBe(0);
 		expect(status.stdout).toContain("Ready");
 		expect(status.stdout).not.toContain("Codex hook registry unavailable");
-	});
+	}, CLI_PROCESS_TEST_TIMEOUT_MS);
 
 	it("wraps doctor findings and repair actions at 48 columns", () => {
 		const project = fs.mkdtempSync(
@@ -630,5 +631,5 @@ fragments:
 		for (const line of result.stdout.trimEnd().split("\n")) {
 			expect(visibleLengthForTest(line)).toBeLessThanOrEqual(48);
 		}
-	}, 90_000);
+	}, CLI_PROCESS_TEST_TIMEOUT_MS);
 });

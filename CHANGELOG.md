@@ -7,6 +7,12 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Applied the explicit CI budget to both init-driven CLI presentation
+  regressions. The `v1.23.1` tag stopped on the adjacent default timeout before
+  any registry write, so it is unpublished and superseded by `v1.23.2`.
+
 ## [1.23.1] — 2026-09-01
 
 ### Fixed
