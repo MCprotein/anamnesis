@@ -141,6 +141,43 @@ export interface DoctorResult {
   codexHookTrust?: CodexHookTrustInspection;
 }
 
+export interface DoctorHumanPresentation {
+  issues: DoctorIssue[];
+  summary: DoctorResult["summary"];
+  hiddenInfo: number;
+}
+
+const MAINTAINER_ONLY_DOCTOR_ISSUES = new Set<DoctorIssueCode>([
+  "subagent-injection-evidence-missing",
+  "subagent-injection-evidence-stale",
+  "subagent-injection-benchmark-failed",
+]);
+
+export function doctorHumanPresentation(
+  result: DoctorResult,
+  verbose: boolean,
+): DoctorHumanPresentation {
+  const scopedIssues = verbose
+    ? result.issues
+    : result.issues.filter(
+        (issue) => !MAINTAINER_ONLY_DOCTOR_ISSUES.has(issue.code),
+      );
+  const issues = verbose
+    ? scopedIssues
+    : scopedIssues.filter((issue) => issue.severity !== "info");
+  return {
+    issues,
+    summary: {
+      errors: scopedIssues.filter((issue) => issue.severity === "error").length,
+      warnings: scopedIssues.filter((issue) => issue.severity === "warning").length,
+      info: scopedIssues.filter((issue) => issue.severity === "info").length,
+    },
+    hiddenInfo: verbose
+      ? 0
+      : scopedIssues.filter((issue) => issue.severity === "info").length,
+  };
+}
+
 export interface DoctorOptions {
   projectRoot: string;
   libraryRoot: string;
