@@ -101,7 +101,12 @@ import {
   contextResume,
   contextSubagentPreamble,
 } from "./commands/context_resume.js";
-import { DoctorError, type DoctorResult, doctor } from "./commands/doctor.js";
+import {
+  DoctorError,
+  type DoctorResult,
+  doctor,
+  doctorHumanPresentation,
+} from "./commands/doctor.js";
 import {
 	DogfoodError,
 	type DogfoodResult,
@@ -1563,25 +1568,26 @@ function reportDoctor(
 	opts: HumanReportOptions = {},
 ): void {
   const ui = createTui();
+  const presentation = doctorHumanPresentation(result, opts.verbose === true);
   printLines([
     ...ui.title("anamnesis doctor", path.basename(result.projectRoot)),
 		...ui.verdict({
 			label: result.ok ? "Installation healthy" : "Repair required",
 			summary: result.ok
 				? "managed surfaces and runtime checks passed"
-				: `${result.summary.errors} errors and ${result.summary.warnings} warnings found`,
+				: `${presentation.summary.errors} errors and ${presentation.summary.warnings} warnings found`,
 			tone: result.ok
 				? "ready"
-				: result.summary.errors > 0
+				: presentation.summary.errors > 0
 					? "error"
 					: "warning",
 		}),
 		...ui.statusRows([
       {
 				label: "findings",
-        value: `${result.summary.errors} error(s), ${result.summary.warnings} warning(s), ${result.summary.info} info`,
+				value: `${presentation.summary.errors} error(s), ${presentation.summary.warnings} warning(s), ${presentation.summary.info} info`,
 				tone:
-					result.summary.errors > 0 || result.summary.warnings > 0
+					presentation.summary.errors > 0 || presentation.summary.warnings > 0
 						? "warning"
 						: "success",
       },
@@ -1593,12 +1599,18 @@ function reportDoctor(
   if (result.codexHookTrust) {
 		reportCodexHookTrustInspection(result.codexHookTrust, opts);
   }
-  if (result.issues.length === 0) {
+  if (presentation.issues.length === 0) {
 		if (opts.verbose) {
     for (const line of formatGenerationBoundaryLines(
       collectGenerationBoundaryStatus(result.projectRoot),
 			))
       console.log(line);
+		} else if (presentation.hiddenInfo > 0) {
+			console.log(
+				ui.note(
+					`${presentation.hiddenInfo} informational finding(s) hidden; use --verbose`,
+				),
+			);
 		} else {
 			console.log(ui.note("use `--verbose` for full diagnostic context"));
     }
@@ -1606,9 +1618,7 @@ function reportDoctor(
     return;
   }
   printLines(ui.section("Issues"));
-	for (const issue of result.issues.filter(
-		(item) => opts.verbose || item.severity !== "info",
-	)) {
+	for (const issue of presentation.issues) {
     const scope = issue.scopePath ? ` [${issue.scopePath}]` : "";
     const target = issue.target ? ` ${issue.target}` : "";
 		printWrapped(
@@ -1628,10 +1638,10 @@ function reportDoctor(
     collectGenerationBoundaryStatus(result.projectRoot),
 		))
     console.log(line);
-	} else if (result.summary.info > 0) {
+	} else if (presentation.hiddenInfo > 0) {
 		console.log(
 			ui.note(
-				`${result.summary.info} informational finding(s) hidden; use --verbose`,
+				`${presentation.hiddenInfo} informational finding(s) hidden; use --verbose`,
 			),
 		);
   }

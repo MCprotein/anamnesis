@@ -4,7 +4,11 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { init } from "./init.js";
 import { update } from "./update.js";
-import { doctor, DoctorError } from "./doctor.js";
+import {
+  doctor,
+  doctorHumanPresentation,
+  DoctorError,
+} from "./doctor.js";
 import { upsertRegion } from "../core/regions.js";
 import {
   readAgentfile,
@@ -232,6 +236,17 @@ describe("doctor — installation integrity", () => {
         }),
       ]),
     );
+
+    expect(doctorHumanPresentation(result, false).issues).not.toContainEqual(
+      expect.objectContaining({
+        code: "subagent-injection-evidence-missing",
+      }),
+    );
+    expect(doctorHumanPresentation(result, true).issues).toContainEqual(
+      expect.objectContaining({
+        code: "subagent-injection-evidence-missing",
+      }),
+    );
   });
 
   it("warns when subagent injection benchmark evidence is stale or failed", () => {
@@ -273,6 +288,32 @@ describe("doctor — installation integrity", () => {
           severity: "warning",
           code: "subagent-injection-benchmark-failed",
           message: expect.stringContaining("1 missed"),
+        }),
+      ]),
+    );
+
+    const defaultPresentation = doctorHumanPresentation(result, false);
+    expect(defaultPresentation.summary.warnings).toBe(0);
+    expect(defaultPresentation.issues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "subagent-injection-evidence-stale",
+        }),
+        expect.objectContaining({
+          code: "subagent-injection-benchmark-failed",
+        }),
+      ]),
+    );
+
+    const verbosePresentation = doctorHumanPresentation(result, true);
+    expect(verbosePresentation.summary.warnings).toBe(2);
+    expect(verbosePresentation.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "subagent-injection-evidence-stale",
+        }),
+        expect.objectContaining({
+          code: "subagent-injection-benchmark-failed",
         }),
       ]),
     );

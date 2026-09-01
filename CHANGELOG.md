@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Kept maintainer-only subagent benchmark freshness findings out of the default
+  human-readable `doctor` warning count and issue list. The full diagnostics
+  remain available through `doctor --verbose` and continue to feed release,
+  dogfood, markdown, and evidence consumers.
+
 ## [1.23.3] — 2026-09-01
 
 ### Fixed
