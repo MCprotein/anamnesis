@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.23.1] — 2026-09-01
+
 ### Fixed
 
 - Added an explicit CI budget to the narrow-width doctor CLI regression test.
