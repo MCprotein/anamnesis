@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.23.3] — 2026-09-01
+
 ### Fixed
 
 - Applied a shared 90-second CI budget to the deterministic Work-agent
