@@ -139,21 +139,20 @@ import {
 	OntologyBootstrapError,
 } from "./commands/ontology.js";
 import {
+	listRegisteredProjects,
+	ProjectsError,
+	pruneRegisteredProjects,
+	type RegisteredProjectsResult,
+	registerManagedProject,
+	syncRegisteredProjects,
+	unregisterManagedProject,
+} from "./commands/projects.js";
+import {
 	type PromotableType,
 	PromoteError,
 	type PromoteResult,
 	promote,
 } from "./commands/promote.js";
-import {
-	ProjectsError,
-	type RegisteredProjectsResult,
-	listRegisteredProjects,
-	pruneRegisteredProjects,
-	registerManagedProject,
-	syncRegisteredProjects,
-	unregisterManagedProject,
-} from "./commands/projects.js";
-import { syncProjectsAfterUpgrade } from "./commands/upgrade_projects.js";
 import {
 	type ReleaseCheckResult,
 	releaseCheck,
@@ -183,6 +182,7 @@ import {
 	detectUpgradeProjectGuidance,
 	formatUpgradeProjectGuidance,
 } from "./commands/upgrade_project_guidance.js";
+import { syncProjectsAfterUpgrade } from "./commands/upgrade_projects.js";
 import {
   allocateStagedPromptToNewWork,
   allocateStagedPromptToSameWork,
@@ -221,31 +221,32 @@ import {
 } from "./commands/work_hook.js";
 import { readAgentfile, type ToolName } from "./core/agentfile.js";
 import {
+	formatCompactHelp,
+	formatGettingStartedGuide,
+	formatNamespaceHelp,
+} from "./core/cli_guide.js";
+import {
   CodexHookTrustChangedError,
   type CodexHookTrustInspection,
-  type TrustCodexHooksResult,
+	codexHookTrustApprovalOutcome,
   inspectCodexHookTrust,
+	type TrustCodexHooksResult,
   trustCodexHooks,
 } from "./core/codex_hook_trust.js";
-import {
-  formatCompactHelp,
-  formatGettingStartedGuide,
-  formatNamespaceHelp,
-} from "./core/cli_guide.js";
 import {
 	collectGenerationBoundaryStatus,
 	formatBootstrapGenerationBoundaryLines,
 	formatGenerationBoundaryLines,
 } from "./core/generation-boundary.js";
-import { formatInitNextStepLines } from "./core/init_next_steps.js";
+import { initNextSteps } from "./core/init_next_steps.js";
 import type { OntologyLifecycleRecommendation } from "./core/ontology-gaps.js";
-import { createTui, type TuiTone } from "./core/tui.js";
-import { PACKAGE_VERSION } from "./core/version.js";
-import { parseSingleWorkDraft } from "./core/work_command_draft.js";
 import {
 	defaultProjectRegistryPath,
 	ProjectRegistryError,
 } from "./core/project_registry.js";
+import { createTui, type TuiTone } from "./core/tui.js";
+import { PACKAGE_VERSION } from "./core/version.js";
+import { parseSingleWorkDraft } from "./core/work_command_draft.js";
 import {
   newWorkCursor,
   readWorkCursor,
@@ -695,6 +696,8 @@ Flags (upgrade choose):
 Flags (status / doctor):
   --project-root <path>         Target directory (default: cwd)
   --library <path>              Library path (default: bundled)
+  --verbose                     Show fragments, hashes, evidence, and detailed
+                                  diagnostic context
 
 Flags (doctor):
   --append                      Append markdown to docs/DOCTOR.md and record
@@ -1011,6 +1014,47 @@ function verdictTone(ok: boolean): TuiTone {
   return ok ? "success" : "warning";
 }
 
+interface HumanReportOptions {
+	verbose?: boolean;
+}
+
+function isVerbose(flags: ParsedArgs["flags"]): boolean {
+	return flags.verbose === true;
+}
+
+function printWrapped(
+	ui: ReturnType<typeof createTui>,
+	message: string,
+	opts: { indent?: number; tone?: TuiTone } = {},
+): void {
+	const indent = opts.indent ?? 2;
+	const value = opts.tone ? ui.style(message, opts.tone) : message;
+	printLines(
+		ui.wrap(value, ui.width - indent).map((line) => `${" ".repeat(indent)}${line}`),
+	);
+}
+
+function reportChangeDetails(
+	ui: ReturnType<typeof createTui>,
+	changes: InitResult["changes"],
+): void {
+	printLines(ui.section("Changes", changes.length));
+	for (const change of changes) {
+		const target =
+			change.target === "region"
+				? `${change.file} [region:${change.regionId}]`
+				: change.path;
+		const message = `${change.status.padEnd(13)} ${target}${change.reason ? ` — ${change.reason}` : ""}`;
+		printWrapped(
+			ui,
+			message,
+			change.status === "blocked"
+				? { indent: 4, tone: "warning" }
+				: { indent: 4 },
+		);
+	}
+}
+
 function changeSummaryLine(s: {
   create: number;
   update: number;
@@ -1038,6 +1082,7 @@ function reportInit(
   result: InitResult,
   projectRoot: string,
   execAdaptersEnabled: boolean,
+  opts: HumanReportOptions = {},
 ): void {
   const ui = createTui();
   const s = summarizeChanges(result.changes);
@@ -1045,21 +1090,30 @@ function reportInit(
 		result.selectedFragments.map((f) => f.id).join(", ") || "(none)";
   printLines([
     ...ui.title("anamnesis init", result.agentfile.project.name),
-    ...ui.keyValues([
+		...ui.verdict({
+			label: result.writtenToDisk ? "Initialized" : "Preview ready",
+			summary:
+				s.blocked > 0
+					? `${s.blocked} protected write(s) blocked`
+					: "project adoption plan is ready",
+			tone: s.blocked > 0 ? "warning" : result.writtenToDisk ? "ready" : "info",
+		}),
+		...ui.statusRows([
       {
-        key: "mode",
+				label: "mode",
         value: result.writtenToDisk ? "applied" : "preview",
         tone: result.writtenToDisk ? "success" : "accent",
       },
-      { key: "tools", value: result.agentfile.tools.join(", ") },
-      { key: "fragments (root)", value: fragIds },
+			{ label: "tools", value: result.agentfile.tools.join(", ") },
+			{ label: "fragments", value: fragIds },
 			{
-				key: "changes",
+				label: "changes",
 				value: changeSummaryLine(s),
 				tone: countTone(s.blocked),
 			},
     ]),
   ]);
+	if (opts.verbose) reportChangeDetails(ui, result.changes);
   if (result.monorepoDetection?.isMonorepo) {
     const det = result.monorepoDetection;
     printLines([
@@ -1068,12 +1122,12 @@ function reportInit(
 				`monorepo detected via ${det.declaredVia}: ${det.scopes.length} scope(s)`,
 			),
     ]);
-    for (const scope of det.scopes) {
+    for (const scope of opts.verbose ? det.scopes : []) {
 			const ids =
 				scope.matchedRules.map((r) => r.suggest).join(", ") || "(none)";
       console.log(`    ${scope.path.padEnd(20)} ${ids}`);
     }
-    if (det.emptyScopes.length > 0) {
+    if (opts.verbose && det.emptyScopes.length > 0) {
       console.log(
         `  empty workspace dirs (no rule match): ${det.emptyScopes.join(", ")}`,
       );
@@ -1081,15 +1135,14 @@ function reportInit(
   }
   if (!result.writtenToDisk) {
     console.log(ui.note("dry-run: no files written"));
-    reportWorkspaceProfile(projectRoot);
+    if (opts.verbose) reportWorkspaceProfile(projectRoot);
   }
   if (s.blocked > 0) {
-    console.log(
-      ui.note(
-        "some writes blocked; re-run with --allow-exec-adapters to include hooks/commands/skills",
-        "warning",
-      ),
-    );
+		printWrapped(
+			ui,
+			"some writes blocked; re-run with --allow-exec-adapters to include hooks/commands/skills",
+			{ tone: "warning" },
+		);
   }
   if (result.bootstrapError) {
     console.log(`  ontology bootstrap: failed — ${result.bootstrapError}`);
@@ -1122,21 +1175,31 @@ function reportInit(
     console.log(
       `  project docs: ${result.projectDocs.mode} ${planned} planned, ${skipped} skipped`,
     );
-    for (const target of result.projectDocs.targets) {
-      console.log(`    ${target.outcome.padEnd(16)} ${target.path}`);
+    for (const target of opts.verbose ? result.projectDocs.targets : []) {
+			printWrapped(ui, `${target.outcome.padEnd(16)} ${target.path}`, {
+				indent: 4,
+			});
     }
   }
-  for (const conflict of result.surfaceConflicts) {
+  if (result.surfaceConflicts.length > 0) {
+    console.log(
+      ui.note(
+        `${result.surfaceConflicts.length} existing surface(s) preserved`,
+        "warning",
+      ),
+    );
+  }
+  for (const conflict of opts.verbose ? result.surfaceConflicts : []) {
     const label =
       conflict.outcome === "planned-preserve"
         ? "planned surface preserve"
         : "preserved surface";
-		console.log(`  ${label}: ${conflict.path} -> ${conflict.preservedAs}`);
+		printWrapped(ui, `${label}: ${conflict.path} -> ${conflict.preservedAs}`);
   }
-  if (result.writtenToDisk && result.evidencePath) {
+  if (opts.verbose && result.writtenToDisk && result.evidencePath) {
     console.log(`  evidence: ${result.evidencePath}`);
   }
-	if (result.registration) {
+	if (opts.verbose && result.registration) {
 		console.log(
 			`  project registry: registered ${result.registration.canonical_root}`,
 		);
@@ -1148,302 +1211,323 @@ function reportInit(
 			),
 		);
 	}
-  console.log("  generation boundary:");
-  console.log(
-    "    cli-generated: AGENTS.md managed context, optional docs regions, static ontology slices, and any .bootstrap.yaml facts above",
-  );
-  console.log(
-    "    agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
-  );
-  for (const line of formatInitNextStepLines({
+  if (opts.verbose) {
+    console.log("  generation boundary:");
+    console.log(
+      "    cli-generated: AGENTS.md managed context, optional docs regions, static ontology slices, and any .bootstrap.yaml facts above",
+    );
+    console.log(
+      "    agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
+    );
+  }
+	printLines(ui.section("Next steps"));
+  for (const step of initNextSteps({
     writtenToDisk: result.writtenToDisk,
     blockedWrites: s.blocked,
     tools: result.agentfile.tools,
     execAdaptersEnabled,
   })) {
-    console.log(line);
+		if (step.command) {
+			printLines(
+				ui.commandRows([{ command: step.value, description: step.label }]),
+			);
+		} else {
+			printWrapped(ui, `${step.label}: ${step.value}`);
+		}
   }
 }
 
-function reportStatus(result: StatusResult, projectRoot: string): void {
+function reportStatus(
+	result: StatusResult,
+	projectRoot: string,
+	opts: HumanReportOptions = {},
+): void {
   const ui = createTui();
   const { agentfile, scopes, suggested, declined, summary } = result;
-  const clean = result.entries.every((e) => e.drift === "clean");
-  const ok =
-    clean &&
-    result.continuity.ready &&
-    !result.sessionContextBudget.capExceeded &&
-    result.contextDiagnostics.ok &&
-    result.executableSecurity.ok &&
-    result.agentConfigDamage.ok &&
-    result.dependencies.ready;
+	const drifted = result.entries.filter((entry) => entry.drift !== "clean");
+	const fragmentProblems = result.fragments.filter(
+		(fragment) =>
+			fragment.status === "update-available" ||
+			fragment.status === "library-missing",
+	);
+	const trust = result.codexHookTrust?.summary;
+	const codexHooksRelevant =
+		agentfile.tools.includes("codex") ||
+		result.codexHooks.summary.total > 0 ||
+		(!result.codexHooks.readable &&
+			!result.codexHooks.parseError?.endsWith(" is missing"));
+	const hookTrustNeedsAttention =
+		trust !== undefined && trust.untrusted + trust.modified + trust.unknown > 0;
+	const hasAttention =
+		drifted.length > 0 ||
+		fragmentProblems.length > 0 ||
+		suggested.length > 0 ||
+		result.partialAdoptions.length > 0 ||
+		!result.dependencies.ready ||
+		!result.continuity.ready ||
+		result.sessionContextBudget.capExceeded ||
+		result.sessionContextBudget.warnings.length > 0 ||
+		(codexHooksRelevant && !result.codexHooks.readable) ||
+		(codexHooksRelevant && result.codexHooks.summary.warnings > 0) ||
+		hookTrustNeedsAttention ||
+		result.ontology.summary.warnings > 0 ||
+		result.evidence.invalid > 0 ||
+		result.evidence.latest_stale === true ||
+		result.documents.summary.brokenLinks > 0 ||
+		result.documents.summary.missingOntologyRefs > 0 ||
+		!result.contextDiagnostics.ok ||
+		!result.executableSecurity.ok ||
+		!result.agentConfigDamage.ok;
+
   printLines([
     ...ui.title("anamnesis status", agentfile.project.name),
-    ...ui.keyValues([
+		...ui.verdict({
+			label: hasAttention ? "Attention needed" : "Ready",
+			summary: hasAttention
+				? "review the exceptions below"
+				: "project memory and agent surfaces are in sync",
+			tone: hasAttention ? "warning" : "ready",
+		}),
+		...ui.statusRows([
 			{
-				key: "verdict",
-				value: ok ? "ready" : "attention needed",
-				tone: verdictTone(ok),
+				label: "managed",
+				value: `${summary.entriesClean}/${result.entries.length} clean`,
+				tone: verdictTone(drifted.length === 0),
+				summary: `${summary.fragmentTotal} fragments`,
 			},
-      { key: "tools", value: agentfile.tools.join(", ") },
+			{
+				label: "continuity",
+				value: `${result.continuity.passed}/${result.continuity.total} checks`,
+				tone: verdictTone(result.continuity.ready),
+			},
+			...(trust
+				? [
       {
-        key: "managed entries",
-        value: `${summary.entriesClean} clean / ${result.entries.length} total`,
-        tone: clean ? "success" : "warning",
+							label: "Codex hooks",
+							value: `${trust.trusted + trust.managed}/${trust.registered} runnable`,
+							tone: verdictTone(!hookTrustNeedsAttention),
+							summary: `${trust.untrusted} untrusted, ${trust.modified} modified`,
+						},
+					]
+				: []),
+			{
+				label: "documents",
+				value: `${result.documents.summary.pages} pages, ${result.documents.summary.brokenLinks} broken links`,
+				tone: verdictTone(result.documents.summary.brokenLinks === 0),
       },
     ]),
   ]);
 
-  const isMonorepo = scopes.length > 1;
-
-  if (isMonorepo) {
-    printLines(ui.section(`Scopes (${scopes.length})`));
-    for (const scope of scopes) {
-      const driftCount = scope.entries.filter(
-        (e) => e.drift !== "clean",
-      ).length;
-      const cleanCount = scope.entries.length - driftCount;
-      const driftSummary =
-        driftCount === 0
-          ? `${cleanCount} clean`
-          : `${driftCount} drift / ${cleanCount} clean`;
+	if (hasAttention) printLines(ui.section("Attention"));
+	if (drifted.length > 0) {
       console.log(
-        `    [${scope.path}]  ${scope.fragments.length} fragment(s), ${driftSummary}`,
+			ui.note(
+				`${drifted.length} managed entr${drifted.length === 1 ? "y has" : "ies have"} drift`,
+				"warning",
+			),
       );
-      for (const f of scope.fragments) {
-        console.log(`      ${formatFragmentLine(f)}`);
-      }
-      const drifted = scope.entries.filter((e) => e.drift !== "clean");
-      for (const e of drifted) {
-        const tgt =
-					e.target === "region" ? `${e.file} [region:${e.regionId}]` : e.path;
-        console.log(`      ${e.drift.padEnd(15)} ${tgt}`);
+		for (const entry of drifted.slice(0, opts.verbose ? drifted.length : 3)) {
+			const target =
+				entry.target === "region"
+					? `${entry.file} [region:${entry.regionId}]`
+					: entry.path;
+			console.log(`    ${entry.drift.padEnd(15)} ${target}`);
       }
     }
-  } else {
-    // Single-scope: flat list (back-compat with v0.2 format).
-    printLines(ui.section(`Fragments (${summary.fragmentTotal})`));
-    for (const f of result.fragments) {
-      console.log(`    ${formatFragmentLine(f)}`);
-    }
-    const drifted = result.entries.filter((e) => e.drift !== "clean");
-    if (drifted.length === 0) {
-      console.log(`  drift: none (${summary.entriesClean} entries clean)`);
-    } else {
-      console.log(`  drift:`);
-      for (const e of drifted) {
-        const tgt =
-					e.target === "region" ? `${e.file} [region:${e.regionId}]` : e.path;
-        console.log(`    ${e.drift.padEnd(15)} ${tgt}`);
-      }
-    }
-  }
-
-  if (suggested.length > 0) {
-    printLines(ui.section("Suggested"));
-    for (const s of suggested) {
-      console.log(`    ${s.suggest.padEnd(20)} ${s.reason}`);
-    }
-  }
-
-  if (declined.length > 0) {
-    printLines(ui.section("Declined"));
-    for (const d of declined) {
-      const when = d.declinedAt ? ` (${d.declinedAt})` : "";
-      const why = d.reason ? `: ${d.reason}` : "";
-      const state = d.matched ? "active" : "stale";
-      console.log(`    ${d.id}${when} [${state}]${why}`);
-    }
-  }
-
-  if (result.partialAdoptions.length > 0) {
-		printLines(
-			ui.section(`Partial Upgrades (${result.partialAdoptions.length})`),
+	if (fragmentProblems.length > 0) {
+		console.log(
+			ui.note(`${fragmentProblems.length} fragment update issue(s)`, "warning"),
 		);
-    for (const partial of result.partialAdoptions) {
-      const reasons = partial.reasons.join(", ");
+		for (const fragment of fragmentProblems) {
+			console.log(`    ${formatFragmentLine(fragment)}`);
+		}
+	}
+	for (const check of result.continuity.checks.filter(
+		(item) => item.status === "fail",
+	)) {
+		console.log(`    fail ${check.label}: ${check.detail}`);
+      }
+	if (result.sessionContextBudget.capExceeded) {
+		console.log(
+			ui.note(
+				`session context over budget (${result.sessionContextBudget.estimatedTokens}/${result.sessionContextBudget.maxTokens} tokens)`,
+				"warning",
+			),
+		);
+    }
+	for (const warning of result.sessionContextBudget.warnings) {
+		console.log(`    warning ${warning}`);
+  }
+  if (suggested.length > 0) {
+		console.log(
+			ui.note(
+				`${suggested.length} fragment suggestion(s) available`,
+				"warning",
+			),
+		);
+		for (const item of suggested)
+			console.log(`    ${item.suggest}: ${item.reason}`);
+  }
+  if (result.partialAdoptions.length > 0) {
+		console.log(
+			ui.note(
+				`${result.partialAdoptions.length} partial upgrade(s) need review`,
+				"warning",
+			),
+		);
+		for (const item of result.partialAdoptions) {
       console.log(
-        `    ${partial.fragmentId}@${partial.installedVersion} -> ${partial.libraryVersion} held by ${reasons}`,
+				`    ${item.fragmentId}@${item.installedVersion} -> ${item.libraryVersion}: ${item.reasons.join(", ")}`,
       );
-      for (const target of partial.targets.slice(0, 3)) {
-        console.log(`      ${target}`);
-      }
-      if (partial.targets.length > 3) {
-        console.log(`      ... ${partial.targets.length - 3} more target(s)`);
-      }
     }
   }
-
   if (!result.dependencies.ready) {
 		console.log(
-			`  dependencies: issues (${result.dependencies.summary.total})`,
+			ui.note(
+				`${result.dependencies.summary.total} dependency issue(s)`,
+				"warning",
+			),
 		);
     for (const problem of result.dependencies.problems.slice(0, 5)) {
-      if (problem.kind === "cycle") {
         console.log(
-          `    cycle ${problem.scopePath}: ${problem.cycle?.join(" -> ")}`,
-        );
-      } else {
-        const min = problem.requiredMinVersion
-          ? `>=${problem.requiredMinVersion}`
-          : "";
-        console.log(
-          `    ${problem.kind} ${problem.scopePath}: ${problem.fragmentId} -> ${problem.dependencyId}${min}`,
+				`    ${problem.kind} ${problem.scopePath}: ${problem.fragmentId ?? problem.cycle?.join(" -> ")}`,
         );
       }
     }
+	if (codexHooksRelevant && !result.codexHooks.readable) {
+    console.log(
+			ui.note(
+				`Codex hook registry unavailable: ${result.codexHooks.parseError}`,
+				"warning",
+			),
+    );
+	} else {
+		for (const warning of result.codexHooks.warnings.slice(0, 3)) {
+			console.log(`    hook warning ${warning.kind}: ${warning.detail}`);
   }
+  }
+	if (result.codexHookTrust && (opts.verbose || hookTrustNeedsAttention))
+		reportCodexHookTrustInspection(result.codexHookTrust, opts);
+	if (hookTrustNeedsAttention) {
+      console.log(
+			ui.note("installed untrusted/modified hooks may not execute", "warning"),
+      );
+      }
+	if (result.ontology.summary.warnings > 0) {
+        console.log(
+			ui.note(
+				`${result.ontology.summary.warnings} ontology warning(s)`,
+				"warning",
+			),
+        );
+		for (const gap of result.ontology.gaps.filter(
+			(item) => item.severity === "warning",
+		)) {
+			console.log(`    ${gap.fragmentId}:${gap.kind} — ${gap.detail}`);
+			console.log(`      next: ${gap.next}`);
+    }
+  }
+	if (result.evidence.invalid > 0 || result.evidence.latest_stale) {
+      console.log(
+			ui.note(
+				`evidence: ${result.evidence.invalid} invalid line(s)${result.evidence.latest_stale ? ", latest is stale" : ""}`,
+				"warning",
+			),
+      );
+    }
+	if (
+		result.documents.summary.brokenLinks > 0 ||
+		result.documents.summary.missingOntologyRefs > 0
+	) {
+    console.log(
+			ui.note(
+				`documents: ${result.documents.summary.brokenLinks} broken link(s), ${result.documents.summary.missingOntologyRefs} missing ontology ref(s)`,
+				"warning",
+			),
+    );
+  }
+	for (const [label, diagnostic] of [
+		["context diagnostics", result.contextDiagnostics],
+		["executable security", result.executableSecurity],
+		["agent config", result.agentConfigDamage],
+	] as const) {
+		if (!diagnostic.ok)
+      console.log(
+				ui.note(
+					`${label}: ${diagnostic.summary.warnings} warning(s)`,
+					"warning",
+				),
+      );
+    }
+	for (const [label, diagnostic] of [
+		["executable security", result.executableSecurity],
+		["agent config", result.agentConfigDamage],
+	] as const) {
+		if (diagnostic.ok) continue;
+		const issues = diagnostic.issues.slice(
+			0,
+			opts.verbose ? diagnostic.issues.length : 3,
+		);
+		for (const issue of issues) {
+			console.log(`    ${label} ${issue.code} ${issue.target}`);
+			console.log(`      ${issue.message}`);
+		}
+		if (!opts.verbose && diagnostic.issues.length > issues.length) {
+			console.log(
+				`    ${diagnostic.issues.length - issues.length} more; use --verbose`,
+			);
+		}
+	}
 
-  const continuity = result.continuity;
-  console.log(
-    `  continuity: ${continuity.ready ? "ready" : "issues"} (${continuity.passed}/${continuity.total})`,
-  );
-  for (const check of continuity.checks.filter((c) => c.status === "fail")) {
-    console.log(`    fail ${check.label}: ${check.detail}`);
-  }
-  const sessionBudget = result.sessionContextBudget;
-  console.log(
-    `  session context budget: ${sessionBudget.capExceeded ? "over budget" : "ok"} ` +
-      `(${sessionBudget.estimatedTokens}/${sessionBudget.maxTokens} tokens, ` +
-      `${sessionBudget.sourcePointers} pointer(s), ${sessionBudget.sourceBytes} source bytes)`,
-  );
-  if (sessionBudget.requiredRulesTotal > 0) {
-    console.log(
-      `    required rules: ${sessionBudget.requiredRulesPresent}/${sessionBudget.requiredRulesTotal}, ` +
-        `digest lines: ${sessionBudget.invariantDigestLines}, active task lines: ${sessionBudget.activeTaskLines}`,
-    );
-  }
-  for (const warning of sessionBudget.warnings) {
-    console.log(`    warning ${warning}`);
-  }
-  const codexHooks = result.codexHooks;
-  if (
-    agentfile.tools.includes("codex") ||
-    codexHooks.summary.total > 0 ||
-    codexHooks.parseError
-  ) {
-    if (codexHooks.readable) {
-      const s = codexHooks.summary;
-      console.log(
-        `  codex hooks: ${s.total} total (anamnesis ${s.anamnesis}, omx ${s.omx}, plugin ${s.plugin}, user ${s.user}, invalid ${s.invalid}; warnings ${s.warnings})`,
-      );
-      for (const warning of codexHooks.warnings.slice(0, 3)) {
-        console.log(`    warning ${warning.kind}: ${warning.detail}`);
-      }
-      if (codexHooks.warnings.length > 3) {
-        console.log(
-          `    ... ${codexHooks.warnings.length - 3} more hook warning(s)`,
-        );
-      }
-    } else {
-      console.log(`  codex hooks: unavailable (${codexHooks.parseError})`);
+	if (opts.verbose) {
+		printLines(ui.section(`Fragments (${summary.fragmentTotal})`));
+		for (const scope of scopes) {
+			if (scopes.length > 1) console.log(`  [${scope.path}]`);
+			for (const fragment of scope.fragments)
+				console.log(`    ${formatFragmentLine(fragment)}`);
     }
-  }
-  if (result.codexHookTrust) {
-    reportCodexHookTrustInspection(result.codexHookTrust);
-    if (
-      result.codexHookTrust.summary.untrusted > 0 ||
-      result.codexHookTrust.summary.modified > 0
-    ) {
-      console.log(
-        "    warning: hooks are installed but untrusted/modified definitions may not execute",
-      );
-    }
-  }
-  const ontology = result.ontology;
+		if (declined.length > 0) {
+			printLines(ui.section("Declined"));
+			for (const item of declined)
   console.log(
-    `  ontology gaps: ${ontology.summary.warnings} warning(s), ${ontology.summary.info} info`,
+					`    ${item.id} [${item.matched ? "active" : "stale"}]${item.reason ? `: ${item.reason}` : ""}`,
   );
-  printOntologyRecommendation(ui, result.ontologyRecommendation, {
-    label: "ontology next",
-    includeOk: true,
-  });
-  for (const gap of ontology.gaps.filter((g) => g.severity === "warning")) {
-    const scope = gap.scopePath === "." ? "" : ` [${gap.scopePath}]`;
-    const target = gap.target ? ` ${gap.target}` : "";
+  }
+		printLines(ui.section("Diagnostics"));
+		console.log(`  tools: ${agentfile.tools.join(", ")}`);
     console.log(
-      `    ${gap.severity.padEnd(7)} ${gap.fragmentId}:${gap.kind}${scope}${target}`,
+			`  session context: ${result.sessionContextBudget.estimatedTokens}/${result.sessionContextBudget.maxTokens} tokens, ${result.sessionContextBudget.sourcePointers} pointers`,
     );
-    console.log(`      ${gap.detail}`);
-    console.log(`      next: ${gap.next}`);
-  }
-  const evidence = result.evidence;
-  if (evidence.latest) {
-    const freshness =
-      evidence.latest_age_ms !== undefined
-        ? ` (${formatAge(evidence.latest_age_ms)} old${evidence.latest_stale ? "; stale" : ""})`
-        : "";
+		if (result.evidence.latest) {
+  console.log(
+				`  evidence: ${result.evidence.total} records, latest ${result.evidence.latest.kind} at ${result.evidence.latest.generated_at}`,
+  );
+			for (const kind of result.evidence.byKind)
     console.log(
-      `  evidence: ${evidence.total} record(s), latest ${evidence.latest.kind} at ${evidence.latest.generated_at}${freshness}`,
-    );
-    for (const kind of evidence.byKind) {
-      console.log(
-        `    ${kind.kind}: ${kind.total} record(s), latest ${kind.latest.generated_at} (${formatAge(kind.latest_age_ms)} old${kind.stale ? "; stale" : ""})`,
-      );
-    }
-    if (evidence.invalid > 0) {
-      console.log(`    invalid evidence line(s): ${evidence.invalid}`);
-    }
-  } else {
-    const suffix =
-      evidence.invalid > 0 ? ` (${evidence.invalid} invalid line(s))` : "";
-    console.log(`  evidence: none${suffix}`);
-  }
-  const documents = result.documents;
-  console.log(
-    `  documents: ${documents.summary.pages} page(s), ${documents.summary.headings} heading(s), ` +
-      `${documents.summary.brokenLinks} broken link(s), ` +
-      `${documents.summary.missingOntologyRefs} missing ontology ref(s)` +
-			(documents.catalogPath
-				? ` [${documents.catalogPath}]`
-				: " [default roots]"),
-  );
-  const contextDiagnostics = result.contextDiagnostics;
-  const contextInfo =
-    contextDiagnostics.summary.info > 0
-      ? `, ${contextDiagnostics.summary.info} info`
-      : "";
-  console.log(
-    `  context diagnostics: ${contextDiagnostics.ok ? "ok" : "issues"} (${contextDiagnostics.summary.warnings} warning(s)${contextInfo})`,
-  );
-  const executableSecurity = result.executableSecurity;
-  const executableInfo =
-    executableSecurity.summary.info > 0
-      ? `, ${executableSecurity.summary.info} info`
-      : "";
-  console.log(
-    `  executable security: ${executableSecurity.ok ? "ok" : "issues"} (${executableSecurity.summary.warnings} warning(s)${executableInfo})`,
-  );
-  for (const issue of executableSecurity.issues.slice(0, 3)) {
-    console.log(`    ${issue.severity} ${issue.code}: ${issue.target}`);
-    console.log(`      ${issue.message}`);
-  }
-  if (executableSecurity.issues.length > 3) {
-    console.log(
-      `    ... ${executableSecurity.issues.length - 3} more executable security issue(s)`,
+					`    ${kind.kind}: ${kind.total}, ${formatAge(kind.latest_age_ms)} old${kind.stale ? "; stale" : ""}`,
     );
   }
-  const agentConfigDamage = result.agentConfigDamage;
-  const damageInfo =
-    agentConfigDamage.summary.info > 0
-      ? `, ${agentConfigDamage.summary.info} info`
-      : "";
-  console.log(
-    `  agent config damage: ${agentConfigDamage.ok ? "ok" : "issues"} (${agentConfigDamage.summary.warnings} warning(s)${damageInfo})`,
-  );
-  for (const issue of agentConfigDamage.issues.slice(0, 3)) {
-    console.log(`    ${issue.severity} ${issue.code}: ${issue.target}`);
-    console.log(`      ${issue.message}`);
-  }
-  if (agentConfigDamage.issues.length > 3) {
-    console.log(
-      `    ... ${agentConfigDamage.issues.length - 3} more agent config damage issue(s)`,
-    );
-  }
+		printOntologyRecommendation(ui, result.ontologyRecommendation, {
+			label: "ontology next",
+			includeOk: true,
+		});
   for (const line of formatGenerationBoundaryLines(
     collectGenerationBoundaryStatus(projectRoot),
-  )) {
+		))
     console.log(line);
+	} else {
+		printLines(ui.section("Next"));
+		printWrapped(
+			ui,
+			hasAttention
+				? "resolve the items above, then run `anamnesis doctor`"
+				: "no action required",
+			{ tone: hasAttention ? "warning" : "success" },
+		);
+		printWrapped(
+			ui,
+			"use `--verbose` for fragments, hashes, evidence, and generation details",
+		);
   }
 }
 
@@ -1474,15 +1558,27 @@ function printOntologyRecommendation(
   }
 }
 
-function reportDoctor(result: DoctorResult): void {
+function reportDoctor(
+	result: DoctorResult,
+	opts: HumanReportOptions = {},
+): void {
   const ui = createTui();
-  const verdict = result.ok ? "ok" : "issues found";
   printLines([
     ...ui.title("anamnesis doctor", path.basename(result.projectRoot)),
-    ...ui.keyValues([
-      { key: "verdict", value: verdict, tone: verdictTone(result.ok) },
+		...ui.verdict({
+			label: result.ok ? "Installation healthy" : "Repair required",
+			summary: result.ok
+				? "managed surfaces and runtime checks passed"
+				: `${result.summary.errors} errors and ${result.summary.warnings} warnings found`,
+			tone: result.ok
+				? "ready"
+				: result.summary.errors > 0
+					? "error"
+					: "warning",
+		}),
+		...ui.statusRows([
       {
-        key: "issues",
+				label: "findings",
         value: `${result.summary.errors} error(s), ${result.summary.warnings} warning(s), ${result.summary.info} info`,
 				tone:
 					result.summary.errors > 0 || result.summary.warnings > 0
@@ -1495,32 +1591,49 @@ function reportDoctor(result: DoctorResult): void {
     label: "ontology next",
   });
   if (result.codexHookTrust) {
-    reportCodexHookTrustInspection(result.codexHookTrust);
+		reportCodexHookTrustInspection(result.codexHookTrust, opts);
   }
   if (result.issues.length === 0) {
-    console.log(ui.note("installation integrity checks passed", "success"));
+		if (opts.verbose) {
     for (const line of formatGenerationBoundaryLines(
       collectGenerationBoundaryStatus(result.projectRoot),
-    )) {
+			))
       console.log(line);
+		} else {
+			console.log(ui.note("use `--verbose` for full diagnostic context"));
     }
     reportAppendEvidence(result.appendedPath, result.evidencePath);
     return;
   }
   printLines(ui.section("Issues"));
-  for (const issue of result.issues) {
+	for (const issue of result.issues.filter(
+		(item) => opts.verbose || item.severity !== "info",
+	)) {
     const scope = issue.scopePath ? ` [${issue.scopePath}]` : "";
     const target = issue.target ? ` ${issue.target}` : "";
-		console.log(`  ${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`);
-    console.log(`    ${issue.message}`);
+		printWrapped(
+			ui,
+			`${issue.severity.padEnd(7)} ${issue.code}${scope}${target}`,
+		);
+		printWrapped(ui, issue.message, { indent: 4 });
     if (issue.repair) {
-      console.log(`    repair: ${issue.repair}`);
+			printWrapped(ui, `repair: ${issue.repair}`, {
+				indent: 4,
+				tone: "warning",
+			});
     }
   }
+	if (opts.verbose) {
   for (const line of formatGenerationBoundaryLines(
     collectGenerationBoundaryStatus(result.projectRoot),
-  )) {
+		))
     console.log(line);
+	} else if (result.summary.info > 0) {
+		console.log(
+			ui.note(
+				`${result.summary.info} informational finding(s) hidden; use --verbose`,
+			),
+		);
   }
   reportAppendEvidence(result.appendedPath, result.evidencePath);
 }
@@ -1575,10 +1688,30 @@ function reportAppendEvidence(
   }
 }
 
-function reportHookSummary(result: HookSummaryResult): void {
-  console.log(`anamnesis hooks summary — ${result.projectName}`);
-  console.log(`  source: ${result.sourcePath}`);
-  console.log(`  records: ${result.total} valid, ${result.invalid} invalid`);
+function reportHookSummary(
+	result: HookSummaryResult,
+	opts: HumanReportOptions = {},
+): void {
+	const ui = createTui();
+	printLines([
+		...ui.title("anamnesis hooks summary", result.projectName),
+		...ui.verdict({
+			label:
+				result.invalid > 0
+					? "Invalid hook records found"
+					: "Hook history ready",
+			summary: `${result.total} valid record(s)`,
+			tone: result.invalid > 0 ? "warning" : "ready",
+		}),
+		...ui.statusRows([
+			...(opts.verbose ? [{ label: "source", value: result.sourcePath }] : []),
+			{
+				label: "records",
+				value: `${result.total} valid, ${result.invalid} invalid`,
+				tone: countTone(result.invalid),
+			},
+		]),
+	]);
   if (result.latest) {
     console.log(
       `  latest: ${result.latest.event} ${result.latest.status} at ${result.latest.generated_at}`,
@@ -1591,43 +1724,91 @@ function reportHookSummary(result: HookSummaryResult): void {
       `  status: ${result.byStatus.map((s) => `${s.status}=${s.total}`).join(", ")}`,
     );
   }
-  for (const event of result.byEvent) {
+  for (const event of opts.verbose ? result.byEvent : []) {
     const statuses = Object.entries(event.byStatus)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([status, count]) => `${status}=${count}`)
       .join(", ");
-    console.log(`    ${event.event}: ${event.total} (${statuses})`);
+		printWrapped(ui, `${event.event}: ${event.total} (${statuses})`, {
+			indent: 4,
+		});
   }
-  reportAppendEvidence(result.appendedPath, result.evidencePath);
+  if (opts.verbose) reportAppendEvidence(result.appendedPath, result.evidencePath);
 }
 
 function reportCodexHookTrustInspection(
   inspection: CodexHookTrustInspection,
+	opts: HumanReportOptions = {},
 ): void {
+	const ui = createTui();
   const s = inspection.summary;
-  console.log(
-    `  Codex hooks: ${s.registered} registered, ${s.trusted} trusted, ${s.untrusted} untrusted, ${s.modified} modified, ${s.managed} managed, ${s.unknown} unknown`,
-  );
-  for (const hook of inspection.hooks) {
+	printWrapped(
+		ui,
+		`Codex hooks: ${s.registered} registered, ${s.trusted} trusted, ${s.untrusted} untrusted, ${s.modified} modified, ${s.managed} managed, ${s.unknown} unknown`,
+	);
+	for (const hook of inspection.hooks.filter(
+		(item) =>
+			opts.verbose ||
+			item.status === "untrusted" ||
+			item.status === "modified" ||
+			item.status === "unknown",
+	)) {
     const marker = hook.status === "modified" ? "MODIFIED" : hook.status;
-    console.log(`    ${marker.padEnd(9)} ${hook.event} ${hook.command}`);
-    if (hook.key) console.log(`      key: ${hook.key}`);
-    if (hook.currentHash) console.log(`      current hash: ${hook.currentHash}`);
+		printWrapped(
+			ui,
+			`${marker.padEnd(9)} ${hook.event}${opts.verbose ? ` ${hook.command}` : ""}`,
+			{ indent: 4 },
+		);
+		if (opts.verbose && hook.key)
+			printWrapped(ui, `key: ${hook.key}`, { indent: 6 });
+		if (opts.verbose && hook.currentHash)
+			printWrapped(ui, `current hash: ${hook.currentHash}`, { indent: 6 });
   }
   for (const alternate of inspection.alternateProjectSources) {
-    console.log(`    runtime source instead: ${alternate.sourcePath}`);
+		printWrapped(ui, `runtime source instead: ${alternate.sourcePath}`, {
+			indent: 4,
+		});
   }
   for (const warning of inspection.warnings) {
-    console.log(`    warning: ${warning}`);
+		printWrapped(ui, `warning: ${warning}`, { indent: 4, tone: "warning" });
   }
   if (!inspection.available && inspection.error) {
-    console.log(`    unavailable: ${inspection.error}`);
+		printWrapped(ui, `unavailable: ${inspection.error}`, {
+			indent: 4,
+			tone: "warning",
+		});
   }
 }
 
 function reportCodexHookTrust(result: TrustCodexHooksResult): void {
-  console.log(`anamnesis hooks codex trust — ${result.mode}`);
-  reportCodexHookTrustInspection(result.inspection);
+	const ui = createTui();
+	const outcome = codexHookTrustApprovalOutcome(result);
+	const noApprovalNeeded = outcome === "not-needed";
+	const applyComplete = outcome === "complete";
+	const label =
+		outcome === "review"
+			? "Approval review"
+			: outcome === "unavailable"
+				? "Approval unavailable"
+				: noApprovalNeeded
+					? "No approval needed"
+					: applyComplete
+						? "Approval applied"
+						: "Approval incomplete";
+	printLines([
+		...ui.title("anamnesis hooks codex trust", result.mode),
+		...ui.verdict({
+			label,
+			summary: `${result.targets.length} candidate(s)`,
+			tone:
+				result.mode === "dry-run"
+					? "warning"
+					: applyComplete || noApprovalNeeded
+						? "ready"
+						: "warning",
+		}),
+	]);
+	reportCodexHookTrustInspection(result.inspection, { verbose: true });
   console.log(`  approval candidates: ${result.targets.length}`);
   if (result.mode === "dry-run" && result.targets.length > 0) {
     console.log(
@@ -1635,6 +1816,15 @@ function reportCodexHookTrust(result: TrustCodexHooksResult): void {
     );
   } else if (result.mode === "apply") {
     console.log(`  approved: ${result.written.length}`);
+		if (!result.inspection.available) {
+			console.log(ui.note("no trust state was written", "warning"));
+		} else if (outcome === "incomplete" && result.targets.length === 0) {
+			printWrapped(
+				ui,
+				"no eligible runtime trust target was discovered; review unknown hooks manually",
+				{ tone: "warning" },
+			);
+		}
   }
 }
 
@@ -2583,7 +2773,11 @@ function printUpdateDeprecationWarning(): void {
 
 function reportUpdate(
   result: UpdateResult,
-  opts: { commandName?: "apply" | "update"; projectRoot?: string } = {},
+  opts: {
+		commandName?: "apply" | "update";
+		projectRoot?: string;
+		verbose?: boolean;
+	} = {},
 ): void {
   const ui = createTui();
   const commandName = opts.commandName ?? "update";
@@ -2598,52 +2792,75 @@ function reportUpdate(
       : "no changes";
   printLines([
     ...ui.title(`anamnesis ${commandName}`, result.agentfile.project.name),
-    ...ui.keyValues([
+		...ui.verdict({
+			label: result.writtenToDisk
+				? "Changes applied"
+				: pending > 0
+					? "Preview ready"
+					: "Already current",
+			summary:
+				s.blocked > 0
+					? `${s.blocked} protected write(s) blocked`
+					: `${pending} pending change(s)`,
+			tone:
+				s.blocked > 0
+					? "warning"
+					: result.writtenToDisk || pending === 0
+						? "ready"
+						: "info",
+		}),
+		...ui.statusRows([
 			{
-				key: "mode",
+				label: "mode",
 				value: mode,
 				tone: result.writtenToDisk ? "success" : "accent",
 			},
-      { key: "fragments", value: fragIds },
+			{ label: "fragments", value: fragIds },
 			{
-				key: "changes",
+				label: "changes",
 				value: changeSummaryLine(s),
 				tone: countTone(s.blocked),
 			},
     ]),
   ]);
+	if (opts.verbose) reportChangeDetails(ui, result.changes);
   if (result.suggested.length > 0) {
     const ids = result.suggested.map((r) => r.suggest).join(", ");
-    printLines([
-      ...ui.section("Suggested"),
-      ui.note(ids),
-			ui.note(
-				"add to Agentfile.fragments[] and re-run, or list under 'declined' to silence",
-			),
-    ]);
+		printLines(ui.section("Suggested"));
+		printWrapped(ui, ids);
+		printWrapped(
+			ui,
+			"add to Agentfile.fragments[] and re-run, or list under 'declined' to silence",
+		);
   }
   if (s.userModified > 0) {
-    console.log(
-      ui.note(
-        `${s.userModified} user-modified: your edits are preserved; library updates skipped for those`,
-        "warning",
-      ),
-    );
+		printWrapped(
+			ui,
+			`${s.userModified} user-modified: your edits are preserved; library updates skipped for those`,
+			{ tone: "warning" },
+		);
   }
   if (s.blocked > 0) {
-    console.log(
-      ui.note(
-        "some writes blocked; re-run with --allow-exec-adapters to include hooks/commands/skills",
-        "warning",
-      ),
-    );
+		printWrapped(
+			ui,
+			"some writes blocked; re-run with --allow-exec-adapters to include hooks/commands/skills",
+			{ tone: "warning" },
+		);
   }
-  for (const conflict of result.surfaceConflicts) {
+  if (result.surfaceConflicts.length > 0) {
+		console.log(
+			ui.note(
+				`${result.surfaceConflicts.length} existing surface(s) preserved`,
+				"warning",
+			),
+		);
+	}
+  for (const conflict of opts.verbose ? result.surfaceConflicts : []) {
     const label =
       conflict.outcome === "planned-preserve"
         ? "planned surface preserve"
         : "preserved surface";
-		console.log(`  ${label}: ${conflict.path} -> ${conflict.preservedAs}`);
+		printWrapped(ui, `${label}: ${conflict.path} -> ${conflict.preservedAs}`);
   }
   const showOntologyRecommendation =
     result.ontologyRecommendation.action !== "none" &&
@@ -2654,29 +2871,29 @@ function reportUpdate(
     });
   }
   if (result.writtenToDisk) {
-    if (result.backedUpFiles && result.backedUpFiles.length > 0) {
+    if (opts.verbose && result.backedUpFiles && result.backedUpFiles.length > 0) {
       console.log(`  backup: ${result.backupDir}`);
     }
-    if (result.prunedBackupDirs && result.prunedBackupDirs.length > 0) {
+    if (opts.verbose && result.prunedBackupDirs && result.prunedBackupDirs.length > 0) {
       console.log(`  pruned backups: ${result.prunedBackupDirs.length}`);
     }
-    if (result.evidencePath) {
+    if (opts.verbose && result.evidencePath) {
       console.log(`  evidence: ${result.evidencePath}`);
     }
   } else {
-    if (opts.projectRoot) {
+    if (opts.verbose && opts.projectRoot) {
       reportWorkspaceProfile(opts.projectRoot);
     }
     if (commandName === "apply") {
-			console.log(
-				ui.note("dry-run: re-run without --dry-run to actually write"),
+			printWrapped(
+				ui,
+				"dry-run: re-run without --dry-run to actually write",
 			);
     } else {
-      console.log(
-        ui.note(
-          "dry-run: use `anamnesis apply` to write; `update --apply` remains available for compatibility",
-        ),
-      );
+			printWrapped(
+				ui,
+				"dry-run: use `anamnesis apply` to write; `update --apply` remains available for compatibility",
+			);
     }
   }
 }
@@ -2688,14 +2905,27 @@ function reportUpgrade(
   const ui = createTui();
   printLines([
     ...ui.title("anamnesis upgrade", result.packageName),
-    ...ui.keyValues([
-      { key: "registry", value: result.registry },
+		...ui.verdict({
+			label: result.updateAvailable
+				? "Update available"
+				: result.status === "up-to-date"
+					? "Up to date"
+					: "Review upgrade state",
+			summary: `${result.currentVersion} → ${result.latestVersion}`,
+			tone: result.updateAvailable
+				? "warning"
+				: result.status === "up-to-date"
+					? "ready"
+					: "info",
+		}),
+		...ui.statusRows([
+			{ label: "registry", value: result.registry },
 			{
-				key: "version",
+				label: "version",
 				value: `${result.currentVersion} -> ${result.latestVersion}`,
 			},
       {
-        key: "status",
+				label: "status",
         value: result.status,
         tone: result.updateAvailable ? "warning" : "success",
       },
@@ -2735,9 +2965,16 @@ function reportRegisteredProjects(
 	const ui = createTui();
 	printLines([
 		...ui.title("anamnesis projects", "registered projects"),
-		...ui.keyValues([
-			{ key: "registry", value: registryPath ?? "user state default" },
-			{ key: "projects", value: String(result.length) },
+		...ui.verdict({
+			label: result.some((entry) => !entry.valid)
+				? "Stale registrations found"
+				: "Registry ready",
+			summary: `${result.length} managed project(s)`,
+			tone: result.some((entry) => !entry.valid) ? "warning" : "ready",
+		}),
+		...ui.statusRows([
+			{ label: "registry", value: registryPath ?? "user state default" },
+			{ label: "projects", value: String(result.length) },
 		]),
 	]);
 	if (result.length === 0) {
@@ -2758,15 +2995,46 @@ function reportRegisteredProjectSync(result: RegisteredProjectsResult): void {
 			result.apply ? "anamnesis projects apply" : "anamnesis projects plan",
 			"registered projects",
 		),
-		...ui.keyValues([
-			{ key: "registry", value: result.registry_path },
-			{ key: "projects", value: String(result.summary.total) },
-			{ key: "current", value: String(result.summary.current) },
-			{ key: "ready", value: String(result.summary.ready) },
-			{ key: "applied", value: String(result.summary.applied) },
-			{ key: "skipped", value: String(result.summary.skipped) },
-			{ key: "stale", value: String(result.summary.stale) },
-			{ key: "errors", value: String(result.summary.errors) },
+		...ui.verdict({
+			label:
+				result.summary.errors > 0
+					? "Project sync needs attention"
+					: result.apply
+						? "Projects synchronized"
+						: "Project plan ready",
+			summary: `${result.summary.total} registered project(s)`,
+			tone:
+				result.summary.errors > 0
+					? "error"
+					: result.summary.stale > 0
+						? "warning"
+						: "ready",
+		}),
+		...ui.statusRows([
+			{ label: "registry", value: result.registry_path },
+			{ label: "projects", value: String(result.summary.total) },
+			{
+				label: "current",
+				value: String(result.summary.current),
+				tone: "success",
+			},
+			{ label: "ready", value: String(result.summary.ready), tone: "accent" },
+			{
+				label: "applied",
+				value: String(result.summary.applied),
+				tone: "success",
+			},
+			{ label: "skipped", value: String(result.summary.skipped) },
+			{
+				label: "stale",
+				value: String(result.summary.stale),
+				tone: countTone(result.summary.stale),
+			},
+			{
+				label: "errors",
+				value: String(result.summary.errors),
+				tone: result.summary.errors > 0 ? "danger" : "success",
+			},
 		]),
 	]);
 	for (const entry of result.projects) {
@@ -3095,13 +3363,30 @@ function workEvidenceSource(
 }
 
 function reportWorkMutation(result: WorkMutationResult): void {
-  console.log(`Work ${result.work_id}`);
-  console.log(`  revision: ${result.projection.contract_revision}`);
-  console.log(`  lifecycle: ${result.projection.lifecycle}`);
-  console.log(`  progress: ${result.projection.progress.percent}%`);
-  console.log(
-    `  source: ${result.allocation?.source.envelope.event_id ?? "evidence-only transition"}`,
-  );
+	const ui = createTui();
+	printLines([
+		...ui.title("anamnesis work", result.work_id),
+		...ui.verdict({
+			label: "Work updated",
+			summary: `${result.projection.progress.percent}% complete`,
+			tone: result.projection.lifecycle === "completed" ? "ready" : "info",
+		}),
+		...ui.statusRows([
+			{ label: "revision", value: String(result.projection.contract_revision) },
+			{ label: "lifecycle", value: result.projection.lifecycle },
+			{
+				label: "progress",
+				value: `${result.projection.progress.percent}%`,
+				tone: "accent",
+			},
+			{
+				label: "source",
+				value:
+					result.allocation?.source.envelope.event_id ??
+					"evidence-only transition",
+			},
+		]),
+	]);
 }
 
 function reportWorkExecutionMutation(result: WorkMutationResult): void {
@@ -3131,38 +3416,97 @@ function reportWorkExecutionMutation(result: WorkMutationResult): void {
 }
 
 function reportWorkPromptResolution(result: WorkPromptResolutionResult): void {
-  console.log(`Work prompt ${result.capture_id}`);
-  console.log(`  resolution: ${result.resolution}`);
-  console.log(`  outcome: ${result.outcome.outcome}`);
-  if (result.work_id) console.log(`  work: ${result.work_id}`);
+	const ui = createTui();
+	printLines([
+		...ui.title("anamnesis work prompt", result.capture_id),
+		...ui.verdict({
+			label: "Prompt resolved",
+			summary: result.outcome.outcome,
+			tone: "ready",
+		}),
+		...ui.statusRows([
+			{ label: "resolution", value: result.resolution },
+			{ label: "outcome", value: result.outcome.outcome },
+			...(result.work_id ? [{ label: "work", value: result.work_id }] : []),
+		]),
+	]);
   if (result.projection) {
-    console.log(`  revision: ${result.projection.contract_revision}`);
-    console.log(`  progress: ${result.projection.progress.percent}%`);
+		printLines(
+			ui.statusRows([
+				{
+					label: "revision",
+					value: String(result.projection.contract_revision),
+				},
+				{
+					label: "progress",
+					value: `${result.projection.progress.percent}%`,
+					tone: "accent",
+				},
+			]),
+		);
   }
 }
 
-function reportWorkStatus(result: WorkStatusResult): void {
+function reportWorkStatus(
+	result: WorkStatusResult,
+	opts: HumanReportOptions = {},
+): void {
   const projection = result.projection;
-	console.log(
-		`${projection.title ?? projection.work_id} (${projection.work_id})`,
-	);
-  console.log(`  revision: ${projection.contract_revision}`);
-  console.log(`  lifecycle: ${projection.lifecycle}`);
-	console.log(
-		`  completion contract: ${projection.completion_contract ?? "(none)"}`,
-	);
-  console.log(
-    `  configured required gates: ${projection.configured_required_gates.join(", ") || "none"}`,
-  );
+	const ui = createTui();
+	const complete = projection.lifecycle === "completed";
+	printLines([
+		...ui.title(
+			"anamnesis work status",
+			projection.title ?? projection.work_id,
+		),
+		...ui.verdict({
+			label: complete
+				? "Work complete"
+				: projection.progress.blocked > 0
+					? "Work blocked"
+					: "Work active",
+			summary: `${projection.progress.percent}% · ${projection.work_id}`,
+			tone: complete
+				? "ready"
+				: projection.progress.blocked > 0
+					? "warning"
+					: "info",
+		}),
+		...ui.statusRows([
+			{ label: "revision", value: String(projection.contract_revision) },
+			{ label: "lifecycle", value: projection.lifecycle },
+			{
+				label: "progress",
+				value: `${projection.progress.percent}%`,
+				tone: complete ? "success" : "accent",
+			},
+		]),
+	]);
+	if (opts.verbose) {
+		printWrapped(
+			ui,
+			`completion contract: ${projection.completion_contract ?? "(none)"}`,
+		);
+		printWrapped(
+			ui,
+			`configured required gates: ${projection.configured_required_gates.join(", ") || "none"}`,
+		);
+	}
 	for (const gate of projection.review_gates) {
 		if (gate.enforcement === "off") continue;
-		console.log(
-			`  review ${gate.gate}: ${gate.state}; next=${gate.next_provider ?? "none"}; reviewers=${gate.passing_reviewer_refs.map((item) => `${item.provider}:${item.ref}`).join(",") || "none"}; findings=${gate.finding_refs.join(",") || "none"}; failures=${gate.failure_refs.join(",") || "none"}`,
+		printWrapped(
+			ui,
+			opts.verbose
+				? `  review ${gate.gate}: ${gate.state}; next=${gate.next_provider ?? "none"}; reviewers=${gate.passing_reviewer_refs.map((item) => `${item.provider}:${item.ref}`).join(",") || "none"}; findings=${gate.finding_refs.join(",") || "none"}; failures=${gate.failure_refs.join(",") || "none"}`
+				: `review ${gate.gate}: ${gate.state}`,
 		);
 	}
 	if (projection.parallelism.mode !== "off") {
-		console.log(
-			`  delegation: ${projection.parallelism.recorded_state}; assessment=${projection.parallelism.assessment_id ?? "none"}; next=${projection.parallelism.next_provider ?? "none"}; failures=${projection.parallelism.failure_refs.join(",") || "none"}`,
+		printWrapped(
+			ui,
+			opts.verbose
+				? `  delegation: ${projection.parallelism.recorded_state}; assessment=${projection.parallelism.assessment_id ?? "none"}; next=${projection.parallelism.next_provider ?? "none"}; failures=${projection.parallelism.failure_refs.join(",") || "none"}`
+				: `delegation: ${projection.parallelism.recorded_state}`,
 		);
 	}
 	if (result.readiness) console.log(`  readiness: ${result.readiness}`);
@@ -3171,11 +3515,20 @@ function reportWorkStatus(result: WorkStatusResult): void {
 			"  policy drift: current project policy differs; frozen Work policy retained",
 		);
   }
+	const visibleRequirements = opts.verbose
+		? projection.requirements
+		: projection.requirements.filter(
+				(requirement) =>
+					requirement.status !== "verified" && requirement.status !== "waived",
+			);
   console.log("  requirements:");
-  for (const requirement of projection.requirements) {
-    console.log(
-      `    - ${requirement.id} [${requirement.status}] — ${requirement.summary}`,
-    );
+	if (visibleRequirements.length === 0) console.log("    all applicable requirements verified");
+  for (const requirement of visibleRequirements) {
+		printWrapped(
+			ui,
+			`- ${requirement.id} [${requirement.status}] — ${requirement.summary}`,
+			{ indent: 4 },
+		);
   }
   const progressDetail = projection.progress.weighted
     ? `${projection.progress.verified_weight ?? 0}/${projection.progress.applicable_weight ?? 0} verified weight`
@@ -3183,6 +3536,25 @@ function reportWorkStatus(result: WorkStatusResult): void {
 	console.log(
 		`  progress: ${projection.progress.percent}% (${progressDetail})`,
 	);
+	if (!opts.verbose) {
+		printLines(ui.section("Next"));
+		const next = projection.requirements.find(
+			(requirement) =>
+				requirement.status !== "verified" && requirement.status !== "waived",
+		);
+		const nextMessage = complete
+			? "no action required"
+			: next
+				? `${next.id}: ${next.summary}`
+				: "review readiness and close the Work";
+		printWrapped(ui, nextMessage, {
+			tone: complete
+				? "success"
+				: projection.progress.blocked > 0
+					? "warning"
+					: "accent",
+		});
+	}
 }
 
 function formatWorkBrief(result: WorkBriefResult): string {
@@ -3277,7 +3649,9 @@ async function main(argv: string[]): Promise<number> {
           enhanceDocs: flags["enhance-docs"] === true,
 					projectRegistryPath: defaultProjectRegistryPath(),
         });
-				reportInit(result, projectRoot, flags["allow-exec-adapters"] === true);
+				reportInit(result, projectRoot, flags["allow-exec-adapters"] === true, {
+					verbose: isVerbose(flags),
+				});
         return 0;
       } catch (e) {
         if (e instanceof InitError) {
@@ -3304,7 +3678,11 @@ async function main(argv: string[]): Promise<number> {
           bumpPinned: flags["bump-pinned"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
         });
-        reportUpdate(result, { commandName: "apply", projectRoot });
+        reportUpdate(result, {
+					commandName: "apply",
+					projectRoot,
+					verbose: isVerbose(flags),
+				});
         return 0;
       } catch (e) {
         if (e instanceof UpdateError) {
@@ -3327,7 +3705,11 @@ async function main(argv: string[]): Promise<number> {
           bumpPinned: flags["bump-pinned"] === true,
           allowExecAdapters: flags["allow-exec-adapters"] === true,
         });
-        reportUpdate(result, { commandName: "update", projectRoot });
+        reportUpdate(result, {
+					commandName: "update",
+					projectRoot,
+					verbose: isVerbose(flags),
+				});
         return 0;
       } catch (e) {
         if (e instanceof UpdateError) {
@@ -3534,7 +3916,7 @@ async function main(argv: string[]): Promise<number> {
         if (flags["json"] === true) {
           console.log(JSON.stringify(result, null, 2));
         } else {
-          reportStatus(result, projectRoot);
+					reportStatus(result, projectRoot, { verbose: isVerbose(flags) });
         }
         return 0;
       } catch (e) {
@@ -3558,7 +3940,7 @@ async function main(argv: string[]): Promise<number> {
           outputPath: flags["output"] as string | undefined,
           codexHookTrust,
         });
-        reportDoctor(result);
+				reportDoctor(result, { verbose: isVerbose(flags) });
         return result.ok ? 0 : 1;
       } catch (e) {
         if (e instanceof DoctorError) {
@@ -3659,7 +4041,7 @@ async function main(argv: string[]): Promise<number> {
         if (flags["json"] === true) {
           console.log(JSON.stringify(result, null, 2));
         } else {
-          reportHookSummary(result);
+          reportHookSummary(result, { verbose: isVerbose(flags) });
         }
         return result.ok ? 0 : 1;
       } catch (e) {
@@ -4027,7 +4409,7 @@ async function main(argv: string[]): Promise<number> {
           if (flags.json === true) {
             await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
           } else {
-            reportWorkStatus(result);
+            reportWorkStatus(result, { verbose: isVerbose(flags) });
           }
           return 0;
         }

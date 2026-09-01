@@ -7,6 +7,17 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Redesigned primary human-readable CLI output around a shared, width-aware visual
+  system: verdicts come first, exceptions remain visible, and routine
+  provenance moves behind `--verbose`. `status` and `doctor` now provide
+  compact defaults while preserving existing `--json`, exit-code, and trust
+  behavior.
+- Added dependency-free Unicode/ASCII markers, CJK-aware wrapping, long-token
+  truncation, and explicit `NO_COLOR`/non-TTY fallbacks for consistent local
+  terminals and CI logs.
+
 ## [1.22.1] — 2026-08-31
 
 ### Fixed

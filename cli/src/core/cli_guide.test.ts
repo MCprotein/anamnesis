@@ -59,8 +59,8 @@ describe("formatGettingStartedGuide", () => {
 
 			Guided Workflows
 			  work brief --work <id> --session <id>  Reconcile requirements, progress, blockers, and next work.
-			  upgrade plan                        Read-only package and project apply plan with choices.
-			  projects plan|apply                 Preview or apply updates across registered projects.
+			  upgrade plan                           Read-only package and project apply plan with choices.
+			  projects plan|apply                    Preview or apply updates across registered projects.
 			  Advanced namespaces such as context, handoff, benchmark, release, migrate, promote, and ontology stay available through diagnostics or \`--help --all\`.
 
 			Compatibility
@@ -71,6 +71,7 @@ describe("formatGettingStartedGuide", () => {
 			  --library <path>       Library path; defaults to the bundled package.
 			  --allow-exec-adapters  Permit hooks, commands, skills, Cursor rules, and Codex wrappers.
 			  --json                 Print structured output where supported.
+			  --verbose              Expand human-readable diagnostics where supported.
 
 			  Use \`anamnesis --help --all\` for the full maintainer command and flag catalog.
 			Docs: https://github.com/MCprotein/anamnesis"

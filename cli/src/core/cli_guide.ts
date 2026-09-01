@@ -48,7 +48,8 @@ export function formatGettingStartedGuide(
       },
       {
         command: "anamnesis upgrade --apply",
-        description: "Upgrade the CLI and synchronize safe registered projects.",
+				description:
+					"Upgrade the CLI and synchronize safe registered projects.",
       },
     ]),
     ...ui.section("Agent Follow-Ups"),
@@ -168,6 +169,10 @@ export function formatCompactHelp(
         command: "--json",
         description: "Print structured output where supported.",
       },
+			{
+				command: "--verbose",
+				description: "Expand human-readable diagnostics where supported.",
+			},
     ]),
     "",
 		ui.note(

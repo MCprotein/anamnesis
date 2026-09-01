@@ -181,6 +181,34 @@ export interface TrustCodexHooksResult {
   verification?: CodexHookTrustInspection;
 }
 
+export type CodexHookTrustApprovalOutcome =
+  | "review"
+  | "unavailable"
+  | "not-needed"
+  | "complete"
+  | "incomplete";
+
+export function codexHookTrustApprovalOutcome(
+  result: TrustCodexHooksResult,
+): CodexHookTrustApprovalOutcome {
+  if (result.mode === "dry-run") return "review";
+  if (!result.inspection.available) return "unavailable";
+  if (result.targets.length === 0) {
+    const summary = result.inspection.summary;
+    return summary.untrusted === 0 && summary.modified === 0 && summary.unknown === 0
+      ? "not-needed"
+      : "incomplete";
+  }
+  if (result.verification?.available !== true) return "incomplete";
+  const complete = result.targets.every((target) => {
+    const verified = result.verification?.hooks.find(
+      (hook) => hook.key === target.key,
+    );
+    return verified?.status === "trusted" || verified?.status === "managed";
+  });
+  return complete ? "complete" : "incomplete";
+}
+
 export class CodexHookTrustUnavailableError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);

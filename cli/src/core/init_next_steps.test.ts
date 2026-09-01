@@ -45,7 +45,7 @@ describe("formatInitNextStepLines", () => {
         execAdaptersEnabled: false,
       }).join("\n"),
     ).toContain(
-      "native automation: disabled; enable with anamnesis apply --allow-exec-adapters",
+			"enable native automation: anamnesis apply --allow-exec-adapters",
     );
   });
 });
