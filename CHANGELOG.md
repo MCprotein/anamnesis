@@ -7,6 +7,12 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Added an explicit CI budget to the narrow-width doctor CLI regression test.
+  The `v1.23.0` tag stopped on the default test timeout before any registry
+  write, so it is unpublished and superseded by `v1.23.1`.
+
 ## [1.23.0] — 2026-09-01
 
 ### Changed

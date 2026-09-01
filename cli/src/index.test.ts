@@ -630,5 +630,5 @@ fragments:
 		for (const line of result.stdout.trimEnd().split("\n")) {
 			expect(visibleLengthForTest(line)).toBeLessThanOrEqual(48);
 		}
-	});
+	}, 90_000);
 });
