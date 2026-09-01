@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.23.4] — 2026-09-01
+
 ### Fixed
 
 - Kept maintainer-only subagent benchmark freshness findings out of the default
