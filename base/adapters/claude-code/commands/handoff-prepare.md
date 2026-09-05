@@ -4,6 +4,12 @@ description: Prepare a handoff document so the next agent (or session) can resum
 
 Capture the current task state in a structured handoff file. The next agent — could be a fresh Claude session, Codex, Cursor, or anything else reading AGENTS.md and `.anamnesis/handoff/` — will load it on session start and pick up where you left off.
 
+## Invocation contract
+
+- If the user explicitly requests `/handoff-prepare` as the standalone task, create the handoff, report the result, and stop.
+- If this procedure is invoked as an auxiliary checkpoint during an active task, create the handoff and then continue the original task. The checkpoint does not broaden the user's request or authorize additional work.
+- A hook or reminder that merely suggests `/handoff-prepare` does not invoke this procedure and must not create or update handoff files automatically.
+
 ## When to invoke
 
 - Token usage approaching the limit and you might lose conversation memory
@@ -66,9 +72,13 @@ Capture the current task state in a structured handoff file. The next agent — 
 
 7. **Update the active handoff index** at `.anamnesis/handoff/active.md`.
    This file is the compact multi-task map that gets injected first on
-   session start. Read the existing file if present, preserve still-valid
-   tasks, remove tasks that are clearly completed, and add/update the
-   current task with a pointer to the archived handoff.
+   session start. Read the existing file if present and preserve user-owned
+   wording, custom sections, unrelated entries, and still-valid tasks. Add or
+   update only the current task with a pointer to the archived handoff. When
+   exact evidence proves an existing active entry is complete, move its summary
+   to `Recently completed` or leave the history intact rather than erasing it.
+   If it is ambiguous whether an entry belongs to the current task or remains
+   active, ask the user before changing that entry.
 
    Use this structure:
 
@@ -98,7 +108,9 @@ Capture the current task state in a structured handoff file. The next agent — 
 8. **Confirm to the user**: print both relative paths written and a
    1-line summary of what they captured.
 
-9. **Stop.** Do not continue the task. Handoff completion IS the goal of this command.
+9. **Return according to the invocation contract.** Stop after reporting an
+   explicit standalone handoff request. For an auxiliary checkpoint, resume the
+   original active task without expanding its scope.
 
 ## Quality bar
 

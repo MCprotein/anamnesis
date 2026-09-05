@@ -873,6 +873,59 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		).toBe(1);
 	});
 
+	it("revalidates Work truth before the prompt cursor CAS", () => {
+		const root = projectRoot();
+		const sessionId = "prompt-freshness-session";
+		const cursorId = seed(root, "codex", sessionId);
+		const originalUpdate = workCursorModule.updateWorkCursorAtomic;
+		let amended = false;
+		vi.spyOn(workCursorModule, "updateWorkCursorAtomic").mockImplementation(
+			(stateRoot, cursor, truth, updatedAt, options) => {
+				const updated = originalUpdate(
+					stateRoot,
+					cursor,
+					truth,
+					updatedAt,
+					options,
+				);
+			if (!amended) {
+				amended = true;
+				const status = statusWork({ project_root: root, work_id: "wu_hook" });
+				amendWork(
+					mutation(root, {
+						event_id: "evt_prompt_freshness_amend",
+						occurred_at: "2026-08-13T00:00:01.000Z",
+						expected_head: status.projection.ledger_head,
+						draft: draft("src_prompt_freshness_amend", "same_unit", true),
+						source_stdin: {
+							...mutation(root).source_stdin!,
+							event_id: "src_prompt_freshness_amend",
+							body: Buffer.from("fresh prompt requirement"),
+						},
+					}),
+				);
+			}
+				return updated;
+			},
+		);
+
+		const output = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "codex",
+			payload: codexPayload(sessionId, "turn-1"),
+			now: "2026-08-13T00:00:02.000Z",
+		});
+
+		expect(output).toMatchObject({ status: "briefing_due" });
+		expect(output.context).toContain("req_b [pending]: Observe changed Work");
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor,
+		).toMatchObject({
+			observed_revision: 2,
+			last_event_id: "evt_prompt_freshness_amend",
+		});
+	});
+
 	it("fails open on malformed IDs and never exposes or persists prompt text", () => {
 		const root = projectRoot();
 		seed(root, "codex", "safe-session");
@@ -917,6 +970,116 @@ describe("foreground Work UserPromptSubmit hook", () => {
 });
 
 describe("same-turn Work post-tool hook", () => {
+	it("rejects a boundary when the cursor switches Work before lock acquisition", () => {
+		const root = projectRoot();
+		const sessionId = "post-switch-session";
+		const cursorId = seed(root, "codex", sessionId);
+		const switchedWork = createWork(
+			mutation(root, {
+				work_id: "wu_switched",
+				event_id: "evt_switched_create",
+			}),
+		);
+		const originalMutate = workCursorModule.mutateWorkCursorAtomic;
+		let switched = false;
+		vi.spyOn(workCursorModule, "mutateWorkCursorAtomic").mockImplementation(
+			(stateRoot, targetCursorId, mutator, options) => {
+				if (!switched) {
+					switched = true;
+					const cursor = readWorkCursor(stateRoot, targetCursorId).cursor;
+					if (!cursor) throw new Error("expected cursor before switch");
+					updateWorkCursorAtomic(
+						stateRoot,
+						cursor,
+						{
+							work_id: switchedWork.projection.work_id,
+							revision: switchedWork.projection.contract_revision,
+							last_event_id: switchedWork.projection.last_event_id,
+							projection_hash: switchedWork.projection.projection_hash,
+						},
+						"2026-08-13T00:00:01.000Z",
+						{ expectedCursorRevision: cursor.cursor_revision ?? 0 },
+					);
+				}
+				return originalMutate(stateRoot, targetCursorId, mutator, options);
+			},
+		);
+
+		const output = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: postToolPayload(sessionId, "turn-1", "tool-1"),
+			now: "2026-08-13T00:00:02.000Z",
+		});
+
+		expect(output).toMatchObject({
+			status: "unavailable",
+			reason: "cursor_unavailable",
+			context: null,
+		});
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor,
+		).toMatchObject({
+			work_id: "wu_switched",
+			reconciliation: { meaningful_actions_since_confirmed: 0 },
+		});
+	});
+
+	it("re-reads Work truth after acquiring the cursor lock", () => {
+		const root = projectRoot();
+		const sessionId = "post-freshness-session";
+		const cursorId = seed(root, "codex", sessionId);
+		const originalMutate = workCursorModule.mutateWorkCursorAtomic;
+		let amended = false;
+		vi.spyOn(workCursorModule, "mutateWorkCursorAtomic").mockImplementation(
+			(stateRoot, targetCursorId, mutator, options) => {
+				if (!amended) {
+					amended = true;
+					const current = statusWork({
+						project_root: root,
+						work_id: "wu_hook",
+					});
+					amendWork(
+						mutation(root, {
+							event_id: "evt_post_freshness_amend",
+							occurred_at: "2026-08-13T00:00:01.000Z",
+							expected_head: current.projection.ledger_head,
+							draft: draft("src_post_freshness_amend", "same_unit", true),
+							source_stdin: {
+								...mutation(root).source_stdin!,
+								event_id: "src_post_freshness_amend",
+								body: Buffer.from("fresh post-tool requirement"),
+							},
+						}),
+					);
+				}
+				return originalMutate(stateRoot, targetCursorId, mutator, options);
+			},
+		);
+
+		const output = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: {
+				...postToolPayload(sessionId, "turn-1", "tool-1"),
+				events: Array.from({ length: 5 }, (_, index) => ({
+					tool_name: "apply_patch",
+					tool_use_id: `tool-${index + 1}`,
+				})),
+			},
+			now: "2026-08-13T00:00:02.000Z",
+		});
+
+		expect(output).toMatchObject({ status: "briefing_due" });
+		expect(output.context).toContain("req_b [pending]: Observe changed Work");
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor,
+		).toMatchObject({
+			observed_revision: 2,
+			last_event_id: "evt_post_freshness_amend",
+		});
+	});
+
 	it("counts each stable meaningful boundary once and briefs on the fifth action", () => {
 		const root = projectRoot();
 		const cursorId = seed(root, "codex", "post-session");

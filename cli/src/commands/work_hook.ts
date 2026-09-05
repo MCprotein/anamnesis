@@ -244,7 +244,11 @@ export function handleWorkUserPromptSubmit(
 				state_root: input.state_root,
 				work_id: cursor.work_id,
 			});
-			const projection = status.projection;
+			const ledgerRecords = readWorkLedger(status.ledger_path).records;
+			const projection = foldWorkProjection(ledgerRecords);
+			if (projection.work_id !== cursor.work_id) {
+				throw new Error("Work changed while preparing hook context");
+			}
 			const policy = projection.policy_snapshot?.policy;
 			if (!policy) {
 				return withCapture(
@@ -258,7 +262,12 @@ export function handleWorkUserPromptSubmit(
 					captureContext,
 				);
 			}
-			const briefing = buildBriefing(status.ledger_path, projection, cursor);
+			const briefing = buildBriefing(
+				status.ledger_path,
+				projection,
+				cursor,
+				ledgerRecords,
+			);
 			const observation = reconciliation.injected_unconfirmed;
 			if (
 				observation?.boundary_id === boundaryId &&
@@ -315,6 +324,9 @@ export function handleWorkUserPromptSubmit(
 				now,
 				{ expectedCursorRevision: cursor.cursor_revision ?? 0 },
 			);
+			if (readWorkLedger(status.ledger_path).head !== projection.ledger_head) {
+				continue;
+			}
 			const briefingBudget = captureContext
 				? Math.max(4_000, MAX_HOOK_CONTEXT_CHARACTERS - captureContext.length - 1)
 				: MAX_HOOK_CONTEXT_CHARACTERS;
@@ -392,17 +404,6 @@ export function handleWorkPostToolBoundary(
 				aggregateBoundaryId,
 			);
 		}
-		const status = statusWork({
-			project_root: input.project_root,
-			state_root: input.state_root,
-			work_id: initialCursor.work_id,
-		});
-		const projection = status.projection;
-		const policy = projection.policy_snapshot?.policy;
-		if (!policy) {
-			throw new Error("Work policy unavailable");
-		}
-		const ledgerRecords = readWorkLedger(status.ledger_path).records;
 		const mutation = mutateWorkCursorAtomic(
 			state.state_root,
 			cursorId,
@@ -410,7 +411,7 @@ export function handleWorkPostToolBoundary(
 				if (cursor.worktree_fingerprint !== state.worktree_fingerprint) {
 					throw new Error("Work cursor belongs to a different worktree");
 				}
-				if (cursor.work_id !== projection.work_id) {
+				if (cursor.work_id !== initialCursor.work_id) {
 					throw new Error("Work cursor changed while preparing hook context");
 				}
 				const reconciliation =
@@ -431,101 +432,118 @@ export function handleWorkPostToolBoundary(
 						),
 					};
 				}
-			if (policy.reconciliation.preset === "off") {
-				return {
-					next_cursor: null,
-					result: result(
-						"not_due",
-						"policy_off",
-						cursorId,
-						aggregateBoundaryId,
-					),
-				};
-			}
-			const briefing = buildBriefing(
-				status.ledger_path,
-				projection,
-				cursor,
-				ledgerRecords,
-			);
-			const nextCount =
-				reconciliation.meaningful_actions_since_confirmed + novel.length;
-			if (!Number.isSafeInteger(nextCount)) {
-				throw new Error("meaningful action counter overflow");
-			}
-			const nextRecent = [...recent, ...novel].slice(
-				-MAX_RECENT_MEANINGFUL_BOUNDARIES,
-			);
-			let nextReconciliation: WorkCursorReconciliationState = {
-				...reconciliation,
-				meaningful_actions_since_confirmed: nextCount,
-				recent_meaningful_action_boundary_ids: nextRecent,
-			};
-			const observation = reconciliation.injected_unconfirmed;
-			const sameObservedFingerprint =
-				observation?.delivery.fingerprint === briefing.semantic_fingerprint;
-			const actionsAtObservation = sameObservedFingerprint
-				? observation.meaningful_actions_observed
-				: 0;
-			const decision = evaluateReconciliationDue({
-				policy,
-				lifecycle: projection.lifecycle,
-				safe_boundary: true,
-				trigger: null,
-				now,
-				last_confirmed_at: sameObservedFingerprint
-					? observation.injected_at
-					: reconciliation.last_reconciled_at,
-				meaningful_actions_since_confirmed: Math.max(
-					0,
-					nextCount - actionsAtObservation,
-				),
-				current_fingerprint: briefing.semantic_fingerprint,
-				confirmed_fingerprint: reconciliation.confirmed_delivery_fingerprint,
-				last_observed_fingerprint:
-					observation?.delivery.fingerprint ??
-					reconciliation.confirmed_delivery_fingerprint,
-			});
-			const context = decision.due
-				? renderWorkBriefingContext(
-						briefing,
-						policy.reconciliation.detail,
-						decision.auto_continue,
-						MAX_SAME_TURN_CONTEXT_CHARACTERS,
-					)
-				: null;
-			if (decision.due) {
-				nextReconciliation = observeInjectedReconciliation(nextReconciliation, {
-					delivery: deliveryBinding(briefing, projection),
-					injected_at: now,
-					boundary_id: aggregateBoundaryId,
-					meaningful_actions_observed: nextCount,
+				const status = statusWork({
+					project_root: input.project_root,
+					state_root: input.state_root,
+					work_id: cursor.work_id,
 				});
-			}
-			const truth = projectionTruth(projection);
-			const nextCursor: WorkCursor = {
-				...cursor,
-				work_id: truth.work_id,
-				observed_revision: truth.revision,
-				last_event_id: truth.last_event_id,
-				projection_hash: truth.projection_hash,
-				updated_at: now,
-				reconciliation: nextReconciliation,
-			};
-			return {
-				next_cursor: nextCursor,
-				result: decision.due
-					? {
-							...result(
-								"briefing_due",
-								"briefing_due",
-								cursorId,
-								aggregateBoundaryId,
-							),
-							context,
-						}
-					: result("not_due", "not_due", cursorId, aggregateBoundaryId),
-			};
+				const ledgerRecords = readWorkLedger(status.ledger_path).records;
+				const projection = foldWorkProjection(ledgerRecords);
+				if (projection.work_id !== cursor.work_id) {
+					throw new Error("Work changed while preparing hook context");
+				}
+				const policy = projection.policy_snapshot?.policy;
+				if (!policy) {
+					throw new Error("Work policy unavailable");
+				}
+				if (policy.reconciliation.preset === "off") {
+					return {
+						next_cursor: null,
+						result: result(
+							"not_due",
+							"policy_off",
+							cursorId,
+							aggregateBoundaryId,
+						),
+					};
+				}
+				const briefing = buildBriefing(
+					status.ledger_path,
+					projection,
+					cursor,
+					ledgerRecords,
+				);
+				const nextCount =
+					reconciliation.meaningful_actions_since_confirmed + novel.length;
+				if (!Number.isSafeInteger(nextCount)) {
+					throw new Error("meaningful action counter overflow");
+				}
+				const nextRecent = [...recent, ...novel].slice(
+					-MAX_RECENT_MEANINGFUL_BOUNDARIES,
+				);
+				let nextReconciliation: WorkCursorReconciliationState = {
+					...reconciliation,
+					meaningful_actions_since_confirmed: nextCount,
+					recent_meaningful_action_boundary_ids: nextRecent,
+				};
+				const observation = reconciliation.injected_unconfirmed;
+				const sameObservedFingerprint =
+					observation?.delivery.fingerprint === briefing.semantic_fingerprint;
+				const actionsAtObservation = sameObservedFingerprint
+					? observation.meaningful_actions_observed
+					: 0;
+				const decision = evaluateReconciliationDue({
+					policy,
+					lifecycle: projection.lifecycle,
+					safe_boundary: true,
+					trigger: null,
+					now,
+					last_confirmed_at: sameObservedFingerprint
+						? observation.injected_at
+						: reconciliation.last_reconciled_at,
+					meaningful_actions_since_confirmed: Math.max(
+						0,
+						nextCount - actionsAtObservation,
+					),
+					current_fingerprint: briefing.semantic_fingerprint,
+					confirmed_fingerprint: reconciliation.confirmed_delivery_fingerprint,
+					last_observed_fingerprint:
+						observation?.delivery.fingerprint ??
+						reconciliation.confirmed_delivery_fingerprint,
+				});
+				const context = decision.due
+					? renderWorkBriefingContext(
+							briefing,
+							policy.reconciliation.detail,
+							decision.auto_continue,
+							MAX_SAME_TURN_CONTEXT_CHARACTERS,
+						)
+					: null;
+				if (decision.due) {
+					nextReconciliation = observeInjectedReconciliation(
+						nextReconciliation,
+						{
+							delivery: deliveryBinding(briefing, projection),
+							injected_at: now,
+							boundary_id: aggregateBoundaryId,
+							meaningful_actions_observed: nextCount,
+						},
+					);
+				}
+				const truth = projectionTruth(projection);
+				const nextCursor: WorkCursor = {
+					...cursor,
+					work_id: truth.work_id,
+					observed_revision: truth.revision,
+					last_event_id: truth.last_event_id,
+					projection_hash: truth.projection_hash,
+					updated_at: now,
+					reconciliation: nextReconciliation,
+				};
+				return {
+					next_cursor: nextCursor,
+					result: decision.due
+						? {
+								...result(
+									"briefing_due",
+									"briefing_due",
+									cursorId,
+									aggregateBoundaryId,
+								),
+								context,
+							}
+						: result("not_due", "not_due", cursorId, aggregateBoundaryId),
+				};
 			},
 			{ lockTimeoutMs: 30_000, lockRetryMs: 2 },
 		);

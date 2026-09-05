@@ -202,7 +202,7 @@ describe("cross-agent context continuity acceptance", () => {
     expect(sessionStart.mode).toBe(0o755);
     expect(sessionStart.codexHook).toEqual({
       event: "SessionStart",
-      matcher: "startup|resume|clear",
+      matcher: "startup|resume|clear|compact",
       command: codexNativeNodeCommand(
         ".anamnesis/codex-native-hooks/session-start.mjs",
       ),

@@ -3,8 +3,9 @@
 Status: v1.18 target design with storage, typed contract, policy resolution,
 projection, session cursor, thin CLI commands, bounded prompt staging,
 prompt/safe-tool reconciliation hooks, and runtime-neutral review/delegation
-evidence plus contextual readiness implemented. Provider orchestration,
-compaction-native triggers, and closure orchestration remain unshipped.
+evidence plus contextual readiness implemented. Codex post-compaction recovery
+is available through native `SessionStart` with source `compact`. Provider
+orchestration, pre-compaction flushing, and closure orchestration remain unshipped.
 
 ## Goal
 
@@ -728,11 +729,22 @@ overwrite a newer projection. Concurrent sessions using the same repository
 write scope receive an advisory overlap diagnostic, while git/worktrees and the
 agent runtime remain responsible for code-write coordination.
 
-Before compaction, flush the current source/ledger append and refresh the
-bounded projection. After compaction, inject only the cursor's Work ID,
-revision/boundary hash, lifecycle, progress counts, conflicts, pending review
-gates, next requirement IDs, and source path. Raw prompt bodies remain
-retrieval-only.
+The target design flushes pending source/ledger appends before compaction; this
+pre-compaction trigger is not implemented. Codex's installed SessionStart wrapper
+handles `source: compact` by calling `work hook-session-start`. The read-only
+handler resolves only the existing session cursor in the exact worktree and
+rebuilds a bounded briefing from its current Work ledger, even when the Work has
+not changed since the last briefing. It includes completion criteria, requirements,
+lifecycle, progress, review gates, and source pointers. Raw prompt bodies remain
+retrieval-only. Recovery does not stage prompts, advance cursors, confirm delivery,
+or change Work lifecycle. Disabled reconciliation remains disabled; unavailable
+cursors or older CLIs produce no Work context and do not block the session.
+
+This path requires native hooks and updated generated adapters. It does not
+enable model API features or change Claude Code/Cursor event handling. Codex's
+conversation compaction retains task-local context; anamnesis restores the
+durable project/Work contract as complementary context, without claiming that
+injection proves the model consumed it.
 
 TTL controls attention and startup injection, never meaning. It may diagnose a
 Work or cursor as stale, remove a digest from default startup context, and

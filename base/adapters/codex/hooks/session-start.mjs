@@ -7,12 +7,27 @@
 // ANAMNESIS_SESSION_CONTEXT_MODE=full to emit full file bodies for
 // compatibility/debugging.
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  accessSync,
+  constants,
+  readdirSync,
+  readFileSync,
+  statSync,
+} from "node:fs";
+import {
+  delimiter,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOTAL_BYTES = 768 * 1024;
 const DEFAULT_MAX_WARM_HANDOFF_ARCHIVES = 5;
+const MAX_STABLE_ID_LENGTH = 512;
 const SKIP_DIRS = new Set([
   ".git",
   "node_modules",
@@ -46,6 +61,60 @@ async function readStdinJson() {
 
 function safeString(value) {
   return typeof value === "string" ? value : "";
+}
+
+function validStableId(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_STABLE_ID_LENGTH &&
+    !/[\u0000-\u001f\u007f]/u.test(value)
+  );
+}
+
+function isExecutable(candidate) {
+  if (!candidate) return false;
+  try {
+    accessSync(candidate, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function findOnPath(name) {
+  for (const entry of (process.env.PATH ?? "").split(delimiter)) {
+    if (!entry) continue;
+    const candidate = join(entry, name);
+    if (isExecutable(candidate)) return candidate;
+  }
+  return "";
+}
+
+function findExecutable(projectRoot) {
+  const explicit = process.env.ANAMNESIS_BIN ?? "";
+  if (explicit && isAbsolute(explicit) && isExecutable(explicit)) {
+    return explicit;
+  }
+  const fromPath = findOnPath("anamnesis");
+  if (fromPath) return fromPath;
+  const local = join(projectRoot, "node_modules", ".bin", "anamnesis");
+  if (isExecutable(local)) return local;
+  const checkout = join(projectRoot, "cli", "dist", "index.js");
+  try {
+    const packageJson = JSON.parse(
+      readFileSync(join(projectRoot, "package.json"), "utf8"),
+    );
+    if (
+      packageJson?.name === "@mcprotein/anamnesis" &&
+      isExecutable(checkout)
+    ) {
+      return checkout;
+    }
+  } catch {
+    // A source-checkout fallback is optional; normal installations use PATH.
+  }
+  return "";
 }
 
 function projectRootFromPayload(payload) {
@@ -445,6 +514,38 @@ function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
   return sections.join("\n\n");
 }
 
+function buildWorkSection(projectRoot, payload) {
+  if (payload.source !== "compact" || !validStableId(payload.session_id)) {
+    return null;
+  }
+  const executable = findExecutable(projectRoot);
+  if (!executable) return null;
+  const input = Buffer.from(
+    `${JSON.stringify({
+      source: "compact",
+      session_id: payload.session_id,
+    })}\n`,
+    "utf8",
+  );
+  const result = spawnSync(
+    executable,
+    ["work", "hook-session-start", "--client", "codex"],
+    {
+      cwd: projectRoot,
+      env: process.env,
+      input,
+      stdio: ["pipe", "pipe", "ignore"],
+      maxBuffer: 64 * 1024,
+      timeout: 10_000,
+    },
+  );
+  if (result.error || result.status !== 0 || !Buffer.isBuffer(result.stdout)) {
+    return null;
+  }
+  const context = result.stdout.toString("utf8").trim();
+  return context || null;
+}
+
 async function main() {
   const payload = await readStdinJson();
   const projectRoot = projectRootFromPayload(payload);
@@ -452,6 +553,7 @@ async function main() {
   const sections = [
     buildOntologySection(projectRoot, budget),
     buildHandoffSection(projectRoot, budget),
+    buildWorkSection(projectRoot, payload),
   ].filter(Boolean);
 
   if (sections.length === 0) return;

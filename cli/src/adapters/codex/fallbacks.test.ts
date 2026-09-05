@@ -222,7 +222,7 @@ describe("codex executable_hook fallback", () => {
       expect(wrapper.content).toContain("hookSpecificOutput");
       expect(wrapper.codexHook).toEqual({
         event: "SessionStart",
-        matcher: "startup|resume|clear",
+        matcher: "startup|resume|clear|compact",
         command: codexNativeNodeCommand(
           ".anamnesis/codex-native-hooks/session-start.mjs",
         ),
