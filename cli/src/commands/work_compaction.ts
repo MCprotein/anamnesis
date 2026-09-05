@@ -1,4 +1,5 @@
 import { readWorkCursor } from "../core/work_cursor.js";
+import { readWorkLedger } from "../core/work_ledger.js";
 import { buildWorkBriefingSnapshot } from "../core/work_reconciliation.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { statusWork } from "./work.js";
@@ -10,6 +11,7 @@ import {
 } from "./work_hook.js";
 
 const MAX_STABLE_ID_LENGTH = 512;
+const MAX_SNAPSHOT_ATTEMPTS = 3;
 
 export function handleWorkCompactionResume(
 	input: WorkHookInput,
@@ -42,44 +44,52 @@ export function handleWorkCompactionResume(
 		}
 
 		const cursor = initial.cursor;
-		const status = statusWork({
-			project_root: input.project_root,
-			state_root: input.state_root,
-			work_id: cursor.work_id,
-		});
-		const policy = status.projection.policy_snapshot?.policy;
-		if (!policy) return unavailable("cursor_unavailable", cursorId);
-		if (policy.reconciliation.preset === "off") {
-			return result("not_due", "policy_off", cursorId);
+		for (let attempt = 0; attempt < MAX_SNAPSHOT_ATTEMPTS; attempt += 1) {
+			const status = statusWork({
+				project_root: input.project_root,
+				state_root: input.state_root,
+				work_id: cursor.work_id,
+			});
+			const policy = status.projection.policy_snapshot?.policy;
+			if (!policy) return unavailable("cursor_unavailable", cursorId);
+			if (policy.reconciliation.preset === "off") {
+				return result("not_due", "policy_off", cursorId);
+			}
+
+			const briefing = buildWorkBriefingSnapshot({
+				projection: status.projection,
+			});
+			const context = renderWorkBriefingContext(
+				briefing,
+				policy.reconciliation.detail,
+				status.projection.lifecycle === "open",
+			);
+			const reread = readWorkCursor(
+				state.state_root,
+				cursorId,
+				undefined,
+				state.worktree_fingerprint,
+			);
+			if (
+				!reread.cursor ||
+				reread.status === "switched" ||
+				!sameCursorBinding(cursor, reread.cursor, sessionId)
+			) {
+				return unavailable("cursor_unavailable", cursorId);
+			}
+			if (
+				readWorkLedger(status.ledger_path).head !==
+				status.projection.ledger_head
+			) {
+				continue;
+			}
+
+			return {
+				...result("briefing_due", "briefing_due", cursorId),
+				context,
+			};
 		}
-
-		const briefing = buildWorkBriefingSnapshot({
-			projection: status.projection,
-		});
-		const context = renderWorkBriefingContext(
-			briefing,
-			policy.reconciliation.detail,
-			status.projection.lifecycle === "open",
-		);
-
-		const reread = readWorkCursor(
-			state.state_root,
-			cursorId,
-			undefined,
-			state.worktree_fingerprint,
-		);
-		if (
-			!reread.cursor ||
-			reread.status === "switched" ||
-			!sameCursorBinding(cursor, reread.cursor, sessionId)
-		) {
-			return unavailable("cursor_unavailable", cursorId);
-		}
-
-		return {
-			...result("briefing_due", "briefing_due", cursorId),
-			context,
-		};
+		return unavailable("cursor_unavailable", cursorId);
 	} catch {
 		return unavailable("cursor_unavailable", cursorId);
 	}

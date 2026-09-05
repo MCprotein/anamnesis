@@ -21,6 +21,7 @@ const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
 const tsxCli = path.join(repositoryRoot, "node_modules/tsx/dist/cli.mjs");
 const anamnesisCli = path.join(repositoryRoot, "cli/src/index.ts");
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
@@ -125,6 +126,49 @@ describe("read-only Work compaction recovery", () => {
     expect(result.context).not.toContain("private amended prompt");
   });
 
+  it("retries when an amendment lands after the first projection fold", () => {
+    const { root } = fixture();
+    const original = workModule.statusWork;
+    let amended = false;
+    const status = vi.spyOn(workModule, "statusWork").mockImplementation((input) => {
+      const result = original(input);
+      if (!amended) {
+        amended = true;
+        amendWork({
+          project_root: root,
+          work_id: "wu_compact",
+          event_id: "evt_racing_amend",
+          occurred_at: "2026-09-06T00:01:00.000Z",
+          expected_head: result.projection.ledger_head,
+          draft: Buffer.from(JSON.stringify({
+            work: { title: "Resume safely", completion_contract: "Tests pass and changes reviewed" },
+            boundary: { state: "accepted", classification: "same_unit", reason_codes: ["explicit_user_requirement"], confidence: "high" },
+            requirements: [
+              { id: "req_one", summary: "Preserve latest requirement", source_event_ids: ["src_create"] },
+              { id: "req_race", summary: "Include racing amendment", source_event_ids: ["src_racing_amend"] },
+            ],
+            open_conflicts: [],
+          })),
+          source_stdin: {
+            event_id: "src_racing_amend",
+            captured_at: "2026-09-06T00:01:00.000Z",
+            client: "codex",
+            content_type: "text/plain; charset=utf-8",
+            fidelity: "native_exact",
+            allocation_status: "allocated",
+            body: Buffer.from("private racing amendment"),
+          },
+        });
+      }
+      return result;
+    });
+
+    const result = resume(root);
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(result.context).toContain("Include racing amendment");
+    expect(result.context).not.toContain("private racing amendment");
+  });
+
   it("does not auto-continue terminal Work", () => {
     const { root } = fixture();
     const current = statusWork({ project_root: root, work_id: "wu_compact" });
@@ -160,6 +204,55 @@ describe("read-only Work compaction recovery", () => {
     });
 
     const result = resume(root);
+    expect(result.context).toContain("This Work is terminal");
+    expect(result.context).not.toContain("continue the same task");
+  });
+
+  it("retries when Work closes after the first projection fold", () => {
+    const { root } = fixture();
+    const current = statusWork({ project_root: root, work_id: "wu_compact" });
+    const verified = transitionWork({
+      project_root: root,
+      work_id: "wu_compact",
+      event_id: "evt_racing_verify",
+      occurred_at: "2026-09-06T00:01:00.000Z",
+      expected_head: current.projection.ledger_head,
+      draft: Buffer.from(JSON.stringify({
+        requirement_id: "req_one",
+        status: "verified",
+        evidence_refs: ["test:pass"],
+      })),
+    });
+    const original = workModule.statusWork;
+    let closed = false;
+    const status = vi.spyOn(workModule, "statusWork").mockImplementation((input) => {
+      const result = original(input);
+      if (!closed) {
+        closed = true;
+        closeWork({
+          project_root: root,
+          work_id: "wu_compact",
+          event_id: "evt_racing_close",
+          occurred_at: "2026-09-06T00:02:00.000Z",
+          expected_head: verified.projection.ledger_head!,
+          expected_contract_revision: verified.projection.contract_revision,
+          expected_contract_hash: verified.projection.contract_hash!,
+          draft: Buffer.from(JSON.stringify({
+            lifecycle: "completed",
+            authority: {
+              kind: "delegated_objective_completion",
+              source_event_id: "src_create",
+              authority_ref: "user-request:complete-objective",
+            },
+            evidence_refs: ["test:pass"],
+          })),
+        });
+      }
+      return result;
+    });
+
+    const result = resume(root);
+    expect(status).toHaveBeenCalledTimes(2);
     expect(result.context).toContain("This Work is terminal");
     expect(result.context).not.toContain("continue the same task");
   });

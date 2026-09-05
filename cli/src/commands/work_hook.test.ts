@@ -10,7 +10,9 @@ import {
 	updateWorkCursorAtomic,
 	writeWorkCursorAtomic,
 } from "../core/work_cursor.js";
+import { appendWorkLedger } from "../core/work_ledger.js";
 import { calculateWorkProgress } from "../core/work_projection.js";
+import * as workProjectionModule from "../core/work_projection.js";
 import { buildWorkBriefingSnapshot } from "../core/work_reconciliation.js";
 import {
 	deriveWorkPromptCaptureId,
@@ -20,8 +22,10 @@ import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { sha256 } from "../util/hash.js";
 import {
 	amendWork,
+	closeWork,
 	createWork,
 	statusWork,
+	transitionWork,
 	type WorkMutationInput,
 } from "./work.js";
 import {
@@ -878,7 +882,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		const sessionId = "prompt-freshness-session";
 		const cursorId = seed(root, "codex", sessionId);
 		const originalUpdate = workCursorModule.updateWorkCursorAtomic;
-		let amended = false;
+		let ledgerAdvanced = false;
 		vi.spyOn(workCursorModule, "updateWorkCursorAtomic").mockImplementation(
 			(stateRoot, cursor, truth, updatedAt, options) => {
 				const updated = originalUpdate(
@@ -888,23 +892,20 @@ describe("foreground Work UserPromptSubmit hook", () => {
 					updatedAt,
 					options,
 				);
-			if (!amended) {
-				amended = true;
-				const status = statusWork({ project_root: root, work_id: "wu_hook" });
-				amendWork(
-					mutation(root, {
-						event_id: "evt_prompt_freshness_amend",
-						occurred_at: "2026-08-13T00:00:01.000Z",
-						expected_head: status.projection.ledger_head,
-						draft: draft("src_prompt_freshness_amend", "same_unit", true),
-						source_stdin: {
-							...mutation(root).source_stdin!,
-							event_id: "src_prompt_freshness_amend",
-							body: Buffer.from("fresh prompt requirement"),
+				if (!ledgerAdvanced) {
+					ledgerAdvanced = true;
+					const status = statusWork({ project_root: root, work_id: "wu_hook" });
+					appendWorkLedger({
+						ledgerPath: status.ledger_path,
+						expectedHead: status.projection.ledger_head,
+						event: {
+							event_id: "evt_prompt_freshness_checkpoint",
+							occurred_at: "2026-08-13T00:00:01.000Z",
+							kind: "checkpoint_recorded",
+							payload: { work_id: "wu_hook" },
 						},
-					}),
-				);
-			}
+					});
+				}
 				return updated;
 			},
 		);
@@ -917,12 +918,13 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		});
 
 		expect(output).toMatchObject({ status: "briefing_due" });
-		expect(output.context).toContain("req_b [pending]: Observe changed Work");
+		expect(output.context).toContain("req_a [pending]: Keep hook delivery safe");
+		expect(workCursorModule.updateWorkCursorAtomic).toHaveBeenCalledTimes(2);
 		expect(
 			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor,
 		).toMatchObject({
-			observed_revision: 2,
-			last_event_id: "evt_prompt_freshness_amend",
+			observed_revision: 1,
+			last_event_id: "evt_prompt_freshness_checkpoint",
 		});
 	});
 
@@ -1078,6 +1080,221 @@ describe("same-turn Work post-tool hook", () => {
 			observed_revision: 2,
 			last_event_id: "evt_post_freshness_amend",
 		});
+	});
+
+	it("retries a post-tool snapshot when Work advances after projection fold", () => {
+		const root = projectRoot();
+		const sessionId = "post-fold-freshness-session";
+		const cursorId = seed(root, "codex", sessionId);
+		const originalFold = workProjectionModule.foldWorkProjection;
+		let foldCount = 0;
+		let amended = false;
+		vi.spyOn(workProjectionModule, "foldWorkProjection").mockImplementation(
+			(records, limits) => {
+				const projection = originalFold(records, limits);
+				foldCount += 1;
+				if (!amended && foldCount === 2) {
+					amended = true;
+					amendWork(
+						mutation(root, {
+							event_id: "evt_post_fold_amend",
+							occurred_at: "2026-08-13T00:00:01.000Z",
+							expected_head: projection.ledger_head,
+							draft: draft("src_post_fold_amend", "same_unit", true),
+							source_stdin: {
+								...mutation(root).source_stdin!,
+								event_id: "src_post_fold_amend",
+								body: Buffer.from("fresh post-fold requirement"),
+							},
+						}),
+					);
+				}
+				return projection;
+			},
+		);
+
+		const output = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: {
+				...postToolPayload(sessionId, "turn-1", "tool-1"),
+				events: Array.from({ length: 5 }, (_, index) => ({
+					tool_name: "apply_patch",
+					tool_use_id: `tool-${index + 1}`,
+				})),
+			},
+			now: "2026-08-13T00:00:02.000Z",
+		});
+
+		expect(output).toMatchObject({ status: "briefing_due" });
+		expect(output.context).toContain("req_b [pending]: Observe changed Work");
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor,
+		).toMatchObject({
+			observed_revision: 2,
+			last_event_id: "evt_post_fold_amend",
+			reconciliation: { meaningful_actions_since_confirmed: 5 },
+		});
+	});
+
+	it("retries a post-tool snapshot when Work closes after projection fold", () => {
+		const root = projectRoot();
+		const sessionId = "post-fold-close-session";
+		const cursorId = seed(root, "codex", sessionId);
+		const created = statusWork({ project_root: root, work_id: "wu_hook" });
+		const verified = transitionWork(
+			mutation(root, {
+				event_id: "evt_verify_before_post_close",
+				occurred_at: "2026-08-13T00:00:01.000Z",
+				expected_head: created.projection.ledger_head,
+				draft: Buffer.from(
+					YAML.stringify({
+						requirement_id: "req_a",
+						status: "verified",
+						evidence_refs: ["test:post-close-ready"],
+					}),
+				),
+				source_stdin: undefined,
+			}),
+		);
+		const originalFold = workProjectionModule.foldWorkProjection;
+		let foldCount = 0;
+		let closed = false;
+		vi.spyOn(workProjectionModule, "foldWorkProjection").mockImplementation(
+			(records, limits) => {
+				const projection = originalFold(records, limits);
+				foldCount += 1;
+				if (!closed && foldCount === 2) {
+					closed = true;
+					closeWork({
+						project_root: root,
+						work_id: "wu_hook",
+						event_id: "evt_post_fold_close",
+						occurred_at: "2026-08-13T00:00:02.000Z",
+						expected_head: verified.projection.ledger_head,
+						expected_contract_revision:
+							verified.projection.contract_revision,
+						expected_contract_hash: verified.projection.contract_hash!,
+						draft: Buffer.from(
+							YAML.stringify({
+								lifecycle: "completed",
+								authority: {
+									kind: "delegated_objective_completion",
+									source_event_id: "src_create",
+									authority_ref: "user-request:complete-objective",
+								},
+								evidence_refs: ["test:post-close-complete"],
+							}),
+						),
+					});
+				}
+				return projection;
+			},
+		);
+
+		const output = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: {
+				...postToolPayload(sessionId, "turn-1", "tool-1"),
+				events: Array.from({ length: 5 }, (_, index) => ({
+					tool_name: "apply_patch",
+					tool_use_id: `tool-${index + 1}`,
+				})),
+			},
+			now: "2026-08-13T00:00:03.000Z",
+		});
+
+		const finalStatus = statusWork({
+			project_root: root,
+			work_id: "wu_hook",
+		});
+		const finalCursor = readWorkCursor(
+			resolveWorkStateRoot(root).state_root,
+			cursorId,
+		).cursor;
+		expect(output).toMatchObject({ status: "briefing_due" });
+		expect(output.context).toContain("This Work is terminal");
+		expect(output.context).not.toContain("continue the same task");
+		expect(finalStatus.projection.lifecycle).toBe("completed");
+		expect(finalCursor).toMatchObject({
+			observed_revision: finalStatus.projection.contract_revision,
+			last_event_id: "evt_post_fold_close",
+			projection_hash: finalStatus.projection.projection_hash,
+			reconciliation: { meaningful_actions_since_confirmed: 5 },
+		});
+		expect(
+			finalCursor?.reconciliation?.recent_meaningful_action_boundary_ids,
+		).toHaveLength(5);
+	});
+
+	it("rolls back and retries when Work advances after the cursor write", () => {
+		const root = projectRoot();
+		const sessionId = "post-write-freshness-session";
+		const cursorId = seed(root, "codex", sessionId);
+		const originalMutate = workCursorModule.mutateWorkCursorAtomic;
+		let amended = false;
+		vi.spyOn(workCursorModule, "mutateWorkCursorAtomic").mockImplementation(
+			(stateRoot, targetCursorId, mutator, options) => {
+				const mutationResult = originalMutate(
+					stateRoot,
+					targetCursorId,
+					mutator,
+					options,
+				);
+				if (!amended) {
+					amended = true;
+					const current = statusWork({
+						project_root: root,
+						work_id: "wu_hook",
+					});
+					amendWork(
+						mutation(root, {
+							event_id: "evt_post_write_amend",
+							occurred_at: "2026-08-13T00:00:01.000Z",
+							expected_head: current.projection.ledger_head,
+							draft: draft("src_post_write_amend", "same_unit", true),
+							source_stdin: {
+								...mutation(root).source_stdin!,
+								event_id: "src_post_write_amend",
+								body: Buffer.from("fresh post-write requirement"),
+							},
+						}),
+					);
+				}
+				return mutationResult;
+			},
+		);
+
+		const output = handleWorkPostToolBoundary({
+			project_root: root,
+			client: "codex",
+			payload: {
+				...postToolPayload(sessionId, "turn-1", "tool-1"),
+				events: Array.from({ length: 5 }, (_, index) => ({
+					tool_name: "apply_patch",
+					tool_use_id: `tool-${index + 1}`,
+				})),
+			},
+			now: "2026-08-13T00:00:02.000Z",
+		});
+
+		expect(output).toMatchObject({ status: "briefing_due" });
+		expect(output.context).toContain("req_b [pending]: Observe changed Work");
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor,
+		).toMatchObject({
+			observed_revision: 2,
+			last_event_id: "evt_post_write_amend",
+			reconciliation: {
+				meaningful_actions_since_confirmed: 5,
+				recent_meaningful_action_boundary_ids: expect.any(Array),
+			},
+		});
+		expect(
+			readWorkCursor(resolveWorkStateRoot(root).state_root, cursorId).cursor
+				?.reconciliation?.recent_meaningful_action_boundary_ids,
+		).toHaveLength(5);
 	});
 
 	it("counts each stable meaningful boundary once and briefs on the fifth action", () => {

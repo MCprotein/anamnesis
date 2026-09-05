@@ -26,6 +26,8 @@ import {
 
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOTAL_BYTES = 768 * 1024;
+const MAX_COMPACT_SUPPLEMENTAL_BYTES = 2_000;
+const MAX_WORK_CONTEXT_CHARACTERS = 8_000;
 const DEFAULT_MAX_WARM_HANDOFF_ARCHIVES = 5;
 const MAX_STABLE_ID_LENGTH = 512;
 const SKIP_DIRS = new Set([
@@ -516,10 +518,10 @@ function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
 
 function buildWorkSection(projectRoot, payload) {
   if (payload.source !== "compact" || !validStableId(payload.session_id)) {
-    return null;
+    return { context: null, systemMessage: null };
   }
   const executable = findExecutable(projectRoot);
-  if (!executable) return null;
+  if (!executable) return workFailure("executable_unavailable");
   const input = Buffer.from(
     `${JSON.stringify({
       source: "compact",
@@ -529,41 +531,134 @@ function buildWorkSection(projectRoot, payload) {
   );
   const result = spawnSync(
     executable,
-    ["work", "hook-session-start", "--client", "codex"],
+    ["work", "hook-session-start", "--client", "codex", "--json"],
     {
       cwd: projectRoot,
       env: process.env,
       input,
-      stdio: ["pipe", "pipe", "ignore"],
+      stdio: ["pipe", "pipe", "pipe"],
       maxBuffer: 64 * 1024,
       timeout: 10_000,
     },
   );
-  if (result.error || result.status !== 0 || !Buffer.isBuffer(result.stdout)) {
-    return null;
+  if (isOlderCliWithoutCompaction(result)) {
+    return { context: null, systemMessage: null };
   }
-  const context = result.stdout.toString("utf8").trim();
-  return context || null;
+  if (result.error) {
+    return workFailure(
+      result.error.code === "ETIMEDOUT" ? "timeout" : "spawn_failed",
+    );
+  }
+  if (result.status !== 0) return workFailure("command_failed");
+  if (!Buffer.isBuffer(result.stdout)) return workFailure("malformed_result");
+  try {
+    const parsed = safeObject(JSON.parse(result.stdout.toString("utf8")));
+    if (!isWorkHookResult(parsed)) return workFailure("malformed_result");
+    return { context: parsed.context, systemMessage: null };
+  } catch {
+    return workFailure("malformed_result");
+  }
+}
+
+function isOlderCliWithoutCompaction(result) {
+  if (result.error || result.status !== 1 || !Buffer.isBuffer(result.stderr)) {
+    return false;
+  }
+  const lines = result.stderr.toString("utf8").trimEnd().split(/\r?\n/u);
+  return (
+    lines[0] === "error: unknown 'work' subcommand: hook-session-start" &&
+    lines[1]?.startsWith("usage: anamnesis work ") === true
+  );
+}
+
+function isWorkHookResult(value) {
+  const statuses = new Set([
+    "unavailable",
+    "not_due",
+    "briefing_due",
+    "capture_staged",
+  ]);
+  const reasons = new Set([
+    "invalid_payload",
+    "missing_stable_id",
+    "cursor_unavailable",
+    "capture_unavailable",
+    "policy_off",
+    "duplicate_boundary",
+    "not_due",
+    "briefing_due",
+    "capture_staged",
+  ]);
+  return (
+    value.schema_version === "anamnesis.work-hook-result.v1" &&
+    statuses.has(value.status) &&
+    reasons.has(value.reason) &&
+    (value.context === null ||
+      (typeof value.context === "string" &&
+        value.context.length <= MAX_WORK_CONTEXT_CHARACTERS)) &&
+    (value.cursor_id === null || typeof value.cursor_id === "string") &&
+    (value.boundary_id === null || typeof value.boundary_id === "string")
+  );
+}
+
+function workFailure(failureClass) {
+  return {
+    context: null,
+    systemMessage: `[anamnesis] Work compact recovery failed (${failureClass}); SessionStart continued without Work context.`,
+  };
+}
+
+// Compact recovery puts Work first and limits the lower-priority ontology and
+// handoff preview. The byte ceiling is only a priority hint: host tokenization
+// can still differ, so exact facts remain available through the emitted source
+// pointers and normal context retrieval commands.
+function boundedSupplementalContext(sections, mode, source) {
+  const context = sections.filter(Boolean).join("\n\n");
+  if (mode === "full" || source !== "compact") return context;
+  const bytes = Buffer.from(context, "utf8");
+  if (bytes.length <= MAX_COMPACT_SUPPLEMENTAL_BYTES) return context;
+  const marker = "\n\n[anamnesis: compact supplemental context truncated]";
+  const available = Math.max(
+    0,
+    MAX_COMPACT_SUPPLEMENTAL_BYTES - Buffer.byteLength(marker, "utf8"),
+  );
+  let prefix = bytes.subarray(0, available).toString("utf8");
+  while (Buffer.byteLength(prefix, "utf8") > available) {
+    prefix = prefix.slice(0, -1);
+  }
+  return `${prefix}${marker}`;
 }
 
 async function main() {
   const payload = await readStdinJson();
   const projectRoot = projectRootFromPayload(payload);
+  const mode = sessionContextMode();
   const budget = { remaining: MAX_TOTAL_BYTES };
-  const sections = [
-    buildOntologySection(projectRoot, budget),
-    buildHandoffSection(projectRoot, budget),
-    buildWorkSection(projectRoot, payload),
-  ].filter(Boolean);
+  const work = buildWorkSection(projectRoot, payload);
+  const supplemental = boundedSupplementalContext(
+    [
+      buildOntologySection(projectRoot, budget, mode),
+      buildHandoffSection(projectRoot, budget, mode),
+    ],
+    mode,
+    payload.source,
+  );
+  const sections = [work.context, supplemental].filter(Boolean);
 
-  if (sections.length === 0) return;
+  if (sections.length === 0 && !work.systemMessage) return;
+  const response = {
+    ...(sections.length === 0
+      ? {}
+      : {
+          hookSpecificOutput: {
+            hookEventName: "SessionStart",
+            additionalContext: sections.join("\n\n"),
+          },
+        }),
+    ...(work.systemMessage ? { systemMessage: work.systemMessage } : {}),
+  };
   process.stdout.write(
-    `${JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "SessionStart",
-        additionalContext: sections.join("\n\n"),
-      },
-    })}\n`,
+    `${JSON.stringify(response)}\n`,
   );
 }
 

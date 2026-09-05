@@ -737,8 +737,18 @@ rebuilds a bounded briefing from its current Work ledger, even when the Work has
 not changed since the last briefing. It includes completion criteria, requirements,
 lifecycle, progress, review gates, and source pointers. Raw prompt bodies remain
 retrieval-only. Recovery does not stage prompts, advance cursors, confirm delivery,
-or change Work lifecycle. Disabled reconciliation remains disabled; unavailable
-cursors or older CLIs produce no Work context and do not block the session.
+or change Work lifecycle. Recovery revalidates both the cursor binding and ledger
+head before returning a snapshot; continuously changing state exhausts a bounded
+retry budget instead of returning a known-stale contract. This remains a
+point-in-time observation, not a lease over later tool or agent execution.
+Disabled reconciliation remains disabled; unavailable cursors or older CLIs
+produce no Work context and do not block the session. Unexpected CLI failures
+produce only a sanitized diagnostic, never raw stderr or prompt content.
+On a compact-source event, Work context comes first and supplemental ontology/
+handoff context is bounded. Codex can still spill oversized output to a preview
+and file pointer; source retrieval remains part of recovery, and the byte/
+character budgets are not a claim of an exact tokenizer limit. Ordinary startup
+and explicit full-context debugging retain their existing output behavior.
 
 This path requires native hooks and updated generated adapters. It does not
 enable model API features or change Claude Code/Cursor event handling. Codex's
