@@ -7,12 +7,29 @@
 // ANAMNESIS_SESSION_CONTEXT_MODE=full to emit full file bodies for
 // compatibility/debugging.
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  accessSync,
+  constants,
+  readdirSync,
+  readFileSync,
+  statSync,
+} from "node:fs";
+import {
+  delimiter,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOTAL_BYTES = 768 * 1024;
+const MAX_COMPACT_SUPPLEMENTAL_BYTES = 2_000;
+const MAX_WORK_CONTEXT_CHARACTERS = 8_000;
 const DEFAULT_MAX_WARM_HANDOFF_ARCHIVES = 5;
+const MAX_STABLE_ID_LENGTH = 512;
 const SKIP_DIRS = new Set([
   ".git",
   "node_modules",
@@ -46,6 +63,60 @@ async function readStdinJson() {
 
 function safeString(value) {
   return typeof value === "string" ? value : "";
+}
+
+function validStableId(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_STABLE_ID_LENGTH &&
+    !/[\u0000-\u001f\u007f]/u.test(value)
+  );
+}
+
+function isExecutable(candidate) {
+  if (!candidate) return false;
+  try {
+    accessSync(candidate, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function findOnPath(name) {
+  for (const entry of (process.env.PATH ?? "").split(delimiter)) {
+    if (!entry) continue;
+    const candidate = join(entry, name);
+    if (isExecutable(candidate)) return candidate;
+  }
+  return "";
+}
+
+function findExecutable(projectRoot) {
+  const explicit = process.env.ANAMNESIS_BIN ?? "";
+  if (explicit && isAbsolute(explicit) && isExecutable(explicit)) {
+    return explicit;
+  }
+  const fromPath = findOnPath("anamnesis");
+  if (fromPath) return fromPath;
+  const local = join(projectRoot, "node_modules", ".bin", "anamnesis");
+  if (isExecutable(local)) return local;
+  const checkout = join(projectRoot, "cli", "dist", "index.js");
+  try {
+    const packageJson = JSON.parse(
+      readFileSync(join(projectRoot, "package.json"), "utf8"),
+    );
+    if (
+      packageJson?.name === "@mcprotein/anamnesis" &&
+      isExecutable(checkout)
+    ) {
+      return checkout;
+    }
+  } catch {
+    // A source-checkout fallback is optional; normal installations use PATH.
+  }
+  return "";
 }
 
 function projectRootFromPayload(payload) {
@@ -445,23 +516,160 @@ function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
   return sections.join("\n\n");
 }
 
+function buildWorkSection(projectRoot, payload) {
+  if (payload.source !== "compact" || !validStableId(payload.session_id)) {
+    return { context: null, systemMessage: null };
+  }
+  const executable = findExecutable(projectRoot);
+  if (!executable) return workFailure("executable_unavailable");
+  const input = Buffer.from(
+    `${JSON.stringify({
+      source: "compact",
+      session_id: payload.session_id,
+    })}\n`,
+    "utf8",
+  );
+  const result = spawnSync(
+    executable,
+    ["work", "hook-session-start", "--client", "codex", "--json"],
+    {
+      cwd: projectRoot,
+      env: process.env,
+      input,
+      stdio: ["pipe", "pipe", "pipe"],
+      maxBuffer: 64 * 1024,
+      timeout: 10_000,
+    },
+  );
+  if (isOlderCliWithoutCompaction(result)) {
+    return { context: null, systemMessage: null };
+  }
+  if (result.error) {
+    return workFailure(
+      result.error.code === "ETIMEDOUT" ? "timeout" : "spawn_failed",
+    );
+  }
+  if (result.status !== 0) return workFailure("command_failed");
+  if (!Buffer.isBuffer(result.stdout)) return workFailure("malformed_result");
+  try {
+    const parsed = safeObject(JSON.parse(result.stdout.toString("utf8")));
+    if (!isWorkHookResult(parsed)) return workFailure("malformed_result");
+    return { context: parsed.context, systemMessage: null };
+  } catch {
+    return workFailure("malformed_result");
+  }
+}
+
+function isOlderCliWithoutCompaction(result) {
+  if (result.error || result.status !== 1 || !Buffer.isBuffer(result.stderr)) {
+    return false;
+  }
+  const lines = result.stderr.toString("utf8").trimEnd().split(/\r?\n/u);
+  return (
+    lines[0] === "error: unknown 'work' subcommand: hook-session-start" &&
+    lines[1]?.startsWith("usage: anamnesis work ") === true
+  );
+}
+
+function isWorkHookResult(value) {
+  const statuses = new Set([
+    "unavailable",
+    "not_due",
+    "briefing_due",
+    "capture_staged",
+  ]);
+  const reasons = new Set([
+    "invalid_payload",
+    "missing_stable_id",
+    "cursor_unavailable",
+    "capture_unavailable",
+    "policy_off",
+    "duplicate_boundary",
+    "not_due",
+    "briefing_due",
+    "capture_staged",
+  ]);
+  return (
+    value.schema_version === "anamnesis.work-hook-result.v1" &&
+    statuses.has(value.status) &&
+    reasons.has(value.reason) &&
+    (value.context === null ||
+      (typeof value.context === "string" &&
+        value.context.length <= MAX_WORK_CONTEXT_CHARACTERS)) &&
+    (value.cursor_id === null || typeof value.cursor_id === "string") &&
+    (value.boundary_id === null || typeof value.boundary_id === "string")
+  );
+}
+
+function workFailure(failureClass) {
+  return {
+    context: null,
+    systemMessage: `[anamnesis] Work compact recovery failed (${failureClass}); SessionStart continued without Work context.`,
+  };
+}
+
+// Compact recovery puts Work first and limits the lower-priority ontology and
+// handoff preview. The byte ceiling is only a priority hint: host tokenization
+// can still differ, so exact facts remain available through the emitted source
+// pointers and normal context retrieval commands.
+function boundedSupplementalContext(sections, mode, source) {
+  const present = sections.filter(Boolean);
+  const context = present.join("\n\n");
+  if (mode === "full" || source !== "compact") return context;
+  const bytes = Buffer.from(context, "utf8");
+  if (bytes.length <= MAX_COMPACT_SUPPLEMENTAL_BYTES) return context;
+  // Reserve a source-pointer prefix for every present section so a large
+  // ontology cannot consume the handoff's entire discoverability budget.
+  const sectionBudget = Math.floor(
+    (MAX_COMPACT_SUPPLEMENTAL_BYTES - 2 * (present.length - 1)) / present.length,
+  );
+  return present.map((section) => boundedSection(section, sectionBudget)).join("\n\n");
+}
+
+function boundedSection(context, budget) {
+  const bytes = Buffer.from(context, "utf8");
+  if (bytes.length <= budget) return context;
+  const marker = "\n\n[anamnesis: compact supplemental context truncated]";
+  const available = Math.max(
+    0,
+    budget - Buffer.byteLength(marker, "utf8"),
+  );
+  const prefix = new TextDecoder("utf-8").decode(bytes.subarray(0, available), {
+    stream: true,
+  });
+  return `${prefix}${marker}`;
+}
+
 async function main() {
   const payload = await readStdinJson();
   const projectRoot = projectRootFromPayload(payload);
+  const mode = sessionContextMode();
   const budget = { remaining: MAX_TOTAL_BYTES };
-  const sections = [
-    buildOntologySection(projectRoot, budget),
-    buildHandoffSection(projectRoot, budget),
-  ].filter(Boolean);
+  const work = buildWorkSection(projectRoot, payload);
+  const supplemental = boundedSupplementalContext(
+    [
+      buildOntologySection(projectRoot, budget, mode),
+      buildHandoffSection(projectRoot, budget, mode),
+    ],
+    mode,
+    payload.source,
+  );
+  const sections = [work.context, supplemental].filter(Boolean);
 
-  if (sections.length === 0) return;
+  if (sections.length === 0 && !work.systemMessage) return;
+  const response = {
+    ...(sections.length === 0
+      ? {}
+      : {
+          hookSpecificOutput: {
+            hookEventName: "SessionStart",
+            additionalContext: sections.join("\n\n"),
+          },
+        }),
+    ...(work.systemMessage ? { systemMessage: work.systemMessage } : {}),
+  };
   process.stdout.write(
-    `${JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "SessionStart",
-        additionalContext: sections.join("\n\n"),
-      },
-    })}\n`,
+    `${JSON.stringify(response)}\n`,
   );
 }
 

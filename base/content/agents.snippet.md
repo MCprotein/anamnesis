@@ -9,6 +9,8 @@
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
 - 프로젝트 사실, 문서, 로드맵, 이전 결정, 온톨로지 근거가 필요한 작업은 `anamnesis context query "<검색어>"` 로 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. query snippet 은 근거가 아니라 위치 힌트임.
+- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.
+- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.
 - 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.
 - `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
@@ -31,9 +33,9 @@
 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.
 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.
 4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
-5. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
+5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.
 
 Claude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.
 Codex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
 Cursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
-Claude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.
+Claude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.

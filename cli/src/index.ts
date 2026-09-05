@@ -224,6 +224,7 @@ import {
   handleWorkUserPromptSubmit,
   type WorkHookClient,
 } from "./commands/work_hook.js";
+import { handleWorkCompactionResume } from "./commands/work_compaction.js";
 import { readAgentfile, type ToolName } from "./core/agentfile.js";
 import {
 	formatCompactHelp,
@@ -4117,6 +4118,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "switch" &&
         sub !== "prompt" &&
         sub !== "hook-policy-probe" &&
+        sub !== "hook-session-start" &&
         sub !== "hook-user-prompt" &&
         sub !== "hook-post-tool-use"
       ) {
@@ -4255,7 +4257,11 @@ async function main(argv: string[]): Promise<number> {
           return 0;
         }
 
-        if (sub === "hook-user-prompt" || sub === "hook-post-tool-use") {
+        if (
+          sub === "hook-session-start" ||
+          sub === "hook-user-prompt" ||
+          sub === "hook-post-tool-use"
+        ) {
           let payload: unknown;
           try {
             const source = new TextDecoder("utf-8", { fatal: true }).decode(
@@ -4274,7 +4280,9 @@ async function main(argv: string[]): Promise<number> {
             now: workTimestamp(flags, false),
           };
           const result =
-            sub === "hook-user-prompt"
+            sub === "hook-session-start"
+              ? handleWorkCompactionResume(hookInput)
+              : sub === "hook-user-prompt"
               ? handleWorkUserPromptSubmit(hookInput)
               : handleWorkPostToolBoundary(hookInput);
           if (flags.json === true) {

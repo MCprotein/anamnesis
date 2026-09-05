@@ -19,7 +19,7 @@ import { RenderError } from "../../core/render.js";
 const PRE_COMMIT_PATH = ".git/hooks/pre-commit";
 const CODEX_NATIVE_SESSION_START_WRAPPER =
   ".anamnesis/codex-native-hooks/session-start.mjs";
-const CODEX_NATIVE_SESSION_START_MATCHER = "startup|resume|clear";
+const CODEX_NATIVE_SESSION_START_MATCHER = "startup|resume|clear|compact";
 const CODEX_NATIVE_WORK_USER_PROMPT_WRAPPER =
   ".anamnesis/codex-native-hooks/work-user-prompt.mjs";
 const CODEX_NATIVE_WORK_POST_TOOL_WRAPPER =

@@ -7,6 +7,19 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep Work hook briefings and session cursor observations aligned with fresh
+  ledger state when prompt updates and parallel tool completions overlap.
+- Restore the exact session-selected Work after Codex `SessionStart` with source
+  `compact`, including unchanged requirements and completion criteria. Recovery
+  is read-only, respects disabled reconciliation, and fails open when unavailable.
+- Clarify standalone versus auxiliary handoff/orientation behavior: supporting
+  checkpoints continue the active task, reminders do not write handoffs, and
+  clearly completed stale handoffs do not require redundant confirmation.
+  Base fragment 24 carries the instruction and native-hook updates; existing
+  project adapters are updated only through the normal explicit apply process.
+
 ## [1.23.4] — 2026-09-01
 
 ### Fixed

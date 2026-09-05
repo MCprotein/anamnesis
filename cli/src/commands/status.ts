@@ -1058,7 +1058,7 @@ function codexContinuityMatcher(
   event: string,
   command: string,
 ): string | undefined {
-  if (event === "SessionStart") return "startup|resume|clear";
+  if (event === "SessionStart") return "startup|resume|clear|compact";
   if (
     event === "PostToolUse" &&
     command.includes("base-PostToolUse-Edit-remind-uncommitted.mjs")
