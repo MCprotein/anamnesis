@@ -613,19 +613,30 @@ function workFailure(failureClass) {
 // can still differ, so exact facts remain available through the emitted source
 // pointers and normal context retrieval commands.
 function boundedSupplementalContext(sections, mode, source) {
-  const context = sections.filter(Boolean).join("\n\n");
+  const present = sections.filter(Boolean);
+  const context = present.join("\n\n");
   if (mode === "full" || source !== "compact") return context;
   const bytes = Buffer.from(context, "utf8");
   if (bytes.length <= MAX_COMPACT_SUPPLEMENTAL_BYTES) return context;
+  // Reserve a source-pointer prefix for every present section so a large
+  // ontology cannot consume the handoff's entire discoverability budget.
+  const sectionBudget = Math.floor(
+    (MAX_COMPACT_SUPPLEMENTAL_BYTES - 2 * (present.length - 1)) / present.length,
+  );
+  return present.map((section) => boundedSection(section, sectionBudget)).join("\n\n");
+}
+
+function boundedSection(context, budget) {
+  const bytes = Buffer.from(context, "utf8");
+  if (bytes.length <= budget) return context;
   const marker = "\n\n[anamnesis: compact supplemental context truncated]";
   const available = Math.max(
     0,
-    MAX_COMPACT_SUPPLEMENTAL_BYTES - Buffer.byteLength(marker, "utf8"),
+    budget - Buffer.byteLength(marker, "utf8"),
   );
-  let prefix = bytes.subarray(0, available).toString("utf8");
-  while (Buffer.byteLength(prefix, "utf8") > available) {
-    prefix = prefix.slice(0, -1);
-  }
+  const prefix = new TextDecoder("utf-8").decode(bytes.subarray(0, available), {
+    stream: true,
+  });
   return `${prefix}${marker}`;
 }
 

@@ -202,6 +202,11 @@ describe("Codex SessionStart compact Work recovery", () => {
 
 	it("puts Work first and bounds supplemental compact context", () => {
 		const { projectRoot, shimPath, capturePath } = fixture();
+		fs.mkdirSync(path.join(projectRoot, ".anamnesis", "handoff"));
+		fs.writeFileSync(
+			path.join(projectRoot, ".anamnesis", "handoff", "active.md"),
+			"# Active handoff index\n\n## Current focus\n- Preserve the in-flight decision\n",
+		);
 		for (let index = 0; index < 100; index += 1) {
 			fs.writeFileSync(
 				path.join(
@@ -222,6 +227,8 @@ describe("Codex SessionStart compact Work recovery", () => {
 		const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
 		expect(context).toMatch(/^Anamnesis Work briefing:/);
 		expect(context).toContain("Completion contract: preserve this line");
+		expect(context).toContain(".anamnesis/ontology/base.yaml");
+		expect(context).toContain(".anamnesis/handoff/active.md");
 		expect(context).toContain("compact supplemental context truncated");
 		expect(Buffer.byteLength(context, "utf8")).toBeLessThanOrEqual(2_100);
 	});
