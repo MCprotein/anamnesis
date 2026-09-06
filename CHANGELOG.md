@@ -9,6 +9,10 @@ could include breaking changes.
 
 ### Fixed
 
+- Normalize Codex native `spawn_agent` and `collaborationspawn_agent` hook
+  names to the existing `Agent` boundary without forwarding tool payloads.
+- Make open Work briefing continuation subordinate to the latest user
+  cancellation, pause, or redirection; recovery does not change ledger state.
 - Keep Work hook briefings and session cursor observations aligned with fresh
   ledger state when prompt updates and parallel tool completions overlap.
 - Restore the exact session-selected Work after Codex `SessionStart` with source
@@ -17,7 +21,7 @@ could include breaking changes.
 - Clarify standalone versus auxiliary handoff/orientation behavior: supporting
   checkpoints continue the active task, reminders do not write handoffs, and
   clearly completed stale handoffs do not require redundant confirmation.
-  Base fragment 24 carries the instruction and native-hook updates; existing
+  Base fragment 25 carries the instruction and native-hook updates; existing
   project adapters are updated only through the normal explicit apply process.
 
 ## [1.23.4] — 2026-09-01

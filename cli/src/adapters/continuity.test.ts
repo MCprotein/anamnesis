@@ -141,7 +141,8 @@ describe("cross-agent context continuity acceptance", () => {
     expect(workBoundary.mode).toBe(0o755);
     expect(workBoundary.settingsHook).toEqual({ event: "PostToolBatch" });
     expect(workBoundary.content).not.toContain("tmux");
-    expect(workBoundary.content).not.toContain("spawn_agent");
+    // Names may be normalized; the wrapper must not invoke an agent itself.
+    expect(workBoundary.content).not.toMatch(/\bspawn_agent\s*\(/);
 
     expectContainsAll(
       fileByPath(actions, ".claude/commands/load-context.md").content,
@@ -246,14 +247,15 @@ describe("cross-agent context continuity acceptance", () => {
     );
     expect(workBoundary.codexHook).toEqual({
       event: "PostToolUse",
-      matcher: "^(Bash|apply_patch|Agent)$",
+      matcher: "^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
       command: codexNativeNodeCommand(
         ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
       ),
       additionalContextLimit: 4000,
     });
     expect(workBoundary.content).not.toContain("tmux");
-    expect(workBoundary.content).not.toContain("spawn_agent");
+    // Names may be normalized; the wrapper must not invoke an agent itself.
+    expect(workBoundary.content).not.toMatch(/\bspawn_agent\s*\(/);
 
     expectContainsAll(regionById(actions, "codex-cmd-load-context").content, [
       "/load-context",

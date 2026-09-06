@@ -1,5 +1,5 @@
 id: base
-version: 24
+version: 25
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
@@ -47,7 +47,7 @@ capabilities:
     side_effects: [local-write]
 
   - type: executable_hook
-    event: PostToolUse:^(Bash|apply_patch|Agent)$
+    event: PostToolUse:^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$
     source: adapters/codex/hooks/work-post-tool-use.mjs
     adapters_supported: [codex]
     side_effects: [read-only, local-write]

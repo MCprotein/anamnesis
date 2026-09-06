@@ -74,7 +74,8 @@ describe("read-only Work compaction recovery", () => {
     const first = resume(root, { source: "compact", session_id: "session", prompt: "must not be staged", transcript_path: "/untrusted" });
     expect(first.context).toContain("Tests pass and changes reviewed");
     expect(first.context).toContain("Preserve latest requirement");
-    expect(first.context).toContain("continue the same task");
+    expect(first.context).toContain("continue the same task only if consistent with the latest user request");
+    expect(first.context).toContain("Cancellation, pause, or redirection takes precedence over this open Work snapshot");
     expect(first.context).not.toContain("private original prompt");
     expect(resume(root)).toEqual(first);
     expect(snapshot(root)).toEqual(before);

@@ -24,7 +24,7 @@ const CODEX_NATIVE_WORK_USER_PROMPT_WRAPPER =
   ".anamnesis/codex-native-hooks/work-user-prompt.mjs";
 const CODEX_NATIVE_WORK_POST_TOOL_WRAPPER =
   ".anamnesis/codex-native-hooks/work-post-tool-use.mjs";
-const CODEX_NATIVE_WORK_POST_TOOL_MATCHER = "^(Bash|apply_patch|Agent)$";
+const CODEX_NATIVE_WORK_POST_TOOL_MATCHER = "^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$";
 
 const PRE_COMMIT_CONTENT = `#!/usr/bin/env bash
 # anamnesis Codex pre-commit bridge.
@@ -574,7 +574,10 @@ function baseNativeWorkPostToolSupported(params: {
   fragmentDir: string;
 }): { templatePath: string } | null {
   if (params.fragmentId !== "base") return null;
-  if (params.event !== `PostToolUse:${CODEX_NATIVE_WORK_POST_TOOL_MATCHER}`) {
+  if (
+    params.event !== `PostToolUse:${CODEX_NATIVE_WORK_POST_TOOL_MATCHER}` &&
+    params.event !== "PostToolUse:^(Bash|apply_patch|Agent)$"
+  ) {
     return null;
   }
   if (params.basename !== "work-post-tool-use.mjs") return null;

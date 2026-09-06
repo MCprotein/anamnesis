@@ -914,3 +914,17 @@ an explicit privileged read to return a raw body.
 - Concurrent allocation against `purge_pending` fails closed, and recovery
   completes an interrupted multi-Work purge idempotently before deleting the
   source body.
+
+### Codex native spawn names and continuation precedence
+
+The Codex adapter accepts exact `Agent`, `spawn_agent`, and
+`collaborationspawn_agent` names and normalizes native spawn names to `Agent`
+before passing the sanitized stable-ID envelope to the Work CLI. Other
+namespaced tools are not matched by suffix. This preserves the existing
+session binding and duplicate-boundary accounting contract; it does not
+turn child completion into a requirement verification or review approval.
+
+An open Work snapshot describes persisted state, not renewed authorization.
+The latest user cancellation, pause, or redirection takes precedence over
+continuation suggested by a recovered briefing. The hook does not infer
+cancellation from tool text or mutate the ledger to reconcile that difference.

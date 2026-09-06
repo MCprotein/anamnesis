@@ -1297,7 +1297,7 @@ describe("same-turn Work post-tool hook", () => {
 		).toHaveLength(5);
 	});
 
-	it("counts each stable meaningful boundary once and briefs on the fifth action", () => {
+	it.each(["apply_patch", "Agent"])("counts each stable %s boundary once and briefs on the fifth action", (toolName) => {
 		const root = projectRoot();
 		const cursorId = seed(root, "codex", "post-session");
 		for (let index = 1; index <= 4; index += 1) {
@@ -1305,7 +1305,7 @@ describe("same-turn Work post-tool hook", () => {
 				handleWorkPostToolBoundary({
 					project_root: root,
 					client: "codex",
-					payload: postToolPayload("post-session", "turn-1", `tool-${index}`),
+					payload: postToolPayload("post-session", "turn-1", `tool-${index}`, toolName),
 					now: `2026-08-13T00:00:0${index}.000Z`,
 				}),
 			).toMatchObject({ status: "not_due", context: null });
@@ -1313,7 +1313,7 @@ describe("same-turn Work post-tool hook", () => {
 		const fifth = handleWorkPostToolBoundary({
 			project_root: root,
 			client: "codex",
-			payload: postToolPayload("post-session", "turn-1", "tool-5"),
+			payload: postToolPayload("post-session", "turn-1", "tool-5", toolName),
 			now: "2026-08-13T00:00:05.000Z",
 		});
 		expect(fifth).toMatchObject({ status: "briefing_due" });
@@ -1323,7 +1323,7 @@ describe("same-turn Work post-tool hook", () => {
 		const duplicate = handleWorkPostToolBoundary({
 			project_root: root,
 			client: "codex",
-			payload: postToolPayload("post-session", "turn-1", "tool-5"),
+			payload: postToolPayload("post-session", "turn-1", "tool-5", toolName),
 			now: "2026-08-13T00:00:06.000Z",
 		});
 		expect(duplicate).toMatchObject({
