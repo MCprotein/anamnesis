@@ -39,6 +39,12 @@ Each row has three pairs; a ratio over 1 means worse. Small samples and service 
 | fresh_delayed_filter_revision | 0.8211 | 1.0911 |
 | fresh_compaction_packlist_retention | 0.8256 | 1.0437 |
 
+## Secondary observations
+
+Across the same primary executions, tool calls fell from 33 to 23 on development and from 83 to 66 on reserved tasks. These are descriptive totals, not separately preregistered acceptance gates. All 60 distinct non-final assistant messages were read after measurement; none asked the user for clarification/permission or paused awaiting an answer. Structured final answers were validated for every turn. Unnecessary-question count is therefore zero in both arms for these bounded tasks; no improvement on that metric is demonstrated.
+
+Cached input totals were 793,088 → 561,408 (development) and 2,145,152 → 1,599,872 (reserved), alongside reduced total input. Lower absolute cached tokens alone do not indicate worse caching. Individual raw/cumulative usage fields are retained in results.json; no cache-control causal claim is made.
+
 ## Evaluation correction disclosed
 
 The original frozen grader incorrectly required exactly two normal turns around compaction. The fresh task intentionally has three: initial requirements, side question after compaction, and original completion. It rejected six otherwise completed executions. The unchanged original runner executed all 48 reserved samples once. The correction inserts the single compaction at the task's declared position among **all** normal turns; it does not change prompts, expected answers, quality checks, token accounting, thresholds or product source.
