@@ -89,6 +89,8 @@ TASKS = {
         'expected': [{'service': 'dispatch', 'port': 7319, 'dependency': 'inventory',
                       'lookup_source_mutation_allowed': False}]},
 }
+ORIGINAL_TASKS = TASKS.copy()
+
 DYNAMIC_TOOLS = [{'type': 'function', 'name': 'await_records',
                   'description': 'Get delayed task rows.',
                   'inputSchema': {'type': 'object', 'properties': {}, 'additionalProperties': False}}]
@@ -153,6 +155,61 @@ def source_lock(src):
     return result
 
 
+def safe_fixture_path(name):
+    require(isinstance(name, str) and bool(name) and "\\" not in name and "\0" not in name,
+            'invalid fixture path')
+    path = Path(name)
+    require(bool(path.parts) and not path.is_absolute() and '..' not in path.parts and str(path) == name, 'unsafe fixture path')
+    require(not any(part in {'.git', '.codex', '.agents', '.claude', '.cursor', '.omx', 'bin'} for part in path.parts) and
+            path.name not in {'AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', 'Agentfile'} and
+            all(part != '.anamnesis' or index + 2 < len(path.parts) and path.parts[index + 1] in {'ontology', 'handoff'}
+                for index, part in enumerate(path.parts)),
+            'protected fixture path')
+    return name
+
+
+def select_tasks(holdout=None):
+    global TASKS
+    if holdout is None:
+        TASKS = ORIGINAL_TASKS.copy()
+        return None
+    path = Path(holdout).resolve()
+    tasks = read_json(path)
+    require(isinstance(tasks, dict) and len(tasks) == 8, 'fresh holdout requires exactly eight tasks')
+    fields = {'suite', 'prompts', 'expected', 'fixture_files', 'expected_files', 'manual',
+              'compact_after', 'steer', 'response', 'file', 'rows'}
+    for task_id, task in tasks.items():
+        require(re.fullmatch(r'fresh_[a-z0-9_]+', task_id) is not None and isinstance(task, dict), 'invalid fresh task')
+        require(set(task) <= fields and task.get('suite') == 'reserved', 'invalid fresh task fields/suite')
+        require(isinstance(task.get('prompts'), list) and task['prompts'] and
+                all(isinstance(p, str) and p for p in task['prompts']), 'invalid fresh prompts')
+        require(isinstance(task.get('expected'), list) and len(task['expected']) == len(task['prompts']) and
+                all(isinstance(value, dict) for value in task['expected']), 'invalid fresh oracle')
+        require(type(task.get('manual', False)) is bool, 'invalid manual flag')
+        if 'compact_after' in task:
+            require(type(task['compact_after']) is int and 0 <= task['compact_after'] < len(task['prompts']) - 1,
+                    'invalid compaction boundary')
+        require(('steer' in task) == ('response' in task), 'missing steering pair')
+        if 'steer' in task:
+            require(isinstance(task['steer'], str) and bool(task['steer']) and isinstance(task['response'], dict), 'invalid steering pair')
+        require(('file' in task) == ('rows' in task), 'missing file data')
+        if 'file' in task:
+            safe_fixture_path(task['file'])
+        require(isinstance(task.get('fixture_files', {}), dict) and isinstance(task.get('expected_files', {}), dict), 'invalid fixture mappings')
+        require(task.get('file') not in task.get('fixture_files', {}), 'duplicate fixture source')
+        for name, content in task.get('fixture_files', {}).items():
+            safe_fixture_path(name)
+            require(isinstance(content, str), 'fixture contents must be text')
+        for name, oracle in task.get('expected_files', {}).items():
+            safe_fixture_path(name)
+            require(name in task.get('fixture_files', {}) and isinstance(oracle, dict) and
+                    set(oracle) == {'format', 'value'} and oracle['format'] in {'json', 'text'}, 'invalid edit oracle')
+            require(oracle['format'] != 'text' or isinstance(oracle['value'], str), 'invalid text oracle')
+            require(not name.startswith('.anamnesis/'), 'managed state edits are not allowed by fresh fixtures')
+    TASKS = {key: value for key, value in ORIGINAL_TASKS.items() if value['suite'] == 'development'} | tasks
+    return {'path': str(path), 'sha256': digest(path)}
+
+
 def git_revision(src):
     return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=src, text=True).strip()
 
@@ -188,7 +245,12 @@ def fixture(root, src, task, log):
         'services:\n  - id: dispatch\n    port: 7319\n    depends_on: inventory\n'
         'invariants:\n  - Never modify source data during a lookup.\n')
     if 'file' in task:
+        (root / task['file']).parent.mkdir(parents=True, exist_ok=True)
         write_json(root / task['file'], task['rows'])
+    for name, content in task.get('fixture_files', {}).items():
+        target = root / safe_fixture_path(name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
     if task.get('manual'):
         for name in ('.codex', '.claude', '.cursor'):
             path = root / name
@@ -227,13 +289,14 @@ def freeze(args):
     record = {'status': 'freezing', 'errors': []}
     write_json(out / 'freeze-result.json', record)
     try:
+        holdout = select_tasks(getattr(args, 'holdout', None))
         sources = {arm: {'path': str(path.resolve()), 'git_ref': git_revision(path.resolve()),
                          'files': source_lock(path.resolve())}
                    for arm, path in [('baseline', args.baseline), ('candidate', args.candidate)]}
         require(sources['baseline']['git_ref'] == BASELINE_REF, 'baseline is not protocol PR7 commit')
         plan = {'schema': 2, 'batch': args.batch, 'classification': 'FORMAL', 'settings': SETTINGS,
                 'developer': DEVELOPER, 'tasks': TASKS, 'dynamic_tools': DYNAMIC_TOOLS,
-                'sources': sources, 'versions': versions(),
+                'sources': sources, 'versions': versions(), 'holdout': holdout,
                 'harness': digest(Path(__file__)),
                 'runtime': digest(Path(__file__).with_name('codex_continuity_runtime.py')),
                 'protocol': {'path': str(args.protocol.resolve()), 'sha256': digest(args.protocol)},
@@ -269,6 +332,8 @@ def load_plan(out, expected_id):
     unsigned = {k: v for k, v in plan.items() if k != 'plan_id'}
     require(plan.get('plan_id') == identity(unsigned), 'altered plan identity')
     require(plan.get('schema') == 2 and plan.get('classification') == 'FORMAL', 'pilot/invalid plan')
+    holdout = plan.get('holdout')
+    require(select_tasks(holdout['path'] if holdout else None) == holdout, 'holdout changed after freeze')
     require(plan['tasks'] == TASKS and plan['settings'] == SETTINGS and plan['developer'] == DEVELOPER
             and plan['dynamic_tools'] == DYNAMIC_TOOLS, 'changed formal contract')
     require(plan['thresholds'] == {'token': .90, 'time': 1.05}, 'changed thresholds')
@@ -323,10 +388,18 @@ def handoff_valid(root, git_ref):
 def score(task, root, answers, before, git_ref):
     try:
         after = manifest(root)
-        allowed = handoff_valid(root, git_ref) if 'expected' not in task else set()
+        is_handoff = 'expected' not in task
+        allowed = handoff_valid(root, git_ref) if is_handoff else set(task.get('expected_files', {}))
+        for name, oracle in task.get('expected_files', {}).items():
+            safe_fixture_path(name)
+            require(before.get(name, {}).get('kind') == 'file' and after.get(name, {}).get('kind') == 'file' and
+                    before[name]['mode'] == after[name]['mode'], 'invalid edited-file identity/mode')
+            actual = read_json(root / name) if oracle['format'] == 'json' else (root / name).read_text()
+            require(identity(actual) == identity(oracle['value']), 'incorrect edited-file contents')
         changed = {name for name in before.keys() | after.keys() if before.get(name) != after.get(name)}
         require(changed <= allowed, 'prohibited fixture mutations: ' + ', '.join(sorted(changed - allowed)))
-        require(not any(name in before for name in allowed if name != '.anamnesis/handoff'), 'handoff overwrote input')
+        if is_handoff:
+            require(not any(name in before for name in allowed if name != '.anamnesis/handoff'), 'handoff overwrote input')
         if 'expected' in task:
             require(len(answers) == len(task['expected']), 'missing/extra final answers')
             # Strict types: Python equality otherwise admits false == 0 and true == 1.
@@ -630,6 +703,7 @@ def main():
     f.add_argument('--protocol', type=Path, required=True)
     f.add_argument('--batch', required=True)
     f.add_argument('--output', type=Path, required=True)
+    f.add_argument('--holdout', type=Path, help='Frozen independently authored fresh reserved specification')
     r = subs.add_parser('run')
     r.add_argument('--output', type=Path, required=True)
     r.add_argument('--run-id', required=True)

@@ -247,6 +247,45 @@ class EvaluatorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'external state mutation'):
             self.evidence()
 
+    def test_fresh_holdout_contract_and_protected_paths(self):
+        path = self.out / 'fresh.json'
+        tasks = {f'fresh_case_{i}': {'suite': 'reserved', 'prompts': ['Return JSON.'],
+                                  'expected': [{'ok': True}]} for i in range(8)}
+        try:
+            evaluator.write_json(path, tasks)
+            lock = evaluator.select_tasks(path)
+            self.assertEqual(len(evaluator.TASKS), 11)
+            self.assertEqual(lock['sha256'], evaluator.digest(path))
+            self.assertNotIn('lookup_signed', evaluator.TASKS)
+            for bad in ['../escape', '.git/config', '.codex/hooks.json', 'AGENTS.md',
+                        '.anamnesis/manifest.json', 'nested/.codex/hooks.json', 'nested/.anamnesis/work/state.json', '/tmp/escape', '.']:
+                with self.subTest(path=bad):
+                    tasks['fresh_case_0']['fixture_files'] = {bad: 'bad'}
+                    evaluator.write_json(path, tasks)
+                    with self.assertRaises(ValueError):
+                        evaluator.select_tasks(path)
+        finally:
+            evaluator.select_tasks()
+
+    def test_declared_edit_preserves_other_files_and_modes(self):
+        root = self.folder / 'fixture'
+        path = root / 'settings.json'
+        path.write_text('{"count": 1, "protected": true}')
+        before = evaluator.manifest(root)
+        task = {'expected': [{'ok': True}], 'expected_files': {
+            'settings.json': {'format': 'json', 'value': {'count': 2, 'protected': True}}}}
+        answer = ['{"ok": true}']
+        path.write_text('{"protected": true, "count": 2}')
+        self.assertTrue(evaluator.score(task, root, answer, before, 'a' * 40)['pass'])
+        path.write_text('{"protected": false, "count": 2}')
+        self.assertFalse(evaluator.score(task, root, answer, before, 'a' * 40)['pass'])
+        path.write_text('{"protected": true, "count": 2}')
+        path.chmod(0o700)
+        self.assertFalse(evaluator.score(task, root, answer, before, 'a' * 40)['pass'])
+        path.chmod(before['settings.json']['mode'])
+        (root / 'unrequested.txt').write_text('bad')
+        self.assertFalse(evaluator.score(task, root, answer, before, 'a' * 40)['pass'])
+
     def test_all_fixture_mutations_rejected(self):
         before = self.sample['fixture']
         root = self.folder / 'fixture'
