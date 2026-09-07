@@ -1,3 +1,4 @@
+import { compactInstructionDelivery } from "./instruction_delivery.js";
 // Codex adapter — executable_hook support.
 //
 // Codex native hooks are available through `.codex/hooks.json` when generated
@@ -249,7 +250,7 @@ export const executableHookRenderer: CapabilityRenderer = {
       });
     }
 
-    return actions;
+    return compactInstructionDelivery(actions);
   },
 };
 

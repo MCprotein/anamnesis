@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Keep Codex procedure routing in AGENTS.md while preserving full hook, skill and command fallback instructions in managed Markdown sources. Native adapters and other clients retain their existing paths; runtime efficiency is evaluated separately.
+
 - Add an explicit read-only instruction audit with bounded project inventory, recorded ownership and drift, literal duplicate references, and compatibility-aware review guidance. Disk bytes are kept separate from runtime token/performance claims.
 
 - Remove six redundant adapter registration checks already covered by the parity matrix and consolidate two identical reviewer-repair cases while preserving their combined assertions. Exercise three publication recovery faults directly, preserving their assertions and end-to-end publication coverage without rerunning the entire fake benchmark.

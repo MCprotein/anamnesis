@@ -1,3 +1,4 @@
+import { compactInstructionDelivery } from "./instruction_delivery.js";
 // Codex adapter — slash_command fallback.
 //
 // Codex has no slash command system. The fallback emits an AGENTS.md
@@ -56,7 +57,7 @@ export const slashCommandRenderer: CapabilityRenderer = {
         ? ctx.settings.agents_md_path
         : path.posix.join(scopePath, ctx.settings.agents_md_path);
 
-    return [
+    return compactInstructionDelivery([
       {
         kind: "region",
         file: targetFile,
@@ -66,6 +67,6 @@ export const slashCommandRenderer: CapabilityRenderer = {
         sideEffects,
         content,
       },
-    ];
+    ]);
   },
 };

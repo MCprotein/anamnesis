@@ -213,6 +213,7 @@ export function contextInstructionAudit(options: {
 	}
 	for (const directory of [
 		".codex/skills",
+		".anamnesis/codex-instructions",
 		".codex/agents",
 		".claude/skills",
 		".claude/agents",

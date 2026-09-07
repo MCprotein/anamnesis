@@ -7,387 +7,389 @@ import type { ToolName } from "../core/agentfile.js";
 import { codexNativeNodeCommand } from "../core/codex_native.js";
 import { loadBaseFragment } from "../core/fragments.js";
 import {
-  RendererRegistry,
-  type FileAction,
-  type RegionAction,
-  type RenderAction,
-  type RenderContext,
+	RendererRegistry,
+	type FileAction,
+	type RegionAction,
+	type RenderAction,
+	type RenderContext,
 } from "../core/render.js";
 
 const SETTINGS = {
-  ontology_file: "system_graph.yaml",
-  agents_md_path: "AGENTS.md",
-  claude_md_path: "CLAUDE.md",
+	ontology_file: "system_graph.yaml",
+	agents_md_path: "AGENTS.md",
+	claude_md_path: "CLAUDE.md",
 };
 
 function renderBase(adapter: ToolName): RenderAction[] {
-  const libraryRoot = process.cwd();
-  const fragmentDir = path.join(libraryRoot, "base");
-  const fragment = loadBaseFragment(libraryRoot);
-  expect(fragment).not.toBeNull();
+	const libraryRoot = process.cwd();
+	const fragmentDir = path.join(libraryRoot, "base");
+	const fragment = loadBaseFragment(libraryRoot);
+	expect(fragment).not.toBeNull();
 
-  const registry = new RendererRegistry();
-  registerClaudeCode(registry);
-  registerCodex(registry);
-  registerCursor(registry);
+	const registry = new RendererRegistry();
+	registerClaudeCode(registry);
+	registerCodex(registry);
+	registerCursor(registry);
 
-  const ctx: RenderContext = {
-    fragment: fragment!,
-    fragmentDir,
-    projectRoot: "/tmp/anamnesis-continuity-project",
-    scopePath: ".",
-    settings: SETTINGS,
-    params: {},
-  };
+	const ctx: RenderContext = {
+		fragment: fragment!,
+		fragmentDir,
+		projectRoot: "/tmp/anamnesis-continuity-project",
+		scopePath: ".",
+		settings: SETTINGS,
+		params: {},
+	};
 
-  return registry.planFragment(ctx, adapter);
+	return registry.planFragment(ctx, adapter);
 }
 
 function regionById(actions: RenderAction[], id: string): RegionAction {
-  const action = actions.find(
-    (a): a is RegionAction => a.kind === "region" && a.regionId === id,
-  );
-  expect(action, `missing region ${id}`).toBeDefined();
-  return action!;
+	const action = actions.find(
+		(a): a is RegionAction => a.kind === "region" && a.regionId === id,
+	);
+	expect(action, `missing region ${id}`).toBeDefined();
+	return action!;
 }
 
 function fileByPath(actions: RenderAction[], filePath: string): FileAction {
-  const action = actions.find(
-    (a): a is FileAction => a.kind === "file" && a.path === filePath,
-  );
-  expect(action, `missing file ${filePath}`).toBeDefined();
-  return action!;
+	const action = actions.find(
+		(a): a is FileAction => a.kind === "file" && a.path === filePath,
+	);
+	expect(action, `missing file ${filePath}`).toBeDefined();
+	return action!;
+}
+
+function procedure(actions: RenderAction[], id: string): string {
+	const routing = regionById(actions, id).content;
+	const source = routing.match(
+		/Full procedure and manual fallback[^\n]*`([^`]+)`/,
+	);
+	expect(source, `missing procedure pointer for ${id}`).not.toBeNull();
+	return fileByPath(actions, source![1]!).content;
 }
 
 function expectContainsAll(text: string, needles: string[]): void {
-  for (const needle of needles) {
-    expect(text).toContain(needle);
-  }
+	for (const needle of needles) {
+		expect(text).toContain(needle);
+	}
 }
 
 describe("cross-agent context continuity acceptance", () => {
-  it.each<ToolName>(["claude-code", "codex", "cursor"])(
-    "%s renders the shared context and handoff contract",
-    (adapter) => {
-      const actions = renderBase(adapter);
+	it.each<ToolName>([
+		"claude-code",
+		"codex",
+		"cursor",
+	])("%s renders the shared context and handoff contract", (adapter) => {
+		const actions = renderBase(adapter);
 
-      const agents = regionById(actions, "anamnesis-base");
-      expect(agents.file).toBe("AGENTS.md");
-      expectContainsAll(agents.content, [
-        ".anamnesis/ontology/*.yaml",
-        "system_graph.yaml",
-        ".anamnesis/handoff/",
-        ".anamnesis/handoff/active.md",
-        "frontmatter",
-        "Goal / Done / In flight / Decisions / Open questions / Next steps",
-        "stale",
-        "git log",
-        "Claude Code",
-        "Codex",
-        "Cursor",
-        "anamnesis apply --dry-run",
-        "--allow-exec-adapters",
-      ]);
+		const agents = regionById(actions, "anamnesis-base");
+		expect(agents.file).toBe("AGENTS.md");
+		expectContainsAll(agents.content, [
+			".anamnesis/ontology/*.yaml",
+			"system_graph.yaml",
+			".anamnesis/handoff/",
+			".anamnesis/handoff/active.md",
+			"frontmatter",
+			"Goal / Done / In flight / Decisions / Open questions / Next steps",
+			"stale",
+			"git log",
+			"Claude Code",
+			"Codex",
+			"Cursor",
+			"anamnesis apply --dry-run",
+			"--allow-exec-adapters",
+		]);
 
-      const ontology = fileByPath(actions, ".anamnesis/ontology/base.yaml");
-      expectContainsAll(ontology.content, [
-        "managed_by: anamnesis",
-        "ontology_dir: .anamnesis/ontology/",
-      ]);
-    },
-  );
+		const ontology = fileByPath(actions, ".anamnesis/ontology/base.yaml");
+		expectContainsAll(ontology.content, [
+			"managed_by: anamnesis",
+			"ontology_dir: .anamnesis/ontology/",
+		]);
+	});
 
-  it("renders Claude Code native hooks, commands, and skills", () => {
-    const actions = renderBase("claude-code");
+	it("renders Claude Code native hooks, commands, and skills", () => {
+		const actions = renderBase("claude-code");
 
-    const injectOntology = fileByPath(
-      actions,
-      ".claude/hooks/inject-ontology.sh",
-    );
-    expect(injectOntology.mode).toBe(0o755);
-    expect(injectOntology.settingsHook).toEqual({ event: "SessionStart" });
-    expect(injectOntology.content).toContain(".anamnesis/ontology");
+		const injectOntology = fileByPath(
+			actions,
+			".claude/hooks/inject-ontology.sh",
+		);
+		expect(injectOntology.mode).toBe(0o755);
+		expect(injectOntology.settingsHook).toEqual({ event: "SessionStart" });
+		expect(injectOntology.content).toContain(".anamnesis/ontology");
 
-    const injectHandoff = fileByPath(
-      actions,
-      ".claude/hooks/inject-handoff.sh",
-    );
-    expect(injectHandoff.mode).toBe(0o755);
-    expect(injectHandoff.settingsHook).toEqual({ event: "SessionStart" });
-    expect(injectHandoff.content).toContain(".anamnesis/handoff");
+		const injectHandoff = fileByPath(
+			actions,
+			".claude/hooks/inject-handoff.sh",
+		);
+		expect(injectHandoff.mode).toBe(0o755);
+		expect(injectHandoff.settingsHook).toEqual({ event: "SessionStart" });
+		expect(injectHandoff.content).toContain(".anamnesis/handoff");
 
-    const handoffReminder = fileByPath(
-      actions,
-      ".claude/hooks/handoff-reminder.sh",
-    );
-    expect(handoffReminder.mode).toBe(0o755);
-    expect(handoffReminder.settingsHook).toEqual({ event: "Stop" });
-    expect(handoffReminder.content).toContain("handoff");
+		const handoffReminder = fileByPath(
+			actions,
+			".claude/hooks/handoff-reminder.sh",
+		);
+		expect(handoffReminder.mode).toBe(0o755);
+		expect(handoffReminder.settingsHook).toEqual({ event: "Stop" });
+		expect(handoffReminder.content).toContain("handoff");
 
-    const uncommittedReminder = fileByPath(
-      actions,
-      ".claude/hooks/remind-uncommitted.sh",
-    );
-    expect(uncommittedReminder.mode).toBe(0o755);
-    expect(uncommittedReminder.settingsHook).toEqual({
-      event: "PostToolUse",
-      matcher: "Edit",
-    });
+		const uncommittedReminder = fileByPath(
+			actions,
+			".claude/hooks/remind-uncommitted.sh",
+		);
+		expect(uncommittedReminder.mode).toBe(0o755);
+		expect(uncommittedReminder.settingsHook).toEqual({
+			event: "PostToolUse",
+			matcher: "Edit",
+		});
 
-    const workBoundary = fileByPath(
-      actions,
-      ".claude/hooks/work-post-tool-batch.mjs",
-    );
-    expect(workBoundary.mode).toBe(0o755);
-    expect(workBoundary.settingsHook).toEqual({ event: "PostToolBatch" });
-    expect(workBoundary.content).not.toContain("tmux");
-    // Names may be normalized; the wrapper must not invoke an agent itself.
-    expect(workBoundary.content).not.toMatch(/\bspawn_agent\s*\(/);
+		const workBoundary = fileByPath(
+			actions,
+			".claude/hooks/work-post-tool-batch.mjs",
+		);
+		expect(workBoundary.mode).toBe(0o755);
+		expect(workBoundary.settingsHook).toEqual({ event: "PostToolBatch" });
+		expect(workBoundary.content).not.toContain("tmux");
+		// Names may be normalized; the wrapper must not invoke an agent itself.
+		expect(workBoundary.content).not.toMatch(/\bspawn_agent\s*\(/);
 
-    expectContainsAll(
-      fileByPath(actions, ".claude/commands/load-context.md").content,
-      [".anamnesis/ontology/", "system_graph.yaml", "anamnesis context query"],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".claude/commands/handoff-prepare.md").content,
-      [".anamnesis/handoff/active.md", "next agent"],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".claude/skills/load-context/SKILL.md").content,
-      [
-        "every fresh session starts from zero project context",
-        "anamnesis context query",
-        "source_path",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".claude/skills/ontology-enrich/SKILL.md").content,
-      [
-        "Layer B",
-        "enriched.yaml",
-        "schema_version",
-        "anamnesis.enriched.v1",
-        "supersedes",
-        "open_questions",
-        "source_path",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".claude/skills/anamnesis-init/SKILL.md").content,
-      [
-        "multiple-choice question",
-        "--scaffold-docs",
-        "--enhance-docs",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".claude/skills/doc-freshness-review/SKILL.md")
-        .content,
-      [
-        "semantic freshness",
-        "anamnesis context diagnose",
-        "anamnesis context query",
-        "stale-current-claim",
-        "needs-human-confirmation",
-      ],
-    );
-  });
+		expectContainsAll(
+			fileByPath(actions, ".claude/commands/load-context.md").content,
+			[".anamnesis/ontology/", "system_graph.yaml", "anamnesis context query"],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".claude/commands/handoff-prepare.md").content,
+			[".anamnesis/handoff/active.md", "next agent"],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".claude/skills/load-context/SKILL.md").content,
+			[
+				"every fresh session starts from zero project context",
+				"anamnesis context query",
+				"source_path",
+			],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".claude/skills/ontology-enrich/SKILL.md").content,
+			[
+				"Layer B",
+				"enriched.yaml",
+				"schema_version",
+				"anamnesis.enriched.v1",
+				"supersedes",
+				"open_questions",
+				"source_path",
+			],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".claude/skills/anamnesis-init/SKILL.md").content,
+			["multiple-choice question", "--scaffold-docs", "--enhance-docs"],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".claude/skills/doc-freshness-review/SKILL.md")
+				.content,
+			[
+				"semantic freshness",
+				"anamnesis context diagnose",
+				"anamnesis context query",
+				"stale-current-claim",
+				"needs-human-confirmation",
+			],
+		);
+	});
 
-  it("renders Codex native hooks plus AGENTS.md fallbacks", () => {
-    const actions = renderBase("codex");
+	it("renders Codex native hooks plus AGENTS.md fallbacks", () => {
+		const actions = renderBase("codex");
 
-    const sessionStart = fileByPath(
-      actions,
-      ".anamnesis/codex-native-hooks/session-start.mjs",
-    );
-    expect(sessionStart.mode).toBe(0o755);
-    expect(sessionStart.codexHook).toEqual({
-      event: "SessionStart",
-      matcher: "startup|resume|clear|compact",
-      command: codexNativeNodeCommand(
-        ".anamnesis/codex-native-hooks/session-start.mjs",
-      ),
-    });
-    expectContainsAll(sessionStart.content, [
-      "hookSpecificOutput",
-      ".anamnesis",
-      "ontology",
-      "handoff",
-      "anamnesis context query",
-    ]);
+		const sessionStart = fileByPath(
+			actions,
+			".anamnesis/codex-native-hooks/session-start.mjs",
+		);
+		expect(sessionStart.mode).toBe(0o755);
+		expect(sessionStart.codexHook).toEqual({
+			event: "SessionStart",
+			matcher: "startup|resume|clear|compact",
+			command: codexNativeNodeCommand(
+				".anamnesis/codex-native-hooks/session-start.mjs",
+			),
+		});
+		expectContainsAll(sessionStart.content, [
+			"hookSpecificOutput",
+			".anamnesis",
+			"ontology",
+			"handoff",
+			"anamnesis context query",
+		]);
 
-    const dirtyReminder = fileByPath(
-      actions,
-      ".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs",
-    );
-    expect(dirtyReminder.codexHook).toEqual({
-      event: "PostToolUse",
-      matcher: "Edit|Write|apply_patch",
-      command: codexNativeNodeCommand(
-        ".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs",
-      ),
-      statusMessage: "Running anamnesis PostToolUse hook",
-    });
+		const dirtyReminder = fileByPath(
+			actions,
+			".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs",
+		);
+		expect(dirtyReminder.codexHook).toEqual({
+			event: "PostToolUse",
+			matcher: "Edit|Write|apply_patch",
+			command: codexNativeNodeCommand(
+				".anamnesis/codex-native-hooks/base-PostToolUse-Edit-remind-uncommitted.mjs",
+			),
+			statusMessage: "Running anamnesis PostToolUse hook",
+		});
 
-    const stopReminder = fileByPath(
-      actions,
-      ".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs",
-    );
-    expect(stopReminder.codexHook).toEqual({
-      event: "Stop",
-      command: codexNativeNodeCommand(
-        ".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs",
-      ),
-      statusMessage: "Running anamnesis Stop hook",
-    });
+		const stopReminder = fileByPath(
+			actions,
+			".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs",
+		);
+		expect(stopReminder.codexHook).toEqual({
+			event: "Stop",
+			command: codexNativeNodeCommand(
+				".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs",
+			),
+			statusMessage: "Running anamnesis Stop hook",
+		});
 
-    const workBoundary = fileByPath(
-      actions,
-      ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
-    );
-    expect(workBoundary.codexHook).toEqual({
-      event: "PostToolUse",
-      matcher: "^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
-      command: codexNativeNodeCommand(
-        ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
-      ),
-      additionalContextLimit: 4000,
-    });
-    expect(workBoundary.content).not.toContain("tmux");
-    // Names may be normalized; the wrapper must not invoke an agent itself.
-    expect(workBoundary.content).not.toMatch(/\bspawn_agent\s*\(/);
+		const workBoundary = fileByPath(
+			actions,
+			".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
+		);
+		expect(workBoundary.codexHook).toEqual({
+			event: "PostToolUse",
+			matcher:
+				"^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
+			command: codexNativeNodeCommand(
+				".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
+			),
+			additionalContextLimit: 4000,
+		});
+		expect(workBoundary.content).not.toContain("tmux");
+		// Names may be normalized; the wrapper must not invoke an agent itself.
+		expect(workBoundary.content).not.toMatch(/\bspawn_agent\s*\(/);
 
-    expectContainsAll(regionById(actions, "codex-cmd-load-context").content, [
-      "/load-context",
-      ".anamnesis/ontology/",
-      "system_graph.yaml",
-      "anamnesis context query",
-    ]);
-    expectContainsAll(
-      regionById(actions, "codex-cmd-handoff-prepare").content,
-      ["/handoff-prepare", ".anamnesis/handoff/active.md", "next agent"],
-    );
-    expectContainsAll(regionById(actions, "codex-skill-load-context").content, [
-      "Skill: `load-context`",
-      ".codex/skills/load-context/SKILL.md",
-      "every fresh session starts from zero project context",
-      "anamnesis context query",
-    ]);
-    expectContainsAll(
-      fileByPath(actions, ".codex/skills/load-context/SKILL.md").content,
-      [
-        "name: load-context",
-        "every fresh session starts from zero project context",
-        "source_path",
-      ],
-    );
-    expectContainsAll(
-      regionById(actions, "codex-skill-ontology-enrich").content,
-      [
-        "Skill: `ontology-enrich`",
-        ".codex/skills/ontology-enrich/SKILL.md",
-        "Layer B",
-        "enriched.yaml",
-        "anamnesis.enriched.v1",
-        "supersedes",
-        "source_path",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".codex/skills/ontology-enrich/SKILL.md").content,
-      [
-        "name: ontology-enrich",
-        "Layer B",
-        "anamnesis.enriched.v1",
-        "anamnesis context query",
-      ],
-    );
-    expectContainsAll(regionById(actions, "codex-skill-anamnesis-init").content, [
-      "Skill: `anamnesis-init`",
-      ".codex/skills/anamnesis-init/SKILL.md",
-      "multiple-choice question",
-      "--scaffold-docs",
-      "--enhance-docs",
-    ]);
-    expectContainsAll(
-      fileByPath(actions, ".codex/skills/anamnesis-init/SKILL.md").content,
-      ["name: anamnesis-init", "multiple-choice question"],
-    );
-    expectContainsAll(
-      regionById(actions, "codex-skill-doc-freshness-review").content,
-      [
-        "Skill: `doc-freshness-review`",
-        ".codex/skills/doc-freshness-review/SKILL.md",
-        "semantic freshness",
-        "anamnesis context diagnose",
-        "anamnesis context query",
-        "stale-current-claim",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".codex/skills/doc-freshness-review/SKILL.md")
-        .content,
-      ["name: doc-freshness-review", "semantic freshness", "source_path"],
-    );
-  });
+		expectContainsAll(procedure(actions, "codex-cmd-load-context"), [
+			"/load-context",
+			".anamnesis/ontology/",
+			"system_graph.yaml",
+			"anamnesis context query",
+		]);
+		expectContainsAll(procedure(actions, "codex-cmd-handoff-prepare"), [
+			"/handoff-prepare",
+			".anamnesis/handoff/active.md",
+			"next agent",
+		]);
+		expectContainsAll(procedure(actions, "codex-skill-load-context"), [
+			"Skill: `load-context`",
+			".codex/skills/load-context/SKILL.md",
+			"every fresh session starts from zero project context",
+			"anamnesis context query",
+		]);
+		expectContainsAll(
+			fileByPath(actions, ".codex/skills/load-context/SKILL.md").content,
+			[
+				"name: load-context",
+				"every fresh session starts from zero project context",
+				"source_path",
+			],
+		);
+		expectContainsAll(procedure(actions, "codex-skill-ontology-enrich"), [
+			"Skill: `ontology-enrich`",
+			".codex/skills/ontology-enrich/SKILL.md",
+			"Layer B",
+			"enriched.yaml",
+			"anamnesis.enriched.v1",
+			"supersedes",
+			"source_path",
+		]);
+		expectContainsAll(
+			fileByPath(actions, ".codex/skills/ontology-enrich/SKILL.md").content,
+			[
+				"name: ontology-enrich",
+				"Layer B",
+				"anamnesis.enriched.v1",
+				"anamnesis context query",
+			],
+		);
+		expectContainsAll(procedure(actions, "codex-skill-anamnesis-init"), [
+			"Skill: `anamnesis-init`",
+			".codex/skills/anamnesis-init/SKILL.md",
+			"multiple-choice question",
+			"--scaffold-docs",
+			"--enhance-docs",
+		]);
+		expectContainsAll(
+			fileByPath(actions, ".codex/skills/anamnesis-init/SKILL.md").content,
+			["name: anamnesis-init", "multiple-choice question"],
+		);
+		expectContainsAll(procedure(actions, "codex-skill-doc-freshness-review"), [
+			"Skill: `doc-freshness-review`",
+			".codex/skills/doc-freshness-review/SKILL.md",
+			"semantic freshness",
+			"anamnesis context diagnose",
+			"anamnesis context query",
+			"stale-current-claim",
+		]);
+		expectContainsAll(
+			fileByPath(actions, ".codex/skills/doc-freshness-review/SKILL.md")
+				.content,
+			["name: doc-freshness-review", "semantic freshness", "source_path"],
+		);
+	});
 
-  it("renders Cursor rule fallbacks for commands and skills", () => {
-    const actions = renderBase("cursor");
+	it("renders Cursor rule fallbacks for commands and skills", () => {
+		const actions = renderBase("cursor");
 
-    expectContainsAll(
-      fileByPath(actions, ".cursor/rules/load-context-cmd.mdc").content,
-      [
-        "agentRequested: true",
-        "/load-context",
-        ".anamnesis/ontology/",
-        "anamnesis context query",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".cursor/rules/handoff-prepare-cmd.mdc").content,
-      [
-        "agentRequested: true",
-        "/handoff-prepare",
-        ".anamnesis/handoff/active.md",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".cursor/rules/load-context.mdc").content,
-      [
-        "agentRequested: true",
-        "every fresh session starts from zero project context",
-        "source_path",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".cursor/rules/ontology-enrich.mdc").content,
-      [
-        "agentRequested: true",
-        "Layer B",
-        "enriched.yaml",
-        "anamnesis.enriched.v1",
-        "open_questions",
-        "anamnesis context query",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".cursor/rules/anamnesis-init.mdc").content,
-      [
-        "agentRequested: true",
-        "multiple-choice question",
-        "--scaffold-docs",
-        "--enhance-docs",
-      ],
-    );
-    expectContainsAll(
-      fileByPath(actions, ".cursor/rules/doc-freshness-review.mdc").content,
-      [
-        "agentRequested: true",
-        "semantic freshness",
-        "anamnesis context diagnose",
-        "anamnesis context query",
-        "needs-human-confirmation",
-      ],
-    );
-  });
+		expectContainsAll(
+			fileByPath(actions, ".cursor/rules/load-context-cmd.mdc").content,
+			[
+				"agentRequested: true",
+				"/load-context",
+				".anamnesis/ontology/",
+				"anamnesis context query",
+			],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".cursor/rules/handoff-prepare-cmd.mdc").content,
+			[
+				"agentRequested: true",
+				"/handoff-prepare",
+				".anamnesis/handoff/active.md",
+			],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".cursor/rules/load-context.mdc").content,
+			[
+				"agentRequested: true",
+				"every fresh session starts from zero project context",
+				"source_path",
+			],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".cursor/rules/ontology-enrich.mdc").content,
+			[
+				"agentRequested: true",
+				"Layer B",
+				"enriched.yaml",
+				"anamnesis.enriched.v1",
+				"open_questions",
+				"anamnesis context query",
+			],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".cursor/rules/anamnesis-init.mdc").content,
+			[
+				"agentRequested: true",
+				"multiple-choice question",
+				"--scaffold-docs",
+				"--enhance-docs",
+			],
+		);
+		expectContainsAll(
+			fileByPath(actions, ".cursor/rules/doc-freshness-review.mdc").content,
+			[
+				"agentRequested: true",
+				"semantic freshness",
+				"anamnesis context diagnose",
+				"anamnesis context query",
+				"needs-human-confirmation",
+			],
+		);
+	});
 });
