@@ -31,17 +31,6 @@ describe("formatGettingStartedGuide", () => {
 	it("prints compact help without advanced command flood", () => {
 		const output = formatCompactHelp("1.2.3", { color: false, width: 100 });
 
-		expect(output).toContain("Core Commands");
-		expect(output).toContain("Guided Workflows");
-		expect(output).toContain("Advanced namespaces");
-		expect(output).not.toContain("context ...");
-		expect(output).not.toContain("handoff ...");
-		expect(output).not.toContain("benchmark ...");
-		expect(output).toContain("update");
-		expect(output).toContain("Deprecated compatibility command for apply");
-		expect(output).toContain("anamnesis --help --all");
-		expect(output).not.toContain("benchmark task-series");
-		expect(output).not.toContain("\x1b[");
 		expect(output).toMatchInlineSnapshot(`
 			"anamnesis 1.2.3
 			AI coding agent config lifecycle manager

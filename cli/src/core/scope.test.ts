@@ -256,22 +256,6 @@ fragments: []
 // ---------------------------------------------------------------------------
 
 describe("Agentfile schema — multi-scope acceptance", () => {
-  it("accepts multi-scope Agentfile (no longer rejected)", () => {
-    expect(() =>
-      parseAgentfile(`
-version: 1
-project:
-  name: monorepo
-  scopes:
-    - path: .
-    - path: apps/api
-      extends: .
-tools: [claude-code]
-fragments: []
-`),
-    ).not.toThrow();
-  });
-
   it("rejects scope with unknown extends target", () => {
     expect(() =>
       parseAgentfile(`

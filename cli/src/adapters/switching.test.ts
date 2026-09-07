@@ -291,26 +291,26 @@ describe("3x3 switching-agent scenarios", () => {
     }
   }, SWITCHING_INTEGRATION_TEST_TIMEOUT_MS);
 
-  it("verifies stale active handoff detection for every ordered switch", () => {
+  it("reports adapter-independent stale handoff state through status and doctor", () => {
     const { project, library } = setupSwitchingProject();
     try {
-      for (const scenario of SWITCHING_SCENARIOS) {
-        const newestArchive = writeStaleScenario(project, scenario.from, scenario.to);
-        const st = status({ projectRoot: project, libraryRoot: library });
-        const active = st.continuity.checks.find((c) => c.id === "active-handoff");
-        expect(active?.status, scenario.id).toBe("fail");
-        expect(active?.detail, scenario.id).toContain(newestArchive);
+      // Adapter-specific prepare/resume paths remain covered by all nine pairs above.
+      const scenario = SWITCHING_SCENARIOS[0]!;
+      const newestArchive = writeStaleScenario(project, scenario.from, scenario.to);
+      const st = status({ projectRoot: project, libraryRoot: library });
+      const active = st.continuity.checks.find((c) => c.id === "active-handoff");
+      expect(active?.status, scenario.id).toBe("fail");
+      expect(active?.detail, scenario.id).toContain(newestArchive);
 
-        const doc = doctor({ projectRoot: project, libraryRoot: library });
-        expect(
-          doc.issues.some(
-            (issue) =>
-              issue.code === "continuity-active-handoff-stale" &&
-              issue.target?.includes(newestArchive),
-          ),
-          scenario.id,
-        ).toBe(true);
-      }
+      const doc = doctor({ projectRoot: project, libraryRoot: library });
+      expect(
+        doc.issues.some(
+          (issue) =>
+            issue.code === "continuity-active-handoff-stale" &&
+            issue.target?.includes(newestArchive),
+        ),
+        scenario.id,
+      ).toBe(true);
     } finally {
       fs.rmSync(project, { recursive: true, force: true });
     }

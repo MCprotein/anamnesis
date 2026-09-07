@@ -290,7 +290,6 @@ describe("anamnesis work CLI", () => {
 		expect(hook.stdout).not.toContain(raw);
 		const captureId = hook.stdout.match(/cap_[a-f0-9]{64}/)?.[0] as string;
 		expect(captureId).toBeDefined();
-		expect(hook.stdout).toContain(captureId);
 		writeNamedDraft(root, "staged.yaml", "@staged", "Staged CLI Work");
 		const allocated = run(root, [
 			"prompt",

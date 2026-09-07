@@ -16,9 +16,12 @@ Vitest does not validate release behavior or live model performance by itself.
 | Remove six adapter registration/coexistence tests from three adapter `index.test.ts` files | `adapters/parity.test.ts` registers all three together and checks every adapter/capability. Public renderer array/type checks and duplicate-registration rejection stay. |
 | Consolidate two identical reviewer-repair benchmark cases | The surviving case retains product success, non-exclusion, both condition passes, final accuracy, reviewer correctness and the transferred `process_perfect_pct` assertion. `repairFinal` affected an unreachable fake model stage; unknown stages now throw. Real child-overlap timers/assertions stay. |
 | Call the existing publisher directly in three publication-fault tests | Every injected rename failure and rollback/recovery-file assertion stays. Successful end-to-end publication and invalid-destination integration tests still run the complete benchmark. |
+| Remove five further duplicate cases | Multi-scope detection (`scope.test.ts`), stale archive source pointers (`context_index.test.ts`), empty-fragment init (`init.test.ts`), project-memory promotion (`promote.test.ts`) and existing-registration noop (`settings.test.ts`) retain equivalent or stronger witnesses. |
+| Remove 14 redundant assertions | Exact compact-help snapshot (11), regex capture/defined check, packet-size inequality and requested-gate state retain every condition. |
+| Reduce repeated stale status/doctor scans from nine to one | Stale detection does not branch on adapter identity. Both diagnostics and all nine actual cross-adapter prepare/resume paths remain; 16 redundant diagnostic invocations are removed. |
 | Add five focused audit tests plus one piped CLI test | Mixed ownership, drift, duplicate evidence, compatibility candidates, malformed/missing metadata, bounded reads, symlink/nonregular inputs, >64 KiB JSON output, rejected write intent and preserved user files. |
 
-The net count is **1,281 → 1,280**, not a removal quota. Most tests protect distinct
+The final net count is **1,281 → 1,275**: 12 cases removed or consolidated and six new feature tests. Fourteen redundant assertions were also removed. This is not a removal quota. Most tests protect distinct
 contracts. Lock reclamation, privacy, concurrent 64-call fanout, native recovery,
 malformed protocol/usage, source authority, release eligibility and fallback
 compatibility tests remain. Test count is a poor proxy for cost: removing repeated
@@ -41,10 +44,12 @@ in A1 and about 2 milliseconds each in B1, because they no longer rebuild all
 fake benchmark scenarios. No assertion or production repetition minimum was
 weakened to obtain that result.
 
-The full-suite timing precedes the final missing-root-file registration correction.
-That final predicate and its updated missing-file regression passed all five audit
-tests; lint, typecheck and build passed again. The earlier large piped JSON CLI
-regression also passed. No timing sample was replaced after this correction.
+The initial candidate timing precedes the last missing-root registration correction
+and additional cleanup. Final validation passed **1,275/1,275 tests in 66.017 s**;
+it is reported separately, not substituted for the original comparison. Lint,
+typecheck and build passed on the final source. The four Python tests also passed.
+A separate switching-file observation was 1.869 → 1.334 s (four tests each,
+one pair with uncontrolled host load). All nine real prepare/resume cases remain.
 
 The whole-suite observation is about **14.7% faster**; it is one execution per
 condition, not a confidence interval or portable guarantee. Background host load
@@ -81,3 +86,17 @@ Reviewer threads: `01a07a51-fd6a-7bb1-9171-5ff94b0034e7` and
 `01a07a57-fb05-75d0-b710-c1b8f4faa105`; native session metadata and turn contexts
 confirmed `code-reviewer` and `gpt-6-astra`. Reviews were static; the leader ran the
 reported tests.
+
+All **108/108 baseline test files** received full-file independent review: the
+initial 26 files plus two non-overlapping 41-file lanes. Astra test-engineer threads
+were `01a07a4a-f1a0-7e70-8a28-2941c255db87` (initial role review metadata is recorded
+locally), `01a07a67-67d5-7bf2-8a1a-9fd5893e1c65` and
+`01a07a67-abba-7cc1-90dd-8c75f5806ff2`. The final code reviewer also returned
+**CLEAR** for the 11-file additional cleanup delta against `95a6360`, mapping all
+five further deletions and 14 assertions to retained witnesses and checking the
+adapter-independent diagnostic path and shared hash helper.
+
+Further reductions to real overlap timers, CLI authority paths, Python subprocess
+entrypoint tests and release checks separated by state changes were not justified
+by equivalent coverage. They were retained. A smaller test count alone was never
+a success criterion.

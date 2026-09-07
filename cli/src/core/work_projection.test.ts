@@ -551,7 +551,6 @@ describe("Work projection", () => {
 			failure_refs: [],
 			evidence_event_ids: ["review_request_repeat"],
 		});
-		expect(gate.state).not.toBe("passed");
 		expect(gate.stale_evidence).toEqual([
 			{
 				event_id: "review_request",

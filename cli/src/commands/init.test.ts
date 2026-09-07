@@ -781,16 +781,7 @@ describe("init — base fragment auto-inclusion", () => {
     expect(baseCount).toBe(1);
   });
 
-  it("works without a base/ directory (back-compat)", () => {
-    const noBaseLib = makeLibrary({ withBase: false });
-    const result = init({
-      projectRoot: project,
-      libraryRoot: noBaseLib,
-      dryRun: false,
-      allowExecAdapters: false,
-    });
-    expect(result.selectedFragments).toHaveLength(0);
-  });
+
 });
 
 describe("init — monorepo detection (--monorepo)", () => {

@@ -776,7 +776,6 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		const packetBytes = Buffer.byteLength(packet, "utf8");
 		expect(packetBytes).toBeLessThan(fullBytes);
 		expect(packetBytes).toBeLessThanOrEqual(16_384);
-		expect(fullBytes).toBeGreaterThan(packetBytes);
 	});
 
 	it("keeps long and multiline requirement summaries lossless or requires retrieval", () => {

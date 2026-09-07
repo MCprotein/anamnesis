@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { manifestSchema, type Manifest } from "../core/manifest.js";
 import { parseRegions } from "../core/regions.js";
+import { sha256 as hash } from "../util/hash.js";
 
 const LIMITS = {
 	files: 256,
@@ -12,8 +12,6 @@ const LIMITS = {
 	totalBytes: 8_388_608,
 	findings: 100,
 };
-const hash = (text: string) =>
-	`sha256:${createHash("sha256").update(text).digest("hex")}`;
 
 type Owner = "anamnesis-recorded" | "unverified-marker" | "user-or-other";
 interface Surface {

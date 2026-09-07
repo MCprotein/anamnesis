@@ -11,6 +11,8 @@ could include breaking changes.
 
 - Remove six redundant adapter registration checks already covered by the parity matrix and consolidate two identical reviewer-repair cases while preserving their combined assertions. Exercise three publication recovery faults directly, preserving their assertions and end-to-end publication coverage without rerunning the entire fake benchmark.
 
+- Remove five further duplicate tests and 14 redundant assertions with retained coverage witnesses. Run adapter-independent stale diagnostics once while retaining all nine actual adapter-switch paths. Final suite: 1,275 passing tests.
+
 ## [1.23.6] — 2026-09-07
 
 ### Fixed

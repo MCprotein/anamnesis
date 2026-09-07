@@ -544,19 +544,7 @@ More user prose after the region.
     ).toThrow(/already declared/);
   });
 
-  it("default region id is the fragment id when --region omitted", () => {
-    fs.writeFileSync(path.join(project, "snippet.md"), "x");
-    const result = promote({
-      projectRoot: project,
-      libraryRoot: library,
-      source: "snippet.md",
-      fragmentId: "my-frag",
-      capabilityType: "project_memory",
-    });
-    if (result.capability.type === "project_memory") {
-      expect(result.capability.region).toBe("my-frag");
-    }
-  });
+
 });
 
 describe("promote — fragment.yaml output cleanliness", () => {

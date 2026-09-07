@@ -364,22 +364,7 @@ describe("context index", () => {
     );
   });
 
-  it("marks active handoff entries stale when referenced archives are missing", () => {
-    const project = setupContextProject();
-    fs.unlinkSync(
-      path.join(project, ".anamnesis", "handoff", "2026-06-19T00-00-00Z.md"),
-    );
 
-    const result = contextIndex({ projectRoot: project });
-
-    expect(
-      result.entries.some(
-        (entry) =>
-          entry.source_path === ".anamnesis/handoff/active.md" &&
-          entry.freshness === "stale",
-      ),
-    ).toBe(true);
-  });
 
   it("ranks active handoff context ahead of cold history unless history is explicit", () => {
     const project = setupContextProject();
