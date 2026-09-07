@@ -427,6 +427,21 @@ class EvaluatorTests(unittest.TestCase):
                 samples[r['run_id']] = {'tokens': {'totalTokens': 90}, 'elapsed_s': 106}
         self.assertFalse(evaluator.aggregate(self.plan, samples)['pass'])
 
+    def test_reserved_scope_preserves_order_and_never_claims_complete_proof(self):
+        runs = evaluator.selected_schedule('reserve', 'reserved')
+        self.assertEqual(len(runs), 36)
+        self.assertEqual([r['order'] for r in runs], list(range(36)))
+        self.assertTrue(all(r['suite'] == 'reserved' for r in runs))
+        plan = {**self.plan, 'selected_suite': 'reserved', 'runs': runs}
+        samples = {r['run_id']: {'tokens': {'totalTokens': 100 if r['arm'] == 'baseline' else 80},
+                                  'elapsed_s': 100} for r in runs}
+        result = evaluator.aggregate(plan, samples)
+        self.assertTrue(result['pass'])
+        self.assertFalse(result['complete_efficiency_proof'])
+        self.assertEqual(set(result['suites']), {'reserved'})
+        with self.assertRaisesRegex(ValueError, 'invalid suite'):
+            evaluator.selected_schedule('reserve', 'invented')
+
     def test_duplicate_json_keys_rejected(self):
         path = self.root / 'duplicate.json'
         path.write_text('{"x":1,"x":2}')

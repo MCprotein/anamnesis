@@ -284,6 +284,12 @@ def schedule(batch):
     return runs
 
 
+def selected_schedule(batch, suite='all'):
+    require(suite in ('all', 'reserved'), 'invalid suite selection')
+    selected = [r for r in schedule(batch) if suite == 'all' or r['suite'] == suite]
+    return [{**r, 'order': i} for i, r in enumerate(selected)]
+
+
 def freeze(args):
     out = args.output.resolve()
     require(re.fullmatch(r'[A-Za-z0-9_-]+', args.batch) is not None, 'unsafe batch ID')
@@ -304,7 +310,8 @@ def freeze(args):
                 'protocol': {'path': str(args.protocol.resolve()), 'sha256': digest(args.protocol)},
                 'thresholds': {'token': 0.90, 'time': 1.05},
                 'second_batch': 'No replacement/retry. Independently prefreeze any second batch before viewing outcomes; report both.',
-                'runs': schedule(args.batch)}
+                'selected_suite': getattr(args, 'suite', 'all'),
+                'runs': selected_schedule(args.batch, getattr(args, 'suite', 'all'))}
         for sample in plan['runs']:
             record['sample'] = sample['run_id']
             write_json(out / 'freeze-result.json', record)
@@ -339,7 +346,7 @@ def load_plan(out, expected_id):
     require(plan['tasks'] == TASKS and plan['settings'] == SETTINGS and plan['developer'] == DEVELOPER
             and plan['dynamic_tools'] == DYNAMIC_TOOLS, 'changed formal contract')
     require(plan['thresholds'] == {'token': .90, 'time': 1.05}, 'changed thresholds')
-    expected = schedule(plan['batch'])
+    expected = selected_schedule(plan['batch'], plan.get('selected_suite', 'all'))
     require([{k: r[k] for k in expected[0]} for r in plan['runs']] == expected, 'invalid sample manifest/order')
     require(plan['harness'] == digest(Path(__file__)), 'harness changed after freeze')
     require(plan['runtime'] == digest(Path(__file__).with_name('codex_continuity_runtime.py')), 'runtime changed')
@@ -655,13 +662,16 @@ def aggregate(plan, samples):
                       'token_ratio': b['tokens']['totalTokens'] / a['tokens']['totalTokens'],
                       'time_ratio': b['elapsed_s'] / a['elapsed_s']})
     suites = {}
-    for suite in ('development', 'reserved'):
+    suite_names = ('reserved',) if plan.get('selected_suite') == 'reserved' else ('development', 'reserved')
+    for suite in suite_names:
         selected = [p for p in pairs if p['suite'] == suite]
         token = statistics.median(p['token_ratio'] for p in selected)
         elapsed = statistics.median(p['time_ratio'] for p in selected)
         suites[suite] = {'median_token_ratio': token, 'median_time_ratio': elapsed,
                          'pass': token <= .90 and elapsed <= 1.05}
-    return {'pairs': pairs, 'suites': suites, 'pass': all(s['pass'] for s in suites.values())}
+    return {'pairs': pairs, 'suites': suites, 'scope': plan.get('selected_suite', 'all'),
+            'complete_efficiency_proof': plan.get('selected_suite', 'all') == 'all' and all(s['pass'] for s in suites.values()),
+            'pass': all(s['pass'] for s in suites.values())}
 
 
 def audit(args):
@@ -705,6 +715,7 @@ def main():
     f.add_argument('--protocol', type=Path, required=True)
     f.add_argument('--batch', required=True)
     f.add_argument('--output', type=Path, required=True)
+    f.add_argument('--suite', choices=('all', 'reserved'), default='all', help='Reserved-only pass is not complete efficiency proof')
     f.add_argument('--holdout', type=Path, help='Frozen independently authored fresh reserved specification')
     r = subs.add_parser('run')
     r.add_argument('--output', type=Path, required=True)
