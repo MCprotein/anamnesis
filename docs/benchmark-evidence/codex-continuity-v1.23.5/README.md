@@ -13,7 +13,11 @@ mechanical evidence gaps were found. Each run includes one actual compaction
 and a new independent thread. Candidate 3/3 and OFF 3/3 satisfy numeric submission
 rules; the two baseline runs fail at same-turn prompt capture. Candidate keeps
 updated requirements in the same Work, answers 45 without resubmitting, and
-retains cancellation until explicit resume. No premature or duplicate submission
+retains cancellation until explicit resume. These runs do not prove native Work
+context injection: their selected cursors lacked native session references, and
+compact hook outputs contained no Work section. Recovery used available
+conversation/files and later reads. Independent review caught this normal-selection
+defect; a subsequent binding fix needs its own frozen evidence. No premature or duplicate submission
 was observed. Baseline computed the correct numbers but asked for resending the
 updated instruction, leaving the task unsubmitted.
 
@@ -146,7 +150,9 @@ The negative-only maximum and explicit cancellation probe different behavior
 from the initial sum pilot, but are insufficient for statistical generalization.
 No task-specific numeric branch or model-name branch was added to product code.
 
-The demonstrated fixes concern safe initialization and native steering capture.
+The demonstrated fixes in this eight-run snapshot concern safe initialization
+and native steering capture. Native Work compact injection is not established
+by these results.
 They do not activate async tools, change reasoning levels, control prompt caching,
 or replace Codex memory. Claude Code and Cursor have deterministic adapter tests,
 not new live end-to-end measurements here. OMX runtime hooks are not included.
@@ -157,3 +163,9 @@ allocation or progress mutation. Selected and allocated Work can be restored aft
 compaction; pending unallocated prompts are not promised a pre-compaction flush.
 Boundary deduplication remains a bounded recent window. Tool completion is not
 proof of task completion. Stop reminder replies can still add reporting overhead.
+
+## Native session binding follow-up
+
+The later [three-run native binding proof](NATIVE-BINDING.md) verifies the final
+connection fix independently of the earlier eight-run measurements. Do not attribute
+its native injection result to the older source measured above.

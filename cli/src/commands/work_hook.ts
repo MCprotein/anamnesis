@@ -238,7 +238,11 @@ export function handleWorkUserPromptSubmit(
 				);
 			}
 			return withCapture(
-				onboardingUnavailable(cursorId, boundaryId),
+				onboardingUnavailable(
+					cursorId,
+					boundaryId,
+					input.client === "codex" ? parsed.value.sessionId : undefined,
+				),
 				captureContext,
 			);
 		}
@@ -270,6 +274,24 @@ export function handleWorkUserPromptSubmit(
 					captureContext,
 				);
 			}
+			const bindingContext =
+				input.client === "codex" && cursor.client_session_ref === null
+				? [
+					"This cursor has no native session binding; compact recovery is unavailable until explicit rebind.",
+					"After explicitly selecting the intended Work, rerun:",
+					nativeSessionSwitchCommand(cursorId, parsed.value.sessionId),
+					"The session reference is a locator, not Work authority. Do not infer a Work from this cursor.",
+				].join("\n")
+				: null;
+			const additionalContextLength = (captureContext?.length ?? 0) + (bindingContext?.length ?? 0);
+			// Shell quoting can expand a valid native ID. Keep capture and rebind
+			// guidance deliverable when the minimum briefing budget cannot fit.
+			if (bindingContext && additionalContextLength + 4_000 + 4 > MAX_HOOK_CONTEXT_CHARACTERS) {
+				return withCapture({
+					...unavailable("cursor_unavailable", cursorId, boundaryId),
+					context: bindingContext,
+				}, captureContext);
+			}
 			const briefing = buildBriefing(
 				status.ledger_path,
 				projection,
@@ -290,7 +312,10 @@ export function handleWorkUserPromptSubmit(
 				effectiveObservation.delivery.fingerprint === briefing.semantic_fingerprint
 			) {
 				return withCapture(
-					result("not_due", "duplicate_boundary", cursorId, boundaryId),
+					{
+						...result("not_due", "duplicate_boundary", cursorId, boundaryId),
+						context: bindingContext,
+					},
 					captureContext,
 				);
 			}
@@ -322,7 +347,10 @@ export function handleWorkUserPromptSubmit(
 			});
 			if (!decision.due) {
 				return withCapture(
-					result("not_due", "not_due", cursorId, boundaryId),
+					{
+						...result("not_due", "not_due", cursorId, boundaryId),
+						context: bindingContext,
+					},
 					captureContext,
 				);
 			}
@@ -348,17 +376,20 @@ export function handleWorkUserPromptSubmit(
 				};
 				continue;
 			}
-			const briefingBudget = captureContext
-				? Math.max(4_000, MAX_HOOK_CONTEXT_CHARACTERS - captureContext.length - 1)
+			const briefingBudget = additionalContextLength
+				? Math.max(4_000, MAX_HOOK_CONTEXT_CHARACTERS - additionalContextLength - 4)
 				: MAX_HOOK_CONTEXT_CHARACTERS;
 			return withCapture({
 				...result("briefing_due", "briefing_due", cursorId, boundaryId),
-				context: renderWorkBriefingContext(
-					briefing,
-					policy.reconciliation.detail,
-					decision.auto_continue,
-					briefingBudget,
-				),
+				context: [
+					bindingContext,
+					renderWorkBriefingContext(
+						briefing,
+						policy.reconciliation.detail,
+						decision.auto_continue,
+						briefingBudget,
+					),
+				].filter(Boolean).join("\n\n"),
 			}, captureContext);
 		} catch (error) {
 			if (
@@ -1123,16 +1154,26 @@ function unavailable(
 	return result("unavailable", reason, cursorId, boundaryId);
 }
 
+function nativeSessionSwitchCommand(cursorId: string, sessionId: string): string {
+	return `anamnesis work switch --work <id> --session ${shellQuote(cursorId)} --client-session-ref ${shellQuote(sessionId)}`;
+}
+
 function onboardingUnavailable(
 	cursorId: string,
 	boundaryId: string,
+	nativeSessionId?: string,
 ): WorkHookResult {
 	return {
 		...unavailable("cursor_unavailable", cursorId, boundaryId),
 		context: [
 			"Anamnesis Work briefing is unavailable because this foreground session has no linked Work cursor.",
 			"If a current Work exists, resume it and run:",
-			`anamnesis work switch --work <id> --session ${cursorId}`,
+			nativeSessionId === undefined
+				? `anamnesis work switch --work <id> --session ${cursorId}`
+				: nativeSessionSwitchCommand(cursorId, nativeSessionId),
+			...(nativeSessionId === undefined
+				? []
+				: ["The session reference is a locator, not Work authority; select the Work explicitly."]),
 			"Then continue the current task. Do not infer or switch a global Work.",
 		].join("\n"),
 	};

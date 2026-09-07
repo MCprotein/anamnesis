@@ -931,7 +931,9 @@ describe("Work draft help", () => {
 		const parsed = parseWorkContractDraft(Buffer.from(example!));
 		expect(parsed.requirements[0]?.source_event_ids).toEqual(["@staged"]);
 		expect(result.stdout).toContain("--expected-contract-hash");
-		expect(result.stdout).toContain("work switch");
+		expect(result.stdout).toContain("--session '<cursor-id>' --client-session-ref '<native-session-id>'");
+		expect(result.stdout).toContain("existing null-reference cursor");
+		expect(result.stdout).toContain("different nonnull reference is rejected");
 		expect(fs.readdirSync(root)).toEqual(before);
 	});
 });

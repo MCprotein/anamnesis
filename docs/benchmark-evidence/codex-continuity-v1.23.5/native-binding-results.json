@@ -1,0 +1,132 @@
+{
+  "scope": "Native session binding and actual post-compaction Work injection; three fixed runs, not a performance comparison",
+  "rows": [
+    {
+      "label": "prior-normal",
+      "errors": [],
+      "native_work_context": false,
+      "cursor_native_ref": "null",
+      "native_thread": "01a07a00-cefd-7ed0-90b7-d7fa7c0aa5df",
+      "usage": {
+        "totalTokens": 420098,
+        "inputTokens": 416279,
+        "cachedInputTokens": 369792,
+        "outputTokens": 3819
+      },
+      "model_proof": [
+        {
+          "turn_id": "01a07a00-cf1a-7da0-ba82-358c8abbd1bd",
+          "model": "gpt-6-astra",
+          "effort": "high"
+        },
+        {
+          "turn_id": "01a07a03-00cb-7893-bbd9-0d2e587feb78",
+          "model": "gpt-6-astra",
+          "effort": "high"
+        }
+      ],
+      "work_progress": {
+        "applicable": 6,
+        "pending": 6,
+        "in_progress": 0,
+        "verified": 0,
+        "implemented_unverified": 0,
+        "blocked": 0,
+        "waived": 0,
+        "denominator_empty": false,
+        "percent": 0,
+        "weighted": false
+      },
+      "result_sha256": "c952c96dc5273668196c67598455600f8300c69c7b71d43b23ede6f82fd02852"
+    },
+    {
+      "label": "fixed-normal",
+      "errors": [],
+      "native_work_context": true,
+      "cursor_native_ref": "01a07a03-7b29-79e3-ab0f-e87f0b09f556",
+      "native_thread": "01a07a03-7b29-79e3-ab0f-e87f0b09f556",
+      "usage": {
+        "totalTokens": 472164,
+        "inputTokens": 468031,
+        "cachedInputTokens": 419712,
+        "outputTokens": 4133
+      },
+      "model_proof": [
+        {
+          "turn_id": "01a07a03-7b45-7a51-9fc4-0534b8f1a351",
+          "model": "gpt-6-astra",
+          "effort": "high"
+        },
+        {
+          "turn_id": "01a07a05-d772-77e2-94d9-44df3d1b977b",
+          "model": "gpt-6-astra",
+          "effort": "high"
+        }
+      ],
+      "work_progress": {
+        "applicable": 8,
+        "pending": 8,
+        "in_progress": 0,
+        "verified": 0,
+        "implemented_unverified": 0,
+        "blocked": 0,
+        "waived": 0,
+        "denominator_empty": false,
+        "percent": 0,
+        "weighted": false
+      },
+      "result_sha256": "9c9173ebb8557840340c909e1d4a6f319feb78d7e9afc46d2dc68648e6539259"
+    },
+    {
+      "label": "fixed-legacy",
+      "errors": [],
+      "native_work_context": true,
+      "cursor_native_ref": "01a07a07-6278-7123-8850-3c932b3e69ac",
+      "native_thread": "01a07a07-6278-7123-8850-3c932b3e69ac",
+      "usage": {
+        "totalTokens": 700892,
+        "inputTokens": 695816,
+        "cachedInputTokens": 614016,
+        "outputTokens": 5076
+      },
+      "model_proof": [
+        {
+          "turn_id": "01a07a07-6370-7ba1-a1fb-368d95d07a95",
+          "model": "gpt-6-astra",
+          "effort": "high"
+        },
+        {
+          "turn_id": "01a07a09-9fa7-7df0-994c-b9ece4cb4213",
+          "model": "gpt-6-astra",
+          "effort": "high"
+        },
+        {
+          "turn_id": "01a07a06-4cac-7393-a6bb-153ab9a29b40",
+          "model": "gpt-6-astra",
+          "effort": "high"
+        }
+      ],
+      "work_progress": {
+        "applicable": 6,
+        "pending": 6,
+        "in_progress": 0,
+        "verified": 0,
+        "implemented_unverified": 0,
+        "blocked": 0,
+        "waived": 0,
+        "denominator_empty": false,
+        "percent": 0,
+        "weighted": false
+      },
+      "result_sha256": "461d1ea3828d8d8914898af9328a7e83ae2bb88212722c447e4c10143fd7fdd3"
+    }
+  ],
+  "frozen_files": 963,
+  "frozen_manifest_sha256": "20d70004107d4a5067d5428446946ed1b7f8c85fc6d67c89a53519d9d1ec3706",
+  "auditor_correction": {
+    "at": "2026-09-07T04:02:16.413154+00:00",
+    "original_auditor_sha256": "f58b0e33ffeb1d6d3f581b9ec5740300c4a12c8f940427a8331b74247c94f6e5",
+    "corrected_auditor_sha256": "573f5b20afdc8b15d98091300b706ed125dd28d0108471bdea8f3e390756855a",
+    "reason": "Native hook eventName is sessionStart (camelCase), and compact SessionStart is emitted at the next turn, after the compact API operation finishes. V1 looked for uppercase SessionStart only within the compact operation and falsely reported absence. V2 matches actual post-compaction question turn and sessionStart event; source/model runs/oracles unchanged. Original auditor and failed result retained through raw invocation evidence."
+  }
+}

@@ -56,3 +56,11 @@ upgrading the CLI alone does not update generated files.
 The [v1.23.5 targeted integration report](benchmark-evidence/codex-continuity-v1.23.5/README.md)
 contains the frozen eight-run results, reproducible account-based runner, failure
 history, measured overhead and remaining validation limits.
+
+Native compact recovery also requires the explicitly selected cursor to retain
+the exact native session reference. Normal onboarding must advertise both the
+derived cursor ID and native session reference; the reference is a routing
+locator, not permission to allocate Work or perform writes. An existing unbound
+cursor requires explicit selection to establish that reference. Conflicting
+nonnull bindings must fail closed. The earlier eight-run benchmark did not meet
+this binding condition and is not evidence of native Work context injection.

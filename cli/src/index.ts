@@ -567,8 +567,13 @@ Use classification: same_unit, and supply the exact current authority from statu
 (The wrapped command above must be submitted as one command.)
 
 Allocation and session linkage are separate. Use only the exact session cursor
-ID supplied by the current hook when explicitly selecting this Work:
-  anamnesis work switch --work <id> --session <cursor-id>
+ID supplied by the current hook when explicitly selecting this Work.
+For Codex native compact recovery, also carry its exact raw session reference:
+  anamnesis work switch --work <id> --session '<cursor-id>' --client-session-ref '<native-session-id>'
+Copy the hook's shell-quoted command; these IDs are locators, not Work authority.
+For an existing null-reference cursor, explicitly select the intended Work and
+rerun that command to bind it. A different nonnull reference is rejected.
+Claude session selection may omit --client-session-ref.
 
 Questions or interruptions that do not change requirements:
   anamnesis work prompt discard --stage <token> --reason non_requirement
@@ -4581,9 +4586,21 @@ async function main(argv: string[]): Promise<number> {
                 throw new Error("Work cursor belongs to another worktree");
               }
               if (read.cursor) {
+                if (
+                  input.client_session_ref !== null &&
+                  read.cursor.client_session_ref !== null &&
+                  read.cursor.client_session_ref !== input.client_session_ref
+                ) {
+                  throw new Error("Work cursor is bound to another client session");
+                }
                 switchWorkCursorAtomic(
                   input.state_root,
-                  { ...read.cursor, updated_at: input.occurred_at },
+                  {
+                    ...read.cursor,
+                    client_session_ref:
+                      input.client_session_ref ?? read.cursor.client_session_ref,
+                    updated_at: input.occurred_at,
+                  },
                   truth,
                 );
               } else {

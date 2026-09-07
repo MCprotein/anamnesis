@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { newWorkCursor, writeWorkCursorAtomic } from "../core/work_cursor.js";
+import { newWorkCursor, readWorkCursor, writeWorkCursorAtomic } from "../core/work_cursor.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import {
   amendWork,
@@ -25,7 +25,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
-function fixture(preset = "frequent") {
+function fixture(preset = "frequent", bindCursor = true) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-compact-"));
   roots.push(root);
   fs.writeFileSync(path.join(root, "Agentfile"), JSON.stringify({
@@ -48,7 +48,7 @@ function fixture(preset = "frequent") {
     worktree_fingerprint: state.worktree_fingerprint, updated_at: "2026-09-06T00:00:00.000Z",
     truth: { work_id: "wu_compact", revision: created.projection.contract_revision, last_event_id: created.projection.last_event_id, projection_hash: created.projection.projection_hash },
   });
-  writeWorkCursorAtomic(state.state_root, cursor, { expectedCursorRevision: null });
+  if (bindCursor) writeWorkCursorAtomic(state.state_root, cursor, { expectedCursorRevision: null });
   return { root, cursor, state };
 }
 
@@ -68,6 +68,93 @@ function resume(root: string, payload: unknown = { source: "compact", session_id
 }
 
 describe("read-only Work compaction recovery", () => {
+  it.each([false, true])("follows advertised native onboarding through CLI selection and compact recovery (existing unbound: %s)", (existingUnbound) => {
+    const { root, state } = fixture("frequent", false);
+    const sessionId = " native ' $(touch INJECTED) `touch INJECTED` session ";
+    const cursorId = deriveWorkHookCursorId("codex", sessionId);
+    const cli = (args: string[], payload?: unknown) => spawnSync(process.execPath,
+      [tsxCli, anamnesisCli, "work", ...args, "--project-root", root],
+      { cwd: root, encoding: "utf8", input: payload === undefined ? undefined : JSON.stringify(payload) });
+    if (existingUnbound) {
+      const selected = cli(["switch", "--work", "wu_compact", "--session", cursorId]);
+      expect(selected.status, selected.stderr).toBe(0);
+      expect(readWorkCursor(state.state_root, cursorId).cursor?.client_session_ref).toBeNull();
+    }
+    const compactPayload = { source: "compact", session_id: sessionId };
+    expect(resume(root, compactPayload).context).toBeNull();
+    const ledgerBefore = statusWork({ project_root: root, work_id: "wu_compact" }).projection.ledger_head;
+    const onboarding = cli(["hook-user-prompt", "--client", "codex"], {
+      session_id: sessionId, turn_id: "turn-1", prompt: "continue",
+    });
+    expect(onboarding.status, onboarding.stderr).toBe(0);
+    expect(onboarding.stdout).toContain("locator, not Work authority");
+    if (existingUnbound) {
+      expect(onboarding.stdout).toContain("until explicit rebind");
+      expect(onboarding.stdout).toContain("Preserve latest requirement");
+      const repeated = cli(["hook-user-prompt", "--client", "codex"], {
+        session_id: sessionId, turn_id: "turn-1", prompt: "continue",
+      });
+      expect(repeated.status, repeated.stderr).toBe(0);
+      expect(repeated.stdout).toContain("until explicit rebind");
+      expect(repeated.stdout).not.toContain("Preserve latest requirement");
+    }
+    // The hook must not establish a binding or choose a Work itself.
+    expect(readWorkCursor(state.state_root, cursorId).cursor?.client_session_ref ?? null).toBeNull();
+    const advertised = onboarding.stdout.split("\n").find((line) => line.startsWith("anamnesis work switch "));
+    expect(advertised).toBeDefined();
+    // Execute the actual advertised shell quoting, replacing only the explicit Work placeholder.
+    const selected = spawnSync("/bin/sh", ["-c", `anamnesis() { "$ANAMNESIS_TEST_NODE" "$ANAMNESIS_TEST_TSX" "$ANAMNESIS_TEST_CLI" "$@"; }\n${advertised!.replace("<id>", "wu_compact")}`], {
+      cwd: root, encoding: "utf8", env: { ...process.env,
+        ANAMNESIS_TEST_NODE: process.execPath, ANAMNESIS_TEST_TSX: tsxCli, ANAMNESIS_TEST_CLI: anamnesisCli },
+    });
+    expect(selected.status, selected.stderr).toBe(0);
+    const bound = readWorkCursor(state.state_root, cursorId).cursor!;
+    expect(bound.client_session_ref).toBe(sessionId);
+    expect(bound.work_id).toBe("wu_compact");
+    expect(bound.worktree_fingerprint).toBe(state.worktree_fingerprint);
+    expect(fs.existsSync(path.join(root, "INJECTED"))).toBe(false);
+    if (existingUnbound) {
+      for (const refFlags of [["--client-session-ref", sessionId], []]) {
+        const repeated = cli(["switch", "--work", "wu_compact", "--session", cursorId, ...refFlags]);
+        expect(repeated.status, repeated.stderr).toBe(0);
+        expect(readWorkCursor(state.state_root, cursorId).cursor?.client_session_ref).toBe(sessionId);
+      }
+    }
+    const beforeCompact = snapshot(root);
+    const recovered = cli(["hook-session-start", "--client", "codex"], compactPayload);
+    expect(recovered.status, recovered.stderr).toBe(0);
+    expect(recovered.stdout).toContain("Preserve latest requirement");
+    expect(recovered.stdout).toContain("Cancellation, pause, or redirection takes precedence");
+    expect(snapshot(root)).toEqual(beforeCompact);
+    expect(statusWork({ project_root: root, work_id: "wu_compact" }).projection.ledger_head).toBe(ledgerBefore);
+  });
+
+  it.each(["another-session", " session"])("rejects exact native binding mismatch %j without overwriting it", (wrongRef) => {
+    const { root, cursor, state } = fixture();
+    writeWorkCursorAtomic(state.state_root, { ...cursor, client_session_ref: wrongRef });
+    const before = snapshot(root);
+    expect(resume(root).context).toBeNull();
+    const selected = spawnSync(process.execPath, [tsxCli, anamnesisCli, "work", "switch",
+      "--project-root", root, "--work", "wu_compact", "--session", cursor.cursor_id,
+      "--client-session-ref", "session"], { cwd: root, encoding: "utf8" });
+    expect(selected.status).toBe(1);
+    expect(selected.stderr).toContain("bound to another client session");
+    expect(snapshot(root)).toEqual(before);
+  });
+
+  it("rejects explicit binding of another worktree's unbound cursor without mutation", () => {
+    const { root, cursor, state } = fixture();
+    writeWorkCursorAtomic(state.state_root, { ...cursor, client_session_ref: null, worktree_fingerprint: `sha256:${"0".repeat(64)}` });
+    const before = snapshot(root);
+    const selected = spawnSync(process.execPath, [tsxCli, anamnesisCli, "work", "switch",
+      "--project-root", root, "--work", "wu_compact", "--session", cursor.cursor_id,
+      "--client-session-ref", "session"], { cwd: root, encoding: "utf8" });
+    expect(selected.status).toBe(1);
+    expect(selected.stderr).toContain("belongs to another worktree");
+    expect(snapshot(root)).toEqual(before);
+    expect(resume(root).context).toBeNull();
+  });
+
   it("restores the unchanged contract on every compact without mutating state or capturing prompts", () => {
     const { root } = fixture();
     const before = snapshot(root);

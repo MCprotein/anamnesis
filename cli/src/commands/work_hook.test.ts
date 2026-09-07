@@ -369,6 +369,37 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		).toBe(true);
 	});
 
+	it("preserves capture and exact rebind guidance when quoted native IDs exhaust the briefing budget", () => {
+		const root = projectRoot("frequent", "off", true);
+		const sessionId = "'".repeat(512);
+		const cursorId = seed(root, "codex", sessionId);
+		const state = resolveWorkStateRoot(root);
+		const cursor = readWorkCursor(state.state_root, cursorId).cursor!;
+		writeWorkCursorAtomic(state.state_root, { ...cursor, client_session_ref: null });
+		const before = readWorkCursor(state.state_root, cursorId).cursor;
+		const result = handleWorkUserPromptSubmit({
+			project_root: root, client: "codex",
+			payload: codexPayload(sessionId, "turn-1", "private staged prompt"),
+		});
+		expect(result.status).toBe("capture_staged");
+		expect(result.context).toContain("until explicit rebind");
+		expect(result.context).toContain(`--client-session-ref '${sessionId.replaceAll("'", `'"'"'`)}'`);
+		expect(result.context!.length).toBeLessThanOrEqual(8_000);
+		expect(result.context).not.toContain("private staged prompt");
+		expect(readStagedWorkPrompt(state.state_root, captureToken(result.context))?.body).toEqual(Buffer.from("private staged prompt"));
+		expect(readWorkCursor(state.state_root, cursorId).cursor).toEqual(before);
+	});
+
+	it("preserves Claude onboarding without a native compact binding flag", () => {
+		const root = projectRoot();
+		const result = handleWorkUserPromptSubmit({
+			project_root: root, client: "claude",
+			payload: claudePayload("claude-unlinked", "prompt-1", "continue"),
+		});
+		expect(result.context).toContain(`anamnesis work switch --work <id> --session ${deriveWorkHookCursorId("claude", "claude-unlinked")}`);
+		expect(result.context).not.toContain("--client-session-ref");
+	});
+
 	it("returns bounded onboarding with no cursor and no briefing under an off policy", () => {
 		const noCursorRoot = projectRoot();
 		expect(

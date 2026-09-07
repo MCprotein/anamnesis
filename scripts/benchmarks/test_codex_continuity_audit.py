@@ -67,6 +67,30 @@ class AuditTests(unittest.TestCase):
             path.write_text(json.dumps(original))
             events_path = root / 'final-sum-candidate-events.jsonl'
             events = [json.loads(line) for line in events_path.read_text().splitlines()]
+            invalid_counters = [
+                {'totalTokens': 1, 'inputTokens': 10, 'outputTokens': -9, 'cachedInputTokens': 0},
+                {'totalTokens': 12.5, 'inputTokens': 10, 'outputTokens': 2.5, 'cachedInputTokens': 0},
+                {'totalTokens': 12, 'inputTokens': 10, 'outputTokens': 2, 'cachedInputTokens': True},
+                {'totalTokens': 12, 'inputTokens': 10, 'outputTokens': 2, 'cachedInputTokens': 11},
+                {'totalTokens': 12, 'inputTokens': 10, 'outputTokens': 2, 'cachedInputTokens': 0, 'reasoningOutputTokens': 3},
+                {'totalTokens': 12, 'inputTokens': 10, 'outputTokens': 2, 'cachedInputTokens': 0, 'reasoningOutputTokens': -1},
+                {'totalTokens': 12, 'inputTokens': 10, 'outputTokens': 2},
+                {'totalTokens': '12', 'inputTokens': 10, 'outputTokens': 2, 'cachedInputTokens': 0},
+            ]
+            for counters in invalid_counters:
+                for target in ['compact', 'first', 'thread']:
+                    modified = copy.deepcopy(events)
+                    for entry in modified:
+                        if target == 'thread' and entry['method'] == 'thread/tokenUsage/updated':
+                            entry['params']['tokenUsage']['total'] = counters
+                        elif entry['method'] == 'rawResponse/completed' and entry['params']['turnId'] == target:
+                            entry['params']['usage'] = counters
+                    events_path.write_text(''.join(json.dumps(e) + '\n' for e in modified))
+                    run = subprocess.run(command, capture_output=True)
+                    self.assertNotEqual(run.returncode, 0, (target, counters))
+                    self.assertIn(b'invalid usage counters', run.stderr)
+            events_path.write_text(''.join(json.dumps(e) + '\n' for e in events if not (e['method'] == 'rawResponse/completed' and e['params']['turnId'] == 'compact')))
+            self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
             events_path.write_text(''.join(json.dumps(e) + '\n' for e in events if e['method'] not in ['rawResponse/completed', 'thread/tokenUsage/updated']))
             self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
 

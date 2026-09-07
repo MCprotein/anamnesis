@@ -4,14 +4,33 @@ parser=argparse.ArgumentParser(description='Audit local Codex continuity events;
 parser.add_argument('--output',type=pathlib.Path,required=True)
 P=parser.parse_args().output.resolve()
 EXPECTED={'sum-baseline':9,'sum-candidate':9,'sum-off':9,'maximum-off':-3,'maximum-candidate':-3,'maximum-baseline':-3,'cancel-candidate':12,'cancel-off':12}
+def validate_usage(value, location):
+ required = ('totalTokens', 'inputTokens', 'cachedInputTokens', 'outputTokens')
+ optional = ('reasoningOutputTokens', 'cacheWriteInputTokens')
+ valid = isinstance(value, dict) and all(type(value.get(k)) is int and value[k] >= 0 for k in required)
+ if valid:
+  valid = all(k not in value or (type(value[k]) is int and value[k] >= 0) for k in optional)
+ if valid:
+  valid = (value['totalTokens'] == value['inputTokens'] + value['outputTokens']
+           and value['cachedInputTokens'] <= value['inputTokens']
+           and value.get('reasoningOutputTokens', 0) <= value['outputTokens']
+           and value.get('cacheWriteInputTokens', 0) <= value['inputTokens'])
+ if not valid:
+  # Fail before aggregation; preserve the raw events for diagnosis.
+  (P/'audit.json').write_text(json.dumps({'error': 'invalid usage counters', 'location': location}, indent=2))
+  raise SystemExit('invalid usage counters: ' + location)
+
 rows=[]
 for f in sorted(P.glob('final-*-result.json')):
  d=json.loads(f.read_text());label=f.stem[len('final-'):-len('-result')];event_file=P/f'final-{label}-events.jsonl';es=[json.loads(l) for l in event_file.open()] if event_file.exists() else []
  usage={};response_usage={};response_turns={};compaction_turns=set();response_conflicts=[];turns={};commands={};hooks=[];source_models=[]
  for e in es:
   method=e.get('method');p=e.get('params',{})
-  if method=='thread/tokenUsage/updated':usage[p['threadId']]=p['tokenUsage']['total']
+  if method=='thread/tokenUsage/updated':
+   validate_usage(p['tokenUsage']['total'],label+' thread '+p['threadId'])
+   usage[p['threadId']]=p['tokenUsage']['total']
   if method=='rawResponse/completed':
+   validate_usage(p['usage'],label+' response '+p['responseId'])
    if p['responseId'] in response_usage and response_usage[p['responseId']]!=p['usage']:response_conflicts.append(p['responseId'])
    response_usage[p['responseId']]=p['usage'];response_turns[p['responseId']]=p['turnId']
   if method=='item/completed' and p['item']['type']=='contextCompaction':compaction_turns.add(p['turnId'])
@@ -50,6 +69,9 @@ for f in sorted(P.glob('final-*-result.json')):
  for phase_name in phases:
   model=observed.get(d.get(phase_name,{}).get('turn_id'),{})
   if model.get('model')!='gpt-6-astra' or model.get('effort')!='high':mechanical_errors.append('model/effort mismatch: '+phase_name)
+ for compact_turn in compaction_turns:
+  compact_responses=[value for response_id,value in response_usage.items() if response_turns[response_id]==compact_turn]
+  if not compact_responses or any(value.get('totalTokens',0)<=0 or value.get('inputTokens',0)<=0 or value.get('totalTokens')!=value.get('inputTokens',0)+value.get('outputTokens',0) or not 0<=value.get('cachedInputTokens',0)<=value.get('inputTokens',0) for value in compact_responses):mechanical_errors.append('missing or inconsistent compaction response usage')
  if not {d.get(name,{}).get('turn_id') for name in phases}.issubset(set(response_turns.values())):mechanical_errors.append('missing response usage for required phase')
  dynamic=[e['params'] for e in es if e.get('method')=='item/tool/call']
  if sum(call.get('tool')=='await_records' for call in dynamic)!=1 or not d.get('steer'):mechanical_errors.append('missing pending-tool steering evidence')
