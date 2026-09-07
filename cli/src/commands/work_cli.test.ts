@@ -81,7 +81,7 @@ function runAsync(root: string, args: string[], input: Buffer) {
 		(resolve) => {
 			const child = spawn(
 				process.execPath,
-				[tsxCli, anamnesisCli, "work", ...args, "--project-root", root],
+				["--import", "tsx", anamnesisCli, "work", ...args, "--project-root", root],
 				{
 					cwd: repositoryRoot,
 					stdio: ["pipe", "pipe", "pipe"],

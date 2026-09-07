@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { sha256 } from "../util/hash.js";
+import { reclaimWorkLock } from "./work_lock_reclaim.js";
 import {
 	parseTypedWorkEvent,
 	type SourceFreeWorkEvidenceEvent,
@@ -1462,35 +1463,19 @@ function tryAcquireSourceLock(lockPath: string, owner: SourceLockOwner): boolean
 }
 
 function reclaimDeadSourceLock(lockPath: string): void {
-  let owner: SourceLockOwner;
-  try {
-    const value = JSON.parse(readFileNoFollow(path.join(lockPath, "owner.json")).toString("utf8"));
-    if (!isSourceLockOwner(value)) return;
-    owner = value;
-  } catch {
-    return;
-  }
-  let provenDead = false;
-  try {
-    process.kill(owner.pid, 0);
+  reclaimWorkLock(lockPath, isSourceLockOwner, (owner) => {
     try {
-      provenDead = processStartIdentity(owner.pid) !== owner.process_start;
-    } catch {
-      return;
+      process.kill(owner.pid, 0);
+    } catch (error) {
+      return isErrno(error, "ESRCH");
     }
-  } catch (error) {
-    if (!isErrno(error, "ESRCH")) return;
-    provenDead = true;
-  }
-  if (!provenDead) return;
-  const quarantine = `${lockPath}.dead-${owner.nonce}`;
-  try {
-    fs.renameSync(lockPath, quarantine);
-    fs.rmSync(quarantine, { recursive: true });
-    fsyncDirectory(path.dirname(lockPath));
-  } catch {
-    // A concurrent reclaimer won.
-  }
+    try {
+      const currentStart = processStartIdentity(owner.pid);
+      return currentStart.length > 0 && currentStart !== owner.process_start;
+    } catch {
+      return false;
+    }
+  }, () => fsyncDirectory(path.dirname(lockPath)));
 }
 
 function releaseSourceLock(lockPath: string, owner: SourceLockOwner): void {

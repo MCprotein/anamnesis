@@ -64,3 +64,14 @@ locator, not permission to allocate Work or perform writes. An existing unbound
 cursor requires explicit selection to establish that reference. Conflicting
 nonnull bindings must fail closed. The earlier eight-run benchmark did not meet
 this binding condition and is not evidence of native Work context injection.
+
+### Concurrent lock recovery
+
+Dead-owner reclamation uses an exclusive claim for the observed owner nonce,
+then checks the original open directory and owner-file identities after proving
+that owner dead. This excludes cooperating reclaimers of that same owner and
+prevents a stale observer from removing a replacement owner's lock. Unknown
+process identity and unsafe records remain unavailable; acquisition deadlines
+are unchanged. If a reclaimer crashes while holding its claim, later automatic
+reclamation for that nonce fails closed. Do not blindly delete a claim or mix
+old and upgraded processes writing the same Work state during recovery.
