@@ -7,6 +7,37 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Capture each Codex user-prompt delivery separately because a native `turn_id`
+  can contain multiple mid-turn steering messages. Local capture tokens grant
+  no Work authority; explicit classification and contract CAS remain required.
+  Existing stable-ID receipt validation remains strict; resolution retries
+  still use the explicit idempotent resolution commands.
+- Verify entire raw-storage directories, not sentinel filenames, and recheck
+  privacy on each capture so changed ignore rules cannot reuse a stale proof.
+- Prepare private raw-prompt Git exclusions during bounded-capture init/apply,
+  preserving user ignore content and failing closed on tracked or unsafe paths.
+  Protected primary Work storage remains usable from linked worktrees without
+  modifying the owning checkout.
+- Document strict Work draft formats in `anamnesis work --help` and link that
+  help from prompt classification, avoiding schema guesses during onboarding.
+
+- Normalize Codex native `spawn_agent` and `collaborationspawn_agent` hook
+  names to the existing `Agent` boundary without forwarding tool payloads.
+- Make open Work briefing continuation subordinate to the latest user
+  cancellation, pause, or redirection; recovery does not change ledger state.
+- Keep Work hook briefings and session cursor observations aligned with fresh
+  ledger state when prompt updates and parallel tool completions overlap.
+- Restore the exact session-selected Work after Codex `SessionStart` with source
+  `compact`, including unchanged requirements and completion criteria. Recovery
+  is read-only, respects disabled reconciliation, and fails open when unavailable.
+- Clarify standalone versus auxiliary handoff/orientation behavior: supporting
+  checkpoints continue the active task, reminders do not write handoffs, and
+  clearly completed stale handoffs do not require redundant confirmation.
+  Base fragment 25 carries the instruction and native-hook updates; existing
+  project adapters are updated only through the normal explicit apply process.
+
 ## [1.23.4] — 2026-09-01
 
 ### Fixed

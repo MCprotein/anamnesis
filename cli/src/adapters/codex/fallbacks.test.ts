@@ -222,7 +222,7 @@ describe("codex executable_hook fallback", () => {
       expect(wrapper.content).toContain("hookSpecificOutput");
       expect(wrapper.codexHook).toEqual({
         event: "SessionStart",
-        matcher: "startup|resume|clear",
+        matcher: "startup|resume|clear|compact",
         command: codexNativeNodeCommand(
           ".anamnesis/codex-native-hooks/session-start.mjs",
         ),
@@ -286,7 +286,10 @@ describe("codex executable_hook fallback", () => {
     ).toBe(false);
   });
 
-  it("selects the dedicated base PostToolUse Work wrapper", () => {
+  it.each([
+    "PostToolUse:^(Bash|apply_patch|Agent)$",
+    "PostToolUse:^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
+  ])("selects the dedicated base PostToolUse Work wrapper for %s", (event) => {
     fs.mkdirSync(path.join(fragmentDir, "adapters/codex/hooks"), {
       recursive: true,
     });
@@ -305,7 +308,7 @@ describe("codex executable_hook fallback", () => {
     const actions = executableHookRenderer.plan(
       {
         type: "executable_hook",
-        event: "PostToolUse:^(Bash|apply_patch|Agent)$",
+        event,
         source: "adapters/codex/hooks/work-post-tool-use.mjs",
         adapters_supported: ["codex"],
         side_effects: ["local-write"],
@@ -323,7 +326,7 @@ describe("codex executable_hook fallback", () => {
     if (wrapper?.kind === "file") {
       expect(wrapper.codexHook).toEqual({
         event: "PostToolUse",
-        matcher: "^(Bash|apply_patch|Agent)$",
+        matcher: "^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
         command: codexNativeNodeCommand(
           ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
         ),
@@ -340,7 +343,13 @@ describe("codex executable_hook fallback", () => {
     ).toBe(false);
   });
 
-  it("sanitizes Codex PostToolUse before invoking the Work CLI", () => {
+  it.each([
+    ["Bash", "Bash"],
+    ["apply_patch", "apply_patch"],
+    ["Agent", "Agent"],
+    ["spawn_agent", "Agent"],
+    ["collaborationspawn_agent", "Agent"],
+  ])("sanitizes and normalizes Codex %s before invoking the Work CLI", (toolName, normalizedName) => {
     const projectRoot = tmpDir("anamnesis-codex-work-boundary-");
     const shimPath = path.join(projectRoot, "anamnesis-shim.mjs");
     const wrapperPath = path.resolve(
@@ -356,7 +365,7 @@ describe("codex executable_hook fallback", () => {
         'if (process.argv.slice(2).join(" ") !== "work hook-post-tool-use --client codex") process.exit(41);',
         'if (input.includes("PRIVATE_INPUT") || input.includes("PRIVATE_OUTPUT") || input.includes("transcript")) process.exit(42);',
         'const value = JSON.parse(input);',
-        'if (JSON.stringify(value) !== JSON.stringify({session_id:"session-1",turn_id:"turn-1",events:[{tool_name:"apply_patch",tool_use_id:"tool-1"}]})) process.exit(43);',
+        `if (JSON.stringify(value) !== JSON.stringify({session_id:"session-1",turn_id:"turn-1",events:[{tool_name:${JSON.stringify(normalizedName)},tool_use_id:"tool-1"}]})) process.exit(43);`,
         'process.stdout.write("brief and continue\\n");',
         "",
       ].join("\n"),
@@ -372,7 +381,7 @@ describe("codex executable_hook fallback", () => {
         session_id: "session-1",
         turn_id: "turn-1",
         hook_event_name: "PostToolUse",
-        tool_name: "apply_patch",
+        tool_name: toolName,
         tool_use_id: "tool-1",
         tool_input: { patch: "PRIVATE_INPUT" },
         tool_response: "PRIVATE_OUTPUT",
@@ -391,18 +400,24 @@ describe("codex executable_hook fallback", () => {
     expect(result.stdout).not.toContain("PRIVATE");
   });
 
-  it("skips unsupported Codex tools without launching the CLI", () => {
+  it.each(["Read", "other_spawn_agent", "othercollaborationspawn_agent", "collaboration.spawn_agent", "collaborationspawn_agent_extra"])("skips unsupported Codex tool %s without launching the CLI", (toolName) => {
+    const projectRoot = tmpDir("anamnesis-codex-unsupported-tool-");
+    const marker = path.join(projectRoot, "called");
+    const shim = path.join(projectRoot, "shim.mjs");
+    fs.writeFileSync(shim, `#!/usr/bin/env node\nimport fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "called");\n`);
+    fs.chmodSync(shim, 0o755);
     const wrapperPath = path.resolve(
       "base/adapters/codex/hooks/work-post-tool-use.mjs",
     );
     const result = spawnSync(process.execPath, [wrapperPath], {
-      env: { ...process.env, ANAMNESIS_BIN: "/must/not/run" },
-      input: `${JSON.stringify({ tool_name: "Read", tool_use_id: "tool-1" })}\n`,
+      env: { ...process.env, ANAMNESIS_BIN: shim },
+      input: `${JSON.stringify({ session_id: "session-1", turn_id: "turn-1", tool_name: toolName, tool_use_id: "tool-1" })}\n`,
       encoding: "utf8",
     });
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({});
     expect(result.stderr).toBe("");
+    expect(fs.existsSync(marker)).toBe(false);
   });
 
   it("skips Codex tool boundaries with missing stable IDs before launching the CLI", () => {

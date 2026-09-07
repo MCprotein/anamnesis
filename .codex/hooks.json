@@ -2,7 +2,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
@@ -23,7 +23,7 @@
         ]
       },
       {
-        "matcher": "^(Bash|apply_patch|Agent)$",
+        "matcher": "^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
         "hooks": [
           {
             "type": "command",

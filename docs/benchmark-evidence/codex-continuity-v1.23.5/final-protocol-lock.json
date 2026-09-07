@@ -1,0 +1,9 @@
+{
+  "at": "2026-09-07T03:02:57.688148+00:00",
+  "sha256": {
+    "final-integration.py": "86450685bf10c966398e5f794daab329521652b2bf35f9da1365600703ad30bf",
+    "runtime.py": "7c28e4967d6580ea61d55e76673a774a2df0d4d9ae2c3a1060ce422532e1647a",
+    "FINAL-PROTOCOL.md": "d04c342bb54229ac15c37f603c5a2a4ae4eb0ce2be60111dbb49f1bd26f16719",
+    "candidate-freeze.json": "abf8490d8612166356f37b21e74abe86eb2b9d1fd84d7040a34d07c6de852fa0"
+  }
+}

@@ -224,6 +224,7 @@ import {
   handleWorkUserPromptSubmit,
   type WorkHookClient,
 } from "./commands/work_hook.js";
+import { handleWorkCompactionResume } from "./commands/work_compaction.js";
 import { readAgentfile, type ToolName } from "./core/agentfile.js";
 import {
 	formatCompactHelp,
@@ -518,6 +519,80 @@ function resolveLibraryRoot(): string {
 // ---------------------------------------------------------------------------
 // Help / version
 // ---------------------------------------------------------------------------
+
+function printWorkHelp(): void {
+  console.log(`anamnesis work — exact requirements and durable progress
+
+Read-only:
+  anamnesis work status --work <id> --json
+  anamnesis work --help
+
+For a hook-staged prompt, use its opaque token. Do not read or copy staged
+bytes. The token locates this prompt; it does not authorize a Work or action.
+Write a draft based on the user's actual requirements, using this strict shape:
+
+\`\`\`yaml
+work:
+  title: Replace with the task title
+  completion_contract: Replace with observable completion criteria
+boundary:
+  state: accepted
+  classification: new_unit
+  reason_codes: [explicit_user_requirement]
+  confidence: high
+requirements:
+  - id: r1
+    summary: Replace with one exact requirement
+    source_event_ids: ["@staged"]
+open_conflicts: []
+\`\`\`
+
+New Work:
+  anamnesis work prompt allocate-new --stage <token> --work <new-id> --draft <file>
+
+Same Work: first read status. Preserve EVERY previous requirement, including
+superseded ones, with unchanged id, summary, weight and supersedes fields.
+Preserve existing source_event_ids; append @staged only where supported.
+For a changed requirement, keep the old definition and append a new one:
+  - id: r2
+    summary: The newly requested replacement requirement
+    source_event_ids: ["@staged"]
+    supersedes: [r1]
+Do not remove r1, rewrite its summary, or use superseded_by. Unrelated new
+requirements are appended without supersedes; unchanged requirements stay intact.
+Use classification: same_unit, and supply the exact current authority from status:
+  anamnesis work prompt allocate-same --stage <token> --work <id> --draft <file>
+    --expected-head <ledger_head> --expected-contract-revision <contract_revision>
+    --expected-contract-hash <contract_hash>
+(The wrapped command above must be submitted as one command.)
+
+Allocation and session linkage are separate. Use only the exact session cursor
+ID supplied by the current hook when explicitly selecting this Work.
+For Codex native compact recovery, also carry its exact raw session reference:
+  anamnesis work switch --work <id> --session '<cursor-id>' --client-session-ref '<native-session-id>'
+Copy the hook's shell-quoted command; these IDs are locators, not Work authority.
+For an existing null-reference cursor, explicitly select the intended Work and
+rerun that command to bind it. A different nonnull reference is rejected.
+Claude session selection may omit --client-session-ref.
+
+Questions or interruptions that do not change requirements:
+  anamnesis work prompt discard --stage <token> --reason non_requirement
+Use reason interruption for an interruption. Discard is not cancellation of a
+Work lifecycle and does not authorize resuming cancelled work.
+
+Unclear boundary: use prompt retain, with a draft containing only boundary and
+question. boundary fields: state (needs_user or provisional), classification
+(same_unit or new_unit), reason_codes (nonempty list), confidence (low or medium).
+  anamnesis work prompt retain --stage <token> --draft <file>
+
+Progress: a transition draft contains requirement_id, status and evidence_refs.
+Verified requires real evidence; tool completion alone is not verification.
+  anamnesis work transition --work <id> --event-id <unique-id> --occurred-at <ISO>
+    --expected-head <ledger_head> --draft <file>
+
+Use anamnesis --help --all for other Work commands and source-input flags.
+`);
+}
 
 function printHelp(full = false): void {
   if (!full) {
@@ -3626,7 +3701,8 @@ async function main(argv: string[]): Promise<number> {
   const { command, positional, flags } = parseArgs(argv);
 
   if (flags.help || flags.h) {
-    printHelp(flags.all === true);
+    if (command === "work") printWorkHelp();
+    else printHelp(flags.all === true);
     return 0;
   }
   if (flags.version || flags.v) {
@@ -4117,6 +4193,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "switch" &&
         sub !== "prompt" &&
         sub !== "hook-policy-probe" &&
+        sub !== "hook-session-start" &&
         sub !== "hook-user-prompt" &&
         sub !== "hook-post-tool-use"
       ) {
@@ -4255,7 +4332,11 @@ async function main(argv: string[]): Promise<number> {
           return 0;
         }
 
-        if (sub === "hook-user-prompt" || sub === "hook-post-tool-use") {
+        if (
+          sub === "hook-session-start" ||
+          sub === "hook-user-prompt" ||
+          sub === "hook-post-tool-use"
+        ) {
           let payload: unknown;
           try {
             const source = new TextDecoder("utf-8", { fatal: true }).decode(
@@ -4274,7 +4355,9 @@ async function main(argv: string[]): Promise<number> {
             now: workTimestamp(flags, false),
           };
           const result =
-            sub === "hook-user-prompt"
+            sub === "hook-session-start"
+              ? handleWorkCompactionResume(hookInput)
+              : sub === "hook-user-prompt"
               ? handleWorkUserPromptSubmit(hookInput)
               : handleWorkPostToolBoundary(hookInput);
           if (flags.json === true) {
@@ -4503,9 +4586,21 @@ async function main(argv: string[]): Promise<number> {
                 throw new Error("Work cursor belongs to another worktree");
               }
               if (read.cursor) {
+                if (
+                  input.client_session_ref !== null &&
+                  read.cursor.client_session_ref !== null &&
+                  read.cursor.client_session_ref !== input.client_session_ref
+                ) {
+                  throw new Error("Work cursor is bound to another client session");
+                }
                 switchWorkCursorAtomic(
                   input.state_root,
-                  { ...read.cursor, updated_at: input.occurred_at },
+                  {
+                    ...read.cursor,
+                    client_session_ref:
+                      input.client_session_ref ?? read.cursor.client_session_ref,
+                    updated_at: input.occurred_at,
+                  },
                   truth,
                 );
               } else {

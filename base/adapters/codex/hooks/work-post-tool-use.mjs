@@ -91,7 +91,13 @@ async function readPayload() {
 }
 
 function sanitizedEnvelope(payload) {
-  const toolName = safeString(payload.tool_name);
+  const rawToolName = safeString(payload.tool_name);
+  // Codex V1 emits the canonical name; V2 flattens its default namespace.
+  // Normalize only these exact names, preserving the CLI semantic contract.
+  const toolName =
+    rawToolName === "spawn_agent" || rawToolName === "collaborationspawn_agent"
+      ? "Agent"
+      : rawToolName;
   if (!SUPPORTED_TOOLS.has(toolName)) return null;
   if (
     !validStableId(payload.session_id) ||

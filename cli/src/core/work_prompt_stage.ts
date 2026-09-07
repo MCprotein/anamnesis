@@ -22,8 +22,6 @@ export const WORK_PROMPT_STAGE_OUTCOME_SCHEMA_VERSION =
 export const WORK_PROMPT_STAGE_BINDING_SCHEMA_VERSION =
 	"anamnesis.work-prompt-stage-binding.v1" as const;
 
-const verifiedPrivacyBoundaries = new Set<string>();
-
 export interface WorkPromptIdentity {
 	client: string;
 	sessionId: string;
@@ -179,39 +177,33 @@ export function assertWorkPromptStagePrivacyBoundary(
 	projectRoot: string,
 	stateRoot: string,
 ): void {
-	const project = fs.realpathSync(projectRoot);
+	fs.realpathSync(projectRoot);
 	const state = canonicalMissingPath(stateRoot);
-	const boundaryKey = `${project}\0${state}`;
-	if (verifiedPrivacyBoundaries.has(boundaryKey)) return;
 	const worktree = containingGitWorktree(state);
 	if (!worktree) {
-		verifiedPrivacyBoundaries.add(boundaryKey);
 		return;
 	}
-	const candidates = [
-		path.join(state, "work-prompt-stage", ".privacy-check"),
-		path.join(state, "work-inputs", ".privacy-check"),
-	];
+	const candidates = ["work-prompt-stage", "work-inputs"].map(
+		(raw) => `${path.join(state, raw)}/`,
+	);
 	try {
-		const output = execFileSync(
-			"git",
-			["-C", worktree, "check-ignore", "--no-index", "--stdin"],
-			{
-				input: `${candidates.join("\n")}\n`,
-				encoding: "utf8",
-				stdio: ["pipe", "pipe", "ignore"],
-			},
-		);
-		const ignored = new Set(
-			output
-				.trim()
-				.split(/\r?\n/)
-				.filter(Boolean)
-				.map((item) => path.resolve(worktree, item)),
-		);
-		if (!candidates.every((item) => ignored.has(path.resolve(item))))
-			throw new Error("incomplete managed ignore coverage");
-		verifiedPrivacyBoundaries.add(boundaryKey);
+		const output = execFileSync("git",
+			["-C", worktree, "check-ignore", "--no-index", "--verbose", "--non-matching", "-z", "--stdin"],
+			{ input: `${candidates.join("\0")}\0`, encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
+		const fields = output.split("\0");
+		const patterns = new Map<string, string>();
+		for (let index = 0; index + 3 < fields.length; index += 4)
+			patterns.set(fields[index + 3]!, fields[index + 2]!);
+		for (const candidate of candidates) {
+			const pattern = patterns.get(candidate);
+			// With absent directories, raw/* can match a synthetic empty
+			// child in raw/. Require a literal final path component so the
+			// positive rule excludes the directory itself or an ancestor.
+			// Ambiguous glob-only coverage fails closed; init/apply installs
+			// exact directory rules. Do not infer privacy from file probes.
+			if (!pattern || pattern.startsWith("!") || !/(?:^|\/)[^*?\[\]\\/]+\/?$/.test(pattern))
+				throw new Error("unverified raw storage directory ignore coverage");
+		}
 	} catch (error) {
 		throw new Error(
 			"raw Work prompt storage privacy boundary is not protected by managed ignore rules",
