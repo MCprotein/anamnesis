@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { findAgentfile, readAgentfile } from "../core/agentfile.js";
 import {
 	mutateWorkCursorAtomic,
@@ -663,7 +664,12 @@ function stagePromptAtBoundary(
 			policy,
 			client: input.client === "codex" ? "codex" : "claude-code",
 			sessionId: boundary.sessionId,
-			boundaryId: boundary.boundaryStableId,
+			// Codex turn_id spans multiple steering messages. This nonce only
+			// identifies a local capture delivery; it grants no Work authority.
+			// Staging runs once, outside cursor CAS retries. Claude prompt_id
+			// remains a stable replay key. Codex transport retries cannot be
+			// distinguished from identical new messages by the native payload.
+			boundaryId: input.client === "codex" ? randomUUID() : boundary.boundaryStableId,
 			capturedAt,
 			contentType: "text/plain; charset=utf-8",
 			fidelity: "client_exact",
@@ -688,6 +694,7 @@ function stagePromptAtBoundary(
 function renderPromptClassificationContext(captureId: string): string {
 	return [
 		"Anamnesis staged this decoded user prompt for explicit Work classification.",
+		"Exact draft formats and commands: anamnesis work --help. Do not guess draft fields.",
 		`Opaque stage token: ${captureId}`,
 		"Before repository writes or external effects, choose exactly one outcome. The token is a locator, not user authority; do not infer a Work from the current cursor.",
 		"- Same Work: first run `anamnesis work status --work <exact-work-id> --json`, prepare a strict accepted/same_unit contract draft using `@staged` for this prompt, then run `anamnesis work prompt allocate-same --stage <token> --work <id> --draft <file> --expected-head <ledger-head> --expected-contract-revision <n> --expected-contract-hash <hash>`.",

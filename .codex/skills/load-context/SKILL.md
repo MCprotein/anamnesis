@@ -8,7 +8,12 @@ description: |
 
 # load-context
 
-When invoked, do the following — and only the following.
+When invoked, perform only the read-only orientation steps below.
+
+## Invocation contract
+
+- If the user explicitly requests `load-context` as the standalone task, provide the orientation summary and stop.
+- If this skill is invoked as auxiliary startup or orientation work during an active task, finish the orientation and then continue the original task. It does not broaden the user's request or authorize additional work.
 
 ## Steps
 
@@ -24,7 +29,7 @@ When invoked, do the following — and only the following.
    - **Entities**: namespaces, services, hosts, identifiers, paths
    - **Relationships**: dependencies, call paths, ownership
    - **Invariants & rules**: anything stated as "must" / "never" / "always"
-6. Stop. Do not edit files or take action. The user invoked this skill to orient — not to do work.
+6. Do not edit files during orientation. Then follow the invocation contract: stop for a standalone request, or resume the original active task after auxiliary orientation.
 
 ## When the project has no ontology
 

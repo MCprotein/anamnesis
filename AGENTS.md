@@ -51,7 +51,7 @@ and `npm run release:verify -- --version <version>`.
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@20 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@25 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -63,6 +63,8 @@ and `npm run release:verify -- --version <version>`.
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
 - 프로젝트 사실, 문서, 로드맵, 이전 결정, 온톨로지 근거가 필요한 작업은 `anamnesis context query "<검색어>"` 로 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. query snippet 은 근거가 아니라 위치 힌트임.
+- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.
+- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.
 - 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.
 - `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).
 
@@ -85,15 +87,15 @@ and `npm run release:verify -- --version <version>`.
 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.
 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.
 4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.
-5. 핸드오프가 stale (`git log` 와 비교해 이미 진행됨) 이라면 사용자에게 확인 후 무시하고 새 작업으로 진행.
+5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.
 
 Claude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.
 Codex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
 Cursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.
-Claude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.
+Claude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-cmd-load-context fragment=base@20 -->
+<!-- anamnesis:region id=codex-cmd-load-context fragment=base@25 -->
 ### Command: `/load-context`
 
 When the user invokes `/load-context` or asks for "load-context", follow the steps below. (CC users get this as a native slash command; Codex agents follow it from this region.)
@@ -101,6 +103,11 @@ When the user invokes `/load-context` or asks for "load-context", follow the ste
 **Declared side effects:** `read-only`.
 
 Show the current project context — entities, relationships, invariants — by reading the ontology files anamnesis maintains.
+
+Invocation contract:
+
+- If the user explicitly requests `/load-context` as the standalone task, provide the orientation summary and stop.
+- If this procedure is invoked as auxiliary startup or orientation work during an active task, finish the read-only orientation and then continue the original task. It does not broaden the user's request or authorize additional work.
 
 Steps:
 
@@ -111,12 +118,12 @@ Steps:
    - Main entities (services, hosts, identifiers, paths)
    - Relationships (who calls whom, who depends on what)
    - Stated invariants ("never do X", "always Y")
-5. Stop. Don't make any edits — this is orientation only.
+5. Don't make any edits — this is orientation only. Then follow the invocation contract: stop for a standalone request, or resume the original active task after auxiliary orientation.
 
 If neither `.anamnesis/ontology/` nor `system_graph.yaml` exists, say so plainly and suggest running `anamnesis init`.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-cmd-handoff-prepare fragment=base@14 -->
+<!-- anamnesis:region id=codex-cmd-handoff-prepare fragment=base@25 -->
 ### Command: `/handoff-prepare`
 
 When the user invokes `/handoff-prepare` or asks for "handoff-prepare", follow the steps below. (CC users get this as a native slash command; Codex agents follow it from this region.)
@@ -124,6 +131,12 @@ When the user invokes `/handoff-prepare` or asks for "handoff-prepare", follow t
 **Declared side effects:** `local-write`.
 
 Capture the current task state in a structured handoff file. The next agent — could be a fresh Claude session, Codex, Cursor, or anything else reading AGENTS.md and `.anamnesis/handoff/` — will load it on session start and pick up where you left off.
+
+## Invocation contract
+
+- If the user explicitly requests `/handoff-prepare` as the standalone task, create the handoff, report the result, and stop.
+- If this procedure is invoked as an auxiliary checkpoint during an active task, create the handoff and then continue the original task. The checkpoint does not broaden the user's request or authorize additional work.
+- A hook or reminder that merely suggests `/handoff-prepare` does not invoke this procedure and must not create or update handoff files automatically.
 
 ## When to invoke
 
@@ -187,9 +200,13 @@ Capture the current task state in a structured handoff file. The next agent — 
 
 7. **Update the active handoff index** at `.anamnesis/handoff/active.md`.
    This file is the compact multi-task map that gets injected first on
-   session start. Read the existing file if present, preserve still-valid
-   tasks, remove tasks that are clearly completed, and add/update the
-   current task with a pointer to the archived handoff.
+   session start. Read the existing file if present and preserve user-owned
+   wording, custom sections, unrelated entries, and still-valid tasks. Add or
+   update only the current task with a pointer to the archived handoff. When
+   exact evidence proves an existing active entry is complete, move its summary
+   to `Recently completed` or leave the history intact rather than erasing it.
+   If it is ambiguous whether an entry belongs to the current task or remains
+   active, ask the user before changing that entry.
 
    Use this structure:
 
@@ -219,7 +236,9 @@ Capture the current task state in a structured handoff file. The next agent — 
 8. **Confirm to the user**: print both relative paths written and a
    1-line summary of what they captured.
 
-9. **Stop.** Do not continue the task. Handoff completion IS the goal of this command.
+9. **Return according to the invocation contract.** Stop after reporting an
+   explicit standalone handoff request. For an auxiliary checkpoint, resume the
+   original active task without expanding its scope.
 
 ## Quality bar
 
@@ -231,7 +250,7 @@ Capture the current task state in a structured handoff file. The next agent — 
 If the session is too short or trivial for a useful handoff (e.g., just a one-line fix already committed), say so plainly and skip writing — empty handoffs pollute future sessions.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-skill-load-context fragment=base@20 -->
+<!-- anamnesis:region id=codex-skill-load-context fragment=base@25 -->
 ### Skill: `load-context`
 
 When the user asks for "load-context" or the situation matches this procedure, follow the steps below. Codex should load the native project skill from `.codex/skills/load-context/SKILL.md` when available; this region is the compatibility fallback.
@@ -240,7 +259,12 @@ When the user asks for "load-context" or the situation matches this procedure, f
 
 # load-context
 
-When invoked, do the following — and only the following.
+When invoked, perform only the read-only orientation steps below.
+
+## Invocation contract
+
+- If the user explicitly requests `load-context` as the standalone task, provide the orientation summary and stop.
+- If this skill is invoked as auxiliary startup or orientation work during an active task, finish the orientation and then continue the original task. It does not broaden the user's request or authorize additional work.
 
 ## Steps
 
@@ -256,7 +280,7 @@ When invoked, do the following — and only the following.
    - **Entities**: namespaces, services, hosts, identifiers, paths
    - **Relationships**: dependencies, call paths, ownership
    - **Invariants & rules**: anything stated as "must" / "never" / "always"
-6. Stop. Do not edit files or take action. The user invoked this skill to orient — not to do work.
+6. Do not edit files during orientation. Then follow the invocation contract: stop for a standalone request, or resume the original active task after auxiliary orientation.
 
 ## When the project has no ontology
 
@@ -1816,12 +1840,12 @@ main().catch(() => failOpen("unexpected failure"));
 ```
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-work-post-tool-use fragment=base@22 -->
+<!-- anamnesis:region id=codex-hook-work-post-tool-use fragment=base@25 -->
 ### base hook: `work-post-tool-use.mjs`
 
-**When:** `PostToolUse:^(Bash|apply_patch|Agent)$` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
+**When:** `PostToolUse:^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
 
-**Codex native path:** when executable adapter writes are allowed, anamnesis installs a JSON wrapper under `.anamnesis/codex-native-hooks/` and registers `PostToolUse:^(Bash|apply_patch|Agent)$` in `.codex/hooks.json`. This region remains the manual fallback.
+**Codex native path:** when executable adapter writes are allowed, anamnesis installs a JSON wrapper under `.anamnesis/codex-native-hooks/` and registers `PostToolUse:^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$` in `.codex/hooks.json`. This region remains the manual fallback.
 
 **Declared side effects:** `read-only`, `local-write`.
 
@@ -1921,7 +1945,13 @@ async function readPayload() {
 }
 
 function sanitizedEnvelope(payload) {
-  const toolName = safeString(payload.tool_name);
+  const rawToolName = safeString(payload.tool_name);
+  // Codex V1 emits the canonical name; V2 flattens its default namespace.
+  // Normalize only these exact names, preserving the CLI semantic contract.
+  const toolName =
+    rawToolName === "spawn_agent" || rawToolName === "collaborationspawn_agent"
+      ? "Agent"
+      : rawToolName;
   if (!SUPPORTED_TOOLS.has(toolName)) return null;
   if (
     !validStableId(payload.session_id) ||

@@ -9,6 +9,10 @@
 //   6. Plan changes (exec-adapter gate, drift checks — irrelevant on init).
 //   7. If --dry-run, just report. Otherwise apply + write manifest + Agentfile.
 
+import {
+  planWorkPromptPrivacy,
+  assertWorkPromptPrivacyOwnership,
+} from "../core/work_prompt_privacy.js";
 import * as path from "node:path";
 import {
   AGENTFILE_SETTING_DEFAULTS,
@@ -364,6 +368,11 @@ export function init(opts: InitOptions): InitResult {
     settings: DEFAULT_SETTINGS,
   };
 
+  const privacyChanges = planWorkPromptPrivacy(
+    projectRoot,
+    agentfile.settings?.work_prompt_capture,
+  );
+
   // 8. Plan rendering — per-scope loop (root + each sub-scope).
   const registry = new RendererRegistry();
   if (tools.includes("claude-code")) registerClaudeCode(registry);
@@ -425,6 +434,12 @@ export function init(opts: InitOptions): InitResult {
     ...actions,
     ...(projectDocs?.actions ?? []),
   ]);
+  assertWorkPromptPrivacyOwnership(
+    projectRoot,
+    privacyChanges,
+    dedupedActions,
+    emptyManifest(),
+  );
   const surfaceConflicts = resolveKnownSurfaceConflicts({
     projectRoot,
     manifest: emptyManifest(),
@@ -438,6 +453,7 @@ export function init(opts: InitOptions): InitResult {
     manifest: emptyManifest(),
     allowExecAdapters: opts.allowExecAdapters,
   });
+  changes.unshift(...privacyChanges);
 
   let contextBootstrap: ProjectContextBootstrapResult | undefined;
   if (!opts.noContextBootstrap) {

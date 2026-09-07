@@ -92,7 +92,11 @@ describe("init", () => {
       allowExecAdapters: false,
     });
     expect(result.selectedFragments).toHaveLength(0);
-    expect(result.changes).toHaveLength(0);
+    expect(result.changes).toEqual([
+      expect.objectContaining({
+        target: "file", path: ".anamnesis/.gitignore", status: "create",
+      }),
+    ]);
     expect(result.contextBootstrap).toMatchObject({
       outcome: "written",
       path: "system_graph.yaml",
@@ -435,7 +439,7 @@ describe("init", () => {
         schema_version: "anamnesis.init_install.v1",
         written_to_disk: true,
         changes: {
-          create: 2,
+          create: 3,
           blocked: 0,
           user_modified: 0,
         },
@@ -559,7 +563,7 @@ capabilities:
     });
 
     expect(result.writtenToDisk).toBe(false);
-    expect(result.changes).toHaveLength(2);
+    expect(result.changes).toHaveLength(3);
     expect(result.changes.every((change) => change.status === "create")).toBe(
       true,
     );

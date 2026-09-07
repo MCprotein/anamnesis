@@ -15,8 +15,8 @@ import { calculateWorkProgress } from "../core/work_projection.js";
 import * as workProjectionModule from "../core/work_projection.js";
 import { buildWorkBriefingSnapshot } from "../core/work_reconciliation.js";
 import {
-	deriveWorkPromptCaptureId,
 	readStagedWorkPrompt,
+	discardStagedWorkPrompt,
 } from "../core/work_prompt_stage.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { sha256 } from "../util/hash.js";
@@ -158,6 +158,16 @@ function codexPayload(sessionId: string, turnId: string, prompt = "continue") {
 	return { session_id: sessionId, turn_id: turnId, prompt };
 }
 
+function claudePayload(sessionId: string, promptId: string, prompt: string) {
+	return { session_id: sessionId, prompt_id: promptId, prompt };
+}
+
+function captureToken(context: string | null): string {
+	const token = context?.match(/cap_[a-f0-9]{64}/)?.[0];
+	expect(token).toBeDefined();
+	return token as string;
+}
+
 function postToolPayload(
 	sessionId: string,
 	turnId: string,
@@ -181,11 +191,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			payload: codexPayload("capture-session", "capture-turn", prompt),
 			now: "2026-08-14T00:00:00.000Z",
 		});
-		const captureId = deriveWorkPromptCaptureId({
-			client: "codex",
-			sessionId: "capture-session",
-			boundaryId: "capture-turn",
-		});
+		const captureId = captureToken(result.context);
 		expect(result).toMatchObject({
 			status: "capture_staged",
 			reason: "capture_staged",
@@ -200,6 +206,33 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		);
 		expect(staged?.body).toEqual(Buffer.from(prompt, "utf8"));
 		expect(staged?.record.fidelity).toBe("client_exact");
+	});
+
+	it("preserves every same-turn Codex delivery without treating capture identity as Work authority", () => {
+		const root = projectRoot("frequent", "off", true);
+		const cursorId = seed(root, "codex", "steering-session");
+		const state = resolveWorkStateRoot(root);
+		const head = statusWork({ project_root: root, work_id: "wu_hook" }).projection.ledger_head;
+		const tokens: string[] = [];
+		const boundaries: (string | null)[] = [];
+		for (const prompt of ["A", "B", "A", "A", "Cancel the pending action"]) {
+			const result = handleWorkUserPromptSubmit({
+				project_root: root,
+				client: "codex",
+				payload: codexPayload("steering-session", "one-turn", prompt),
+				now: "2026-08-14T00:02:00.000Z",
+			});
+			const token = captureToken(result.context);
+			tokens.push(token);
+			boundaries.push(result.boundary_id);
+			expect(result.cursor_id).toBe(cursorId);
+			expect(readStagedWorkPrompt(state.state_root, token)?.body).toEqual(Buffer.from(prompt));
+			discardStagedWorkPrompt({ stateRoot: state.state_root, captureId: token,
+				resolvedAt: "2026-08-14T00:03:00.000Z", reason: "non_requirement" });
+		}
+		expect(new Set(tokens).size).toBe(5);
+		expect(new Set(boundaries).size).toBe(1);
+		expect(statusWork({ project_root: root, work_id: "wu_hook" }).projection.ledger_head).toBe(head);
 	});
 
 	it("preserves the staged classification obligation when the linked Work is missing", () => {
@@ -222,11 +255,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			),
 			now: "2026-08-14T00:02:00.000Z",
 		});
-		const captureId = deriveWorkPromptCaptureId({
-			client: "codex",
-			sessionId,
-			boundaryId: "missing-work-turn",
-		});
+		const captureId = captureToken(result.context);
 
 		expect(result).toMatchObject({
 			status: "capture_staged",
@@ -257,11 +286,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			),
 			now: "2026-08-14T00:03:00.000Z",
 		});
-		const captureId = deriveWorkPromptCaptureId({
-			client: "codex",
-			sessionId,
-			boundaryId: "stale-cursor-turn",
-		});
+		const captureId = captureToken(result.context);
 
 		expect(update).toHaveBeenCalledTimes(65);
 		expect(result).toMatchObject({
@@ -278,8 +303,8 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		expect(
 			handleWorkUserPromptSubmit({
 				project_root: root,
-				client: "codex",
-				payload: codexPayload(
+				client: "claude-code",
+				payload: claudePayload(
 					"collision-session",
 					"collision-turn",
 					firstPrompt,
@@ -290,8 +315,8 @@ describe("foreground Work UserPromptSubmit hook", () => {
 
 		const collision = handleWorkUserPromptSubmit({
 			project_root: root,
-			client: "codex",
-			payload: codexPayload(
+			client: "claude-code",
+			payload: claudePayload(
 				"collision-session",
 				"collision-turn",
 				conflictingPrompt,

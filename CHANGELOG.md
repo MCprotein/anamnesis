@@ -9,6 +9,20 @@ could include breaking changes.
 
 ### Fixed
 
+- Capture each Codex user-prompt delivery separately because a native `turn_id`
+  can contain multiple mid-turn steering messages. Local capture tokens grant
+  no Work authority; explicit classification and contract CAS remain required.
+  Existing stable-ID receipt validation remains strict; resolution retries
+  still use the explicit idempotent resolution commands.
+- Verify entire raw-storage directories, not sentinel filenames, and recheck
+  privacy on each capture so changed ignore rules cannot reuse a stale proof.
+- Prepare private raw-prompt Git exclusions during bounded-capture init/apply,
+  preserving user ignore content and failing closed on tracked or unsafe paths.
+  Protected primary Work storage remains usable from linked worktrees without
+  modifying the owning checkout.
+- Document strict Work draft formats in `anamnesis work --help` and link that
+  help from prompt classification, avoiding schema guesses during onboarding.
+
 - Normalize Codex native `spawn_agent` and `collaborationspawn_agent` hook
   names to the existing `Agent` boundary without forwarding tool payloads.
 - Make open Work briefing continuation subordinate to the latest user

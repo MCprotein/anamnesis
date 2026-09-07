@@ -5,8 +5,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import YAML from "yaml";
 
+import { parseWorkContractDraft } from "../core/work_command_draft.js";
 import { readWorkCursor } from "../core/work_cursor.js";
-import { deriveWorkPromptCaptureId } from "../core/work_prompt_stage.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { deriveWorkHookCursorId } from "./work_hook.js";
 
@@ -287,11 +287,8 @@ describe("anamnesis work CLI", () => {
 		);
 		expect(hook.status, hook.stderr).toBe(0);
 		expect(hook.stdout).not.toContain(raw);
-		const captureId = deriveWorkPromptCaptureId({
-			client: "codex",
-			sessionId: "stage-cli-session",
-			boundaryId: "stage-cli-turn",
-		});
+		const captureId = hook.stdout.match(/cap_[a-f0-9]{64}/)?.[0] as string;
+		expect(captureId).toBeDefined();
 		expect(hook.stdout).toContain(captureId);
 		writeNamedDraft(root, "staged.yaml", "@staged", "Staged CLI Work");
 		const allocated = run(root, [
@@ -338,11 +335,8 @@ describe("anamnesis work CLI", () => {
 			),
 		);
 		expect(unresolved.status, unresolved.stderr).toBe(0);
-		const unresolvedCaptureId = deriveWorkPromptCaptureId({
-			client: "codex",
-			sessionId: "stage-cli-session",
-			boundaryId: "stage-cli-unresolved",
-		});
+		const unresolvedCaptureId = unresolved.stdout.match(/cap_[a-f0-9]{64}/)?.[0] as string;
+		expect(unresolvedCaptureId).toBeDefined();
 		const gc = run(root, [
 			"prompt",
 			"gc",
@@ -922,4 +916,22 @@ describe("anamnesis work CLI", () => {
 			finalReconciliation?.recent_meaningful_action_boundary_ids,
 		).toHaveLength(64);
 	}, 180_000);
+});
+
+
+describe("Work draft help", () => {
+	it("provides a strict, usable staged contract example without writing project files", () => {
+		const root = project();
+		const before = fs.readdirSync(root);
+		const result = run(root, ["prompt", "allocate-new", "--help"]);
+		expect(result.status).toBe(0);
+		expect(result.stdout).toContain("anamnesis work prompt allocate-new");
+		const example = /```yaml\n([\s\S]*?)```/.exec(result.stdout)?.[1];
+		expect(example).toBeDefined();
+		const parsed = parseWorkContractDraft(Buffer.from(example!));
+		expect(parsed.requirements[0]?.source_event_ids).toEqual(["@staged"]);
+		expect(result.stdout).toContain("--expected-contract-hash");
+		expect(result.stdout).toContain("work switch");
+		expect(fs.readdirSync(root)).toEqual(before);
+	});
 });

@@ -11,6 +11,10 @@
 //     except when that fragment still has preserved or blocked managed surfaces.
 //   * Reports new rulebook matches as `suggested` — does NOT auto-install.
 
+import {
+  planWorkPromptPrivacy,
+  assertWorkPromptPrivacyOwnership,
+} from "../core/work_prompt_privacy.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
@@ -467,6 +471,11 @@ export function update(opts: UpdateOptions): UpdateResult {
   }
   const agentfile = readAgentfile(projectRoot);
 
+  const privacyChanges = planWorkPromptPrivacy(
+    projectRoot,
+    agentfile.version === 2 ? agentfile.settings?.work_prompt_capture : undefined,
+  );
+
   // 2. Read existing manifest (empty if first update).
   const manifest = readManifest(projectRoot);
 
@@ -621,6 +630,12 @@ export function update(opts: UpdateOptions): UpdateResult {
   // Dedupe identical actions (e.g., when both `claude-code` and `codex`
   // emit the same project_memory region action). Key by target identity.
   const dedupedActions = dedupeActions(actions);
+  assertWorkPromptPrivacyOwnership(
+    projectRoot,
+    privacyChanges,
+    dedupedActions,
+    manifest,
+  );
   const surfaceConflicts = resolveKnownSurfaceConflicts({
     projectRoot,
     manifest,
@@ -633,6 +648,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     manifest,
     allowExecAdapters: opts.allowExecAdapters,
   });
+  changes.unshift(...privacyChanges);
 
   // 8. Build a post-update Agentfile that reflects library-current versions.
   //    Pinned entries stay at their pinned version unless --bump-pinned was

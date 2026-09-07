@@ -136,6 +136,43 @@ describe("Work prompt staging", () => {
 		).not.toThrow();
 	});
 
+	it("rejects sentinel-only and descendant-only exclusions and revalidates changed rules", () => {
+		const item = fixture(false);
+		const ignore = path.join(item.project, ".gitignore");
+		for (const suffix of [".privacy-check", "*"]) {
+			fs.writeFileSync(ignore, `.anamnesis/work-prompt-stage/${suffix}\n.anamnesis/work-inputs/${suffix}\n!.anamnesis/work-inputs/objects/\n`);
+			expect(() => assertWorkPromptStagePrivacyBoundary(item.project, item.stateRoot)).toThrow(/privacy boundary/);
+		}
+		fs.writeFileSync(ignore, ".anamnesis/work-prompt-stage/\n.anamnesis/work-inputs/\n");
+		expect(() => assertWorkPromptStagePrivacyBoundary(item.project, item.stateRoot)).not.toThrow();
+		fs.writeFileSync(ignore, "# protection removed after earlier success\n");
+		expect(() => assertWorkPromptStagePrivacyBoundary(item.project, item.stateRoot)).toThrow(/privacy boundary/);
+	});
+
+	it("does not let a file-like match override directory negation before or after creation", () => {
+		const item = fixture(false);
+		fs.writeFileSync(path.join(item.project, ".gitignore"),
+			".anamnesis/work-prompt-stage\n!.anamnesis/work-prompt-stage/\n.anamnesis/work-inputs\n!.anamnesis/work-inputs/\n");
+		for (const create of [false, true]) {
+			if (create) for (const raw of ["work-prompt-stage", "work-inputs"])
+				fs.mkdirSync(path.join(item.stateRoot, raw), { recursive: true });
+			expect(() => assertWorkPromptStagePrivacyBoundary(item.project, item.stateRoot)).toThrow(/privacy boundary/);
+		}
+	});
+
+	it("rejects combined file-like and synthetic-child matches around directory negations", () => {
+		const item = fixture(false);
+		fs.writeFileSync(path.join(item.project, ".gitignore"),
+			["work-prompt-stage", "work-inputs"].map((raw) => `.anamnesis/${raw}\n!.anamnesis/${raw}/\n.anamnesis/${raw}/*\n!.anamnesis/${raw}/objects/\n`).join(""));
+		for (const create of [false, true]) {
+			if (create) for (const raw of ["work-prompt-stage", "work-inputs"])
+				fs.mkdirSync(path.join(item.stateRoot, raw, "objects"), { recursive: true });
+			expect(() => assertWorkPromptStagePrivacyBoundary(item.project, item.stateRoot)).toThrow(/privacy boundary/);
+		}
+		fs.writeFileSync(path.join(item.project, ".gitignore"), ".anamnesis\n");
+		expect(() => assertWorkPromptStagePrivacyBoundary(item.project, item.stateRoot)).not.toThrow();
+	});
+
 	it("derives opaque identity IDs independent of body and preserves exact Buffer bytes privately", () => {
 		const item = staged();
 		const first = stageWorkPrompt(item.input);
