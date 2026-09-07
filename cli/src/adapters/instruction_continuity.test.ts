@@ -88,6 +88,10 @@ describe("instruction continuity contract", () => {
       expect(agents).toContain("경계가 불명확하면 사용자에게 확인");
       expect(agents).toContain("현재 요청의 권한이나 범위를 넓히지 않음");
       expect(agents).toContain("reminder 자체는 handoff 작성 요청이 아니므로");
+      expect(agents).toContain("읽기 전용 작업에서 필요한 원문 경로");
+      expect(agents).toContain("경로만 주어졌다고 근거가 충분한 것은 아님");
+      expect(agents).toContain("필수 온톨로지·active handoff 확인은 유지함");
+      expect(agents).toContain("불충분하거나 파일을 수정하는 작업이면");
 	});
 
   it("keeps standalone and auxiliary behavior in Claude Code command sources", () => {

@@ -8,7 +8,8 @@
 - `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.
 - 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
-- 프로젝트 사실, 문서, 로드맵, 이전 결정, 온톨로지 근거가 필요한 작업은 `anamnesis context query "<검색어>"` 로 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. query snippet 은 근거가 아니라 위치 힌트임.
+- 읽기 전용 작업에서 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하거나 파일을 수정하는 작업이면 `anamnesis context query "<검색어>"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.
+- 필수 온톨로지·active handoff 확인은 유지함. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.
 - 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.
 - 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.
 - 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.
