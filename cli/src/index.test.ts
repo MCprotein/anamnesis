@@ -130,8 +130,7 @@ describe("CLI entrypoint", () => {
 		);
   });
 
-  it("prints namespace help for bare advanced namespaces", () => {
-    for (const namespace of ["context", "handoff", "benchmark"]) {
+  it.each(["context", "handoff", "benchmark"])("prints namespace help for bare %s", (namespace) => {
       const result = spawnSync(
         process.execPath,
         ["--import", "tsx", indexPath, namespace],
@@ -146,7 +145,6 @@ describe("CLI entrypoint", () => {
       expect(result.stdout).toContain(`anamnesis ${namespace}`);
       expect(result.stdout).toContain("Subcommands");
       expect(result.stdout).not.toContain("unknown");
-    }
   });
 
 	it("rejects a bare paid benchmark scenarios flag before execution", () => {

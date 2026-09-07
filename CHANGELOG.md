@@ -7,7 +7,16 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.24.1] — 2026-09-07
+
+- Give each advanced-namespace CLI help invocation its own existing test budget instead of charging three sequential subprocesses to one deadline. Preserve all assertions and the same three CLI executions.
+
 ## [1.24.0] — 2026-09-07
+
+Unpublished: the tag workflow stopped at the CLI namespace-help test timeout
+(36.7 seconds across three subprocesses against a shared30-second test limit).
+Neither registry publication nor GitHub Release creation ran. The failed tag
+and run34141177326 are retained; superseded by1.24.1.
 
 - Guide agents to transition newly verified Work requirements using existing evidence before reporting execution complete, while preserving cancellation, read-only requests and terminal Work boundaries.
 

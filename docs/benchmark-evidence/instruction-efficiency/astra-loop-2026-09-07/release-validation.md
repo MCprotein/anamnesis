@@ -36,3 +36,20 @@ Earlier preparation failures and verification outputs are retained under
 /tmp/anamnesis-release-124-*.log. Failed dogfood snapshots remain in DOGFOOD.md and
 the evidence ledger; only later successful checks establish readiness. Public
 availability requires the official release runner and post-publish verification.
+
+
+## Initial publication attempt retained
+
+The1.24.0 tag workflow [run34141177326](https://github.com/MCprotein/anamnesis/actions/runs/34141177326)
+passed install, lint and typecheck, then passed1,278 of1,279 tests. The namespace
+help test took36.7 seconds for three sequential CLI processes and exceeded its
+shared30-second deadline. Build, both registry publications and Release creation
+were skipped. Publication failed; no behavior-assertion failure was reported.
+Runner load is a plausible contributor, not a proven cause from this log alone.
+
+The1.24.1 correction parameterizes those same three invocations as independent
+cases under the existing timeout, retaining every assertion and process call.
+It does not relax a global timeout, retry failures or alter product code. Two
+additional reported test cases do not mean two additional CLI executions. The
+failed tag is preserved; normal runner preparation/publication/verification is
+used for the replacement patch.

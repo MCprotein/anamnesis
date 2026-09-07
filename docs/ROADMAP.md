@@ -2494,7 +2494,7 @@ Exit criteria:
 ## v1.24 — Instruction efficiency and explicit audit
 
 Status: implementation and bounded Astra validation complete. Verify registry
-availability with `npm run release:verify -- --version 1.24.0`; implementation
+availability with `npm run release:verify -- --version 1.24.1`; implementation
 status alone is not evidence of publication.
 
 - Add explicit, read-only `context audit-instructions` with bounded local
