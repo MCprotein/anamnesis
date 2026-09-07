@@ -62,3 +62,18 @@ For test cleanup, retain a witness for each protected behavior. Measure the same
 runner, machine and worker policy; compare elapsed suite time as well as expensive
 individual tests. Parallel file durations are not additive. Reducing test count
 alone is not an improvement and does not reduce model inference tokens by itself.
+
+
+## Codex delivery and measured evidence
+
+Long Codex fallback procedures are stored in managed Markdown sidecars under
+`.anamnesis/codex-instructions/`; AGENTS.md keeps routing and exact source pointers.
+Short commands remain inline. Native hook availability is evaluated per procedure,
+and successful silent execution does not require manual replay. Full procedures
+and other clients' delivery paths remain available. Update fragment/renderer
+sources rather than editing generated files directly.
+
+The [Astra measurement report](benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/README.md)
+records frozen versions, failed variants, reserved validation and the separate
+Work completion repair. These measurements evaluate delivery changes, not a claim
+that running this audit alone improves model performance.
