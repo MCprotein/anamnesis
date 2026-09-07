@@ -1,3 +1,4 @@
+import { compactInstructionDelivery } from "./instruction_delivery.js";
 // Codex adapter — executable_hook support.
 //
 // Codex native hooks are available through `.codex/hooks.json` when generated
@@ -98,6 +99,13 @@ export const executableHookRenderer: CapabilityRenderer = {
     });
     const nativeShellHook = codexNativeShellHookSupported(capability.event);
 
+    const nativeSessionStart = baseNativeSessionStartSupported({
+      fragmentId: ctx.fragment.id,
+      event: capability.event,
+      basename,
+      fragmentDir: ctx.fragmentDir,
+    });
+
     const content = formatHookRegion({
       fragmentId: ctx.fragment.id,
       basename,
@@ -105,6 +113,7 @@ export const executableHookRenderer: CapabilityRenderer = {
       script: scriptContent,
       sideEffects,
       gitPreCommitEnabled,
+      nativeSessionStart: Boolean(nativeSessionStart),
       nativeCodexHook: nativeShellHook,
     });
 
@@ -126,12 +135,6 @@ export const executableHookRenderer: CapabilityRenderer = {
       },
     ];
 
-    const nativeSessionStart = baseNativeSessionStartSupported({
-      fragmentId: ctx.fragment.id,
-      event: capability.event,
-      basename,
-      fragmentDir: ctx.fragmentDir,
-    });
     if (nativeSessionStart) {
       actions.push({
         kind: "file",
@@ -249,7 +252,7 @@ export const executableHookRenderer: CapabilityRenderer = {
       });
     }
 
-    return actions;
+    return compactInstructionDelivery(actions);
   },
 };
 
@@ -326,6 +329,7 @@ function formatHookRegion(params: {
   script: string;
   sideEffects: readonly CapabilitySideEffect[];
   gitPreCommitEnabled: boolean;
+  nativeSessionStart: boolean;
   nativeCodexHook: { event: string; matcher?: string } | null;
 }): string {
   return [
@@ -333,13 +337,13 @@ function formatHookRegion(params: {
     "",
     `**When:** \`${params.event}\` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).`,
     "",
-    params.event === "SessionStart"
+    params.nativeSessionStart
       ? "**Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback."
       : params.nativeCodexHook
         ? `**Codex native path:** when executable adapter writes are allowed, anamnesis installs a JSON wrapper under \`.anamnesis/codex-native-hooks/\` and registers \`${params.nativeCodexHook.event}${params.nativeCodexHook.matcher ? `:${params.nativeCodexHook.matcher}` : ""}\` in \`.codex/hooks.json\`. This region remains the manual fallback.`
         : params.gitPreCommitEnabled
           ? "**Codex fallback:** eligible for best-effort Git `pre-commit` installation under `.anamnesis/codex-hooks/` when executable adapter writes are allowed and no user-owned hook blocks it."
-          : "**Codex fallback:** documented here only; no `.git/hooks/` directory was present during rendering.",
+          : "**Codex fallback:** no native handler for this procedure; follow the manual only at its declared trigger.",
     "",
     params.sideEffects.length > 0
       ? `**Declared side effects:** ${formatSideEffects(params.sideEffects)}.`

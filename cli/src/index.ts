@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { contextInstructionAudit, formatInstructionAudit } from "./commands/context_instruction_audit.js";
 
 // anamnesis CLI entrypoint.
 //
@@ -635,6 +636,7 @@ Commands:
                                   backlinks, and ontology source refs
   context query                 Search the local context index and print
                                   source pointers for exact follow-up reads
+  context audit-instructions    Read-only instruction ownership and duplication audit.
   context diagnose              Report stale handoff pointers, ontology
                                   conflicts, and missing evidence artifacts
   context resume                Print a compact resume bundle for current
@@ -4654,6 +4656,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "docs" &&
         sub !== "query" &&
         sub !== "diagnose" &&
+        sub !== "audit-instructions" &&
         sub !== "resume" &&
         sub !== "subagent-preamble"
       ) {
@@ -4705,6 +4708,13 @@ async function main(argv: string[]): Promise<number> {
           } else {
             reportContextDocs(result);
           }
+          return 0;
+        }
+
+        if (sub === "audit-instructions") {
+          if (flags["write"] || flags["apply"] || flags["output"]) throw new Error("audit-instructions is read-only; use stdout redirection to save a report");
+          const result = contextInstructionAudit({ projectRoot: (flags["project-root"] as string | undefined) ?? process.cwd() });
+          await writeStdoutFully(`${flags["json"] === true ? JSON.stringify(result, null, 2) : formatInstructionAudit(result)}\n`);
           return 0;
         }
 

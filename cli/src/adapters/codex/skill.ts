@@ -1,3 +1,4 @@
+import { compactInstructionDelivery } from "./instruction_delivery.js";
 // Codex adapter — native skill plus AGENTS.md fallback.
 //
 // Current Codex discovers project-local skills under
@@ -91,7 +92,7 @@ export const skillRenderer: CapabilityRenderer = {
         ? ctx.settings.agents_md_path
         : path.posix.join(scopePath, ctx.settings.agents_md_path);
 
-    return [
+    return compactInstructionDelivery([
       ...relFiles.map((rel) => ({
         kind: "file" as const,
         path: path.posix.join(".codex/skills", capability.name, rel),
@@ -109,6 +110,6 @@ export const skillRenderer: CapabilityRenderer = {
         sideEffects,
         content,
       },
-    ];
+    ]);
   },
 };

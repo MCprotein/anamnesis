@@ -444,7 +444,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		});
 		expect(first).toMatchObject({ status: "briefing_due" });
 		expect(first.context).toContain("injected_unconfirmed");
-		expect(first.context).toContain("visibly brief the requirements");
+		expect(first.context).toContain("brief requirements/done/remaining/blockers/progress");
 		expect(
 			handleWorkUserPromptSubmit({
 				project_root: root,
@@ -506,6 +506,10 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			false,
 		);
 		expect(openContext).toContain("continue the same task");
+		expect(openContext).toContain("use work transition for newly verified requirements with existing evidence");
+		expect(openContext).toContain("read-only means no writes");
+		expect(openContext).toContain("Pause/cancel/redirection wins");
+		expect(terminalContext).not.toContain("use work transition for newly verified requirements");
 		expect(terminalContext).toContain("This Work is terminal");
 		expect(terminalContext).not.toContain("continue the same task");
 	});
@@ -776,7 +780,6 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		const packetBytes = Buffer.byteLength(packet, "utf8");
 		expect(packetBytes).toBeLessThan(fullBytes);
 		expect(packetBytes).toBeLessThanOrEqual(16_384);
-		expect(fullBytes).toBeGreaterThan(packetBytes);
 	});
 
 	it("keeps long and multiline requirement summaries lossless or requires retrieval", () => {

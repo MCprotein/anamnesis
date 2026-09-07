@@ -85,6 +85,25 @@ subagent performance claim.
 [V10 diagnostic evidence](docs/benchmark-evidence/work-parallel-agent-ab/v10-shadow/README.md) ·
 [Parallel-agent methodology and historical evidence](docs/benchmark-evidence/work-parallel-agent-ab/README.md)
 
+## Astra instruction efficiency
+
+Version 1.24 reduces Codex fallback context and repeated startup
+reads while preserving full procedures, source evidence and adapter permissions.
+Its read-only `anamnesis context audit-instructions` command reports instruction
+size, recorded ownership, drift and literal duplicates; it does not automatically
+rewrite instructions or control model settings. See [usage and scope](docs/INSTRUCTION-AUDIT.md).
+
+A frozen Astra/high study passed all 66 executions. On fresh reserved tasks,
+median paired total tokens fell **18.2%**, while elapsed time rose **1.8%** within
+the predeclared non-regression gate. Both arms used anamnesis with Work capture
+and Stop reminders disabled; this is not an on/off or whole-stack speed claim.
+A separate four-run Work completion follow-up measured **17.4% fewer total tokens**
+and **11.2% less time** versus its preceding repair, with correct state recovery.
+That small, tuned comparison is not independent holdout evidence, and uncached
+input increased 0.8%. Earlier Luna/Terra/Sol results above are separate studies.
+
+[Full Astra results, failed revisions and limitations](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/README.md)
+
 ## Quickstart
 
 Install the scoped package (`anamnesis` without the scope is an unrelated npm
@@ -165,6 +184,7 @@ anamnesis apply                       # apply reviewed updates
 anamnesis status                      # inspect drift and continuity state
 anamnesis doctor                      # run integrity diagnostics
 anamnesis context query "<terms>"     # retrieve exact source pointers
+anamnesis context audit-instructions # inspect instruction size, ownership and duplicates
 anamnesis context resume              # render a compact resume bundle
 anamnesis work status --work <id>     # refold authoritative Work state
 ```

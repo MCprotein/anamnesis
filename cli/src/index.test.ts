@@ -38,6 +38,27 @@ function visibleLengthForTest(value: string): number {
 }
 
 describe("CLI entrypoint", () => {
+  it("audits instructions as JSON without writing and rejects write intent", () => {
+    const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-audit-cli-"));
+    try {
+      writeFile(project, "AGENTS.md", "User-owned instructions.\n");
+      for (let i = 0; i < 180; i++) writeFile(project, `.codex/agents/${i}-${"long-name-".repeat(12)}.md`, `Agent ${i}`);
+      const args = ["--import", "tsx", indexPath, "context", "audit-instructions", "--project-root", project, "--json"];
+      const result = spawnSync(process.execPath, args, { cwd: repoRoot, encoding: "utf8" });
+      expect(result.status).toBe(0);
+      const audit = JSON.parse(result.stdout);
+      expect(audit.schema_version).toBe("anamnesis.instruction-audit.v1");
+      expect(audit.surfaces[0].owner).toBe("user-or-other");
+      expect(audit.summary.files).toBe(181);
+      expect(Buffer.byteLength(result.stdout)).toBeGreaterThan(65_536);
+      const denied = spawnSync(process.execPath, [...args, "--write"], { cwd: repoRoot, encoding: "utf8" });
+      expect(denied.status).toBe(1);
+      expect(denied.stderr).toContain("read-only");
+      expect(fs.readdirSync(project).sort()).toEqual([".codex", "AGENTS.md"]);
+      expect(fs.readFileSync(path.join(project, "AGENTS.md"), "utf8")).toBe("User-owned instructions.\n");
+    } finally { fs.rmSync(project, { recursive: true, force: true }); }
+  });
+
   it("prints the getting-started guide with no command", () => {
     const result = spawnSync(process.execPath, ["--import", "tsx", indexPath], {
       cwd: repoRoot,

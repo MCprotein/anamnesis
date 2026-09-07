@@ -226,7 +226,7 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
   else
     echo "Retrieval rule: read the referenced warm archive before continuing non-trivial in-flight work."
   fi
-  echo "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run \`anamnesis context query \"<terms>\"\` and read returned source_path/stable_ref before claiming or editing."
+  echo "Context query rule: for read-only tasks, read already-identified original sources directly; an explicit path alone does not establish sufficient evidence. When required evidence is missing, unresolved, ambiguous, stale or insufficient, or the task edits files, run \`anamnesis context query \"<terms>\"\` and read returned source_path/stable_ref before claiming or editing."
   echo "--- end of handoff ---"
   exit 0
 fi

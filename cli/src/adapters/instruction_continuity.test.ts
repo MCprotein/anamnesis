@@ -58,6 +58,16 @@ function region(actions: RenderAction[], id: string): RegionAction {
   return action!;
 }
 
+function procedure(actions: RenderAction[], id: string): string {
+	const routing = region(actions, id).content;
+	const source = routing.match(
+		/Full procedure and manual fallback[^\n]*`([^`]+)`/,
+	);
+	if (!source && id.startsWith("codex-cmd-")) return routing;
+	expect(source, `missing procedure pointer for ${id}`).not.toBeNull();
+	return file(actions, source![1]!).content;
+}
+
 function expectContinuityContract(text: string): void {
   expect(text).toContain("standalone");
   expect(text).toContain("auxiliary");
@@ -66,9 +76,11 @@ function expectContinuityContract(text: string): void {
 }
 
 describe("instruction continuity contract", () => {
-  it.each<ToolName>(["claude-code", "codex", "cursor"])(
-    "%s receives the shared stale-handoff and authorization boundaries",
-    (adapter) => {
+	it.each<ToolName>([
+		"claude-code",
+		"codex",
+		"cursor",
+	])("%s receives the shared stale-handoff and authorization boundaries", (adapter) => {
       const agents = region(renderBase(adapter), "anamnesis-base").content;
       expect(agents).toContain(
         "이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시",
@@ -76,8 +88,11 @@ describe("instruction continuity contract", () => {
       expect(agents).toContain("경계가 불명확하면 사용자에게 확인");
       expect(agents).toContain("현재 요청의 권한이나 범위를 넓히지 않음");
       expect(agents).toContain("reminder 자체는 handoff 작성 요청이 아니므로");
-    },
-  );
+      expect(agents).toContain("읽기 전용 작업에서 필요한 원문 경로");
+      expect(agents).toContain("경로만 주어졌다고 근거가 충분한 것은 아님");
+      expect(agents).toContain("필수 온톨로지·active handoff 확인은 유지함");
+      expect(agents).toContain("불충분하거나 파일을 수정하는 작업이면");
+	});
 
   it("keeps standalone and auxiliary behavior in Claude Code command sources", () => {
     const actions = renderBase("claude-code");
@@ -101,11 +116,9 @@ describe("instruction continuity contract", () => {
     const codex = renderBase("codex");
     const cursor = renderBase("cursor");
 
-    expectContinuityContract(region(codex, "codex-cmd-load-context").content);
-    expectContinuityContract(
-      region(codex, "codex-cmd-handoff-prepare").content,
-    );
-    expectContinuityContract(region(codex, "codex-skill-load-context").content);
+		expectContinuityContract(procedure(codex, "codex-cmd-load-context"));
+		expectContinuityContract(procedure(codex, "codex-cmd-handoff-prepare"));
+		expectContinuityContract(procedure(codex, "codex-skill-load-context"));
     expectContinuityContract(
       file(codex, ".codex/skills/load-context/SKILL.md").content,
     );

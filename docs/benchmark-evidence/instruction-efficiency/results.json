@@ -1,0 +1,120 @@
+{
+  "schema_version": "anamnesis.test-efficiency-evidence.v1",
+  "baseline_commit": "f5d2a145f182b079a0b9fdd0e97391a543764ea4",
+  "environment": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "node": "v26.7.0",
+    "vitest": "4.1.10"
+  },
+  "full_suite": {
+    "baseline": {
+      "passed": 1281,
+      "failed": 0,
+      "test_files": 106,
+      "elapsed_s": 80.552
+    },
+    "candidate": {
+      "passed": 1280,
+      "failed": 0,
+      "test_files": 107,
+      "elapsed_s": 68.69
+    },
+    "workers": "unchanged Vitest default; one execution per condition; observational",
+    "final_validation": {
+      "passed": 1275,
+      "failed": 0,
+      "test_files": 107,
+      "elapsed_s": 66.017,
+      "note": "Final cleanup validation; preserves the earlier candidate timing sample, not a replacement matched performance run."
+    }
+  },
+  "focused": {
+    "order": [
+      "A1",
+      "B1",
+      "B2",
+      "A2"
+    ],
+    "workers": 1,
+    "runs": [
+      {
+        "label": "A1",
+        "passed": 12,
+        "failed": 0,
+        "test_files": 1,
+        "elapsed_s": 35.64,
+        "publication_fault_ms": {
+          "tracks a successful rename before post-publish identity validation": 7646.263,
+          "restores the first artifact when the second atomic replacement fails": 7531.418,
+          "preserves recovery files when publication and rollback both fail": 7171.081
+        }
+      },
+      {
+        "label": "B1",
+        "passed": 12,
+        "failed": 0,
+        "test_files": 1,
+        "elapsed_s": 11.836,
+        "publication_fault_ms": {
+          "tracks a successful rename before post-publish identity validation": 1.848,
+          "restores the first artifact when the second atomic replacement fails": 1.888,
+          "preserves recovery files when publication and rollback both fail": 1.628
+        }
+      },
+      {
+        "label": "B2",
+        "passed": 12,
+        "failed": 0,
+        "test_files": 1,
+        "elapsed_s": 20.053,
+        "publication_fault_ms": {
+          "tracks a successful rename before post-publish identity validation": 1.924,
+          "restores the first artifact when the second atomic replacement fails": 1.68,
+          "preserves recovery files when publication and rollback both fail": 1.647
+        }
+      },
+      {
+        "label": "A2",
+        "passed": 12,
+        "failed": 0,
+        "test_files": 1,
+        "elapsed_s": 50.474,
+        "publication_fault_ms": {
+          "tracks a successful rename before post-publish identity validation": 10328.239,
+          "restores the first artifact when the second atomic replacement fails": 9451.479,
+          "preserves recovery files when publication and rollback both fail": 10101.151
+        }
+      }
+    ],
+    "limitations": [
+      "B2 overlapped one 0.5-second CLI smoke check at startup, contrary to planned exclusive test execution. All results retained; no replacement best-case run.",
+      "Background read-only review activity and host load were not controlled. No statistical confidence claim.",
+      "Measurements concern test execution, not real-model tokens, cost or cache efficiency."
+    ]
+  },
+  "artifact_hashes": {
+    "baseline-tests.json": "cc10e63b6df57b26c70fdcaf438612dc89debb754bf4e89ce7d49065db4683fc",
+    "candidate-tests.json": "d0bb6aedaf49bfd15df5676d5f76b5811627c9306bfd112e94ad1ca56e82c347",
+    "focused-A1.json": "ca67dbcaa4e40c8854642f6493f49ec8fb819fe59321c9a51f6020e5ade44347",
+    "focused-B1.json": "e5f58ff1a93b10a4f67983b453d5015c119d5f9f5ccba5fee91f67cf85f3b1a8",
+    "focused-B2.json": "19daacaf6dcf704a0849855be8cb6c91bf052225db7f549a24d18614d61d9d69",
+    "focused-A2.json": "cd46630ed4906387bf1249d20992c4bc2733256ca36edf093d6ced79722c6ba6",
+    "final-tests.json": "819f9af5631ba3c1d74555b634346fc93dede63526a9222839efb5779157c475",
+    "switching-baseline.json": "12f9ae247a2bdf0503e3492fcd0f72b67d416257c3aecab33ee15cab1731027e",
+    "switching-candidate.json": "8887c983fc3569ba5a1fc5336458e97f25b083e7183e83e7c5ca248002f8a1f8"
+  },
+  "cleanup": {
+    "baseline_files_fully_reviewed": 108,
+    "whole_cases_removed_or_consolidated": 12,
+    "redundant_assertions_removed": 14,
+    "new_feature_tests": 6,
+    "redundant_status_doctor_invocations_removed": 16
+  },
+  "switching_observation": {
+    "baseline_s": 1.869,
+    "candidate_s": 1.334,
+    "passed_each": 4,
+    "limitation": "One pair, uncontrolled host load; all nine actual adapter prepare/resume paths retained."
+  }
+}

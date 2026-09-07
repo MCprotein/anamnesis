@@ -174,30 +174,7 @@ describe("ensureHookRegistration — noop", () => {
     expect(status).toBe("noop");
   });
 
-  it("matcher comparison treats undefined and missing identically", () => {
-    const initial = {
-      hooks: {
-        SessionStart: [
-          {
-            // no `matcher` field at all
-            hooks: [
-              {
-                type: "command",
-                command: ".claude/hooks/inject-ontology.sh",
-              },
-            ],
-          },
-        ],
-      },
-    };
-    const reg: HookRegistration = {
-      event: "SessionStart",
-      command: ".claude/hooks/inject-ontology.sh",
-      // no matcher field
-    };
-    const { status } = ensureHookRegistration(initial, reg);
-    expect(status).toBe("noop");
-  });
+
 });
 
 // ---------------------------------------------------------------------------

@@ -59,6 +59,16 @@ function fileByPath(actions: RenderAction[], filePath: string): FileAction {
   return action!;
 }
 
+function procedure(actions: RenderAction[], id: string): string {
+	const routing = regionById(actions, id).content;
+	const source = routing.match(
+		/Full procedure and manual fallback[^\n]*`([^`]+)`/,
+	);
+	if (!source && id.startsWith("codex-cmd-")) return routing;
+	expect(source, `missing procedure pointer for ${id}`).not.toBeNull();
+	return fileByPath(actions, source![1]!).content;
+}
+
 function expectContainsAll(text: string, needles: string[]): void {
   for (const needle of needles) {
     expect(text).toContain(needle);
@@ -66,9 +76,11 @@ function expectContainsAll(text: string, needles: string[]): void {
 }
 
 describe("cross-agent context continuity acceptance", () => {
-  it.each<ToolName>(["claude-code", "codex", "cursor"])(
-    "%s renders the shared context and handoff contract",
-    (adapter) => {
+	it.each<ToolName>([
+		"claude-code",
+		"codex",
+		"cursor",
+	])("%s renders the shared context and handoff contract", (adapter) => {
       const actions = renderBase(adapter);
 
       const agents = regionById(actions, "anamnesis-base");
@@ -94,8 +106,7 @@ describe("cross-agent context continuity acceptance", () => {
         "managed_by: anamnesis",
         "ontology_dir: .anamnesis/ontology/",
       ]);
-    },
-  );
+	});
 
   it("renders Claude Code native hooks, commands, and skills", () => {
     const actions = renderBase("claude-code");
@@ -174,11 +185,7 @@ describe("cross-agent context continuity acceptance", () => {
     );
     expectContainsAll(
       fileByPath(actions, ".claude/skills/anamnesis-init/SKILL.md").content,
-      [
-        "multiple-choice question",
-        "--scaffold-docs",
-        "--enhance-docs",
-      ],
+			["multiple-choice question", "--scaffold-docs", "--enhance-docs"],
     );
     expectContainsAll(
       fileByPath(actions, ".claude/skills/doc-freshness-review/SKILL.md")
@@ -247,7 +254,8 @@ describe("cross-agent context continuity acceptance", () => {
     );
     expect(workBoundary.codexHook).toEqual({
       event: "PostToolUse",
-      matcher: "^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
+			matcher:
+				"^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
       command: codexNativeNodeCommand(
         ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
       ),
@@ -257,17 +265,18 @@ describe("cross-agent context continuity acceptance", () => {
     // Names may be normalized; the wrapper must not invoke an agent itself.
     expect(workBoundary.content).not.toMatch(/\bspawn_agent\s*\(/);
 
-    expectContainsAll(regionById(actions, "codex-cmd-load-context").content, [
+		expectContainsAll(procedure(actions, "codex-cmd-load-context"), [
       "/load-context",
       ".anamnesis/ontology/",
       "system_graph.yaml",
       "anamnesis context query",
     ]);
-    expectContainsAll(
-      regionById(actions, "codex-cmd-handoff-prepare").content,
-      ["/handoff-prepare", ".anamnesis/handoff/active.md", "next agent"],
-    );
-    expectContainsAll(regionById(actions, "codex-skill-load-context").content, [
+		expectContainsAll(procedure(actions, "codex-cmd-handoff-prepare"), [
+			"/handoff-prepare",
+			".anamnesis/handoff/active.md",
+			"next agent",
+		]);
+		expectContainsAll(procedure(actions, "codex-skill-load-context"), [
       "Skill: `load-context`",
       ".codex/skills/load-context/SKILL.md",
       "every fresh session starts from zero project context",
@@ -281,9 +290,7 @@ describe("cross-agent context continuity acceptance", () => {
         "source_path",
       ],
     );
-    expectContainsAll(
-      regionById(actions, "codex-skill-ontology-enrich").content,
-      [
+		expectContainsAll(procedure(actions, "codex-skill-ontology-enrich"), [
         "Skill: `ontology-enrich`",
         ".codex/skills/ontology-enrich/SKILL.md",
         "Layer B",
@@ -291,8 +298,7 @@ describe("cross-agent context continuity acceptance", () => {
         "anamnesis.enriched.v1",
         "supersedes",
         "source_path",
-      ],
-    );
+		]);
     expectContainsAll(
       fileByPath(actions, ".codex/skills/ontology-enrich/SKILL.md").content,
       [
@@ -302,7 +308,7 @@ describe("cross-agent context continuity acceptance", () => {
         "anamnesis context query",
       ],
     );
-    expectContainsAll(regionById(actions, "codex-skill-anamnesis-init").content, [
+		expectContainsAll(procedure(actions, "codex-skill-anamnesis-init"), [
       "Skill: `anamnesis-init`",
       ".codex/skills/anamnesis-init/SKILL.md",
       "multiple-choice question",
@@ -313,17 +319,14 @@ describe("cross-agent context continuity acceptance", () => {
       fileByPath(actions, ".codex/skills/anamnesis-init/SKILL.md").content,
       ["name: anamnesis-init", "multiple-choice question"],
     );
-    expectContainsAll(
-      regionById(actions, "codex-skill-doc-freshness-review").content,
-      [
+		expectContainsAll(procedure(actions, "codex-skill-doc-freshness-review"), [
         "Skill: `doc-freshness-review`",
         ".codex/skills/doc-freshness-review/SKILL.md",
         "semantic freshness",
         "anamnesis context diagnose",
         "anamnesis context query",
         "stale-current-claim",
-      ],
-    );
+		]);
     expectContainsAll(
       fileByPath(actions, ".codex/skills/doc-freshness-review/SKILL.md")
         .content,

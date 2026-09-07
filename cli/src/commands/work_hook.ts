@@ -977,7 +977,7 @@ export function renderWorkBriefingContext(
 		`Anamnesis Work briefing: ${boundedSemanticField(briefing.work.title ?? briefing.work_id, 512)} (${boundedSemanticField(briefing.work_id, 128)}; r${briefing.contract_revision}; ${briefing.lifecycle}).`,
 		"Delivery: injected_unconfirmed (not visible).",
 		autoContinue
-			? "Action: visibly brief the requirements, done/remaining/blockers/progress; continue the same task only if consistent with the latest user request. Cancellation, pause, or redirection takes precedence over this open Work snapshot."
+			? "Action: brief requirements/done/remaining/blockers/progress; continue the same task under the latest request. Before reporting execution done, use work transition for newly verified requirements with existing evidence. Pause/cancel/redirection wins; read-only means no writes."
 			: "Visibly brief the requirements, done, remaining, blockers, and progress. This Work is terminal; do not continue or restart it automatically.",
 		fullBlock === null
 			? `Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; compact context never replaces the complete projection.`

@@ -7,6 +7,24 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.24.0] — 2026-09-07
+
+- Guide agents to transition newly verified Work requirements using existing evidence before reporting execution complete, while preserving cancellation, read-only requests and terminal Work boundaries.
+
+- Align Codex native source-retrieval guidance with the shared read-only fast path and identify completed built-in startup discovery; base fragment advances to v27.
+
+- Restrict Codex hook manual loading to the actual trigger and unavailable per-procedure native support; silent native success does not require replay. Unsupported custom SessionStart hooks no longer advertise the built-in wrapper.
+
+- Avoid redundant source discovery for read-only tasks with sufficient known originals, while preserving mandatory ontology/handoff checks, query-on-insufficient-evidence and edit safeguards. Batch independent startup reads; base fragment advances to v26.
+
+- Keep Codex procedure routing in AGENTS.md while preserving full hook, skill and command fallback instructions in managed Markdown sources. Native adapters and other clients retain their existing paths; runtime efficiency is evaluated separately.
+
+- Add an explicit read-only instruction audit with bounded project inventory, recorded ownership and drift, literal duplicate references, and compatibility-aware review guidance. Disk bytes are kept separate from runtime token/performance claims.
+
+- Remove six redundant adapter registration checks already covered by the parity matrix and consolidate two identical reviewer-repair cases while preserving their combined assertions. Exercise three publication recovery faults directly, preserving their assertions and end-to-end publication coverage without rerunning the entire fake benchmark.
+
+- Remove five further duplicate tests and 14 redundant assertions with retained coverage witnesses. Run adapter-independent stale diagnostics once while retaining all nine actual adapter-switch paths. The cleanup checkpoint retained 1,275 passing tests; subsequent feature regressions are counted separately.
+
 ## [1.23.6] — 2026-09-07
 
 ### Fixed

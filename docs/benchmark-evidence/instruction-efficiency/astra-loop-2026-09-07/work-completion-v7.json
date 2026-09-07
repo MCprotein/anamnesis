@@ -1,0 +1,164 @@
+{
+  "pass": true,
+  "manual_semantic_review_required": false,
+  "results": [
+    {
+      "repetition": 0,
+      "arm": "v6",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 1403127,
+        "inputTokens": 1393883,
+        "cachedInputTokens": 1271936,
+        "outputTokens": 9244,
+        "reasoningOutputTokens": 546,
+        "uncachedInputTokens": 121947
+      },
+      "elapsed_s": 460.4996418952942,
+      "commands": 38,
+      "final_work_progress": {
+        "applicable": 5,
+        "pending": 0,
+        "in_progress": 0,
+        "verified": 5,
+        "implemented_unverified": 0,
+        "blocked": 0,
+        "waived": 2,
+        "denominator_empty": false,
+        "percent": 100,
+        "weighted": false
+      },
+      "final_work_lifecycle": "completed",
+      "submissions": [
+        {
+          "phase": "resume",
+          "arguments": {
+            "result": 12
+          }
+        }
+      ]
+    },
+    {
+      "repetition": 0,
+      "arm": "v7",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 1531762,
+        "inputTokens": 1521909,
+        "cachedInputTokens": 1396864,
+        "outputTokens": 9853,
+        "reasoningOutputTokens": 548,
+        "uncachedInputTokens": 125045
+      },
+      "elapsed_s": 483.6397907733917,
+      "commands": 42,
+      "final_work_progress": {
+        "applicable": 7,
+        "pending": 0,
+        "in_progress": 0,
+        "verified": 7,
+        "implemented_unverified": 0,
+        "blocked": 0,
+        "waived": 2,
+        "denominator_empty": false,
+        "percent": 100,
+        "weighted": false
+      },
+      "final_work_lifecycle": "completed",
+      "submissions": [
+        {
+          "phase": "resume",
+          "arguments": {
+            "result": 12
+          }
+        }
+      ]
+    },
+    {
+      "repetition": 1,
+      "arm": "v7",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 936389,
+        "inputTokens": 928305,
+        "cachedInputTokens": 828032,
+        "outputTokens": 8084,
+        "reasoningOutputTokens": 284,
+        "uncachedInputTokens": 100273
+      },
+      "elapsed_s": 398.3427531719208,
+      "commands": 26,
+      "final_work_progress": {
+        "applicable": 4,
+        "pending": 0,
+        "in_progress": 0,
+        "verified": 4,
+        "implemented_unverified": 0,
+        "blocked": 0,
+        "waived": 2,
+        "denominator_empty": false,
+        "percent": 100,
+        "weighted": false
+      },
+      "final_work_lifecycle": "open",
+      "submissions": [
+        {
+          "phase": "resume",
+          "arguments": {
+            "result": 12
+          }
+        }
+      ]
+    },
+    {
+      "repetition": 1,
+      "arm": "v6",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 955641,
+        "inputTokens": 947746,
+        "cachedInputTokens": 809600,
+        "outputTokens": 7895,
+        "reasoningOutputTokens": 310,
+        "uncachedInputTokens": 138146
+      },
+      "elapsed_s": 367.7159729003906,
+      "commands": 27,
+      "final_work_progress": {
+        "applicable": 7,
+        "pending": 0,
+        "in_progress": 0,
+        "verified": 7,
+        "implemented_unverified": 0,
+        "blocked": 0,
+        "waived": 2,
+        "denominator_empty": false,
+        "percent": 100,
+        "weighted": false
+      },
+      "final_work_lifecycle": "open",
+      "submissions": [
+        {
+          "phase": "resume",
+          "arguments": {
+            "result": 12
+          }
+        }
+      ]
+    }
+  ],
+  "manual_semantic_pass": true,
+  "scope": "Two paired targeted cancellation/resumption regressions; not unseen holdout or general efficiency proof.",
+  "pairs": [
+    {
+      "token_ratio": 1.0916773748919377,
+      "time_ratio": 1.050250090929189
+    },
+    {
+      "token_ratio": 0.9798543595345951,
+      "time_ratio": 1.0832892300814643
+    }
+  ],
+  "median_token_ratio": 1.0357658672132664,
+  "median_time_ratio": 1.0667696605053267
+}

@@ -231,7 +231,11 @@ function namespaceRows(namespace: HelpNamespace) {
 						"Search indexed context and print exact source pointers.",
 				},
 				{
-					command: "context diagnose",
+					command: "context audit-instructions",
+          description: "Audit instruction ownership, size and duplicate candidates (read-only).",
+        },
+        {
+          command: "context diagnose",
 					description:
 						"Report stale handoff, ontology, docs, and evidence issues.",
 				},

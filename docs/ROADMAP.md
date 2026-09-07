@@ -2491,6 +2491,37 @@ Exit criteria:
 
 ---
 
+## v1.24 — Instruction efficiency and explicit audit
+
+Status: implementation and bounded Astra validation complete. Verify registry
+availability with `npm run release:verify -- --version 1.24.0`; implementation
+status alone is not evidence of publication.
+
+- Add explicit, read-only `context audit-instructions` with bounded local
+  inventory, ownership/drift evidence and literal duplicate references. It does
+  not scan global settings, call models or automatically rewrite instructions.
+- Keep short Codex commands inline and full long procedures in managed Markdown
+  sources. Preserve per-procedure fallback, actual trigger boundaries, executable
+  adapter authorization and user/other-tool instructions.
+- Avoid repeated discovery when sufficient original sources are already known;
+  preserve exact-source evidence and stricter edit requirements. Identify native
+  built-in startup discovery without suppressing unrelated hooks.
+- Guide completion transitions for newly verified Work requirements using
+  existing evidence, preserving cancellation, read-only and terminal boundaries.
+- Remove redundant tests/assertions only with retained coverage witnesses;
+  concurrency, recovery, ownership and release safeguards remain.
+
+The frozen instruction-delivery study passed 66 runs, with reserved median
+paired tokens−18.2% and time+1.8%. Separate Work-enabled V8/V7 validation passed
+four runs with tokens−17.4% and time−11.2%; this two-pair tuned follow-up is not a
+new holdout or general cost guarantee. Do not combine these source/settings
+scopes or extrapolate prior Luna/Terra/Sol measurements to Astra.
+See [measurement details](benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/README.md)
+and [audit usage](INSTRUCTION-AUDIT.md). Experimental context management and
+whole-default-stack/on-off performance remain separate unproven claims.
+
+---
+
 ## Parked ideas (outside the accepted roadmap)
 
 These have been discussed, but they are not active roadmap work. Bring them

@@ -88,7 +88,7 @@ describe("codex executable_hook fallback", () => {
       },
       makeContext(fragmentDir, fragment),
     );
-    expect(actions).toHaveLength(3);
+		expect(actions).toHaveLength(4);
     expect(actions[0]!.kind).toBe("region");
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.file).toBe("AGENTS.md");
@@ -98,7 +98,11 @@ describe("codex executable_hook fallback", () => {
       expect(actions[0]!.content).toContain(
         "**Declared side effects:** `local-write`.",
       );
-      expect(actions[0]!.content).toContain("echo hi");
+			expect(
+				actions.find(
+					(a) => a.kind === "file" && a.path.endsWith("codex-hook-x.md"),
+				)?.content,
+			).toContain("echo hi");
       expect(actions[0]!.sideEffects).toEqual(["local-write"]);
     }
     const wrapper = actions.find(
@@ -150,7 +154,7 @@ describe("codex executable_hook fallback", () => {
       makeContext(fragmentDir, fragment, ".", projectRoot),
     );
 
-    expect(actions).toHaveLength(4);
+		expect(actions).toHaveLength(5);
     expect(actions.some((a) => a.kind === "region")).toBe(true);
     const script = actions.find(
       (a) => a.kind === "file" && a.path.startsWith(".anamnesis/codex-hooks/"),
@@ -319,14 +323,14 @@ describe("codex executable_hook fallback", () => {
     const wrapper = actions.find(
       (action) =>
         action.kind === "file" &&
-        action.path ===
-          ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
+				action.path === ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
     );
     expect(wrapper?.kind).toBe("file");
     if (wrapper?.kind === "file") {
       expect(wrapper.codexHook).toEqual({
         event: "PostToolUse",
-        matcher: "^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
+				matcher:
+					"^(Bash|apply_patch|Agent|spawn_agent|collaborationspawn_agent)$",
         command: codexNativeNodeCommand(
           ".anamnesis/codex-native-hooks/work-post-tool-use.mjs",
         ),
@@ -364,7 +368,7 @@ describe("codex executable_hook fallback", () => {
         "const input = Buffer.concat(chunks).toString('utf8');",
         'if (process.argv.slice(2).join(" ") !== "work hook-post-tool-use --client codex") process.exit(41);',
         'if (input.includes("PRIVATE_INPUT") || input.includes("PRIVATE_OUTPUT") || input.includes("transcript")) process.exit(42);',
-        'const value = JSON.parse(input);',
+				"const value = JSON.parse(input);",
         `if (JSON.stringify(value) !== JSON.stringify({session_id:"session-1",turn_id:"turn-1",events:[{tool_name:${JSON.stringify(normalizedName)},tool_use_id:"tool-1"}]})) process.exit(43);`,
         'process.stdout.write("brief and continue\\n");',
         "",
@@ -400,11 +404,20 @@ describe("codex executable_hook fallback", () => {
     expect(result.stdout).not.toContain("PRIVATE");
   });
 
-  it.each(["Read", "other_spawn_agent", "othercollaborationspawn_agent", "collaboration.spawn_agent", "collaborationspawn_agent_extra"])("skips unsupported Codex tool %s without launching the CLI", (toolName) => {
+	it.each([
+		"Read",
+		"other_spawn_agent",
+		"othercollaborationspawn_agent",
+		"collaboration.spawn_agent",
+		"collaborationspawn_agent_extra",
+	])("skips unsupported Codex tool %s without launching the CLI", (toolName) => {
     const projectRoot = tmpDir("anamnesis-codex-unsupported-tool-");
     const marker = path.join(projectRoot, "called");
     const shim = path.join(projectRoot, "shim.mjs");
-    fs.writeFileSync(shim, `#!/usr/bin/env node\nimport fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "called");\n`);
+		fs.writeFileSync(
+			shim,
+			`#!/usr/bin/env node\nimport fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "called");\n`,
+		);
     fs.chmodSync(shim, 0o755);
     const wrapperPath = path.resolve(
       "base/adapters/codex/hooks/work-post-tool-use.mjs",
@@ -834,9 +847,7 @@ describe("codex executable_hook fallback", () => {
       {
         name: "multiple Agentfiles",
         files: {
-          Agentfile: codexAgentfile(
-            "work_prompt_capture:\n  preset: bounded",
-          ),
+					Agentfile: codexAgentfile("work_prompt_capture:\n  preset: bounded"),
           "agentfile.yaml": codexAgentfile(
             "work_prompt_capture:\n  preset: bounded",
           ),
@@ -1179,6 +1190,8 @@ describe("codex executable_hook fallback", () => {
     };
     const context = output.hookSpecificOutput?.additionalContext ?? "";
     expect(context).toContain("Mode: compact");
+    expect(context).toContain("Native SessionStart completed built-in ontology and handoff discovery");
+    expect(context).toContain("for read-only tasks, read already-identified original sources directly");
     expect(context).toContain("Source pointers:");
     expect(context).toContain(
       "- system_graph.yaml (34 bytes, 2 lines; user-managed top-level ontology)",
@@ -1276,6 +1289,8 @@ describe("codex executable_hook fallback", () => {
     expect(context).not.toContain("- .anamnesis/handoff/closed.md");
     expect(context).not.toContain("SECRET_COLD_BODY");
     expect(context).toContain("no warm archive is startup-active");
+    expect(context).toContain("for read-only tasks, read already-identified original sources directly");
+    expect(context).toContain("or the task edits files, run");
 
     const full = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,
@@ -1630,7 +1645,10 @@ describe("codex executable_hook fallback", () => {
     );
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.file).toBe("apps/api/AGENTS.md");
+      expect(actions[0]!.content).toContain("no native handler for this procedure");
+      expect(actions[0]!.content).not.toContain("Codex native path");
     }
+    expect(actions.some((action) => action.kind === "file" && action.path.endsWith("session-start.mjs"))).toBe(false);
   });
 
   it("throws when source missing", () => {
@@ -1695,7 +1713,7 @@ describe("codex skill native surface and fallback", () => {
       },
       makeContext(fragmentDir, fragment),
     );
-    expect(actions).toHaveLength(3);
+		expect(actions).toHaveLength(4);
 
     const skillFile = actions.find(
       (a) => a.kind === "file" && a.path === ".codex/skills/myskill/SKILL.md",
@@ -1727,8 +1745,12 @@ describe("codex skill native surface and fallback", () => {
       expect(fallback.content).toContain(
         "**Declared side effects:** `local-write`.",
       );
-      // Body present, frontmatter not.
-      expect(fallback.content).toContain("step one");
+			// Full procedure remains available through the manual source pointer.
+			expect(
+				actions.find(
+					(a) => a.kind === "file" && a.path.endsWith("codex-skill-myskill.md"),
+				)?.content,
+			).toContain("step one");
       expect(fallback.content).not.toContain("description: a test skill");
     }
   });
@@ -1785,7 +1807,7 @@ describe("codex slash_command fallback", () => {
       },
       makeContext(fragmentDir, fragment),
     );
-    expect(actions).toHaveLength(1);
+		expect(actions).toHaveLength(1);
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.regionId).toBe("codex-cmd-foo");
       expect(actions[0]!.sideEffects).toEqual(["read-only"]);
