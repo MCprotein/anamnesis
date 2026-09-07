@@ -525,5 +525,20 @@ class EvaluatorTests(unittest.TestCase):
         self.assertRegex(refs[0], r'^[0-9a-f]{40}$')
 
 
+class WorkCompletionGateTests(unittest.TestCase):
+    def test_successful_submission_cannot_mask_pending_or_evidence_less_work(self):
+        from work_completion import completion_errors
+        completed = {'requirements': [{'id': 'r', 'status': 'verified', 'evidence_refs': ['TASK.md']}],
+                     'progress': {'applicable': 1, 'verified': 1, 'percent': 100}, 'lifecycle': 'open'}
+        self.assertEqual(completion_errors(completed), [])
+        variants = [None, {},
+                    {**completed, 'requirements': [{'id': 'r', 'status': 'pending'}]},
+                    {**completed, 'requirements': [{'id': 'r', 'status': 'verified', 'evidence_refs': []}]},
+                    {**completed, 'progress': {'applicable': 1, 'verified': 0, 'percent': 100}}]
+        for invalid in variants:
+            with self.subTest(projection=invalid):
+                self.assertTrue(completion_errors(invalid))
+
+
 if __name__ == '__main__':
     unittest.main()
