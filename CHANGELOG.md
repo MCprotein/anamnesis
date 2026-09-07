@@ -7,7 +7,11 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.23.5] — 2026-09-07
+
 ### Fixed
+
+- Fix native session binding in Work selection and explicit legacy-cursor repair so compact recovery can retain its strict session equality checks.
 
 - Capture each Codex user-prompt delivery separately because a native `turn_id`
   can contain multiple mid-turn steering messages. Local capture tokens grant
