@@ -1641,7 +1641,10 @@ describe("codex executable_hook fallback", () => {
     );
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.file).toBe("apps/api/AGENTS.md");
+      expect(actions[0]!.content).toContain("no native handler for this procedure");
+      expect(actions[0]!.content).not.toContain("Codex native path");
     }
+    expect(actions.some((action) => action.kind === "file" && action.path.endsWith("session-start.mjs"))).toBe(false);
   });
 
   it("throws when source missing", () => {

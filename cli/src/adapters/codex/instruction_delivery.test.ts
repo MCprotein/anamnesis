@@ -27,12 +27,14 @@ describe("Codex instruction delivery", () => {
 		expect(short.sideEffects).toEqual(original.sideEffects);
 		expect(short.content).toContain(full.path);
 		expect(short.content).toContain("Stop");
+		expect(short.content).toContain("only at its declared trigger");
+		expect(short.content).toContain("Do not preload future-trigger manuals");
 		expect(short.content).not.toContain("printf");
 		expect(short.content).toContain(
-			"without reading or replaying the hook implementation",
+			"Enabled native handlers may succeed silently",
 		);
 		expect(short.content).toContain(
-			"Output from another hook on the same event does not establish this",
+			"Another handler on the same event does not establish support for this one",
 		);
 		expect(region).toEqual(original);
 	});

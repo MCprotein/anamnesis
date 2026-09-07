@@ -46,7 +46,7 @@ export function compactInstructionDelivery(
 					"",
 					`Full procedure and manual fallback (relative to project root): \`${source}\`.`,
 					action.regionId.startsWith("codex-hook-")
-						? "When the corresponding native hook/procedure has successfully executed, use its output without reading or replaying the hook implementation. Output from another hook on the same event does not establish this. Read and follow this fallback when this procedure has no native support or has not executed, or when the user asks to inspect it."
+						? "Read this manual only at its declared trigger when this specific handler lacks enabled native support, or when asked to inspect it. Enabled native handlers may succeed silently; absent output alone is not a fallback trigger. Another handler on the same event does not establish support for this one. Do not preload future-trigger manuals or replay enabled native handlers."
 						: action.regionId.startsWith("codex-skill-")
 							? "A routine startup check does not itself invoke this skill. Read its full procedure when the current task matches its purpose or relevant context is missing; preserve its invocation and continuation rules."
 							: "When the user invokes this command, read the full procedure and preserve its standalone or auxiliary continuation rules. Do not preload it for unrelated tasks.",

@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Restrict Codex hook manual loading to the actual trigger and unavailable per-procedure native support; silent native success does not require replay. Unsupported custom SessionStart hooks no longer advertise the built-in wrapper.
+
 - Avoid redundant source discovery for read-only tasks with sufficient known originals, while preserving mandatory ontology/handoff checks, query-on-insufficient-evidence and edit safeguards. Batch independent startup reads; base fragment advances to v26.
 
 - Keep Codex procedure routing in AGENTS.md while preserving full hook, skill and command fallback instructions in managed Markdown sources. Native adapters and other clients retain their existing paths; runtime efficiency is evaluated separately.
