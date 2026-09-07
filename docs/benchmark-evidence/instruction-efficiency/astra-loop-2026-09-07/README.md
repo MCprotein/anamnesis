@@ -63,10 +63,28 @@ Use `scripts/benchmarks/instruction_efficiency.py` to freeze source/runtime/fixt
 
 ## Default Work compatibility: semantic failure retained
 
-The separate three-case check passed its numeric/transport checks: sum baseline/candidate submitted9 once; cancelled candidate submitted nothing until explicit resumption, then12 once. Both sum cases preserved requirements and verified Work progress across compaction and fresh threads. However, the resumed cancellation case left all3 applicable Work requirements pending despite successful submission and completed TASK.md. The fresh session correctly exposed the discrepancy. This is a **semantic failure and release blocker**, not a successful full-stack validation. V7 repair is under development; the V6 primary efficiency result remains valid only for its frozen scope.
+The separate three-case check passed its numeric/transport checks: sum baseline/candidate submitted9 once; cancelled candidate submitted nothing until explicit resumption, then12 once. Both sum cases preserved requirements and verified Work progress across compaction and fresh threads. However, the resumed cancellation case left all3 applicable Work requirements pending despite successful submission and completed TASK.md. The fresh session correctly exposed the discrepancy. This was a **semantic failure and release blocker**, not a successful full-stack validation. The original failure is retained; the V7/V8 follow-up below addresses it. The V6 primary efficiency result remains valid only for its frozen scope.
 
 ## V7 Work repair: correctness passed, costs increased
 
 Four new matched runs (V6/V7 then V7/V6) passed submission, evidence-backed progress and read-only Work-ledger checks; manual answers also retained cancellation through compaction, answered45, resumed once with12 and restored the latest rule in a fresh thread. Both V6 controls passed too: the earlier V6 omission is intermittent, and2/2 V7 passes do not establish elimination. Final requirement counts vary by model decomposition and are recorded in work-completion-v7.json.
 
-Paired median V7/V6 total-token ratio1.0358 and elapsed ratio1.0668 show no cost improvement in this small targeted study. All outcomes are retained. V8 shortens the added guidance and limits transitions to newly verified requirements using existing evidence; validation is pending. The V7 action added112UTF8 bytes per open briefing; V8 reduces that340-byte text to276bytes. These are text sizes, not measured token savings.
+Paired median V7/V6 total-token ratio1.0358 and elapsed ratio1.0668 show no cost improvement in this small targeted study. All outcomes are retained. V8 shortens the added guidance and limits transitions to newly verified requirements using existing evidence; the completed comparison is below. The V7 action added112UTF8 bytes per open briefing; V8 reduces that340-byte text to276bytes. These are text sizes, not measured token savings.
+
+
+## V8 Work follow-up: measured acceptance passed
+
+V8 `7e662ac` versus V7 `1f1d6d8` used four fresh account-authenticated Astra/high executions, ordered baseline/candidate then candidate/baseline. The cost contract was hashed before execution: all four semantic/transport checks pass, median paired total-token ratio <=1.00 and elapsed ratio <=1.05. No retries, excluded outcomes or changed thresholds.
+
+All four passed, including direct review of cancellation, side-question45, compaction, resumed submission12 exactly once, evidence-backed completion and fresh-session retention. Each run's Work ledger was unchanged through both read-only turns. Final lifecycle remained open with100% applicable requirements verified, which is permitted; closing Work was not required. This removes the observed release blocker in the targeted validation, not proof that an intermittent omission can never recur.
+
+| Pair | V7 tokens | V8 tokens | Token ratio | V7 seconds | V8 seconds | Time ratio |
+|---|---:|---:|---:|---:|---:|---:|
+|0|904,237|878,868|0.9719|391.07|372.39|0.9522|
+|1|1,163,499|792,092|0.6808|415.88|342.53|0.8236|
+
+Median paired tokens fell **17.4%**, elapsed **11.2%**. Commands totaled61→58. Cached input totaled1,841,024→1,444,608, but uncached input totaled210,406→212,157 (+0.8%); therefore total-token savings are not a claim of lower uncached usage or monetary cost. All fields and completion projections are retained in work-completion-v8.json.
+
+This is only two targeted pairs with perturbed row values, after tuning the same cancellation scenario; it is **not an independent holdout**, confidence interval, or general latency result. Model-generated requirement counts and service variation contribute uncertainty. V6's primary Work-disabled study and V8's Work-enabled follow-up have separate source identities and cannot be combined into a single exact-version whole-stack claim. Experimental context management remains unmeasured as an independent variable.
+
+V8 changes only the open Work action wording; terminal, evidence and authority boundaries remain. Independent native GPT-6 Astra/high code review returned CLEAR for the delta and harness, not performance approval.48 targeted Work/compaction tests and31 evaluator tests passed; typecheck, lint and build passed. The earlier1,279-test full run belongs to V6 and is not relabeled as a fresh V8 full run. Merge/release readiness remains a separate repository gate.

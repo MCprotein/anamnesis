@@ -7,7 +7,7 @@ could include breaking changes.
 
 ## [Unreleased]
 
-- Require evidence-backed Work progress reconciliation before reporting authorized execution complete, while preserving cancellation, read-only requests and terminal Work boundaries.
+- Guide agents to transition newly verified Work requirements using existing evidence before reporting execution complete, while preserving cancellation, read-only requests and terminal Work boundaries.
 
 - Align Codex native source-retrieval guidance with the shared read-only fast path and identify completed built-in startup discovery; base fragment advances to v27.
 

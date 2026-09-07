@@ -1,0 +1,384 @@
+{
+  "pass": true,
+  "errors": [],
+  "pairs": [
+    {
+      "repetition": 0,
+      "token_ratio": 0.9719443022128048,
+      "time_ratio": 0.952231843626278
+    },
+    {
+      "repetition": 1,
+      "token_ratio": 0.680784426974153,
+      "time_ratio": 0.823606433669105
+    }
+  ],
+  "median_token_ratio": 0.8263643645934788,
+  "median_time_ratio": 0.8879191386476915,
+  "contract": {
+    "created_ns": 1788792216161629000,
+    "protocol": "/tmp/anamnesis-efficiency-loop-20260907/V8-WORK-PLAN.md",
+    "protocol_sha256": "cc4a89f24338d0e0cd269edb18771adf464b15089b6e6a20769f8d59ec72a876",
+    "harness_sha256": "2f255bc02b76c0a62879169083c3e09df073a00f72fea246b76fb20cedd5905f",
+    "baseline_ref": "1f1d6d8cce1d69714e83ac55f516b71fd33b8e7f",
+    "candidate_ref": "7e662ac7c22631f86d639294e18e7b21abf41247",
+    "maximum_median_token_ratio": 1.0,
+    "maximum_median_time_ratio": 1.05,
+    "required_cases": 4,
+    "all_cases_semantic_valid": true
+  },
+  "results": [
+    {
+      "repetition": 0,
+      "arm": "baseline",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 904237,
+        "inputTokens": 896180,
+        "cachedInputTokens": 786944,
+        "outputTokens": 8057,
+        "reasoningOutputTokens": 273,
+        "uncachedInputTokens": 109236
+      },
+      "elapsed_s": 391.06711506843567,
+      "commands": 29
+    },
+    {
+      "repetition": 0,
+      "arm": "candidate",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 878868,
+        "inputTokens": 871814,
+        "cachedInputTokens": 753408,
+        "outputTokens": 7054,
+        "reasoningOutputTokens": 242,
+        "uncachedInputTokens": 118406
+      },
+      "elapsed_s": 372.3865599632263,
+      "commands": 28
+    },
+    {
+      "repetition": 1,
+      "arm": "candidate",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 792092,
+        "inputTokens": 784951,
+        "cachedInputTokens": 691200,
+        "outputTokens": 7141,
+        "reasoningOutputTokens": 238,
+        "uncachedInputTokens": 93751
+      },
+      "elapsed_s": 342.52522587776184,
+      "commands": 30
+    },
+    {
+      "repetition": 1,
+      "arm": "baseline",
+      "errors": [],
+      "tokens": {
+        "totalTokens": 1163499,
+        "inputTokens": 1155250,
+        "cachedInputTokens": 1054080,
+        "outputTokens": 8249,
+        "reasoningOutputTokens": 397,
+        "uncachedInputTokens": 101170
+      },
+      "elapsed_s": 415.884592294693,
+      "commands": 32
+    }
+  ],
+  "manual_semantic_review_required": false,
+  "scope": "Two targeted regression pairs; not independent holdout or general speedup proof.",
+  "manual_semantic_review": {
+    "pass": true,
+    "reviewer": "leader, direct reading of all four complete agent-message sequences and boundary projections",
+    "checks": [
+      "Cancellation honored until explicit resumption; no early submission",
+      "Side question answered45 while retaining cancellation",
+      "Latest approved-only sum12 submitted exactly once",
+      "All applicable requirements verified with TASK.md evidence at resume-turn end",
+      "Fresh session retained revised rule and actual completed submission without a new task",
+      "Two read-only Work-ledger boundaries per run remained byte-identical"
+    ],
+    "cases": [
+      {
+        "repetition": 0,
+        "arm": "baseline",
+        "lifecycle": "open",
+        "progress": {
+          "applicable": 6,
+          "pending": 0,
+          "in_progress": 0,
+          "verified": 6,
+          "implemented_unverified": 0,
+          "blocked": 0,
+          "waived": 2,
+          "denominator_empty": false,
+          "percent": 100,
+          "weighted": false
+        },
+        "requirements": [
+          {
+            "id": "r1",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r2",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r3",
+            "status": "waived",
+            "evidence_refs": []
+          },
+          {
+            "id": "r4",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r5",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r6",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r7",
+            "status": "waived",
+            "evidence_refs": []
+          },
+          {
+            "id": "r8",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          }
+        ]
+      },
+      {
+        "repetition": 0,
+        "arm": "candidate",
+        "lifecycle": "open",
+        "progress": {
+          "applicable": 4,
+          "pending": 0,
+          "in_progress": 0,
+          "verified": 4,
+          "implemented_unverified": 0,
+          "blocked": 0,
+          "waived": 2,
+          "denominator_empty": false,
+          "percent": 100,
+          "weighted": false
+        },
+        "requirements": [
+          {
+            "id": "r1",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r2",
+            "status": "waived",
+            "evidence_refs": []
+          },
+          {
+            "id": "r3",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r4",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r5",
+            "status": "waived",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r6",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          }
+        ]
+      },
+      {
+        "repetition": 1,
+        "arm": "candidate",
+        "lifecycle": "open",
+        "progress": {
+          "applicable": 6,
+          "pending": 0,
+          "in_progress": 0,
+          "verified": 6,
+          "implemented_unverified": 0,
+          "blocked": 0,
+          "waived": 2,
+          "denominator_empty": false,
+          "percent": 100,
+          "weighted": false
+        },
+        "requirements": [
+          {
+            "id": "r1",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r2",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r3",
+            "status": "waived",
+            "evidence_refs": []
+          },
+          {
+            "id": "r4",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r5",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r6",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r7",
+            "status": "waived",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r8",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          }
+        ]
+      },
+      {
+        "repetition": 1,
+        "arm": "baseline",
+        "lifecycle": "open",
+        "progress": {
+          "applicable": 6,
+          "pending": 0,
+          "in_progress": 0,
+          "verified": 6,
+          "implemented_unverified": 0,
+          "blocked": 0,
+          "waived": 2,
+          "denominator_empty": false,
+          "percent": 100,
+          "weighted": false
+        },
+        "requirements": [
+          {
+            "id": "r1",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r2",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r3",
+            "status": "waived",
+            "evidence_refs": []
+          },
+          {
+            "id": "r4",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r5",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r6",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r7",
+            "status": "waived",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          },
+          {
+            "id": "r8",
+            "status": "verified",
+            "evidence_refs": [
+              "TASK.md"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
