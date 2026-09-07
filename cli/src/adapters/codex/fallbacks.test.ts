@@ -1190,6 +1190,8 @@ describe("codex executable_hook fallback", () => {
     };
     const context = output.hookSpecificOutput?.additionalContext ?? "";
     expect(context).toContain("Mode: compact");
+    expect(context).toContain("Native SessionStart completed built-in ontology and handoff discovery");
+    expect(context).toContain("for read-only tasks, read already-identified original sources directly");
     expect(context).toContain("Source pointers:");
     expect(context).toContain(
       "- system_graph.yaml (34 bytes, 2 lines; user-managed top-level ontology)",
@@ -1287,6 +1289,8 @@ describe("codex executable_hook fallback", () => {
     expect(context).not.toContain("- .anamnesis/handoff/closed.md");
     expect(context).not.toContain("SECRET_COLD_BODY");
     expect(context).toContain("no warm archive is startup-active");
+    expect(context).toContain("for read-only tasks, read already-identified original sources directly");
+    expect(context).toContain("or the task edits files, run");
 
     const full = spawnSync(process.execPath, [wrapperPath], {
       cwd: projectRoot,

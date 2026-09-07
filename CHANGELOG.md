@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Align Codex native source-retrieval guidance with the shared read-only fast path and identify completed built-in startup discovery; base fragment advances to v27.
+
 - Restrict Codex hook manual loading to the actual trigger and unavailable per-procedure native support; silent native success does not require replay. Unsupported custom SessionStart hooks no longer advertise the built-in wrapper.
 
 - Avoid redundant source discovery for read-only tasks with sufficient known originals, while preserving mandatory ontology/handoff checks, query-on-insufficient-evidence and edit safeguards. Batch independent startup reads; base fragment advances to v26.
