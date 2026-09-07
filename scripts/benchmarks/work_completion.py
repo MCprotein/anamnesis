@@ -42,19 +42,19 @@ async def main(args):
     output.mkdir(parents=True, exist_ok=False)
     directory = Path(__file__).resolve().parent
     # Both use the candidate lane, avoiding the legacy baseline privacy override.
-    sources = {'v6': args.baseline.resolve(), 'v7': args.candidate.resolve()}
+    sources = {'baseline': args.baseline.resolve(), 'candidate': args.candidate.resolve()}
     plan = {
         'created_ns': time.time_ns(),
         'sources': {k: {'path': str(v), 'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=v, text=True).strip()} for k, v in sources.items()},
         'harness': {p.name: sha(p) for p in [Path(__file__), directory / 'instruction_efficiency.py', directory / 'codex_continuity.py', directory / 'codex_continuity_runtime.py', directory / 'codex_continuity_audit.py']},
         'source_locks': {k: source_lock(v) for k, v in sources.items()},
         'versions': versions(),
-        'order': [(0, 'v6'), (0, 'v7'), (1, 'v7'), (1, 'v6')],
+        'order': [(0, 'baseline'), (0, 'candidate'), (1, 'candidate'), (1, 'baseline')],
         'rows': [
             [{'approved': True, 'quantity': 8}, {'approved': False, 'quantity': 99}, {'approved': True, 'quantity': 4}],
             [{'approved': True, 'quantity': 18}, {'approved': False, 'quantity': -200}, {'approved': True, 'quantity': -6}],
         ],
-        'contract': 'Every V7 run: exact authorized submission, all applicable Work requirements verified with evidence at resume-turn end, and no Work-ledger changes in read-only question/fresh-session turns. Preserve V6 failures. Model/transport audit and manual semantic review required. No general latency or unseen-holdout claim.',
+        'contract': 'Every candidate run: exact authorized submission, all applicable Work requirements verified with evidence at resume-turn end, and no Work-ledger changes in read-only question/fresh-session turns. Preserve baseline failures. Model/transport audit and manual semantic review required. No general latency or unseen-holdout claim.',
     }
     (output / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
     results = []
@@ -78,7 +78,7 @@ async def main(args):
                     snapshots.append({'kind': 'resume', 'code': status.returncode, 'status': json.loads(status.stdout) if status.returncode == 0 else None})
                 return result
 
-        sys.argv = ['codex_continuity.py', '--baseline', str(sources['v6']), '--candidate', str(sources[arm]), '--output', str(folder)]
+        sys.argv = ['codex_continuity.py', '--baseline', str(sources['baseline']), '--candidate', str(sources[arm]), '--output', str(folder)]
         namespace = runpy.run_path(str(directory / 'codex_continuity.py'))
         namespace['run'].__globals__['Runtime'] = ObservedRuntime
         namespace['CASES']['cancel']['rows'] = plan['rows'][repetition]
@@ -103,7 +103,7 @@ async def main(args):
         results.append({'repetition': repetition, 'arm': arm, 'errors': errors, 'tokens': row['usage'], 'elapsed_s': row['elapsed_s_including_compaction_and_fresh_thread'], 'commands': row['commands']})
         (output / 'progress.json').write_text(json.dumps(results, indent=2) + '\n')
         print(json.dumps(results[-1]), flush=True)
-    passed = len(results) == 4 and all(not r['errors'] for r in results if r['arm'] == 'v7')
+    passed = len(results) == 4 and all(not r['errors'] for r in results if r['arm'] == 'candidate')
     (output / 'result.json').write_text(json.dumps({'pass': passed, 'manual_semantic_review_required': True, 'results': results}, indent=2) + '\n')
     return 0 if passed else 1
 

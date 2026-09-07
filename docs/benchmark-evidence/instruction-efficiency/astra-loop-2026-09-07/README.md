@@ -64,3 +64,9 @@ Use `scripts/benchmarks/instruction_efficiency.py` to freeze source/runtime/fixt
 ## Default Work compatibility: semantic failure retained
 
 The separate three-case check passed its numeric/transport checks: sum baseline/candidate submitted9 once; cancelled candidate submitted nothing until explicit resumption, then12 once. Both sum cases preserved requirements and verified Work progress across compaction and fresh threads. However, the resumed cancellation case left all3 applicable Work requirements pending despite successful submission and completed TASK.md. The fresh session correctly exposed the discrepancy. This is a **semantic failure and release blocker**, not a successful full-stack validation. V7 repair is under development; the V6 primary efficiency result remains valid only for its frozen scope.
+
+## V7 Work repair: correctness passed, costs increased
+
+Four new matched runs (V6/V7 then V7/V6) passed submission, evidence-backed progress and read-only Work-ledger checks; manual answers also retained cancellation through compaction, answered45, resumed once with12 and restored the latest rule in a fresh thread. Both V6 controls passed too: the earlier V6 omission is intermittent, and2/2 V7 passes do not establish elimination. Final requirement counts vary by model decomposition and are recorded in work-completion-v7.json.
+
+Paired median V7/V6 total-token ratio1.0358 and elapsed ratio1.0668 show no cost improvement in this small targeted study. All outcomes are retained. V8 shortens the added guidance and limits transitions to newly verified requirements using existing evidence; validation is pending. The V7 action added112UTF8 bytes per open briefing; V8 reduces that340-byte text to276bytes. These are text sizes, not measured token savings.

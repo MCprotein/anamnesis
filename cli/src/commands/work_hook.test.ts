@@ -506,10 +506,10 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			false,
 		);
 		expect(openContext).toContain("continue the same task");
-		expect(openContext).toContain("reconcile completed requirements via evidence-backed work transition");
-		expect(openContext).toContain("read-only/status requests authorize no writes");
-		expect(openContext).toContain("Cancellation/pause/redirection overrides this snapshot");
-		expect(terminalContext).not.toContain("reconcile completed requirements");
+		expect(openContext).toContain("use work transition for newly verified requirements with existing evidence");
+		expect(openContext).toContain("read-only means no writes");
+		expect(openContext).toContain("Pause/cancel/redirection wins");
+		expect(terminalContext).not.toContain("use work transition for newly verified requirements");
 		expect(terminalContext).toContain("This Work is terminal");
 		expect(terminalContext).not.toContain("continue the same task");
 	});
