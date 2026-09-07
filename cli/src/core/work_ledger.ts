@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { isHash, sha256 } from "../util/hash.js";
+import { reclaimWorkLock } from "./work_lock_reclaim.js";
 
 export const WORK_LEDGER_SCHEMA_VERSION = "anamnesis.work-ledger.v1";
 
@@ -571,43 +572,19 @@ function tryAcquireDurableLock(lockPath: string, owner: WorkLockOwner): boolean 
 }
 
 function reclaimDeadLock(lockPath: string): void {
-  let owner: WorkLockOwner;
-  try {
-    const value = JSON.parse(readFileNoFollow(path.join(lockPath, "owner.json")).toString("utf8"));
-    if (!isLockOwner(value)) return;
-    owner = value;
-  } catch {
-    return;
-  }
-  try {
-    process.kill(owner.pid, 0);
-  } catch (error) {
-    if (!isErrno(error, "ESRCH")) return;
-    const quarantine = `${lockPath}.dead-${owner.nonce}`;
+  reclaimWorkLock(lockPath, isLockOwner, (owner) => {
     try {
-      fs.renameSync(lockPath, quarantine);
-      fs.rmSync(quarantine, { recursive: true });
-      fsyncDirectory(path.dirname(lockPath));
-    } catch (renameError) {
-      if (!isErrno(renameError, "ENOENT")) return;
+      process.kill(owner.pid, 0);
+    } catch (error) {
+      return isErrno(error, "ESRCH");
     }
-    return;
-  }
-  let currentStart: string;
-  try {
-    currentStart = processStartIdentity(owner.pid);
-  } catch {
-    return;
-  }
-  if (currentStart === owner.process_start) return;
-  const quarantine = `${lockPath}.dead-${owner.nonce}`;
-  try {
-    fs.renameSync(lockPath, quarantine);
-    fs.rmSync(quarantine, { recursive: true });
-    fsyncDirectory(path.dirname(lockPath));
-  } catch {
-    // A concurrent owner/reclaimer won; retry acquisition normally.
-  }
+    try {
+      const currentStart = processStartIdentity(owner.pid);
+      return currentStart.length > 0 && currentStart !== owner.process_start;
+    } catch {
+      return false;
+    }
+  }, () => fsyncDirectory(path.dirname(lockPath)));
 }
 
 function releaseDurableLock(lockPath: string, owner: WorkLockOwner): void {

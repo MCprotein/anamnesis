@@ -81,7 +81,7 @@ function runAsync(root: string, args: string[], input: Buffer) {
 		(resolve) => {
 			const child = spawn(
 				process.execPath,
-				[tsxCli, anamnesisCli, "work", ...args, "--project-root", root],
+				["--import", "tsx", anamnesisCli, "work", ...args, "--project-root", root],
 				{
 					cwd: repositoryRoot,
 					stdio: ["pipe", "pipe", "pipe"],
@@ -94,7 +94,8 @@ function runAsync(root: string, args: string[], input: Buffer) {
 			child.stderr.setEncoding("utf8");
 			child.stdout.on("data", (chunk: string) => (stdout += chunk));
 			child.stderr.on("data", (chunk: string) => (stderr += chunk));
-			child.once("exit", (code) => resolve({ code, stdout, stderr }));
+			// Exit may precede stdout drainage; close includes the child stdio streams.
+			child.once("close", (code) => resolve({ code, stdout, stderr }));
 			child.stdin.end(input);
 		},
 	);

@@ -7,7 +7,23 @@ could include breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Serialize dead-owner reclamation by owner nonce and revalidate held directory
+  and owner-file identities after death proof. Concurrent reclaimers cannot
+  remove a newly acquired Work ledger or source lock; uncertain ownership and
+  abandoned reclaim claims fail closed.
+- Run concurrent CLI regression children directly with the TypeScript loader,
+  preserving all 64 concurrent calls and accounting assertions while avoiding
+  a redundant Node launcher per child.
+- Carry the Codex steering, private capture and native Work recovery fixes from
+  the unpublished 1.23.5 attempt. Its tag workflow stopped at tests before either
+  registry publication; the tag is retained as failure evidence.
+
 ## [1.23.5] — 2026-09-07
+
+Unpublished: the tag workflow failed its test gate before registry publication.
+Superseded by the next patch; the original tag and failed run remain unchanged.
 
 ### Fixed
 
