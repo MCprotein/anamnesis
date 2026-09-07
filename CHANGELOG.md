@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.24.1] — 2026-09-07
+
 - Give each advanced-namespace CLI help invocation its own existing test budget instead of charging three sequential subprocesses to one deadline. Preserve all assertions and the same three CLI executions.
 
 ## [1.24.0] — 2026-09-07

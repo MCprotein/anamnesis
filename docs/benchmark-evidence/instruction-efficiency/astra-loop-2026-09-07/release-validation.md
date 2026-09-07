@@ -44,7 +44,8 @@ The1.24.0 tag workflow [run34141177326](https://github.com/MCprotein/anamnesis/a
 passed install, lint and typecheck, then passed1,278 of1,279 tests. The namespace
 help test took36.7 seconds for three sequential CLI processes and exceeded its
 shared30-second deadline. Build, both registry publications and Release creation
-were skipped. This is not a successful publication or a product-behavior failure.
+were skipped. Publication failed; no behavior-assertion failure was reported.
+Runner load is a plausible contributor, not a proven cause from this log alone.
 
 The1.24.1 correction parameterizes those same three invocations as independent
 cases under the existing timeout, retaining every assertion and process call.
