@@ -1,3 +1,14 @@
+### base hook: `inject-handoff.sh`
+
+**When:** `SessionStart` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
+
+**Codex native path:** when executable adapter writes are allowed, anamnesis installs `.anamnesis/codex-native-hooks/session-start.mjs` and registers it in `.codex/hooks.json`. This region remains the manual fallback.
+
+**Declared side effects:** `read-only`.
+
+**Intent:** the script below documents what should happen at this trigger point. Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).
+
+```bash
 #!/bin/bash
 # anamnesis SessionStart hook — inject active and recent agent handoff context.
 #
@@ -255,3 +266,4 @@ fi
 
 echo "--- end of handoff ---"
 exit 0
+```

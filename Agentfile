@@ -7,7 +7,7 @@ tools:
   - cursor
 fragments:
   - id: base
-    version: 25
+    version: 27
 settings:
   ontology_file: system_graph.yaml
   agents_md_path: AGENTS.md

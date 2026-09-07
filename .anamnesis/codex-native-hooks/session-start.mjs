@@ -443,7 +443,7 @@ function buildOntologySection(projectRoot, budget, mode = sessionContextMode()) 
     sections.push(
       "",
       "Retrieval rule: read the exact source file before relying on an invariant, relationship, entity, path, or operational rule.",
-      "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run `anamnesis context query \"<terms>\"` and read returned source_path/stable_ref before claiming or editing.",
+      "Context query rule: for read-only tasks, read already-identified original sources directly; an explicit path alone does not establish sufficient evidence. When required evidence is missing, unresolved, ambiguous, stale or insufficient, or the task edits files, run `anamnesis context query \"<terms>\"` and read returned source_path/stable_ref before claiming or editing.",
     );
     return sections.join("\n");
   }
@@ -499,7 +499,7 @@ function buildHandoffSection(projectRoot, budget, mode = sessionContextMode()) {
     sections.push(
       "",
       retrieval,
-      "Context query rule: when project facts, roadmap, docs, prior decisions, or ontology evidence are not in startup pointers, run `anamnesis context query \"<terms>\"` and read returned source_path/stable_ref before claiming or editing.",
+      "Context query rule: for read-only tasks, read already-identified original sources directly; an explicit path alone does not establish sufficient evidence. When required evidence is missing, unresolved, ambiguous, stale or insufficient, or the task edits files, run `anamnesis context query \"<terms>\"` and read returned source_path/stable_ref before claiming or editing.",
       "--- end of handoff ---",
     );
     return sections.join("\n");
@@ -614,6 +614,9 @@ function workFailure(failureClass) {
 // pointers and normal context retrieval commands.
 function boundedSupplementalContext(sections, mode, source) {
   const present = sections.filter(Boolean);
+  if (present.length > 0) {
+    present[0] = "[anamnesis] Native SessionStart completed built-in ontology and handoff discovery. Use the source pointers below; their manual fallback and native configuration inspection are unnecessary unless troubleshooting. Other hooks are separate.\n\n" + present[0];
+  }
   const context = present.join("\n\n");
   if (mode === "full" || source !== "compact") return context;
   const bytes = Buffer.from(context, "utf8");
