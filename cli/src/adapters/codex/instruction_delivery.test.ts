@@ -28,6 +28,9 @@ describe("Codex instruction delivery", () => {
 		expect(short.content).toContain(full.path);
 		expect(short.content).toContain("Stop");
 		expect(short.content).not.toContain("printf");
+		expect(short.content).toContain(
+			"without reading or replaying the hook implementation",
+		);
 		expect(region).toEqual(original);
 	});
 

@@ -24,7 +24,11 @@ export function compactInstructionDelivery(
 			.map((line) =>
 				line
 					.replace("follow the steps below", "follow the referenced procedure")
-					.replace("the script below", "the referenced procedure"),
+					.replace("the script below", "the referenced procedure")
+					.replace(
+						"Codex agents should manually invoke or replicate the behavior when the corresponding situation arises (e.g., after editing a file matching the event).",
+						"Use the manual fallback only when the corresponding native execution is unavailable.",
+					),
 			);
 		return [
 			{
@@ -35,7 +39,11 @@ export function compactInstructionDelivery(
 					...routing,
 					"",
 					`Full procedure and manual fallback (relative to project root): \`${source}\`.`,
-					"Read that file when this command, skill, or matching fallback is needed; preserve its invocation and continuation rules. Native hooks keep their registered execution path. Do not preload every procedure at startup.",
+					action.regionId.startsWith("codex-hook-")
+						? "If native output for this event is already present, use its source pointers without reading or replaying the hook implementation. Read this full fallback only when native execution is unavailable or the user asks to inspect the hook."
+						: action.regionId.startsWith("codex-skill-")
+							? "A routine startup check does not itself invoke this skill. Read its full procedure when the current task matches its purpose or relevant context is missing; preserve its invocation and continuation rules."
+							: "When the user invokes this command, read the full procedure and preserve its standalone or auxiliary continuation rules. Do not preload it for unrelated tasks.",
 				].join("\n"),
 			},
 			{
