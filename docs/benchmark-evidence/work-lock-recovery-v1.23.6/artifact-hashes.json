@@ -23,5 +23,14 @@
     "source.tar": "da1481ef25cf7f9fcc7638dad03dd924575308ef7ca635d67931987ceef3ad49",
     "run.sh": "6857bb5c80f6ea0d6b4df50c140ae5249af7ca2230c0f5f7fa71c7417fcd3e40",
     "tests.txt": "a0011210596b715e9e773e4e96cc49b3ec1de997ea0a110db6d2d0071a460e9a"
+  },
+  "linux-full-final": {
+    "source.tar": "fe78c08b6648f669b494b1f26b6bc865c5b3c87054bf32f745a1333217d6a780",
+    "run.sh": "2947d793bdc5103cda80ac142dbc84da9941f0b060e5108058558331e750a87a",
+    "environment.txt": "c971d460279fa1b1c6ba3c37d7d361c2446e0e9f3c14e1781b4d296aeeede634",
+    "lint.txt": "1fc9bb0021e0596a9b78d9b6f0bd0170b10a66a5d3ff9c68b45d2ec88c447f98",
+    "typecheck.txt": "78cabfcbf0aa24db09868122c0f9a1843966e95f23e27a37f2606544dd6874df",
+    "tests.txt": "5c6c3ee782dad0640a7975a2e69a2f2d57a948e4821e0ff9bb1a0ebd407a735e",
+    "build.txt": "23af102a23b3b6a3a0929b24ebca89fb49f1e70ade2cfb2a5790f444112f8aa2"
   }
 }

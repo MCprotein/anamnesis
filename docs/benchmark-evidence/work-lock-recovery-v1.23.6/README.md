@@ -34,3 +34,10 @@ No model benchmark was rerun for this core locking change. The prior Astra nativ
 steering/compaction experiments remain evidence for their explicitly recorded
 source; this follow-up supplies separate lock and process-collection regressions.
 The final full Linux suite and tag workflow are separate release gates.
+
+Final verification of product source `9265ddf`: all **1,281 tests across 106 files**
+passed in a fresh Node 24.20.0 Linux aarch64 container limited to 2 CPUs and 7 GiB.
+Lint, typecheck and build passed. The full suite took 126.94 seconds. The GitHub
+runner uses a separate platform; its tag workflow remains an independent gate.
+Astra code-reviewer `01a07a23-acf1-76f0-8d81-5120d1ab20d1` returned CLEAR for the
+lock change; native metadata records the code-reviewer role and Astra/high.
