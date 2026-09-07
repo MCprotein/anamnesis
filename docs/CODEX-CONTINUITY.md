@@ -52,3 +52,7 @@ These changes do not tune Astra reasoning levels, enable async execution or
 experimental context management, or control provider prompt caching. Existing
 project adapters require normal explicit apply with `--allow-exec-adapters`;
 upgrading the CLI alone does not update generated files.
+
+The [v1.23.5 targeted integration report](benchmark-evidence/codex-continuity-v1.23.5/README.md)
+contains the frozen eight-run results, reproducible account-based runner, failure
+history, measured overhead and remaining validation limits.

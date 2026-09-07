@@ -1,0 +1,655 @@
+{
+  "schema": "anamnesis.codex-continuity-evidence.v1",
+  "source_commit": "71230ee2a6d0f9482c115c926dd0de3251fa9011",
+  "frozen_candidate_files_verified": 905,
+  "fixed_runs": 8,
+  "results": [
+    {
+      "label": "cancel-candidate",
+      "case": "cancel",
+      "arm": "candidate",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": true,
+      "submissions": [
+        {
+          "phase": "resume",
+          "arguments": {
+            "result": 12
+          }
+        }
+      ],
+      "source_models": [
+        {
+          "thread_id": "01a079e8-be8a-73b0-a16d-d3e091dd25f9",
+          "turns": [
+            {
+              "turn_id": "01a079e8-beb9-7353-b229-4a61509403d2",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079eb-fcbf-7752-a09b-5e9d2a497892",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079ec-8104-7853-aa06-8a605f3e2e84",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079ed-ff47-7161-ba8e-c0d411322855",
+          "turns": [
+            {
+              "turn_id": "01a079ed-ff7f-7372-98e3-559afb417ea4",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 1082459,
+        "inputTokens": 1074059,
+        "cachedInputTokens": 947200,
+        "outputTokens": 8400,
+        "reasoningOutputTokens": 442,
+        "uncachedInputTokens": 126859
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 1027571,
+        "inputTokens": 1021402,
+        "cachedInputTokens": 894720,
+        "outputTokens": 6169,
+        "reasoningOutputTokens": 442,
+        "uncachedInputTokens": 126682
+      },
+      "compaction_usage": {
+        "totalTokens": 54888,
+        "inputTokens": 52657,
+        "cachedInputTokens": 52480,
+        "outputTokens": 2231,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 177
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 400.47422099113464,
+      "commands": 33,
+      "failed_commands": 2,
+      "dynamic_calls": 2,
+      "native_compactions": 1,
+      "hook_runs": {
+        "sessionStart": 3,
+        "userPromptSubmit": 5,
+        "postToolUse": 43,
+        "stop": 8
+      },
+      "capture_failures": 0,
+      "opaque_capture_tokens": 5
+    },
+    {
+      "label": "cancel-off",
+      "case": "cancel",
+      "arm": "off",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": true,
+      "submissions": [
+        {
+          "phase": "resume",
+          "arguments": {
+            "result": 12
+          }
+        }
+      ],
+      "source_models": [
+        {
+          "thread_id": "01a079ee-dd35-79c3-b7f7-875eb08ffbd8",
+          "turns": [
+            {
+              "turn_id": "01a079ee-dd59-7ee1-9fb8-69919787c3be",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079f0-0e4a-77d3-8f7d-595127652da3",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079f0-2e40-74f0-b938-d1fde8ddddbf",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079f1-0a35-78a3-83f8-e472684f5f21",
+          "turns": [
+            {
+              "turn_id": "01a079f1-0a6c-7311-bc8d-06f725c26541",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 361638,
+        "inputTokens": 358198,
+        "cachedInputTokens": 301824,
+        "outputTokens": 3440,
+        "reasoningOutputTokens": 79,
+        "uncachedInputTokens": 56374
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 343721,
+        "inputTokens": 341277,
+        "cachedInputTokens": 285184,
+        "outputTokens": 2444,
+        "reasoningOutputTokens": 79,
+        "uncachedInputTokens": 56093
+      },
+      "compaction_usage": {
+        "totalTokens": 17917,
+        "inputTokens": 16921,
+        "cachedInputTokens": 16640,
+        "outputTokens": 996,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 281
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 195.89785599708557,
+      "commands": 13,
+      "failed_commands": 2,
+      "dynamic_calls": 2,
+      "native_compactions": 1,
+      "hook_runs": {},
+      "capture_failures": 0,
+      "opaque_capture_tokens": 0
+    },
+    {
+      "label": "maximum-baseline",
+      "case": "maximum",
+      "arm": "baseline",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": false,
+      "submissions": [],
+      "source_models": [
+        {
+          "thread_id": "01a079e7-ed7a-7a41-82fc-7ff412406fa6",
+          "turns": [
+            {
+              "turn_id": "01a079e7-eda7-7b20-8596-1e6e3d8f0c24",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079e4-972d-7923-8d1a-a44cc9bcc2ff",
+          "turns": [
+            {
+              "turn_id": "01a079e4-974c-7db2-ac46-8af10ff072c8",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079e7-85f5-7c13-87c8-6c0ef6fb55a4",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 850331,
+        "inputTokens": 845073,
+        "cachedInputTokens": 735872,
+        "outputTokens": 5258,
+        "reasoningOutputTokens": 362,
+        "uncachedInputTokens": 109201
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 792601,
+        "inputTokens": 789470,
+        "cachedInputTokens": 680576,
+        "outputTokens": 3131,
+        "reasoningOutputTokens": 362,
+        "uncachedInputTokens": 108894
+      },
+      "compaction_usage": {
+        "totalTokens": 57730,
+        "inputTokens": 55603,
+        "cachedInputTokens": 55296,
+        "outputTokens": 2127,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 307
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 271.18528485298157,
+      "commands": 21,
+      "failed_commands": 3,
+      "dynamic_calls": 1,
+      "native_compactions": 1,
+      "hook_runs": {
+        "sessionStart": 3,
+        "userPromptSubmit": 4,
+        "postToolUse": 21,
+        "stop": 6
+      },
+      "capture_failures": 1,
+      "opaque_capture_tokens": 3
+    },
+    {
+      "label": "maximum-candidate",
+      "case": "maximum",
+      "arm": "candidate",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": true,
+      "submissions": [
+        {
+          "phase": "first",
+          "arguments": {
+            "result": -3
+          }
+        }
+      ],
+      "source_models": [
+        {
+          "thread_id": "01a079e3-bc49-7552-88df-6d51cf80db23",
+          "turns": [
+            {
+              "turn_id": "01a079e3-bc80-7100-9015-d5c403d11d71",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079df-8abc-7551-aa2c-e18c2c5b9848",
+          "turns": [
+            {
+              "turn_id": "01a079df-8ae4-76c3-8eeb-c7d9e351a807",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079e3-3cd7-72e3-8afe-99a9eb4b0283",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 944004,
+        "inputTokens": 937469,
+        "cachedInputTokens": 800256,
+        "outputTokens": 6535,
+        "reasoningOutputTokens": 209,
+        "uncachedInputTokens": 137213
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 895474,
+        "inputTokens": 891036,
+        "cachedInputTokens": 754048,
+        "outputTokens": 4438,
+        "reasoningOutputTokens": 209,
+        "uncachedInputTokens": 136988
+      },
+      "compaction_usage": {
+        "totalTokens": 48530,
+        "inputTokens": 46433,
+        "cachedInputTokens": 46208,
+        "outputTokens": 2097,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 225
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 329.5159401893616,
+      "commands": 23,
+      "failed_commands": 1,
+      "dynamic_calls": 2,
+      "native_compactions": 1,
+      "hook_runs": {
+        "sessionStart": 3,
+        "userPromptSubmit": 4,
+        "postToolUse": 23,
+        "stop": 6
+      },
+      "capture_failures": 0,
+      "opaque_capture_tokens": 4
+    },
+    {
+      "label": "maximum-off",
+      "case": "maximum",
+      "arm": "off",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": true,
+      "submissions": [
+        {
+          "phase": "first",
+          "arguments": {
+            "result": -3
+          }
+        }
+      ],
+      "source_models": [
+        {
+          "thread_id": "01a079dd-6da6-7f32-85a7-71b37217fbfe",
+          "turns": [
+            {
+              "turn_id": "01a079dd-6dc1-74d3-bb58-96ef822ff1c6",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079de-8f37-7f33-902e-ca2ce265cb3c",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079de-ab27-7bd2-a9cc-3cf305bb1484",
+          "turns": [
+            {
+              "turn_id": "01a079de-ab57-7fb0-a6ef-c51fa6f78997",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 268180,
+        "inputTokens": 265928,
+        "cachedInputTokens": 199680,
+        "outputTokens": 2252,
+        "reasoningOutputTokens": 212,
+        "uncachedInputTokens": 66248
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 250086,
+        "inputTokens": 248535,
+        "cachedInputTokens": 182528,
+        "outputTokens": 1551,
+        "reasoningOutputTokens": 212,
+        "uncachedInputTokens": 66007
+      },
+      "compaction_usage": {
+        "totalTokens": 18094,
+        "inputTokens": 17393,
+        "cachedInputTokens": 17152,
+        "outputTokens": 701,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 241
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 137.651211977005,
+      "commands": 10,
+      "failed_commands": 2,
+      "dynamic_calls": 2,
+      "native_compactions": 1,
+      "hook_runs": {},
+      "capture_failures": 0,
+      "opaque_capture_tokens": 0
+    },
+    {
+      "label": "sum-baseline",
+      "case": "sum",
+      "arm": "baseline",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": false,
+      "submissions": [],
+      "source_models": [
+        {
+          "thread_id": "01a079d1-a943-7d23-a94c-14b5f2c5b5a9",
+          "turns": [
+            {
+              "turn_id": "01a079d1-a95d-7653-ab1d-b02b85de586a",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079d4-90d7-74f0-9b3b-2d98003ea3bc",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079d4-fabf-7571-a79a-92aeb5194717",
+          "turns": [
+            {
+              "turn_id": "01a079d4-faf0-7e03-9933-f9f94fbd8777",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 846457,
+        "inputTokens": 841182,
+        "cachedInputTokens": 708352,
+        "outputTokens": 5275,
+        "reasoningOutputTokens": 521,
+        "uncachedInputTokens": 132830
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 795786,
+        "inputTokens": 792412,
+        "cachedInputTokens": 659840,
+        "outputTokens": 3374,
+        "reasoningOutputTokens": 521,
+        "uncachedInputTokens": 132572
+      },
+      "compaction_usage": {
+        "totalTokens": 50671,
+        "inputTokens": 48770,
+        "cachedInputTokens": 48512,
+        "outputTokens": 1901,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 258
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 275.89736008644104,
+      "commands": 20,
+      "failed_commands": 5,
+      "dynamic_calls": 1,
+      "native_compactions": 1,
+      "hook_runs": {
+        "sessionStart": 3,
+        "userPromptSubmit": 4,
+        "postToolUse": 20,
+        "stop": 6
+      },
+      "capture_failures": 1,
+      "opaque_capture_tokens": 3
+    },
+    {
+      "label": "sum-candidate",
+      "case": "sum",
+      "arm": "candidate",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": true,
+      "submissions": [
+        {
+          "phase": "first",
+          "arguments": {
+            "result": 9
+          }
+        }
+      ],
+      "source_models": [
+        {
+          "thread_id": "01a079d5-e5c6-7f03-8067-565c6ae1d3f5",
+          "turns": [
+            {
+              "turn_id": "01a079d5-e5f3-7f91-9a27-b127e4feed6e",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079da-1a45-71e3-bb91-784c788169dc",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079da-8ebf-7b02-8b72-df7743e2e4f8",
+          "turns": [
+            {
+              "turn_id": "01a079da-8ef0-7870-9161-f06763732bb0",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 968634,
+        "inputTokens": 962053,
+        "cachedInputTokens": 850304,
+        "outputTokens": 6581,
+        "reasoningOutputTokens": 225,
+        "uncachedInputTokens": 111749
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 915548,
+        "inputTokens": 911227,
+        "cachedInputTokens": 799744,
+        "outputTokens": 4321,
+        "reasoningOutputTokens": 225,
+        "uncachedInputTokens": 111483
+      },
+      "compaction_usage": {
+        "totalTokens": 53086,
+        "inputTokens": 50826,
+        "cachedInputTokens": 50560,
+        "outputTokens": 2260,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 266
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 359.11160016059875,
+      "commands": 22,
+      "failed_commands": 2,
+      "dynamic_calls": 2,
+      "native_compactions": 1,
+      "hook_runs": {
+        "sessionStart": 3,
+        "userPromptSubmit": 4,
+        "postToolUse": 22,
+        "stop": 6
+      },
+      "capture_failures": 0,
+      "opaque_capture_tokens": 4
+    },
+    {
+      "label": "sum-off",
+      "case": "sum",
+      "arm": "off",
+      "error": null,
+      "mechanical_errors": [],
+      "numeric_submission_pass": true,
+      "submissions": [
+        {
+          "phase": "first",
+          "arguments": {
+            "result": 9
+          }
+        }
+      ],
+      "source_models": [
+        {
+          "thread_id": "01a079dc-c40c-7410-826f-fe3eeacbd7fe",
+          "turns": [
+            {
+              "turn_id": "01a079dc-c449-7183-9c03-466822e4f65e",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        },
+        {
+          "thread_id": "01a079db-642d-7781-adce-c1c38787e778",
+          "turns": [
+            {
+              "turn_id": "01a079db-6472-7352-9d1b-ddf17e40aea7",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            },
+            {
+              "turn_id": "01a079dc-9f8c-7253-9c64-35bc648ba82e",
+              "model": "gpt-6-astra",
+              "effort": "high"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "totalTokens": 220805,
+        "inputTokens": 218487,
+        "cachedInputTokens": 176256,
+        "outputTokens": 2318,
+        "reasoningOutputTokens": 117,
+        "uncachedInputTokens": 42231
+      },
+      "thread_usage_excluding_compaction": {
+        "totalTokens": 202460,
+        "inputTokens": 200967,
+        "cachedInputTokens": 158976,
+        "outputTokens": 1493,
+        "reasoningOutputTokens": 117,
+        "uncachedInputTokens": 41991
+      },
+      "compaction_usage": {
+        "totalTokens": 18345,
+        "inputTokens": 17520,
+        "cachedInputTokens": 17280,
+        "outputTokens": 825,
+        "reasoningOutputTokens": 0,
+        "uncachedInputTokens": 240
+      },
+      "raw_response_conflicts": [],
+      "usage_totals_reconcile": true,
+      "elapsed_s_including_compaction_and_fresh_thread": 132.1713478565216,
+      "commands": 10,
+      "failed_commands": 2,
+      "dynamic_calls": 2,
+      "native_compactions": 1,
+      "hook_runs": {},
+      "capture_failures": 0,
+      "opaque_capture_tokens": 0
+    }
+  ],
+  "artifact_sha256": {
+    "final-sum-off-result.json": "b75c996816722d9ebef2d9a63c423996053c26b7c523ddda90abc0cf38f905b5",
+    "final-cancel-candidate-result.json": "8b0462cb7c70767e99c11c97631695f2b0689be568e4b18e2fefe1a3b34e0dce",
+    "final-cancel-off-result.json": "0b1770583d1e39790d0c4868aa6ac2d0e86d0cd47e6f426af35985673f698f15",
+    "final-sum-candidate-result.json": "cce493617f10727bf578b38b9eaca88582f42fd11b966153bba9c911a91304c8",
+    "final-maximum-baseline-result.json": "7af53005912a2f72d349f147410b99032398b5bd0b31b1c2db7683fe8c7641f0",
+    "final-maximum-off-result.json": "c403336c9f62dda1a884b1c50401a484634bbbaafd948b1f712ca8c07a748c57",
+    "final-maximum-candidate-result.json": "a01bcb2551492fbc85e344d19443776955d797652a7eeb2e9473b9ba8f1fcd1e",
+    "final-sum-baseline-result.json": "fa566b19ed21d19b84b05178d7db86097a7c619fbdad9c16c88eccc1445e543e"
+  }
+}
