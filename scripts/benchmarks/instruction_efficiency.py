@@ -335,7 +335,7 @@ def freeze(args):
         write_json(out / 'freeze-result.json', record)
 
 
-def load_plan(out, expected_id):
+def load_plan(out, expected_id, execution_harness=None):
     plan = read_json(out / 'plan.json')
     require(plan.get('plan_id') == expected_id, 'external frozen plan identity mismatch')
     unsigned = {k: v for k, v in plan.items() if k != 'plan_id'}
@@ -348,7 +348,7 @@ def load_plan(out, expected_id):
     require(plan['thresholds'] == {'token': .90, 'time': 1.05}, 'changed thresholds')
     expected = selected_schedule(plan['batch'], plan.get('selected_suite', 'all'))
     require([{k: r[k] for k in expected[0]} for r in plan['runs']] == expected, 'invalid sample manifest/order')
-    require(plan['harness'] == digest(Path(__file__)), 'harness changed after freeze')
+    require(plan['harness'] == digest(Path(execution_harness) if execution_harness else Path(__file__)), 'harness changed after freeze')
     require(plan['runtime'] == digest(Path(__file__).with_name('codex_continuity_runtime.py')), 'runtime changed')
     require(digest(plan['protocol']['path']) == plan['protocol']['sha256'], 'protocol changed')
     require(versions() == plan['versions'], 'CLI/tool versions changed')
@@ -609,7 +609,10 @@ def evidence(folder, plan, sample):
     if compactions:
         require(result.get('compaction', {}).get('params') == compactions[0], 'compaction evidence mismatch')
         require(allowed_turns[-1] not in turn_ids, 'invalid compaction turn')
-        require([e['params']['turn']['id'] for e in own if e.get('method') == 'turn/completed'] == [turn_ids[0], allowed_turns[-1], turn_ids[1]], 'uncontrolled compaction ordering')
+        index = task['compact_after']
+        require(type(index) is int and 0 <= index < len(turn_ids), 'invalid compaction position')
+        expected_order = turn_ids[:index + 1] + [allowed_turns[-1]] + turn_ids[index + 1:]
+        require([e['params']['turn']['id'] for e in own if e.get('method') == 'turn/completed'] == expected_order, 'uncontrolled compaction ordering')
     dynamic = [e for e in own if e.get('method') == 'item/tool/call']
     require(len(dynamic) == (1 if 'steer' in task else 0), 'dynamic tool coverage mismatch')
     if dynamic:
@@ -678,7 +681,10 @@ def audit(args):
     out = args.output.resolve()
     report = {'pass': False, 'errors': [], 'samples': {}, 'review_usage': 'excluded; not collected by this task runner'}
     try:
-        plan = load_plan(out, args.plan_id)
+        execution_harness = getattr(args, 'execution_harness', None)
+        plan = load_plan(out, args.plan_id, execution_harness=execution_harness)
+        report['execution_harness_sha256'] = plan['harness']
+        report['validation_harness_sha256'] = digest(Path(__file__))
         require(not list(out.glob('rejected-*.json')), 'rejected attempts recorded; retain and report this invalid batch')
         expected = {r['run_id'] for r in plan['runs']}
         folders = {p.name for p in (out / 'runs').iterdir()}
@@ -701,7 +707,12 @@ def audit(args):
             report.update(aggregate(plan, report['samples']))
     except Exception as error:
         report['errors'].append({'error': str(error)})
-    write_json(out / 'audit.json', report)
+    if getattr(args, 'execution_harness', None):
+        # Never replace original grading or a previous corrected report.
+        with (out / 'audit.corrected.json').open('x') as stream:
+            stream.write(json.dumps(report, indent=2) + '\n')
+    else:
+        write_json(out / 'audit.json', report)
     print(json.dumps(report, indent=2))
     return 0 if report['pass'] else 1
 
@@ -724,6 +735,7 @@ def main():
     a = subs.add_parser('audit')
     a.add_argument('--output', type=Path, required=True)
     a.add_argument('--plan-id', required=True)
+    a.add_argument('--execution-harness', type=Path, help='Original frozen execution artifact for an explicitly corrected audit; never used by run')
     args = parser.parse_args()
     if args.action == 'freeze':
         freeze(args)

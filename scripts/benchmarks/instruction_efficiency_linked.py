@@ -44,6 +44,20 @@ def audit(link_path, expected_id):
         require(identity({k: v for k, v in link.items() if k != 'plan_id'}) == expected_id, 'changed linked plan')
         require(link['linker_sha256'] == digest(__file__), 'changed linked auditor')
         require(digest(link['protocol']) == link['protocol_sha256'], 'changed linked protocol')
+        original_ref = link.get('original_measurement_link')
+        require(original_ref or not any('execution_evaluator' in link[suite] for suite in ('development', 'reserved')), 'corrected validation requires original measurement link')
+        if original_ref:
+            require(digest(original_ref['path']) == original_ref['sha256'], 'changed original measurement link')
+            original = json.loads(Path(original_ref['path']).read_text())
+            require(original['plan_id'] == original_ref['plan_id'] and identity({k: v for k, v in original.items() if k != 'plan_id'}) == original_ref['plan_id'], 'invalid original measurement identity')
+            require(link['frozen_ns'] == original['frozen_ns'] and link['protocol'] == original['protocol'] and link['protocol_sha256'] == original['protocol_sha256'], 'changed measurement freeze or protocol')
+            require(digest(link['validator_amendment']['path']) == link['validator_amendment']['sha256'], 'changed validator amendment')
+            for suite in ('development', 'reserved'):
+                require(all(link[suite][key] == original[suite][key] for key in ('output', 'plan_id')), 'substituted measurement plan')
+                if 'execution_evaluator' in link[suite]:
+                    require(digest(link[suite]['execution_evaluator']) == original[suite]['evaluator_sha256'], 'changed execution evaluator artifact')
+                else:
+                    require(link[suite] == original[suite], 'changed uncorrected evaluator')
         sources = versions = settings = None
         combined = []
         threads = set()
@@ -52,7 +66,7 @@ def audit(link_path, expected_id):
             entry = link[suite]
             evaluator = load_evaluator(entry, 'efficiency_' + suite)
             out = Path(entry['output']).resolve()
-            plan = evaluator.load_plan(out, entry['plan_id'])
+            plan = evaluator.load_plan(out, entry['plan_id'], execution_harness=entry['execution_evaluator']) if entry.get('execution_evaluator') else evaluator.load_plan(out, entry['plan_id'])
             require(not list(out.glob('rejected-*.json')), 'rejected attempts in ' + suite)
             selected = [s for s in plan['runs'] if s['suite'] == suite]
             require(len(selected) == (18 if suite == 'development' else 48), 'unexpected suite size')
@@ -75,6 +89,10 @@ def audit(link_path, expected_id):
                 previous = data['ended_ns']
                 report['samples'][sample['run_id']] = data
                 combined.append(sample)
+        if original_ref:
+            require(link['correction_created_ns'] > previous, 'validator correction must disclose post-measurement creation')
+            report['original_measurement_plan_id'] = original_ref['plan_id']
+            report['validator_corrected_after_measurement'] = True
         report.update(evaluator.aggregate({'runs': combined}, report['samples']))
         report['plan_id'] = expected_id
         report['development_reused_without_reexecution'] = True

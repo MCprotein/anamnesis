@@ -224,6 +224,56 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(data['controlled_compaction_tokens']['totalTokens'], 30)
         self.assertEqual(data['raw_response_tokens']['totalTokens'], 230)
 
+    def test_compaction_then_side_question_retains_all_normal_turns(self):
+        task = copy.deepcopy(evaluator.TASKS['compaction'])
+        task['prompts'].insert(1, 'Side question: return only JSON {"answer":7}. Keep the original task pending.')
+        task['expected'].insert(1, {'answer': 7})
+        self.plan['tasks']['compaction'] = task
+        with patch.dict(evaluator.TASKS, {'compaction': task}):
+            self.execute('compaction')
+            self.assertEqual(self.evidence()['tokens']['totalTokens'], 330)
+            events_path = self.folder / 'events.jsonl'
+            result_path = self.folder / 'result.json'
+            original_events, original_result = events_path.read_text(), result_path.read_text()
+            def reorder(events):
+                indices = [i for i, event in enumerate(events) if event.get('method') == 'turn/completed']
+                events[indices[1]], events[indices[2]] = events[indices[2]], events[indices[1]]
+            self.mutate_events(reorder)
+            with self.assertRaisesRegex(ValueError, 'compaction ordering'):
+                self.evidence()
+            events_path.write_text(original_events)
+            result_path.write_text(original_result)
+            def duplicate(events):
+                events.append(next(event for event in events if event.get('method') == 'item/completed' and event['params']['item']['type'] == 'contextCompaction'))
+            self.mutate_events(duplicate)
+            with self.assertRaisesRegex(ValueError, 'compaction'):
+                self.evidence()
+
+    def test_original_execution_artifact_is_audit_only_and_stays_pinned(self):
+        original = self.root / 'original-execution.py'
+        original.write_text('previous frozen execution artifact')
+        self.plan['harness'] = evaluator.digest(original)
+        self.plan['plan_id'] = evaluator.identity({k: v for k, v in self.plan.items() if k != 'plan_id'})
+        evaluator.write_json(self.out / 'plan.json', self.plan)
+        with self.assertRaisesRegex(ValueError, 'harness changed'):
+            evaluator.load_plan(self.out, self.plan['plan_id'])
+        self.assertEqual(evaluator.load_plan(self.out, self.plan['plan_id'], execution_harness=original), self.plan)
+        args = argparse.Namespace(output=self.out, plan_id=self.plan['plan_id'], run_id=self.sample['run_id'], execution_harness=original)
+        with self.assertRaisesRegex(ValueError, 'harness changed'):
+            asyncio.run(evaluator.run(args))
+        historical = self.out / 'audit.json'
+        historical.write_text('original failed grading')
+        with contextlib.redirect_stdout(io.StringIO()):
+            evaluator.audit(args)
+            corrected = (self.out / 'audit.corrected.json').read_bytes()
+            with self.assertRaises(FileExistsError):
+                evaluator.audit(args)
+        self.assertEqual(historical.read_text(), 'original failed grading')
+        self.assertEqual((self.out / 'audit.corrected.json').read_bytes(), corrected)
+        original.write_text('tampered')
+        with self.assertRaisesRegex(ValueError, 'harness changed'):
+            evaluator.load_plan(self.out, self.plan['plan_id'], execution_harness=original)
+
     def test_delayed_result_steering(self):
         self.execute('delayed')
         self.assertEqual(self.evidence()['tokens']['totalTokens'], 100)
