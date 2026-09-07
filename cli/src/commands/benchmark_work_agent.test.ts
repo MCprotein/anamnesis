@@ -264,14 +264,10 @@ describe("Work agent A/B benchmark", () => {
 		fs.writeFileSync(path.join(outputDir, "README.md"), "old markdown");
 
 		expect(() =>
-			workAgentBenchmark({
-				projectRoot,
-				runs: 3,
-				model: "test-model",
-				runner: fakeRunner([]),
-				write: true,
-				outputPath: "evidence",
-				artifactOperations: {
+			publishWorkAgentBenchmarkArtifacts(
+				{ strict: false, ok: true, project_root: projectRoot, markdown: "candidate report" },
+				"evidence",
+				{
 					renameSync: (source, destination) => {
 						fs.renameSync(source, destination);
 						if (
@@ -283,7 +279,7 @@ describe("Work agent A/B benchmark", () => {
 					},
 					rmSync: fs.rmSync,
 				},
-			}),
+			),
 		).toThrow("rollback was incomplete; recovery files preserved");
 		const recoveryDirs = fs
 			.readdirSync(outputDir)
@@ -292,7 +288,7 @@ describe("Work agent A/B benchmark", () => {
 		expect(
 			fs.readdirSync(path.join(outputDir, recoveryDirs[0]!)),
 		).toContain("README.md.previous-0");
-	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
+	});
 
 	it("restores the first artifact when the second atomic replacement fails", () => {
 		const projectRoot = root();
@@ -302,14 +298,10 @@ describe("Work agent A/B benchmark", () => {
 		fs.writeFileSync(path.join(outputDir, "README.md"), "old markdown");
 
 		expect(() =>
-			workAgentBenchmark({
-				projectRoot,
-				runs: 3,
-				model: "test-model",
-				runner: fakeRunner([]),
-				write: true,
-				outputPath: "evidence",
-				artifactOperations: {
+			publishWorkAgentBenchmarkArtifacts(
+				{ strict: false, ok: true, project_root: projectRoot, markdown: "candidate report" },
+				"evidence",
+				{
 					renameSync: (source, destination) => {
 						if (
 							destination.endsWith("work-agent-ab.json") &&
@@ -321,7 +313,7 @@ describe("Work agent A/B benchmark", () => {
 					},
 					rmSync: fs.rmSync,
 				},
-			}),
+			),
 		).toThrow("injected JSON publish failure");
 		expect(fs.readFileSync(path.join(outputDir, "work-agent-ab.json"), "utf8")).toBe(
 			"old json",
@@ -334,7 +326,7 @@ describe("Work agent A/B benchmark", () => {
 				.readdirSync(outputDir)
 				.filter((name) => name.startsWith(".work-agent-ab-publish-")),
 		).toEqual([]);
-	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
+	});
 
 	it("preserves recovery files when publication and rollback both fail", () => {
 		const projectRoot = root();
@@ -344,14 +336,10 @@ describe("Work agent A/B benchmark", () => {
 		fs.writeFileSync(path.join(outputDir, "README.md"), "old markdown");
 
 		expect(() =>
-			workAgentBenchmark({
-				projectRoot,
-				runs: 3,
-				model: "test-model",
-				runner: fakeRunner([]),
-				write: true,
-				outputPath: "evidence",
-				artifactOperations: {
+			publishWorkAgentBenchmarkArtifacts(
+				{ strict: false, ok: true, project_root: projectRoot, markdown: "candidate report" },
+				"evidence",
+				{
 					renameSync: (source, destination) => {
 						if (
 							(destination.endsWith("work-agent-ab.json") &&
@@ -364,7 +352,7 @@ describe("Work agent A/B benchmark", () => {
 					},
 					rmSync: fs.rmSync,
 				},
-			}),
+			),
 		).toThrow("rollback was incomplete; recovery files preserved");
 		const recoveryDirs = fs
 			.readdirSync(outputDir)
@@ -373,7 +361,7 @@ describe("Work agent A/B benchmark", () => {
 		expect(
 			fs.readdirSync(path.join(outputDir, recoveryDirs[0]!)),
 		).toContain("README.md.previous-0");
-	}, WORK_AGENT_BENCHMARK_TEST_TIMEOUT_MS);
+	});
 
 	it("fails the evaluator when enabled token cost breaches the contract", () => {
 		const condition = {

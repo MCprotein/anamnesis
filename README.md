@@ -165,6 +165,7 @@ anamnesis apply                       # apply reviewed updates
 anamnesis status                      # inspect drift and continuity state
 anamnesis doctor                      # run integrity diagnostics
 anamnesis context query "<terms>"     # retrieve exact source pointers
+anamnesis context audit-instructions # inspect instruction size, ownership and duplicates
 anamnesis context resume              # render a compact resume bundle
 anamnesis work status --work <id>     # refold authoritative Work state
 ```

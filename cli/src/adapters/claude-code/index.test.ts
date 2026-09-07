@@ -6,16 +6,6 @@ import {
 } from "./index.js";
 
 describe("registerClaudeCode", () => {
-  it("registers all six capability renderers", () => {
-    const registry = new RendererRegistry();
-    registerClaudeCode(registry);
-    expect(registry.get("claude-code", "project_memory")).toBeDefined();
-    expect(registry.get("claude-code", "ontology")).toBeDefined();
-    expect(registry.get("claude-code", "executable_hook")).toBeDefined();
-    expect(registry.get("claude-code", "skill")).toBeDefined();
-    expect(registry.get("claude-code", "slash_command")).toBeDefined();
-    expect(registry.get("claude-code", "task_harness")).toBeDefined();
-  });
 
   it("exposes the full renderer set", () => {
     expect(claudeCodeRenderers).toHaveLength(6);

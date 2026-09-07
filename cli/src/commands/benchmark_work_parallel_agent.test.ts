@@ -50,7 +50,6 @@ function runner(
 		malformedOutputRows?: boolean;
 		malformedUsage?: boolean;
 		overlap?: boolean;
-		repairFinal?: boolean;
 		reviewerDuplicateFirst?: boolean;
 		reviewerOmitLast?: boolean;
 		reviewerReverse?: boolean;
@@ -64,8 +63,6 @@ function runner(
 		invalidReviewerEnvelopeCondition?: "disabled" | "enabled";
 	} = {},
 ): ParallelRunner {
-	let active = 0;
-	let sawOverlap = false;
 	return async (request) => {
 		const stage = request.prompt.match(/\[parallel-stage:([^\]]+)/u)?.[1];
 		const fixture = path
@@ -85,8 +82,6 @@ function runner(
 				opts.reviewerWrongDisabledIterations?.includes(iteration) === true) ||
 			(condition === "enabled" &&
 				opts.reviewerWrongEnabledIterations?.includes(iteration) === true);
-		active += 1;
-		if (active > 1) sawOverlap = true;
 		await new Promise((resolve) =>
 			setTimeout(
 				resolve,
@@ -99,7 +94,6 @@ function runner(
 							: 1,
 			),
 		);
-		active -= 1;
 		const ids = ["REQ-A", "REQ-B", "REQ-C", "REQ-D"];
 		let data: Record<string, unknown>;
 		const req = (id: string) => ({
@@ -136,13 +130,7 @@ function runner(
 					...(opts.malformedOutputRows ? [null, 7, []] : []),
 				],
 			};
-		} else
-			data = {
-				requirements: [
-					...(wrong && !opts.repairFinal ? ids.slice(0, 3) : ids).map(req),
-					...(opts.malformedOutputRows ? [null, 7, []] : []),
-				],
-			};
+		} else throw new Error(`Unexpected synthetic model stage: ${stage}`);
 		const invalidReviewerEnvelope =
 			stage === "reviewer" &&
 			condition === opts.invalidReviewerEnvelopeCondition;
@@ -154,7 +142,7 @@ function runner(
 				: opts.malformedUsage
 					? `${JSON.stringify({ type: "item.completed", item: { id: "agent-message-1", type: "agent_message", text: JSON.stringify(data) } })}\n${JSON.stringify({ type: "turn.completed", usage: {} })}`
 					: output(data, tokens),
-			stderr: sawOverlap ? "" : "",
+			stderr: "",
 			elapsedMs: 1,
 		};
 	};
@@ -790,7 +778,7 @@ describe("real parallel-agent benchmark", () => {
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 
-	it("fails validity when a stage is incorrect without excluding the run", async () => {
+	it("retains process defects when reviewer repair succeeds without excluding the run", async () => {
 		const root = tempRoot();
 		const result = await workParallelAgentBenchmark({
 			projectRoot: root,
@@ -799,6 +787,7 @@ describe("real parallel-agent benchmark", () => {
 			requirements: REQUIREMENTS,
 		});
 		expect(result.ok).toBe(true);
+		expect(result.summary.disabled.process_perfect_pct).toBe(0);
 		expect(result.harness_validity.checks.no_excluded_conditions).toBe(true);
 		expect(result.quality.disabled_passes).toBe(3);
 		expect(result.quality.enabled_passes).toBe(3);
@@ -809,22 +798,6 @@ describe("real parallel-agent benchmark", () => {
 				(stage) => stage.stage === "reviewer",
 			)?.output_correct,
 		).toBe(true);
-		fs.rmSync(root, { recursive: true, force: true });
-	});
-
-	it("counts a reviewer-repaired final result as product success while retaining process defects", async () => {
-		const root = tempRoot();
-		const result = await workParallelAgentBenchmark({
-			projectRoot: root,
-			runs: 3,
-			runner: runner({ wrong: true, repairFinal: true }),
-			requirements: REQUIREMENTS,
-		});
-		expect(result.quality.disabled_passes).toBe(3);
-		expect(result.quality.enabled_passes).toBe(3);
-		expect(result.summary.disabled.process_perfect_pct).toBe(0);
-		expect(result.summary.disabled.final_accuracy_pct).toBe(100);
-		expect(result.comparison.verdict).toBe("INCONCLUSIVE");
 		fs.rmSync(root, { recursive: true, force: true });
 	});
 

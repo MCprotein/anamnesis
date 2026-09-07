@@ -7,6 +7,10 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Add an explicit read-only instruction audit with bounded project inventory, recorded ownership and drift, literal duplicate references, and compatibility-aware review guidance. Disk bytes are kept separate from runtime token/performance claims.
+
+- Remove six redundant adapter registration checks already covered by the parity matrix and consolidate two identical reviewer-repair cases while preserving their combined assertions. Exercise three publication recovery faults directly, preserving their assertions and end-to-end publication coverage without rerunning the entire fake benchmark.
+
 ## [1.23.6] — 2026-09-07
 
 ### Fixed
