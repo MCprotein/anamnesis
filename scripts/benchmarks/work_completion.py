@@ -84,6 +84,7 @@ async def main(args):
         namespace['CASES']['cancel']['rows'] = plan['rows'][repetition]
         await namespace['run']('cancel', 'candidate')
         assert all(sha(directory / name) == value for name, value in plan['harness'].items()), 'harness drift'
+        assert versions() == plan['versions'], 'runtime drift'
         assert all(source_lock(v) == plan['source_locks'][k] for k, v in sources.items()), 'source drift'
         (folder / 'boundary-snapshots.json').write_text(json.dumps(snapshots, indent=2) + '\n')
         checked = subprocess.run([sys.executable, str(directory / 'codex_continuity_audit.py'), '--output', str(folder)], capture_output=True, text=True)
