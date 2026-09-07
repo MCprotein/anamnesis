@@ -247,6 +247,19 @@ class EvaluatorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'external state mutation'):
             self.evidence()
 
+    def test_package_code_stays_locked_but_test_results_do_not(self):
+        cache = self.source / 'node_modules/.vite/vitest/sample/results.json'
+        cache.parent.mkdir(parents=True)
+        cache.write_text('first')
+        evaluator.load_plan(self.out, self.plan['plan_id'])
+        cache.write_text('second')
+        evaluator.load_plan(self.out, self.plan['plan_id'])
+        code = self.source / 'node_modules/yaml/index.js'
+        code.parent.mkdir(parents=True)
+        code.write_text('changed executable dependency')
+        with self.assertRaisesRegex(ValueError, 'source changed'):
+            evaluator.load_plan(self.out, self.plan['plan_id'])
+
     def test_fresh_holdout_contract_and_protected_paths(self):
         path = self.out / 'fresh.json'
         tasks = {f'fresh_case_{i}': {'suite': 'reserved', 'prompts': ['Return JSON.'],

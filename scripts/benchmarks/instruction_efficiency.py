@@ -144,10 +144,12 @@ def manifest(root):
 
 
 def source_lock(src):
+    # Lock executable package bytes; Vitest result bookkeeping is not a CLI input.
     # Include source, generated distribution and all fragment inputs, not only base.
     folders = ('cli/src', 'cli/dist', 'base', 'fragments', 'specs', 'node_modules')
     result = {str(p.relative_to(src)): digest(p) for folder in folders
-              for p in sorted((src / folder).rglob('*')) if p.is_file()}
+              for p in sorted((src / folder).rglob('*')) if p.is_file()
+              and not str(p.relative_to(src)).startswith('node_modules/.vite/vitest/')}
     for name in ('package.json', 'package-lock.json', 'rulebook.md'):
         if (src / name).is_file():
             result[name] = digest(src / name)
