@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.23.6] — 2026-09-07
+
 ### Fixed
 
 - Serialize dead-owner reclamation by owner nonce and revalidate held directory
