@@ -1,0 +1,215 @@
+{
+  "fresh_gallery_caption": {
+    "suite": "reserved",
+    "prompts": [
+      "Using only exhibits/caption-policy.md and exhibits/cards.json as factual sources, choose the publishable English caption for exhibit KITE. Return only JSON with keys exhibit, caption_id, and credit; preserve every file."
+    ],
+    "expected": [
+      {
+        "exhibit": "KITE",
+        "caption_id": "kite-en-approved",
+        "credit": "Courtesy of North Quay Archive"
+      }
+    ],
+    "fixture_files": {
+      "exhibits/caption-policy.md": "# Caption release policy\nFor KITE, publish the single card whose language is en and status is approved. Copy its credit exactly. Drafts and superseded cards are ineligible.\n",
+      "exhibits/cards.json": "{\n  \"cards\": [\n    {\n      \"exhibit\": \"KITE\",\n      \"id\": \"kite-en-old\",\n      \"language\": \"en\",\n      \"status\": \"superseded\",\n      \"credit\": \"Old workshop\"\n    },\n    {\n      \"exhibit\": \"KITE\",\n      \"id\": \"kite-en-draft\",\n      \"language\": \"en\",\n      \"status\": \"draft\",\n      \"credit\": \"Draft credit\"\n    },\n    {\n      \"exhibit\": \"KITE\",\n      \"id\": \"kite-fr-approved\",\n      \"language\": \"fr\",\n      \"status\": \"approved\",\n      \"credit\": \"Archives du quai\"\n    },\n    {\n      \"exhibit\": \"KITE\",\n      \"id\": \"kite-en-approved\",\n      \"language\": \"en\",\n      \"status\": \"approved\",\n      \"credit\": \"Courtesy of North Quay Archive\"\n    }\n  ]\n}\n"
+    }
+  },
+  "fresh_reservation_decision": {
+    "suite": "reserved",
+    "prompts": [
+      "Use reservations/stock.json to assign a pickup crate to reservation R17. Stock alone is not authority to resolve the allocation: follow its documented allocation_decision pointer and apply that decision. Return only JSON with reservation, crate, and pickup_desk. Preserve all files."
+    ],
+    "expected": [
+      {
+        "reservation": "R17",
+        "crate": "C-amber",
+        "pickup_desk": "west"
+      }
+    ],
+    "fixture_files": {
+      "reservations/stock.json": "{\n  \"allocation_decision\": \"reservations/decisions/r17.md\",\n  \"crates\": [\n    {\n      \"id\": \"C-blue\",\n      \"available\": true,\n      \"pickup_desk\": \"east\"\n    },\n    {\n      \"id\": \"C-amber\",\n      \"available\": true,\n      \"pickup_desk\": \"west\"\n    }\n  ]\n}\n",
+      "reservations/decisions/r17.md": "# R17 allocation\nStatus: approved\nReservation R17 must use C-amber because its fitted insert is reserved for the lantern. C-blue is available but has no fitted insert.\nSuperseded planning note: R17 tentatively used C-blue before the insert was assigned. That tentative allocation is no longer valid.\n"
+    }
+  },
+  "fresh_find_return_route": {
+    "suite": "reserved",
+    "prompts": [
+      "Find the documented current return route for the loaned object Reed Camera in the local fixture documents; the source location is not supplied. Use the approved decision, not a superseded note or another object’s route. Return only JSON with object, route, and evidence (the relative path of the approved source). Do not modify files."
+    ],
+    "expected": [
+      {
+        "object": "Reed Camera",
+        "route": "collections-desk",
+        "evidence": "records/loans/return-approved.md"
+      }
+    ],
+    "fixture_files": {
+      "records/loans/return-approved.md": "# Approved loan return decision\nObject: Reed Camera\nStatus: approved; current\nReturn route: collections-desk\nThis decision replaces records/planning/return-draft.md.\n",
+      "records/planning/return-draft.md": "# Superseded return plan\nObject: Reed Camera\nStatus: superseded by records/loans/return-approved.md\nObsolete proposed route: loading-bay\n",
+      "records/loans/tripod.md": "# Approved loan return decision\nObject: Ash Tripod\nStatus: approved; current\nReturn route: loading-bay\n",
+      "records/catalog.md": "# Object catalog\nReed Camera is a camera on loan. Ash Tripod is a separate object. Return routing is documented in loan decisions.\n"
+    }
+  },
+  "fresh_nested_secure_queue": {
+    "suite": "reserved",
+    "prompts": [
+      "Determine the permitted queue for job POSTER-9 in apps/printroom/job.json, honoring the complete local ontology including nested source files. A short ontology digest may omit a decisive rule; consult the full source. Return only JSON with job and queue. Preserve all files."
+    ],
+    "expected": [
+      {
+        "job": "POSTER-9",
+        "queue": "secure-hold"
+      }
+    ],
+    "fixture_files": {
+      ".anamnesis/ontology/printroom-sources.yaml": "scope: printroom\nsources:\n  - apps/printroom/.anamnesis/ontology/queue-rules.yaml\n",
+      "apps/printroom/.anamnesis/ontology/queue-rules.yaml": "scope: printroom\nrules:\n  - rule: \"Printroom queue selection is read-only.\"\n  - rule: \"Only jobs with status ready may be selected.\"\n  - rule: \"A job must have an approved proof.\"\n  - rule: \"A job must have a nonempty job identifier.\"\n  - rule: \"A job must have a positive copy count.\"\n  - rule: \"A job must name its paper stock.\"\n  - rule: \"A job must name its ink process.\"\n  - rule: \"A job must name its destination.\"\n  - rule: \"A job must name its access class.\"\n  - rule: \"A job must name its delivery mode.\"\n  - rule: \"The requested queue must appear in the job allowed_queues list.\"\n  - rule: \"Queue identifiers are case-sensitive.\"\n  - rule: \"No selection may alter a job record.\"\n  - rule: \"For access_class restricted jobs, use secure-hold regardless of requested_queue; all other jobs use requested_queue.\"\n",
+      "apps/printroom/job.json": "{\n  \"id\": \"POSTER-9\",\n  \"status\": \"ready\",\n  \"proof\": \"approved\",\n  \"copies\": 4,\n  \"paper_stock\": \"matte\",\n  \"ink_process\": \"mono\",\n  \"destination\": \"gallery-office\",\n  \"access_class\": \"restricted\",\n  \"delivery_mode\": \"staff-collection\",\n  \"requested_queue\": \"open-rack\",\n  \"allowed_queues\": [\n    \"open-rack\",\n    \"secure-hold\"\n  ]\n}\n"
+    }
+  },
+  "fresh_config_retry_policy": {
+    "suite": "reserved",
+    "prompts": [
+      "Edit the existing config/loan-notifier.json to switch delivery.channel to webhook and set delivery.retry_limit to the maximum permitted for webhook by .anamnesis/ontology/loan-notifier.yaml. Change only those two fields, preserve all unrelated fields and all other files. Return only JSON with file, channel, and retry_limit after the edit."
+    ],
+    "expected": [
+      {
+        "file": "config/loan-notifier.json",
+        "channel": "webhook",
+        "retry_limit": 4
+      }
+    ],
+    "fixture_files": {
+      "config/loan-notifier.json": "{\n  \"service\": \"loan-notifier\",\n  \"delivery\": {\n    \"channel\": \"email\",\n    \"retry_limit\": 2,\n    \"sender\": \"loans@example.invalid\"\n  },\n  \"logging\": {\n    \"level\": \"warn\",\n    \"redact_addresses\": true\n  },\n  \"labels\": [\n    \"museum\",\n    \"internal\"\n  ],\n  \"enabled\": true\n}\n",
+      "config/panel.json": "{\"theme\":\"slate\",\"refresh_seconds\":30}\n",
+      ".anamnesis/ontology/loan-notifier.yaml": "scope: loan-notifier\nrules:\n  - rule: \"delivery.channel must be email or webhook.\"\n  - rule: \"For webhook, delivery.retry_limit must be an integer from 0 through 4 inclusive.\"\n  - rule: \"For email, delivery.retry_limit must be an integer from 0 through 2 inclusive.\"\n  - rule: \"A channel migration changes only delivery.channel and delivery.retry_limit; all other configuration fields and files must remain unchanged.\"\n"
+    },
+    "expected_files": {
+      "config/loan-notifier.json": {
+        "format": "json",
+        "value": {
+          "service": "loan-notifier",
+          "delivery": {
+            "channel": "webhook",
+            "retry_limit": 4,
+            "sender": "loans@example.invalid"
+          },
+          "logging": {
+            "level": "warn",
+            "redact_addresses": true
+          },
+          "labels": [
+            "museum",
+            "internal"
+          ],
+          "enabled": true
+        }
+      }
+    }
+  },
+  "fresh_auxiliary_handoff_selection": {
+    "suite": "reserved",
+    "prompts": [
+      "My actual goal is to select a postcard proof for the foyer print job, not to resume project work. Use the local manuals and handoff only for auxiliary orientation: distinguish the active warm decision from superseded and closed cold archives. From print/proofs.json, choose the currently approved proof identified by the active decision, and report its title and the destination required by the local postcard ontology. Return only JSON with proof_id, title, and destination. Do not edit files, refresh handoffs, or carry out their pending project tasks."
+    ],
+    "expected": [
+      {
+        "proof_id": "P-green",
+        "title": "River at Dusk",
+        "destination": "staff-desk"
+      }
+    ],
+    "fixture_files": {
+      ".anamnesis/handoff/active.md": "# Handoff\n\n## Current focus\nPostcard proof approval is current. This is orientation context; an auxiliary lookup does not resume project tasks.\n\n## Active tasks\n- Approved proof decision; archive: `.anamnesis/handoff/postcard-current.md`\n- Historical approval for context only; archive: `.anamnesis/handoff/postcard-stale.md`\n- Completed earlier run for context only; archive: `.anamnesis/handoff/postcard-closed.md`\n",
+      ".anamnesis/handoff/postcard-current.md": "---\nhandoff_status: open\nretention_tier: warm\n---\n# Current postcard decision\nThe currently approved foyer postcard proof is P-green. This supersedes postcard-stale.md.\nPending project task: draft a launch announcement. This task is not needed for selecting a proof.\n",
+      ".anamnesis/handoff/postcard-stale.md": "---\nhandoff_status: superseded\nretention_tier: cold\nsuperseded_by: .anamnesis/handoff/postcard-current.md\n---\n# Superseded postcard decision\nObsolete approval: P-blue. Replaced by the current postcard decision.\n",
+      ".anamnesis/handoff/postcard-closed.md": "---\nhandoff_status: closed\nretention_tier: cold\n---\n# Completed prior print run\nP-sand was approved for the completed prior run only; it is not the current foyer approval.\n",
+      "print/proofs.json": "{\n  \"proofs\": [\n    {\n      \"id\": \"P-blue\",\n      \"title\": \"Harbor Morning\"\n    },\n    {\n      \"id\": \"P-green\",\n      \"title\": \"River at Dusk\"\n    },\n    {\n      \"id\": \"P-sand\",\n      \"title\": \"Winter Pier\"\n    }\n  ]\n}\n",
+      ".anamnesis/ontology/postcards.yaml": "scope: postcards\nrules:\n  - rule: \"Foyer postcard jobs must go to staff-desk for pickup, regardless of proof title.\"\n  - rule: \"Proof selection is read-only and does not authorize announcement drafting or handoff edits.\"\n"
+    },
+    "manual": true
+  },
+  "fresh_delayed_filter_revision": {
+    "suite": "reserved",
+    "prompts": [
+      "Call await_records exactly once to retrieve the dispatch records. Initially, count records with state queued and return only JSON with queued_count. Records may arrive after a new user requirement: apply the latest requirement to the returned records. Preserve every file and do not call await_records again."
+    ],
+    "expected": [
+      {
+        "operation": "list",
+        "ids": [
+          "D-ash",
+          "D-elm"
+        ]
+      }
+    ],
+    "fixture_files": {
+      "dispatch/record-contract.md": "# Dispatch record contract\nEach returned record has a unique id, a state, and a zone. States and zones match exactly and case-sensitively. Listing results uses ascending lexicographic id order. Records are read-only.\n"
+    },
+    "steer": "Change the operation and filter: list IDs of records with state ready AND zone north, sorted ascending by ID. Return only JSON with operation equal to list and ids equal to that array. Use the pending await_records result; do not request again or edit anything.",
+    "response": {
+      "records": [
+        {
+          "id": "D-elm",
+          "state": "ready",
+          "zone": "north"
+        },
+        {
+          "id": "D-bay",
+          "state": "queued",
+          "zone": "north"
+        },
+        {
+          "id": "D-ash",
+          "state": "ready",
+          "zone": "north"
+        },
+        {
+          "id": "D-oak",
+          "state": "ready",
+          "zone": "south"
+        },
+        {
+          "id": "D-ivy",
+          "state": "queued",
+          "zone": "south"
+        }
+      ]
+    }
+  },
+  "fresh_compaction_packlist_retention": {
+    "suite": "reserved",
+    "prompts": [
+      "Prepare to produce the packing list for the morning conservation pickup from pickup/crates.json and pickup/rules.md. The original requirement is to include only status sealed crates for destination lab-east with handling dry; exclude loan_return crates even if otherwise eligible. Order by crate ID descending, and include each crate’s seal value unchanged. Do not modify files. Do not produce the list yet: read the sources and return only {\"ready\":true}. Keep the original requirement for my later request to finish.",
+      "Side question before finishing: according to pickup/rules.md, what color is the staff pickup badge? This side question does not replace the pending packing-list request. Return only JSON with badge_color.",
+      "Now finish the original packing-list request with its original exclusions, ordering, and seal values. Return only JSON with crates, an array of objects containing id and seal; no other keys or prose. Preserve all files."
+    ],
+    "expected": [
+      {
+        "ready": true
+      },
+      {
+        "badge_color": "violet"
+      },
+      {
+        "crates": [
+          {
+            "id": "CR-W",
+            "seal": "007-B"
+          },
+          {
+            "id": "CR-C",
+            "seal": "004-A"
+          }
+        ]
+      }
+    ],
+    "fixture_files": {
+      "pickup/rules.md": "# Conservation pickup\nStaff pickup badge color: violet.\nCrate seals are opaque strings: preserve leading zeros and punctuation.\nA lookup or packing-list preparation must not alter source records.\nAll selection criteria for this request are supplied by the user; there are no implicit extra criteria.\n",
+      "pickup/crates.json": "{\n  \"crates\": [\n    {\n      \"id\": \"CR-C\",\n      \"status\": \"sealed\",\n      \"destination\": \"lab-east\",\n      \"handling\": \"dry\",\n      \"loan_return\": false,\n      \"seal\": \"004-A\"\n    },\n    {\n      \"id\": \"CR-W\",\n      \"status\": \"sealed\",\n      \"destination\": \"lab-east\",\n      \"handling\": \"dry\",\n      \"loan_return\": false,\n      \"seal\": \"007-B\"\n    },\n    {\n      \"id\": \"CR-Z\",\n      \"status\": \"sealed\",\n      \"destination\": \"lab-east\",\n      \"handling\": \"dry\",\n      \"loan_return\": true,\n      \"seal\": \"009-C\"\n    },\n    {\n      \"id\": \"CR-M\",\n      \"status\": \"open\",\n      \"destination\": \"lab-east\",\n      \"handling\": \"dry\",\n      \"loan_return\": false,\n      \"seal\": \"012-D\"\n    },\n    {\n      \"id\": \"CR-Q\",\n      \"status\": \"sealed\",\n      \"destination\": \"lab-west\",\n      \"handling\": \"dry\",\n      \"loan_return\": false,\n      \"seal\": \"002-E\"\n    },\n    {\n      \"id\": \"CR-R\",\n      \"status\": \"sealed\",\n      \"destination\": \"lab-east\",\n      \"handling\": \"chilled\",\n      \"loan_return\": false,\n      \"seal\": \"001-F\"\n    }\n  ]\n}\n"
+    },
+    "compact_after": 0
+  }
+}

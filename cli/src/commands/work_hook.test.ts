@@ -444,7 +444,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		});
 		expect(first).toMatchObject({ status: "briefing_due" });
 		expect(first.context).toContain("injected_unconfirmed");
-		expect(first.context).toContain("visibly brief the requirements");
+		expect(first.context).toContain("brief requirements/done/remaining/blockers/progress");
 		expect(
 			handleWorkUserPromptSubmit({
 				project_root: root,
@@ -506,6 +506,10 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			false,
 		);
 		expect(openContext).toContain("continue the same task");
+		expect(openContext).toContain("reconcile completed requirements via evidence-backed work transition");
+		expect(openContext).toContain("read-only/status requests authorize no writes");
+		expect(openContext).toContain("Cancellation/pause/redirection overrides this snapshot");
+		expect(terminalContext).not.toContain("reconcile completed requirements");
 		expect(terminalContext).toContain("This Work is terminal");
 		expect(terminalContext).not.toContain("continue the same task");
 	});

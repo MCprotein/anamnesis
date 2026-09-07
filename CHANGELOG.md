@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Require evidence-backed Work progress reconciliation before reporting authorized execution complete, while preserving cancellation, read-only requests and terminal Work boundaries.
+
 - Align Codex native source-retrieval guidance with the shared read-only fast path and identify completed built-in startup discovery; base fragment advances to v27.
 
 - Restrict Codex hook manual loading to the actual trigger and unavailable per-procedure native support; silent native success does not require replay. Unsupported custom SessionStart hooks no longer advertise the built-in wrapper.
