@@ -87,7 +87,7 @@ subagent performance claim.
 
 ## Astra instruction efficiency
 
-The 1.24 release candidate reduces Codex fallback context and repeated startup
+Version 1.24 reduces Codex fallback context and repeated startup
 reads while preserving full procedures, source evidence and adapter permissions.
 Its read-only `anamnesis context audit-instructions` command reports instruction
 size, recorded ownership, drift and literal duplicates; it does not automatically

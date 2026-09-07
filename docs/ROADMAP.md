@@ -2493,9 +2493,9 @@ Exit criteria:
 
 ## v1.24 — Instruction efficiency and explicit audit
 
-Status: implementation and bounded Astra validation complete; publication pending
-release-runner verification. This section records the release candidate rather
-than claiming registry availability.
+Status: implementation and bounded Astra validation complete. Verify registry
+availability with `npm run release:verify -- --version 1.24.0`; implementation
+status alone is not evidence of publication.
 
 - Add explicit, read-only `context audit-instructions` with bounded local
   inventory, ownership/drift evidence and literal duplicate references. It does
