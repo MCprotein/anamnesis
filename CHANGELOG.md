@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.24.0] — 2026-09-07
+
 - Guide agents to transition newly verified Work requirements using existing evidence before reporting execution complete, while preserving cancellation, read-only requests and terminal Work boundaries.
 
 - Align Codex native source-retrieval guidance with the shared read-only fast path and identify completed built-in startup discovery; base fragment advances to v27.
