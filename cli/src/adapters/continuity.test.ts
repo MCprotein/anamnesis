@@ -64,6 +64,7 @@ function procedure(actions: RenderAction[], id: string): string {
 	const source = routing.match(
 		/Full procedure and manual fallback[^\n]*`([^`]+)`/,
 	);
+	if (!source && id.startsWith("codex-cmd-")) return routing;
 	expect(source, `missing procedure pointer for ${id}`).not.toBeNull();
 	return fileByPath(actions, source![1]!).content;
 }

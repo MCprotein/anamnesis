@@ -34,6 +34,21 @@ describe("Codex instruction delivery", () => {
 		expect(region).toEqual(original);
 	});
 
+	it("keeps concise command procedures inline without a second retrieval", () => {
+		const command = {
+			...region,
+			regionId: "codex-cmd-example",
+			content: "é".repeat(1024),
+		};
+		expect(compactInstructionDelivery([command])).toEqual([command]);
+		const longer = { ...command, content: command.content + "x" };
+		const actions = compactInstructionDelivery([longer]);
+		expect(actions).toHaveLength(2);
+		expect(actions.find((a) => a.kind === "file")?.content).toBe(
+			longer.content,
+		);
+	});
+
 	it("preserves native files and ordinary project memory", () => {
 		const memory: RegionAction = { ...region, regionId: "anamnesis-base" };
 		const native: RenderAction = {

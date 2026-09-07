@@ -1,6 +1,6 @@
 import type { RenderAction } from "../../core/render.js";
 
-/** Keep routing in startup context and the complete manual fallback on disk. */
+/** Keep concise commands inline; disclose longer procedures on demand. */
 export function compactInstructionDelivery(
 	actions: RenderAction[],
 ): RenderAction[] {
@@ -8,6 +8,12 @@ export function compactInstructionDelivery(
 		if (
 			action.kind !== "region" ||
 			!/^codex-(hook|skill|cmd)-/.test(action.regionId)
+		)
+			return [action];
+		// A small command costs less inline than another file read on invocation.
+		if (
+			action.regionId.startsWith("codex-cmd-") &&
+			Buffer.byteLength(action.content, "utf8") <= 2048
 		)
 			return [action];
 		const source = `.anamnesis/codex-instructions/file-${encodeURIComponent(action.file)}/${encodeURIComponent(action.regionId)}.md`;

@@ -1800,18 +1800,14 @@ describe("codex slash_command fallback", () => {
       },
       makeContext(fragmentDir, fragment),
     );
-		expect(actions).toHaveLength(2);
+		expect(actions).toHaveLength(1);
     if (actions[0]!.kind === "region") {
       expect(actions[0]!.regionId).toBe("codex-cmd-foo");
       expect(actions[0]!.sideEffects).toEqual(["read-only"]);
       expect(actions[0]!.content).toContain(
         "**Declared side effects:** `read-only`.",
       );
-			expect(
-				actions.find(
-					(a) => a.kind === "file" && a.path.endsWith("codex-cmd-foo.md"),
-				)?.content,
-			).toContain("Do foo by");
+      expect(actions[0]!.content).toContain("Do foo by");
       expect(actions[0]!.content).not.toContain("description: do foo");
       expect(actions[0]!.content).toContain("/foo");
     }
