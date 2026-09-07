@@ -31,6 +31,9 @@ describe("Codex instruction delivery", () => {
 		expect(short.content).toContain(
 			"without reading or replaying the hook implementation",
 		);
+		expect(short.content).toContain(
+			"Output from another hook on the same event does not establish this",
+		);
 		expect(region).toEqual(original);
 	});
 

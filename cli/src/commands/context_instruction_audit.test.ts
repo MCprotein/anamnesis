@@ -189,6 +189,10 @@ it("reports missing registered files and regions while optional absent surfaces 
 			version: 1,
 			files: [
 				{ ...entry, path: ".codex/skills/missing/SKILL.md" },
+				{
+					...entry,
+					path: ".anamnesis/codex-instructions/file-AGENTS.md/missing.md",
+				},
 				{ ...entry, path: "AGENTS.override.md" },
 			],
 			regions: [
@@ -206,6 +210,7 @@ it("reports missing registered files and regions while optional absent surfaces 
 	const result = contextInstructionAudit({ projectRoot: root });
 	expect(result.complete).toBe(false);
 	expect(result.warnings).toEqual([
+		"Missing registered instruction file: .anamnesis/codex-instructions/file-AGENTS.md/missing.md",
 		"Missing registered instruction file: .codex/skills/missing/SKILL.md",
 		"Missing registered region: AGENTS.md#missing",
 		"Missing registered instruction file: AGENTS.override.md",

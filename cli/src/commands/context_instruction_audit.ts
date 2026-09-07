@@ -173,7 +173,7 @@ export function contextInstructionAudit(options: {
 		if (
 			candidates.has(entry.path) ||
 			(/\.(md|mdc|toml)$/.test(entry.path) &&
-				/(?:skills|agents|commands|rules)\//.test(entry.path))
+				/(?:skills|agents|commands|rules|codex-instructions)\//.test(entry.path))
 		) {
 			candidates.add(entry.path);
 			registered.add(entry.path);
