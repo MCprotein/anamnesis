@@ -53,3 +53,26 @@ It does not relax a global timeout, retry failures or alter product code. Two
 additional reported test cases do not mean two additional CLI executions. The
 failed tag is preserved; normal runner preparation/publication/verification is
 used for the replacement patch.
+
+
+## Post-release adoption follow-up (1.24.2)
+
+The global CLI upgrade to 1.24.1 installed successfully, but its project-sync
+child returned exit code 0 with a 65,536-byte truncated JSON response. A
+read-only `projects plan --json` subprocess reproduced the truncation. This
+is an output-delivery defect, not proof that synchronization rolled back.
+The repair reuses the existing awaited stdout writer for project list,
+prune, plan/apply/sync and upgrade's combined result. Three isolated large
+registry cases fail before the repair and pass after it; stale entries and
+registry bytes remain unchanged. CLI integration tests now isolate their
+registry state to avoid leaving fixture registrations in user state.
+
+The earlier CI stall remains unexplained. In v1.24.1 attempt 1, 107 of 108
+files completed, but `cli/src/index.test.ts` produced no completion output;
+the run was cancelled after eight minutes without further test output.
+The same file passed 21 cases in 13.61 seconds in a separate Linux aarch64
+Node 24 container. The unchanged GitHub x64 source then passed all 1,281
+cases twice. Attempt 2 published both packages but hit a transient 404 on
+immediate parity lookup; attempt 3 completed publication verification and
+Release creation. The stdout repair and test-registry isolation do not
+establish or claim a fix for that stall.
