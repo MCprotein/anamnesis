@@ -57,10 +57,8 @@ GitHub Packages package targets.
 
 ## Branch Policy
 
-The current unreleased WIP line is grandfathered in as-is. Do not reshuffle the
-existing local WIP solely to satisfy this policy. Starting with the next version
-line after the current WIP is cut, development must use version-scoped branches
-instead of accumulating unreleased work directly on `main`.
+Version-specific development uses version-scoped branches instead of
+accumulating unreleased work directly on `main`.
 
 Branch roles:
 
@@ -73,7 +71,7 @@ Branch roles:
   into `release/vX.Y`.
 - `hotfix/vX.Y.Z` is reserved for urgent patch work from the released state.
 
-Release flow from the next version line onward:
+Release flow:
 
 1. Create `release/vX.Y` from the current stable `main`.
 2. Merge focused feature branches into `release/vX.Y`.

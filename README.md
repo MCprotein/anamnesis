@@ -102,6 +102,20 @@ and **11.2% less time** versus its preceding repair, with correct state recovery
 That small, tuned comparison is not independent holdout evidence, and uncached
 input increased 0.8%. Earlier Luna/Terra/Sol results above are separate studies.
 
+![Astra paired benchmark changes: fresh reserved tokens -18.2%, time +1.8%; separate tuned follow-up tokens -17.4%, time -11.2%](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/astra-summary.svg)
+
+| Study | Paired executions | Total tokens | Elapsed time |
+| --- | ---: | ---: | ---: |
+| V6 development | 9 pairs / 18 runs | -26.7% | -2.3% |
+| V6 fresh reserved | 24 pairs / 48 runs | -18.2% | +1.8% |
+| V8 vs V7 tuned follow-up | 2 pairs / 4 runs | -17.4% | -11.2% |
+
+Changes are medians of per-pair ratios, not ratios of aggregate totals.
+Reserved tasks were outcome-unseen, not content-blind. The full report discloses
+the post-measurement evaluator correction and preserves failed revisions.
+[Rebuild the chart](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/render-chart.py)
+from the checked-in JSON; this does not execute models.
+
 [Full Astra results, failed revisions and limitations](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/README.md)
 
 ## Quickstart
