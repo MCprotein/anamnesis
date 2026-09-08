@@ -255,6 +255,7 @@ function verify(args) {
     "version",
     "--registry",
     NPMJS_REGISTRY,
+    `--@mcprotein:registry=${NPMJS_REGISTRY}/`,
   ]).trim();
   const github = capture("npm", [
     "view",
@@ -262,6 +263,7 @@ function verify(args) {
     "version",
     "--registry",
     GITHUB_PACKAGES_REGISTRY,
+    `--@mcprotein:registry=${GITHUB_PACKAGES_REGISTRY}/`,
   ]).trim();
   if (npmjs !== version) throw new Error(`npmjs.org returned ${npmjs}, expected ${version}`);
   if (github !== version) throw new Error(`GitHub Packages returned ${github}, expected ${version}`);

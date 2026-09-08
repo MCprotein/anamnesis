@@ -250,6 +250,17 @@ After a manual npmjs.org publish, push the matching tag. The workflow will
 run and skip npmjs.org publish when the exact version already exists, then
 publish or verify the same version on GitHub Packages.
 
+## Registry propagation checks
+
+The publish workflow and release verifier explicitly set the scoped registry for
+lookup commands, so a local or CI `@mcprotein:registry` override cannot redirect
+npmjs.org verification to GitHub Packages. After publication, the workflow retries
+failed lookups at most five times per registry, waiting three seconds between
+attempts, with npm fetch retries disabled and a ten-second fetch timeout.
+An unexpected version fails immediately; exhausted lookups also fail. Only exact
+version confirmation from both registries permits GitHub Release creation.
+Retries perform lookups only: they do not repeat tests, builds, or publication.
+
 ## Notes
 
 - Do not add long-lived npm publish tokens for this workflow.
