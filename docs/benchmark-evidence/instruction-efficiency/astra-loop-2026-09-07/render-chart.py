@@ -38,5 +38,7 @@ fig.text(.04,.13,"V6: Work capture and Stop reminders off. Fresh reserved tasks 
 fig.text(.04,.09,"V8: Work enabled; tuned scenario, not independent holdout. Separate baselines; do not pool results.",fontsize=10)
 fig.text(.04,.05,"Reserved time increased 1.8%. No general speedup, monetary-cost saving, or confidence interval is established.",fontsize=10)
 fig.savefig(ROOT / "astra-summary.svg", metadata={"Date": None}, facecolor="white")
+svg = ROOT / "astra-summary.svg"
+svg.write_text("\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n")
 if len(sys.argv) > 1:
     fig.savefig(sys.argv[1], dpi=150, facecolor="white")
