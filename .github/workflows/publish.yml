@@ -63,7 +63,7 @@ jobs:
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
 
-          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://registry.npmjs.org --@mcprotein:registry=https://registry.npmjs.org >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -83,7 +83,7 @@ jobs:
           fi
 
           if grep -q "previously published versions" "$publish_log" &&
-             npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+             npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://registry.npmjs.org --@mcprotein:registry=https://registry.npmjs.org >/dev/null 2>&1; then
             echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already published; treating duplicate publish as success."
             exit 0
           fi
@@ -108,7 +108,7 @@ jobs:
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
 
-          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://npm.pkg.github.com >/dev/null 2>&1; then
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://npm.pkg.github.com --@mcprotein:registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -132,7 +132,7 @@ jobs:
           fi
 
           if grep -q "previously published versions" "$publish_log" &&
-             npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://npm.pkg.github.com >/dev/null 2>&1; then
+             npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://npm.pkg.github.com --@mcprotein:registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already published to GitHub Packages; treating duplicate publish as success."
             exit 0
           fi
@@ -147,11 +147,29 @@ jobs:
 
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          npmjs_version="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://registry.npmjs.org)"
-          github_version="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry https://npm.pkg.github.com)"
+          verify_registry() {
+            local registry="$1"
+            local actual=""
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if actual="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry "$registry" --@mcprotein:registry="$registry" --fetch-retries=0 --fetch-timeout=10000)"; then
+                if [[ "$actual" = "$PACKAGE_VERSION" ]]; then
+                  return 0
+                fi
+                echo "::error::$registry returned $actual; expected $PACKAGE_VERSION."
+                return 1
+              fi
+              if [[ "$attempt" -lt 5 ]]; then
+                echo "$registry lookup failed (attempt $attempt/5); retrying in 3 seconds."
+                sleep 3
+              fi
+            done
+            echo "::error::$registry did not confirm $PACKAGE_VERSION after 5 attempts."
+            return 1
+          }
 
-          test "$npmjs_version" = "$PACKAGE_VERSION"
-          test "$github_version" = "$PACKAGE_VERSION"
+          verify_registry https://registry.npmjs.org
+          verify_registry https://npm.pkg.github.com
           echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is published to npmjs.org and GitHub Packages."
 
       - name: Create GitHub Release
