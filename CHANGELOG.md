@@ -7,6 +7,9 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Drain large registered-project JSON output before CLI exit, including upgrade's combined result. This prevents successful project synchronization from being reported as a JSON parse failure when output exceeds a pipe buffer.
+- Isolate CLI integration-test registrations in temporary state so tests do not add fixtures to the user's project registry. Preserve all behavior assertions and existing process deadlines.
+
 ## [1.24.1] — 2026-09-07
 
 - Give each advanced-namespace CLI help invocation its own existing test budget instead of charging three sequential subprocesses to one deadline. Preserve all assertions and the same three CLI executions.

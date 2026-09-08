@@ -3876,12 +3876,12 @@ async function main(argv: string[]): Promise<number> {
 							})
 						: undefined;
         if (flags["json"] === true) {
-					console.log(
+					await writeStdoutFully(
 						JSON.stringify(
 							projectSync ? { package: result, projects: projectSync } : result,
 							null,
 							2,
-						),
+						) + "\n",
 					);
         } else {
           reportUpgrade(result, process.cwd());
@@ -3906,7 +3906,7 @@ async function main(argv: string[]): Promise<number> {
 				const registryPath = flags["registry-file"] as string | undefined;
 				if (action === "list") {
 					const result = listRegisteredProjects({ registryPath });
-					if (flags.json === true) console.log(JSON.stringify(result, null, 2));
+					if (flags.json === true) await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
 					else reportRegisteredProjects(result, registryPath);
 					return 0;
 				}
@@ -3953,7 +3953,7 @@ async function main(argv: string[]): Promise<number> {
 						stale,
 						removed,
 					};
-					if (flags.json === true) console.log(JSON.stringify(result, null, 2));
+					if (flags.json === true) await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
 					else {
 						console.log(`stale registrations: ${stale.length}`);
 						console.log(
@@ -3972,7 +3972,7 @@ async function main(argv: string[]): Promise<number> {
 						registryPath,
 						apply,
 					});
-					if (flags.json === true) console.log(JSON.stringify(result, null, 2));
+					if (flags.json === true) await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
 					else reportRegisteredProjectSync(result);
 					return result.summary.errors > 0 ? 1 : 0;
 				}

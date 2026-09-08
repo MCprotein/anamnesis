@@ -3,7 +3,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "node:crypto";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -11,6 +12,15 @@ const repoRoot = path.resolve(
 );
 const indexPath = path.join(repoRoot, "cli/src/index.ts");
 const CLI_PROCESS_TEST_TIMEOUT_MS = 90_000;
+let registryHome: string;
+beforeAll(() => {
+  registryHome = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-cli-registry-"));
+  vi.stubEnv("ANAMNESIS_STATE_HOME", registryHome);
+});
+afterAll(() => {
+  vi.unstubAllEnvs();
+  fs.rmSync(registryHome, { recursive: true, force: true });
+});
 
 function writeMinimalAgentfile(project: string): void {
   fs.writeFileSync(
@@ -38,6 +48,31 @@ function visibleLengthForTest(value: string): number {
 }
 
 describe("CLI entrypoint", () => {
+  it.each(["list", "prune", "apply"])("preserves large projects %s JSON through a pipe", (action) => {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-project-json-")));
+    try {
+      const registry = path.join(root, "projects.json");
+      const projects = Array.from({ length: 200 }, (_, i) => ({
+        id: randomUUID(), canonical_root: path.join(root, `missing-${i}`),
+        root_identity: { dev: 0, ino: 0 }, project_name: `fixture-${i}-${"long-name-".repeat(30)}`,
+        tools: ["claude-code"], allow_exec_adapters: false,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+      }));
+      const original = JSON.stringify({ version: 1, projects });
+      fs.writeFileSync(registry, original);
+      const result = spawnSync(process.execPath, ["--import", "tsx", indexPath, "projects", action, "--registry-file", registry, "--json"], {
+        cwd: repoRoot, encoding: "utf8", timeout: 20_000,
+      });
+      expect(result.status, result.stderr).toBe(0);
+      expect(Buffer.byteLength(result.stdout)).toBeGreaterThan(65_536);
+      const parsed = JSON.parse(result.stdout);
+      const rows = action === "list" ? parsed : action === "prune" ? parsed.stale : parsed.projects;
+      expect(rows).toHaveLength(projects.length);
+      expect(JSON.stringify(rows)).toContain(projects.at(-1)!.id);
+      expect(fs.readFileSync(registry, "utf8")).toBe(original);
+      expect(fs.readdirSync(root)).toEqual(["projects.json"]);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
   it("audits instructions as JSON without writing and rejects write intent", () => {
     const project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-audit-cli-"));
     try {
