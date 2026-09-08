@@ -14,9 +14,7 @@ cut, both npmjs.org and GitHub Packages still reported
 `@mcprotein/anamnesis@0.7.0` as latest; release prep must publish npmjs.org and
 GitHub Packages in parity before marking the public package complete.
 
-Branch-state note: the current unreleased WIP line is allowed to remain in the
-existing branch state. Starting with the next version line, version-specific
-work should happen on `release/vX.Y` branches with focused `feat/vX.Y/<topic>`
+Branch-state note: version-specific work should happen on `release/vX.Y` branches with focused `feat/vX.Y/<topic>`
 branches, then merge to `main` only when that release line is verified and
 ready to tag. After publish and post-publish smoke pass, delete the merged
 release branch locally and remotely unless a documented blocker or immediate
@@ -1899,14 +1897,14 @@ Exit criteria:
 
 ---
 
-## v1.18 — *in progress*
+## v1.18 — released 2026-08-20; continuity follow-ups
 
 > **Theme: evidence-backed work-unit continuity across long agent runs**
 
 ### Codex native hook trust boundary
 
-The current unreleased line also closes a runtime safety gap in Codex hook
-installation. `status` and `doctor` distinguish local registration from
+Later releases also closed a runtime safety gap in Codex hook installation
+(see the v1.22 entries in [CHANGELOG.md](../CHANGELOG.md)). `status` and `doctor` distinguish local registration from
 Codex's `trusted`, `untrusted`, `modified`, and `managed` runtime states, and
 `hooks codex trust --dry-run|--apply` provides a separate explicit approval
 step. Approval consumes only app-server-returned keys and hashes for exact
@@ -2494,7 +2492,7 @@ Exit criteria:
 ## v1.24 — Instruction efficiency and explicit audit
 
 Status: implementation and bounded Astra validation complete. Verify registry
-availability with `npm run release:verify -- --version 1.24.1`; implementation
+availability with `npm run release:verify -- --version 1.24.2`; implementation
 status alone is not evidence of publication.
 
 - Add explicit, read-only `context audit-instructions` with bounded local

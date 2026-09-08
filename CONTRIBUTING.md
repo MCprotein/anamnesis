@@ -1,6 +1,7 @@
 # Contributing to anamnesis
 
-Thanks for considering it. v0.1 is daily-use alpha — feedback, fragment contributions, and adapter ideas are all welcome.
+Feedback, fragment contributions, and adapter ideas are welcome. Current release
+versions and changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 This document covers the most common path: **adding or extending a fragment**. Tooling-internals contributions follow standard Node/TypeScript practices (tests required, `npm run typecheck` and `npm run lint` clean, prefer focused PRs).
 
@@ -33,7 +34,7 @@ capabilities:
   - type: ontology
     source: content/ontology.snippet.yaml
 
-  # Optional: hook script (only on Claude Code in v0.1)
+  # Optional: a hook script scoped to the Claude Code adapter
   - type: executable_hook
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/my-validate.sh
@@ -57,10 +58,12 @@ owns:                    # for reference / future cleanup tooling
 |---|---|---|
 | `project_memory` | Free-form text inserted into AGENTS.md region | a markdown file |
 | `ontology` | Structured YAML slice (rendered to `.anamnesis/ontology/<id>.yaml`) | a yaml file |
-| `executable_hook` | Shell script run on a Claude Code event | a shell script (mode 0755 set by adapter) |
-| `slash_command` | A markdown file → `.claude/commands/<name>.md` | markdown |
-| `skill` | Directory with `SKILL.md` (+ optional refs) → `.claude/skills/<name>/` | a directory |
+| `executable_hook` | Event automation rendered as supported native hooks or instruction fallbacks per adapter | declared hook source; executable permissions set by adapter |
+| `slash_command` | User-invoked procedure; native Claude commands or Codex/Cursor instruction fallbacks | markdown |
+| `skill` | Reusable procedure; native Claude/Codex skill directories or Cursor instruction fallback | directory with `SKILL.md` (+ optional refs) |
 | `task_harness` | Reusable task contract rendered to `.anamnesis/task-harnesses/<name>.yaml` and indexed for retrieval | yaml |
+
+See [adapter parity](docs/ADAPTER-PARITY.md) for native and fallback surfaces.
 
 ### Trigger (rulebook)
 
