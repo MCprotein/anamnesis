@@ -2,6 +2,14 @@
 
 Compared with released 1.24.3 using GPT-6 Astra, high effort, 2026-09-17. Main cohort: 3 scenarios × 3 repetitions × 2 policies = 18 executions. Separately defined missing-path holdout: 2 repetitions × 2 policies = 4 executions. All 22 executions passed.
 
+![GPT-6 Astra high-reasoning retrieval batching pilot: per-scenario tokens and elapsed-time changes](retrieval-batching-summary.svg)
+
+Rebuild this chart from the recorded JSON, without calling a model:
+
+```bash
+uv run --with matplotlib docs/benchmark-evidence/retrieval-batching-candidate/render-chart.py
+```
+
 ## Results
 
 Means per execution. Total tokens include cached input, plus output; these are not billing savings. Shell commands exclude native patches and do not equal model round trips.
