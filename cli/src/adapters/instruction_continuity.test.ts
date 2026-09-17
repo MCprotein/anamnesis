@@ -96,6 +96,9 @@ describe("instruction continuity contract", () => {
       expect(agents).toContain("필수 온톨로지·active handoff 확인은 유지함");
       expect(agents).toContain("수정 작업이라는 이유만으로 query 를 강제하지 않음");
       expect(agents).toContain("이미 완료된 native startup 탐색은 재실행하지 않음");
+      expect(agents).toContain("근거 부족이 이미 명확하면");
+      expect(agents).toContain("불필요한 사전 목록 탐색 없이");
+      expect(agents).toContain("query 를 서로 독립적인 초기 확인과 같은 호출에 묶음");
       expect(agents).not.toContain("불충분하거나 파일을 수정하는 작업이면");
 	});
 
@@ -164,6 +167,8 @@ describe("Claude startup source retrieval guidance", () => {
             expect(result.stdout).toContain("Editing alone does not require a query");
             expect(result.stdout).toContain("missing, unresolved, ambiguous, stale or insufficient");
             expect(result.stdout).toContain("read returned source_path/stable_ref");
+            expect(result.stdout).toContain("batch that query with independent startup checks");
+            expect(result.stdout).toContain("do not add a preliminary directory scan");
             expect(result.stdout).not.toContain("or the task edits files, run");
             expect(result.stdout).not.toContain("ORIGINAL_SOURCE_BODY");
           } else {

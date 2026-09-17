@@ -1,5 +1,5 @@
 id: base
-version: 28
+version: 29
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,

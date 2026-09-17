@@ -1,0 +1,49 @@
+{
+  "model": "gpt-6-astra",
+  "reasoning_effort": "high",
+  "codex_version": "codex-cli 0.154.0",
+  "retrieval_cli_version": "1.24.3",
+  "cohorts": {
+    "main": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "repetitions": 3,
+      "conditions": [
+        "1.24.3",
+        "candidate"
+      ],
+      "policy_sha256": {
+        "1.24.3": "1c3b911cf9452edef60680cb8612464bfbe1caf04c152a97600f98b3ee6e01db",
+        "candidate": "913d20b5cdca87936fb4c9bd281620281cf2865984c68f70e1aa8ae36bff8700"
+      },
+      "scope": "Baseline AGENTS instruction change only; real anamnesis 1.24.3 retrieval engine held constant; no native hooks; isolated synthetic fixtures, no user instructions/MCP; cold sessions; not end-to-end version or startup-hook benchmark",
+      "scenarios": [
+        "known-read",
+        "known-edit",
+        "missing-evidence"
+      ],
+      "order": "rounds 1/3 old then new, round 2 new then old; scenarios parallel up to 2; independent fixtures"
+    },
+    "holdout": {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high",
+      "repetitions": 2,
+      "conditions": [
+        "1.24.3",
+        "candidate"
+      ],
+      "policy_sha256": {
+        "1.24.3": "1c3b911cf9452edef60680cb8612464bfbe1caf04c152a97600f98b3ee6e01db",
+        "candidate": "913d20b5cdca87936fb4c9bd281620281cf2865984c68f70e1aa8ae36bff8700"
+      },
+      "scope": "Baseline AGENTS instruction change only; real anamnesis 1.24.3 retrieval engine held constant; no native hooks; isolated synthetic fixtures, no user instructions/MCP; cold sessions; not end-to-end version or startup-hook benchmark",
+      "scenarios": [
+        "missing-path"
+      ],
+      "order": "rounds 1/3 old then new, round 2 new then old; scenarios parallel up to 2; independent fixtures"
+    }
+  },
+  "total_runs": 22,
+  "concurrency": "main at most 2; holdout overlaps with main, at most 3 total; timing is diagnostic",
+  "control_commit": "94113570b78b2a0d361d576d6556672e6f1b947b"
+}

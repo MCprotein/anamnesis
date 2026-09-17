@@ -42,11 +42,18 @@ Base fragment v28 applies the same evidence rule to read-only and editing tasks:
 - Preserve ontology and active-handoff checks. Do not replay completed native
   startup discovery or reread unchanged originals already checked in the session.
   Compact digests and pointers are not substitutes for those original sources.
+- Base fragment v29 schedules already-required queries alongside independent
+  startup checks, without a preliminary listing or rereading loaded instructions.
+  Known paths are read directly; missing paths/read failures permit scoped discovery.
+  Reading newly returned sources still depends on inspecting the query result.
 - Retrieval does not expand task scope or grant mutation authority.
 
 These are cross-client instruction contracts, not a model-specific runtime
 classifier. Rendering and hook tests check the emitted guidance; they do not
-prove model compliance or a token/latency improvement.
+prove model compliance or a token/latency improvement. A bounded GPT-6 Astra
+[batching A/B pilot](benchmark-evidence/retrieval-batching-candidate/README.md)
+records measured task behavior and token deltas separately, including neutral
+results and limitations.
 
 ## Inputs
 

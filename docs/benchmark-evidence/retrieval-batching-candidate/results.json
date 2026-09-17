@@ -1,0 +1,1178 @@
+[
+  {
+    "id": "known-read-r1-1.24.3",
+    "scenario": "known-read",
+    "repetition": 1,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 15.444,
+    "usage": {
+      "input_tokens": 34529,
+      "cached_input_tokens": 16896,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 224,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 10,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 1,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nroot = Path('.')\npaths = sorted((root / '.anamnesis/ontology').glob('*.yaml'))\nfor p in (root / 'system_graph.yaml', root / '.anamnesis/handoff/active.md', root / 'docs/cache-policy.md'):\n    if p not in paths:\n        paths.append(p)\nprint('Handoff directory exists:', (root / '.anamnesis/handoff').is_dir())\nfor p in paths:\n    print(f'\\\\n--- {p} ---')\n    try:\n        print(p.read_text())\n    except FileNotFoundError:\n        print('MISSING')\nPY\"",
+        "exit_code": 0,
+        "output": "Handoff directory exists: False\n\n--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\n\n--- system_graph.yaml ---\nMISSING\n\n--- .anamnesis/handoff/active.md ---\nMISSING\n\n--- docs/cache-policy.md ---\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 34753,
+    "uncached_input_tokens": 17633,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-read-r1-candidate",
+    "scenario": "known-read",
+    "repetition": 1,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 14.605,
+    "usage": {
+      "input_tokens": 34773,
+      "cached_input_tokens": 17024,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 222,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 10,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 2,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'for f in .anamnesis/ontology/*.yaml(N) system_graph.yaml(N); do print -r -- \"--- $f\"; cat \"$f\"; done\nif [[ -d .anamnesis/handoff ]]; then\n  if [[ -f .anamnesis/handoff/active.md ]]; then cat .anamnesis/handoff/active.md; else print -r -- '\"'No active handoff.'; fi\nelse\n  print -r -- 'No handoff directory.'\nfi\"",
+        "exit_code": 0,
+        "output": "--- .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\nNo handoff directory.\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 34995,
+    "uncached_input_tokens": 17749,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-read-r2-candidate",
+    "scenario": "known-read",
+    "repetition": 2,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 14.966,
+    "usage": {
+      "input_tokens": 34771,
+      "cached_input_tokens": 17024,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 253,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 10,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 1,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nroot = Path('.')\npaths = sorted((root / '.anamnesis/ontology').glob('*.yaml'))\nfor p in [root / 'system_graph.yaml', root / '.anamnesis/system_graph.yaml']:\n    if p.exists() and p not in paths:\n        paths.append(p)\nhandoff = root / '.anamnesis/handoff'\nprint(f'Handoff directory exists: {handoff.is_dir()}')\nactive = handoff / 'active.md'\nif active.exists():\n    paths.append(active)\nelse:\n    print('No active handoff file')\npaths.append(root / 'docs/cache-policy.md')\nfor p in paths:\n    print(f'\\\\n--- {p} ---')\n    print(p.read_text())\nPY\"",
+        "exit_code": 0,
+        "output": "Handoff directory exists: False\nNo active handoff file\n\n--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\n\n--- docs/cache-policy.md ---\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 35024,
+    "uncached_input_tokens": 17747,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-read-r2-1.24.3",
+    "scenario": "known-read",
+    "repetition": 2,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 14.084,
+    "usage": {
+      "input_tokens": 36043,
+      "cached_input_tokens": 16896,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 211,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 10,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 1,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\np = Path('.')\npaths = [p/'AGENTS.md', p/'docs/cache-policy.md']\no = p/'.anamnesis/ontology'\npaths += sorted(o.glob('*.yaml'))\npaths += [p/'system_graph.yaml', p/'.anamnesis/handoff/active.md']\nprint('handoff_directory_exists:', (p/'.anamnesis/handoff').is_dir())\nfor path in paths:\n    print('\\\\nFILE:', path)\n    if path.exists():\n        print(path.read_text())\n    else:\n        print('MISSING')\nPY\"",
+        "exit_code": 0,
+        "output": "handoff_directory_exists: False\n\nFILE: AGENTS.md\n## anamnesis baseline\n\n이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.\n세션마다 에이전트가 프로젝트 맥락을 처음부터 다시 배우지 않도록 컨텍스트·온톨로지·훅·스킬을 자동 동기화.\n\n### 운영 원칙\n\n- `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.\n- 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.\n- 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.\n- 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query \"<검색어>\"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.\n- 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.\n- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.\n- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.\n- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.\n- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).\n\n### 자주 쓰는 커맨드\n\n- `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.\n- `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.\n  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.\n- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.\n- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.\n- `anamnesis context query \"<terms>\"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.\n- `anamnesis status` — 설치된 fragment·드리프트 상태.\n- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.\n\n### Session start: handoff 자동 확인 (도구 비종속)\n\n세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:\n\n1. `.anamnesis/handoff/` 디렉토리 존재 확인.\n2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.\n3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.\n4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.\n5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.\n\nClaude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.\nCodex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nCursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nClaude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.\n\n\nFILE: docs/cache-policy.md\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\n\nFILE: .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\n\nFILE: system_graph.yaml\nMISSING\n\nFILE: .anamnesis/handoff/active.md\nMISSING\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 36254,
+    "uncached_input_tokens": 19147,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-read-r3-1.24.3",
+    "scenario": "known-read",
+    "repetition": 3,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 12.395,
+    "usage": {
+      "input_tokens": 34464,
+      "cached_input_tokens": 28544,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 165,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 10,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 1,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc 'pwd; for f in .anamnesis/ontology/*.yaml(N) system_graph.yaml .anamnesis/handoff/active.md docs/cache-policy.md; do if [[ -f \"$f\" ]]; then printf '\"'\\\\nFILE: %s\\\\n' \\\"\"'$f\"; cat \"$f\"; fi; done; if [[ -d .anamnesis/handoff ]]; then printf '\"'\\\\nHandoff directory exists\\\\n'; else printf '\\\\nHandoff directory absent\\\\n'; fi\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-v1/fixtures/known-read-r3-1.24.3\n\nFILE: .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nFILE: docs/cache-policy.md\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\nHandoff directory absent\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 34629,
+    "uncached_input_tokens": 5920,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-read-r3-candidate",
+    "scenario": "known-read",
+    "repetition": 3,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 15.247,
+    "usage": {
+      "input_tokens": 34769,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 217,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 10,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 2,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'for f in .anamnesis/ontology/*.yaml(N) system_graph.yaml; do if [ -f \"$f\" ]; then printf '\"'\\\\n%s\\\\n' \\\"\"'$f\"; cat \"$f\"; fi; done\nif [ -d .anamnesis/handoff ]; then if [ -f .anamnesis/handoff/active.md ]; then cat .anamnesis/handoff/active.md; else printf '\"'No active handoff file\\\\n'; fi; else printf 'No handoff directory\\\\n'; fi\"",
+        "exit_code": 0,
+        "output": "\n.anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\nNo handoff directory\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 34986,
+    "uncached_input_tokens": 34769,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-edit-r1-1.24.3",
+    "scenario": "known-edit",
+    "repetition": 1,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 30.752,
+    "usage": {
+      "input_tokens": 72898,
+      "cached_input_tokens": 52992,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 434,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 45,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 3,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files -g 'AGENTS.md' -g 'config.json' -g 'cache-policy.md' -g '*system_graph.yaml' -g '.anamnesis/**' -g '\"'!node_modules'\"' -g '\"'! .git'\"' --hidden\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-v1/fixtures/known-edit-r1-1.24.3\nAGENTS.md\n.anamnesis/ontology/base.yaml\ndocs/cache-policy.md\nconfig.json\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor p in [Path('AGENTS.md'), *sorted(Path('.anamnesis/ontology').glob('*.yaml')), Path('system_graph.yaml'), Path('.anamnesis/handoff/active.md'), Path('docs/cache-policy.md'), Path('config.json')]:\n    print(f'FILE {p}')\n    print(p.read_text() if p.exists() else 'MISSING')\nprint('HANDOFF_DIRECTORY_EXISTS', Path('.anamnesis/handoff').is_dir())\nPY\"",
+        "exit_code": 0,
+        "output": "FILE AGENTS.md\n## anamnesis baseline\n\n이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.\n세션마다 에이전트가 프로젝트 맥락을 처음부터 다시 배우지 않도록 컨텍스트·온톨로지·훅·스킬을 자동 동기화.\n\n### 운영 원칙\n\n- `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.\n- 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.\n- 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.\n- 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query \"<검색어>\"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.\n- 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.\n- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.\n- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.\n- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.\n- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).\n\n### 자주 쓰는 커맨드\n\n- `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.\n- `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.\n  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.\n- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.\n- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.\n- `anamnesis context query \"<terms>\"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.\n- `anamnesis status` — 설치된 fragment·드리프트 상태.\n- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.\n\n### Session start: handoff 자동 확인 (도구 비종속)\n\n세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:\n\n1. `.anamnesis/handoff/` 디렉토리 존재 확인.\n2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.\n3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.\n4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.\n5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.\n\nClaude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.\nCodex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nCursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nClaude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.\n\nFILE .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nFILE system_graph.yaml\nMISSING\nFILE .anamnesis/handoff/active.md\nMISSING\nFILE docs/cache-policy.md\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\nFILE config.json\n{\"ttl\": 10, \"retries\": 3}\n\nHANDOFF_DIRECTORY_EXISTS False\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 45, 'retries': 3}\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 45}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 73332,
+    "uncached_input_tokens": 19906,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-edit-r1-candidate",
+    "scenario": "known-edit",
+    "repetition": 1,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 22.139,
+    "usage": {
+      "input_tokens": 52709,
+      "cached_input_tokens": 34432,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 423,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 45,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 3,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc 'cat config.json docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "{\"ttl\": 10, \"retries\": 3}\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor p in [*sorted(Path('.anamnesis/ontology').glob('*.yaml')), Path('system_graph.yaml'), Path('.anamnesis/ontology/system_graph.yaml')]:\n    if p.is_file():\n        print(f'--- {p} ---')\n        print(p.read_text())\nh=Path('.anamnesis/handoff')\nprint(f'Handoff directory exists: {h.is_dir()}')\na=h/'active.md'\nif a.is_file():\n    print(f'--- {a} ---')\n    print(a.read_text())\nPY\"",
+        "exit_code": 0,
+        "output": "--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nHandoff directory exists: False\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 45, 'retries': 3}, config\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 45}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 53132,
+    "uncached_input_tokens": 18277,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-edit-r2-candidate",
+    "scenario": "known-edit",
+    "repetition": 2,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 24.625,
+    "usage": {
+      "input_tokens": 52614,
+      "cached_input_tokens": 34432,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 411,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 45,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 2,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor p in sorted(Path('.anamnesis/ontology').glob('*.yaml')):\n    print(f'--- {p} ---\\\\n{p.read_text()}')\np = Path('system_graph.yaml')\nif p.exists(): print(f'--- {p} ---\\\\n{p.read_text()}')\nh = Path('.anamnesis/handoff')\nprint(f'handoff_directory_exists={h.is_dir()}')\np = h / 'active.md'\nif p.exists(): print(f'--- {p} ---\\\\n{p.read_text()}')\nfor name in ['docs/cache-policy.md', 'config.json']:\n    p = Path(name)\n    print(f'--- {p} ---\\\\n{p.read_text()}')\nPY\"",
+        "exit_code": 0,
+        "output": "--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nhandoff_directory_exists=False\n--- docs/cache-policy.md ---\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\n--- config.json ---\n{\"ttl\": 10, \"retries\": 3}\n\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 45, 'retries': 3}\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 45}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 53025,
+    "uncached_input_tokens": 18182,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-edit-r2-1.24.3",
+    "scenario": "known-edit",
+    "repetition": 2,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 31.458,
+    "usage": {
+      "input_tokens": 73303,
+      "cached_input_tokens": 53248,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 509,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 45,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 3,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files -g 'AGENTS.md' -g 'config.json' -g 'cache-policy.md' -g '*system_graph.yaml' -g '.anamnesis/**' -g '\"'!node_modules'\"' -g '\"'!'\"\\\\.git' --hidden\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-v1/fixtures/known-edit-r2-1.24.3\nAGENTS.md\n.anamnesis/ontology/base.yaml\ndocs/cache-policy.md\nconfig.json\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\npaths = [Path('AGENTS.md'), *sorted(Path('.anamnesis/ontology').glob('*.yaml'))]\npaths += [p for p in (Path('system_graph.yaml'), Path('.anamnesis/system_graph.yaml')) if p.exists()]\npaths += [Path('.anamnesis/handoff/active.md')] if Path('.anamnesis/handoff/active.md').exists() else []\npaths += [Path('docs/cache-policy.md'), Path('config.json')]\nprint('handoff directory exists:', Path('.anamnesis/handoff').is_dir())\nfor p in paths:\n    print(f'\\\\n--- {p} ---\\\\n{p.read_text()}')\nprint('\\\\n--- git status ---')\nsubprocess.run(['git','status','--short'],check=True)\nPY\"",
+        "exit_code": 1,
+        "output": "fatal: not a git repository (or any of the parent directories): .git\nhandoff directory exists: False\n\n--- AGENTS.md ---\n## anamnesis baseline\n\n이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.\n세션마다 에이전트가 프로젝트 맥락을 처음부터 다시 배우지 않도록 컨텍스트·온톨로지·훅·스킬을 자동 동기화.\n\n### 운영 원칙\n\n- `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.\n- 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.\n- 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.\n- 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query \"<검색어>\"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.\n- 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.\n- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.\n- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.\n- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.\n- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).\n\n### 자주 쓰는 커맨드\n\n- `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.\n- `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.\n  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.\n- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.\n- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.\n- `anamnesis context query \"<terms>\"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.\n- `anamnesis status` — 설치된 fragment·드리프트 상태.\n- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.\n\n### Session start: handoff 자동 확인 (도구 비종속)\n\n세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:\n\n1. `.anamnesis/handoff/` 디렉토리 존재 확인.\n2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.\n3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.\n4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.\n5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.\n\nClaude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.\nCodex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nCursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nClaude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.\n\n\n--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\n\n--- docs/cache-policy.md ---\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\n\n--- config.json ---\n{\"ttl\": 10, \"retries\": 3}\n\n\n--- git status ---\nTraceback (most recent call last):\n  File \"<stdin>\", line 11, in <module>\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py\", line 528, in run\n    raise CalledProcessError(retcode, process.args,\nsubprocess.CalledProcessError: Command '['git', 'status', '--short']' returned non-zero exit status 128.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 45, 'retries': 3}, config\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 45}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 73812,
+    "uncached_input_tokens": 20055,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-edit-r3-1.24.3",
+    "scenario": "known-edit",
+    "repetition": 3,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 33.996,
+    "usage": {
+      "input_tokens": 72993,
+      "cached_input_tokens": 53120,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 420,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 45,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 3,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files --hidden -g AGENTS.md -g config.json -g cache-policy.md -g '*.yaml' -g active.md -g '\"'!'\"\\\\.git' .anamnesis docs . 2>/dev/null\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-v1/fixtures/known-edit-r3-1.24.3\n./AGENTS.md\ndocs/cache-policy.md\n./config.json\n./docs/cache-policy.md\n./.anamnesis/ontology/base.yaml\n.anamnesis/ontology/base.yaml\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor name in ['AGENTS.md', '.anamnesis/ontology/base.yaml', 'system_graph.yaml', '.anamnesis/ontology/system_graph.yaml', '.anamnesis/handoff/active.md', 'docs/cache-policy.md', 'config.json']:\n    p=Path(name)\n    print(f'--- {name} ---')\n    print(p.read_text() if p.exists() else '(absent)')\nprint('handoff directory exists:', Path('.anamnesis/handoff').is_dir())\nPY\"",
+        "exit_code": 0,
+        "output": "--- AGENTS.md ---\n## anamnesis baseline\n\n이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.\n세션마다 에이전트가 프로젝트 맥락을 처음부터 다시 배우지 않도록 컨텍스트·온톨로지·훅·스킬을 자동 동기화.\n\n### 운영 원칙\n\n- `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.\n- 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.\n- 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.\n- 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query \"<검색어>\"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.\n- 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.\n- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.\n- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.\n- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.\n- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).\n\n### 자주 쓰는 커맨드\n\n- `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.\n- `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.\n  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.\n- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.\n- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.\n- `anamnesis context query \"<terms>\"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.\n- `anamnesis status` — 설치된 fragment·드리프트 상태.\n- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.\n\n### Session start: handoff 자동 확인 (도구 비종속)\n\n세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:\n\n1. `.anamnesis/handoff/` 디렉토리 존재 확인.\n2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.\n3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.\n4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.\n5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.\n\nClaude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.\nCodex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nCursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nClaude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.\n\n--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\n--- system_graph.yaml ---\n(absent)\n--- .anamnesis/ontology/system_graph.yaml ---\n(absent)\n--- .anamnesis/handoff/active.md ---\n(absent)\n--- docs/cache-policy.md ---\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\n--- config.json ---\n{\"ttl\": 10, \"retries\": 3}\n\nhandoff directory exists: False\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\np = Path('config.json')\noriginal = p.read_text()\nbefore = json.loads(original)\nupdated = original.replace('\\\"ttl\\\": 10', '\\\"ttl\\\": 45', 1)\nafter = json.loads(updated)\nassert after == {**before, 'ttl': 45}\nassert after['retries'] == before['retries']\np.write_text(updated)\nassert json.loads(p.read_text()) == after\nprint(json.dumps({'ttl': after['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 45}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 73413,
+    "uncached_input_tokens": 19873,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "known-edit-r3-candidate",
+    "scenario": "known-edit",
+    "repetition": 3,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 24.855,
+    "usage": {
+      "input_tokens": 52630,
+      "cached_input_tokens": 34432,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 420,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 45
+    },
+    "config": {
+      "ttl": 45,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 0,
+    "tool_calls": 2,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor p in sorted(Path('.anamnesis/ontology').glob('*.yaml')):\n    print(f'--- {p} ---')\n    print(p.read_text())\np = Path('system_graph.yaml')\nif p.exists():\n    print(f'--- {p} ---')\n    print(p.read_text())\nh = Path('.anamnesis/handoff')\nprint(f'handoff directory exists: {h.is_dir()}')\np = h / 'active.md'\nif p.exists():\n    print(f'--- {p} ---')\n    print(p.read_text())\nfor name in ['docs/cache-policy.md', 'config.json']:\n    p = Path(name)\n    print(f'--- {p} ---')\n    print(p.read_text())\nPY\"",
+        "exit_code": 0,
+        "output": "--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nhandoff directory exists: False\n--- docs/cache-policy.md ---\n# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 45 seconds. Preserve retries.\n\n--- config.json ---\n{\"ttl\": 10, \"retries\": 3}\n\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 45, 'retries': 3}, config\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 45}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 53050,
+    "uncached_input_tokens": 18198,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "missing-evidence-r1-1.24.3",
+    "scenario": "missing-evidence",
+    "repetition": 1,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 31.435,
+    "usage": {
+      "input_tokens": 113197,
+      "cached_input_tokens": 103936,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 498,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 90
+    },
+    "config": {
+      "ttl": 90,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 5,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files --hidden -g '\"'!'\"\\\\.git/**' -g 'AGENTS.md' -g 'config.json' -g 'system_graph.yaml' -g '.anamnesis/**' -g 'docs/legacy.md'\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-v1/fixtures/missing-evidence-r1-1.24.3\nAGENTS.md\n.anamnesis/ontology/base.yaml\ndocs/legacy.md\nconfig.json\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor p in [Path('AGENTS.md'), *sorted(Path('.anamnesis/ontology').glob('*.yaml')), Path('system_graph.yaml'), Path('.anamnesis/handoff/active.md'), Path('config.json'), Path('docs/legacy.md')]:\n print(f'FILE {p}')\n print(p.read_text() if p.exists() else 'MISSING')\nprint('HANDOFF_DIRECTORY_EXISTS', Path('.anamnesis/handoff').is_dir())\nPY\"",
+        "exit_code": 0,
+        "output": "FILE AGENTS.md\n## anamnesis baseline\n\n이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.\n세션마다 에이전트가 프로젝트 맥락을 처음부터 다시 배우지 않도록 컨텍스트·온톨로지·훅·스킬을 자동 동기화.\n\n### 운영 원칙\n\n- `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.\n- 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.\n- 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.\n- 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query \"<검색어>\"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.\n- 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.\n- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.\n- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.\n- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.\n- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).\n\n### 자주 쓰는 커맨드\n\n- `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.\n- `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.\n  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.\n- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.\n- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.\n- `anamnesis context query \"<terms>\"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.\n- `anamnesis status` — 설치된 fragment·드리프트 상태.\n- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.\n\n### Session start: handoff 자동 확인 (도구 비종속)\n\n세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:\n\n1. `.anamnesis/handoff/` 디렉토리 존재 확인.\n2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.\n3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.\n4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.\n5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.\n\nClaude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.\nCodex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nCursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nClaude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.\n\nFILE .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nFILE system_graph.yaml\nMISSING\nFILE .anamnesis/handoff/active.md\nMISSING\nFILE config.json\n{\"ttl\": 10, \"retries\": 3}\n\nFILE docs/legacy.md\n# Cache policy (obsolete)\nThis document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing.\nLegacy TTL was 20.\n\nHANDOFF_DIRECTORY_EXISTS False\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current cache TTL policy\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current cache TTL policy\n  searched: 9, matches: 6\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [55] doc-heading docs/cache-policy.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 90 seconds. Preserve retries.\n  [43] doc-heading docs/legacy.md heading:cache-policy-obsolete\n      Cache policy (obsolete)\n      This document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing. Legacy TTL was 20.\n  [34] doc-page docs/cache-policy.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [16] doc-page docs/legacy.md file\n      Cache policy (obsolete)\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 90 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 90, 'retries': 3}\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 90}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 113695,
+    "uncached_input_tokens": 9261,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "missing-evidence-r1-candidate",
+    "scenario": "missing-evidence",
+    "repetition": 1,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 31.78,
+    "usage": {
+      "input_tokens": 71793,
+      "cached_input_tokens": 64512,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 397,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 90
+    },
+    "config": {
+      "ttl": 90,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 4,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc 'for f in .anamnesis/ontology/*.yaml(N) system_graph.yaml .anamnesis/handoff/active.md; do if [[ -f \"$f\" ]]; then printf '\"'\\\\n%s\\\\n' \\\"\"'$f\"; cat \"$f\"; fi; done\nif [[ -d .anamnesis/handoff ]]; then printf '\"'\\\\nhandoff directory exists\\\\n'; else printf '\\\\nhandoff directory absent\\\\n'; fi\ncat config.json\"",
+        "exit_code": 0,
+        "output": "\n.anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nhandoff directory absent\n{\"ttl\": 10, \"retries\": 3}\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current cache TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current cache TTL\n  searched: 9, matches: 6\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [40] doc-heading docs/cache-policy.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 90 seconds. Preserve retries.\n  [28] doc-heading docs/legacy.md heading:cache-policy-obsolete\n      Cache policy (obsolete)\n      This document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing. Legacy TTL was 20.\n  [22] doc-page docs/cache-policy.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [10] doc-page docs/legacy.md file\n      Cache policy (obsolete)\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 90 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 -c 'import json; from pathlib import Path; config = json.loads(Path(\\\"config.json\\\").read_text()); assert config == {\\\"ttl\\\": 90, \\\"retries\\\": 3}; print(json.dumps({\\\"ttl\\\": config[\\\"ttl\\\"]}))'\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 90}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 72190,
+    "uncached_input_tokens": 7281,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "missing-evidence-r2-candidate",
+    "scenario": "missing-evidence",
+    "repetition": 2,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 28.764,
+    "usage": {
+      "input_tokens": 71826,
+      "cached_input_tokens": 64640,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 405,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 90
+    },
+    "config": {
+      "ttl": 90,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 4,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc 'for f in .anamnesis/ontology/*.yaml(N) system_graph.yaml .anamnesis/ontology/system_graph.yaml .anamnesis/handoff/active.md; do if [[ -f \"$f\" ]]; then printf '\"'\\\\n%s\\\\n' \\\"\"'$f\"; cat \"$f\"; fi; done\nif [[ -d .anamnesis/handoff ]]; then printf '\"'\\\\nhandoff directory exists\\\\n'; else printf '\\\\nhandoff directory absent\\\\n'; fi\ncat config.json\"",
+        "exit_code": 0,
+        "output": "\n.anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nhandoff directory absent\n{\"ttl\": 10, \"retries\": 3}\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current cache TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current cache TTL\n  searched: 9, matches: 6\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [40] doc-heading docs/cache-policy.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 90 seconds. Preserve retries.\n  [28] doc-heading docs/legacy.md heading:cache-policy-obsolete\n      Cache policy (obsolete)\n      This document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing. Legacy TTL was 20.\n  [22] doc-page docs/cache-policy.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [10] doc-page docs/legacy.md file\n      Cache policy (obsolete)\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 90 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 -c 'import json; from pathlib import Path; c=json.loads(Path(\\\"config.json\\\").read_text()); assert c == {\\\"ttl\\\":90,\\\"retries\\\":3}; print(json.dumps({\\\"ttl\\\":c[\\\"ttl\\\"]}))'\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 90}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 72231,
+    "uncached_input_tokens": 7186,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "missing-evidence-r2-1.24.3",
+    "scenario": "missing-evidence",
+    "repetition": 2,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 32.56,
+    "usage": {
+      "input_tokens": 113181,
+      "cached_input_tokens": 92288,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 491,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 90
+    },
+    "config": {
+      "ttl": 90,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 5,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files --hidden -g '\"'! .git'\"' -g 'AGENTS.md' -g 'Agentfile' -g 'config.json' -g '.anamnesis/**' -g 'system_graph.yaml' -g 'docs/legacy.md'\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-v1/fixtures/missing-evidence-r2-1.24.3\nAGENTS.md\n.anamnesis/ontology/base.yaml\ndocs/legacy.md\nconfig.json\nAgentfile\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'for f in AGENTS.md .anamnesis/ontology/*.yaml system_graph.yaml .anamnesis/handoff/active.md docs/legacy.md config.json; do if [ -f \"$f\" ]; then printf '\"'\\\\n%s\\\\n' \\\"\"'$f\"; cat \"$f\"; else printf '\"'\\\\nMissing: %s\\\\n' \\\"\"'$f\"; fi; done\nif [ -d .anamnesis/handoff ]; then printf '\"'\\\\nHandoff directory exists\\\\n'; else printf '\\\\nHandoff directory absent\\\\n'; fi\"",
+        "exit_code": 0,
+        "output": "\nAGENTS.md\n## anamnesis baseline\n\n이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.\n세션마다 에이전트가 프로젝트 맥락을 처음부터 다시 배우지 않도록 컨텍스트·온톨로지·훅·스킬을 자동 동기화.\n\n### 운영 원칙\n\n- `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.\n- 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.\n- 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.\n- 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query \"<검색어>\"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.\n- 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.\n- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.\n- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.\n- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.\n- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).\n\n### 자주 쓰는 커맨드\n\n- `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.\n- `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.\n  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.\n- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.\n- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.\n- `anamnesis context query \"<terms>\"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.\n- `anamnesis status` — 설치된 fragment·드리프트 상태.\n- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.\n\n### Session start: handoff 자동 확인 (도구 비종속)\n\n세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:\n\n1. `.anamnesis/handoff/` 디렉토리 존재 확인.\n2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.\n3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.\n4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.\n5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.\n\nClaude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.\nCodex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nCursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nClaude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.\n\n.anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nMissing: system_graph.yaml\n\nMissing: .anamnesis/handoff/active.md\n\ndocs/legacy.md\n# Cache policy (obsolete)\nThis document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing.\nLegacy TTL was 20.\n\nconfig.json\n{\"ttl\": 10, \"retries\": 3}\n\nHandoff directory absent\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current cache policy TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current cache policy TTL\n  searched: 9, matches: 6\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [55] doc-heading docs/cache-policy.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 90 seconds. Preserve retries.\n  [43] doc-heading docs/legacy.md heading:cache-policy-obsolete\n      Cache policy (obsolete)\n      This document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing. Legacy TTL was 20.\n  [34] doc-page docs/cache-policy.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [16] doc-page docs/legacy.md file\n      Cache policy (obsolete)\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 90 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 -c 'import json; from pathlib import Path; data=json.loads(Path(\\\"config.json\\\").read_text()); assert data == {\\\"ttl\\\": 90, \\\"retries\\\": 3}; print(json.dumps({\\\"ttl\\\": data[\\\"ttl\\\"]}))'\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 90}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 113672,
+    "uncached_input_tokens": 20893,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "missing-evidence-r3-1.24.3",
+    "scenario": "missing-evidence",
+    "repetition": 3,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 36.492,
+    "usage": {
+      "input_tokens": 113242,
+      "cached_input_tokens": 92288,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 496,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 90
+    },
+    "config": {
+      "ttl": 90,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 5,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files --hidden -g '\"'!'\"\\\\.git' -g 'AGENTS.md' -g 'config.json' -g '*.yaml' -g '.anamnesis/handoff/*' -g 'docs/legacy.md'\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-v1/fixtures/missing-evidence-r3-1.24.3\nAGENTS.md\n.anamnesis/ontology/base.yaml\ndocs/legacy.md\nconfig.json\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor p in [Path('AGENTS.md'), *sorted(Path('.anamnesis/ontology').glob('*.yaml')), Path('system_graph.yaml'), Path('.anamnesis/handoff/active.md'), Path('config.json'), Path('docs/legacy.md')]:\n print(f'--- {p} ---')\n print(p.read_text() if p.exists() else 'MISSING')\nprint('handoff directory exists:', Path('.anamnesis/handoff').is_dir())\nPY\"",
+        "exit_code": 0,
+        "output": "--- AGENTS.md ---\n## anamnesis baseline\n\n이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.\n세션마다 에이전트가 프로젝트 맥락을 처음부터 다시 배우지 않도록 컨텍스트·온톨로지·훅·스킬을 자동 동기화.\n\n### 운영 원칙\n\n- `<!-- anamnesis:region ... -->` 으로 감싸진 영역은 자동 갱신 대상. 직접 편집하지 말 것.\n- 영역 밖은 자유. 사용자가 작성한 내용은 보존됨.\n- 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.\n- 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query \"<검색어>\"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.\n- 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.\n- 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.\n- 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.\n- 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.\n- `.claude/hooks`, `.claude/commands`, `.claude/skills`, `.codex/skills`, `.codex/hooks.json`, `.anamnesis/codex-native-hooks` 같은 실행 가능/에이전트 동작 어댑터는 `--allow-exec-adapters` 플래그가 있어야만 갱신됨 (supply-chain 보호).\n\n### 자주 쓰는 커맨드\n\n- `/load-context` — 현재 프로젝트의 온톨로지를 한눈에 요약.\n- `/handoff-prepare` — 작업 인계서 작성. 토큰 한도 임박 시 또는 다른 도구로 전환 전에 호출.\n  결과는 `.anamnesis/handoff/<ts>.md` 아카이브와 `.anamnesis/handoff/active.md` 현재 작업 인덱스에 저장되고, 다음 세션 시작 시 active open task 요약과 warm archive source pointer 로 compact 자동 주입됨.\n- `anamnesis-init` skill — 에이전트가 `anamnesis init` 을 대신 진행할 때 README/docs 처리 방식을 객관식으로 물어보고 CLI 플래그를 선택.\n- `doc-freshness-review` skill — `anamnesis context diagnose` 이후 CLI가 확정할 수 없는 README/CLAUDE/docs 의미적 stale claim 을 에이전트가 증거 기반으로 검토.\n- `anamnesis context query \"<terms>\"` — startup context 를 늘리지 않고 필요한 문서/온톨로지/핸드오프 source pointer 를 찾기. 결과 원문을 읽은 뒤 사용.\n- `anamnesis status` — 설치된 fragment·드리프트 상태.\n- `anamnesis apply --dry-run` — 라이브러리 갱신 변경사항 미리보기.\n\n### Session start: handoff 자동 확인 (도구 비종속)\n\n세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것:\n\n1. `.anamnesis/handoff/` 디렉토리 존재 확인.\n2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용.\n3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecated`, `superseded` 가 아닌 warm archive 를 필요한 경우 추가로 읽기. `Recently completed` 포인터와 cold/deprecated archive 는 startup context 로 취급하지 않음.\n4. frontmatter (created/updated / agent / git_ref) 와 본문 (Goal / Done / In flight / Decisions / Open questions / Next steps) 을 task context 로 받아들이고 작업 재개.\n5. `git log` 의 완료 커밋이나 현재 파일 상태 같은 정확한 근거로 핸드오프 작업이 이미 완료됐음이 명확하면 stale handoff 를 별도 확인 없이 무시할 수 있음. 현재 요청과 같은 작업인지, 계속해야 하는지, 버려도 되는지 경계가 불명확하면 사용자에게 확인할 것.\n\nClaude Code 는 SessionStart 훅 (`inject-handoff.sh`) 으로 compact handoff 요약과 source pointer 가 자동 stdout 주입됨. 전문 주입은 `ANAMNESIS_SESSION_CONTEXT_MODE=full` 디버그 모드에서만 사용.\nCodex 는 `--allow-exec-adapters` 로 `.codex/hooks.json` native SessionStart wrapper 가 설치된 경우 compact ontology/handoff 요약과 source pointer 가 자동 주입되고, 설치되지 않은 환경에서는 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nCursor 는 native SessionStart hook 이 없으므로 위 절차를 **agent 가 매 세션 시작 시 직접 수행**해야 함.\nClaude Code/Codex 는 Stop 훅 (`handoff-reminder.sh`) 으로 커밋되지 않은 변경이 최신 handoff 보다 새로울 때 `/handoff-prepare` 실행을 알림. reminder 자체는 handoff 작성 요청이 아니므로 archive 나 `active.md` 를 자동 생성·수정하지 않음. 같은 git dirty fingerprint 에서는 중복 출력하지 않음.\n\n--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\n--- system_graph.yaml ---\nMISSING\n--- .anamnesis/handoff/active.md ---\nMISSING\n--- config.json ---\n{\"ttl\": 10, \"retries\": 3}\n\n--- docs/legacy.md ---\n# Cache policy (obsolete)\nThis document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing.\nLegacy TTL was 20.\n\nhandoff directory exists: False\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current cache policy TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current cache policy TTL\n  searched: 9, matches: 6\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [55] doc-heading docs/cache-policy.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 90 seconds. Preserve retries.\n  [43] doc-heading docs/legacy.md heading:cache-policy-obsolete\n      Cache policy (obsolete)\n      This document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing. Legacy TTL was 20.\n  [34] doc-page docs/cache-policy.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [16] doc-page docs/legacy.md file\n      Cache policy (obsolete)\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 90 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 90, 'retries': 3}\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 90}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 113738,
+    "uncached_input_tokens": 20954,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "missing-evidence-r3-candidate",
+    "scenario": "missing-evidence",
+    "repetition": 3,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 34.706,
+    "usage": {
+      "input_tokens": 72097,
+      "cached_input_tokens": 64640,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 486,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 90
+    },
+    "config": {
+      "ttl": 90,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 4,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nimport json\np=Path('.')\nfor f in sorted((p/'.anamnesis/ontology').glob('*.yaml')):\n print(f'--- {f} ---\\\\n{f.read_text()}')\nfor f in [p/'system_graph.yaml',p/'.anamnesis/system_graph.yaml']:\n if f.exists(): print(f'--- {f} ---\\\\n{f.read_text()}')\nh=p/'.anamnesis/handoff'\nprint('handoff_directory_exists:', h.is_dir())\nf=h/'active.md'\nif f.exists(): print(f'--- {f} ---\\\\n{f.read_text()}')\nf=p/'config.json'\nprint(f'--- {f} ---\\\\n{f.read_text()}')\nPY\"",
+        "exit_code": 0,
+        "output": "--- .anamnesis/ontology/base.yaml ---\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nhandoff_directory_exists: False\n--- config.json ---\n{\"ttl\": 10, \"retries\": 3}\n\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current cache TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current cache TTL\n  searched: 9, matches: 6\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [40] doc-heading docs/cache-policy.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 90 seconds. Preserve retries.\n  [28] doc-heading docs/legacy.md heading:cache-policy-obsolete\n      Cache policy (obsolete)\n      This document is obsolete. It does not establish the current TTL. Retrieve the current cache policy before editing. Legacy TTL was 20.\n  [22] doc-page docs/cache-policy.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [10] doc-page docs/legacy.md file\n      Cache policy (obsolete)\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 90 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig=json.loads(Path('config.json').read_text())\nassert config == {'ttl':90,'retries':3}, config\nprint(json.dumps({'ttl':config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 90}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 72583,
+    "uncached_input_tokens": 7457,
+    "passed": true,
+    "cohort": "main"
+  },
+  {
+    "id": "missing-path-r1-1.24.3",
+    "scenario": "missing-path",
+    "repetition": 1,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 35.283,
+    "usage": {
+      "input_tokens": 89040,
+      "cached_input_tokens": 70016,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 425,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 60
+    },
+    "config": {
+      "ttl": 60,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 4,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files --hidden -g '\"'!'\"\\\\.git' -g 'AGENTS.md' -g 'Agentfile' -g '.anamnesis/ontology/*.yaml' -g 'system_graph.yaml' -g '.anamnesis/handoff/active.md' -g 'config.json' -g 'docs/cache-policy.md'; for p in .anamnesis/ontology/*.yaml(N) system_graph.yaml .anamnesis/handoff/active.md docs/cache-policy.md config.json; do if [[ -f \\\"\"'$p\" ]]; then printf '\"'\\\\nFILE %s\\\\n' \\\"\"'$p\"; cat \"$p\"; else printf '\"'\\\\nMISSING %s\\\\n' \\\"\"'$p\"; fi; done; if [[ -d .anamnesis/handoff ]]; then print '\"'HANDOFF_DIRECTORY_EXISTS'; else print 'HANDOFF_DIRECTORY_MISSING'; fi\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-holdout/fixtures/missing-path-r1-1.24.3\nAGENTS.md\n.anamnesis/ontology/base.yaml\nconfig.json\nAgentfile\n\nFILE .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nMISSING system_graph.yaml\n\nMISSING .anamnesis/handoff/active.md\n\nMISSING docs/cache-policy.md\n\nFILE config.json\n{\"ttl\": 10, \"retries\": 3}\nHANDOFF_DIRECTORY_MISSING\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current authoritative cache policy TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current authoritative cache policy TTL\n  searched: 7, matches: 4\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [58] doc-heading docs/cache-policy-current.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 60 seconds. Preserve retries.\n  [40] doc-page docs/cache-policy-current.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy-current.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 60 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat config.json'",
+        "exit_code": 0,
+        "output": "{\"ttl\": 60, \"retries\": 3}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 89465,
+    "uncached_input_tokens": 19024,
+    "passed": true,
+    "cohort": "holdout"
+  },
+  {
+    "id": "missing-path-r1-candidate",
+    "scenario": "missing-path",
+    "repetition": 1,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 37.718,
+    "usage": {
+      "input_tokens": 108160,
+      "cached_input_tokens": 88704,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 491,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 60
+    },
+    "config": {
+      "ttl": 60,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 4,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\npaths = [Path('config.json'), Path('docs/cache-policy.md')]\nontology = Path('.anamnesis/ontology')\nif ontology.exists():\n    paths.extend(sorted(ontology.glob('*.yaml')))\nelse:\n    print('MISSING: .anamnesis/ontology/')\npaths.append(Path('system_graph.yaml'))\nhandoff = Path('.anamnesis/handoff')\nprint(f'HANDOFF DIRECTORY EXISTS: {handoff.is_dir()}')\npaths.append(handoff / 'active.md')\nfor path in paths:\n    print(f'FILE: {path}')\n    try:\n        print(path.read_text())\n    except OSError as exc:\n        print(f'READ FAILED: {exc}')\nPY\"",
+        "exit_code": 0,
+        "output": "HANDOFF DIRECTORY EXISTS: False\nFILE: config.json\n{\"ttl\": 10, \"retries\": 3}\n\nFILE: docs/cache-policy.md\nREAD FAILED: [Errno 2] No such file or directory: 'docs/cache-policy.md'\nFILE: .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nFILE: system_graph.yaml\nREAD FAILED: [Errno 2] No such file or directory: 'system_graph.yaml'\nFILE: .anamnesis/handoff/active.md\nREAD FAILED: [Errno 2] No such file or directory: '.anamnesis/handoff/active.md'\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current authoritative cache policy TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current authoritative cache policy TTL\n  searched: 7, matches: 4\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [58] doc-heading docs/cache-policy-current.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 60 seconds. Preserve retries.\n  [40] doc-page docs/cache-policy-current.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy-current.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 60 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 60, 'retries': 3}, config\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 60}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 108651,
+    "uncached_input_tokens": 19456,
+    "passed": true,
+    "cohort": "holdout"
+  },
+  {
+    "id": "missing-path-r2-candidate",
+    "scenario": "missing-path",
+    "repetition": 2,
+    "version": "candidate",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 35.616,
+    "usage": {
+      "input_tokens": 89377,
+      "cached_input_tokens": 81920,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 435,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 60
+    },
+    "config": {
+      "ttl": 60,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 4,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nfrom pathlib import Path\nfor p in sorted(Path('.anamnesis/ontology').glob('*.yaml')) + [Path('system_graph.yaml'), Path('.anamnesis/ontology/system_graph.yaml'), Path('.anamnesis/handoff/active.md'), Path('docs/cache-policy.md'), Path('config.json')]:\n    print(f'FILE {p}')\n    try:\n        print(p.read_text())\n    except FileNotFoundError:\n        print('MISSING')\nprint('HANDOFF_DIRECTORY_EXISTS', Path('.anamnesis/handoff').is_dir())\nPY\"",
+        "exit_code": 0,
+        "output": "FILE .anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nFILE system_graph.yaml\nMISSING\nFILE .anamnesis/ontology/system_graph.yaml\nMISSING\nFILE .anamnesis/handoff/active.md\nMISSING\nFILE docs/cache-policy.md\nMISSING\nFILE config.json\n{\"ttl\": 10, \"retries\": 3}\n\nHANDOFF_DIRECTORY_EXISTS False\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current authoritative cache policy TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current authoritative cache policy TTL\n  searched: 7, matches: 4\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [58] doc-heading docs/cache-policy-current.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 60 seconds. Preserve retries.\n  [40] doc-page docs/cache-policy-current.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy-current.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 60 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nconfig = json.loads(Path('config.json').read_text())\nassert config == {'ttl': 60, 'retries': 3}\nprint(json.dumps({'ttl': config['ttl']}))\nPY\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 60}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 89812,
+    "uncached_input_tokens": 7457,
+    "passed": true,
+    "cohort": "holdout"
+  },
+  {
+    "id": "missing-path-r2-1.24.3",
+    "scenario": "missing-path",
+    "repetition": 2,
+    "version": "1.24.3",
+    "exit_code": 0,
+    "timeout": false,
+    "elapsed_seconds": 35.258,
+    "usage": {
+      "input_tokens": 107747,
+      "cached_input_tokens": 88448,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 519,
+      "reasoning_output_tokens": 0
+    },
+    "answer": {
+      "ttl": 60
+    },
+    "config": {
+      "ttl": 60,
+      "retries": 3
+    },
+    "task_correct": true,
+    "original_source_observed": true,
+    "protected_policy_unchanged": true,
+    "query_calls": 1,
+    "tool_calls": 5,
+    "source_output_occurrences": 1,
+    "commands": [
+      {
+        "command": "/bin/zsh -lc 'for f in .anamnesis/ontology/*.yaml(N) system_graph.yaml .anamnesis/handoff/active.md config.json docs/cache-policy.md; do if [[ -f \"$f\" ]]; then printf '\"'\\\\n%s\\\\n' \\\"\"'$f\"; cat \"$f\"; else printf '\"'\\\\nUnavailable: %s\\\\n' \\\"\"'$f\"; fi; done; if [[ -d .anamnesis/handoff ]]; then printf '\"'\\\\nHandoff directory exists\\\\n'; else printf '\\\\nHandoff directory unavailable\\\\n'; fi\"",
+        "exit_code": 0,
+        "output": "\n.anamnesis/ontology/base.yaml\nentities:\n  cache:\n    description: Synthetic cache settings.\ninvariants:\n  - Keep retries unchanged.\n\nUnavailable: system_graph.yaml\n\nUnavailable: .anamnesis/handoff/active.md\n\nconfig.json\n{\"ttl\": 10, \"retries\": 3}\n\nUnavailable: docs/cache-policy.md\n\nHandoff directory unavailable\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"pwd; rg --files --hidden -g '\"'!'\"\\\\.git' -g '*AGENTS.md' -g '*system_graph.yaml' -g '.anamnesis/ontology/*.yaml' -g '.anamnesis/handoff/active.md' -g 'config.json' -g 'docs/cache-policy.md'\"",
+        "exit_code": 0,
+        "output": "/private/tmp/anamnesis-policy-batching-holdout/fixtures/missing-path-r2-1.24.3\nAGENTS.md\n.anamnesis/ontology/base.yaml\nconfig.json\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'anamnesis context query \"current authoritative cache policy TTL\"'",
+        "exit_code": 0,
+        "output": "mise WARN  failed to write cache file: /Users/sys/Library/Caches/mise/yarn/4.16.0/exec_env_409c43206d377ca2-147a3.msgpack.z Operation not permitted (os error 1)\nanamnesis context query - current authoritative cache policy TTL\n  searched: 7, matches: 4\n  index: rebuilt-missing\n  warnings: 1\n    - .anamnesis/context/index.jsonl was not found; rebuilt context index in memory without writing\n  [58] doc-heading docs/cache-policy-current.md heading:current-cache-policy\n      Current cache policy\n      CACHE_POLICY_CURRENT_V1 The current authoritative cache TTL is 60 seconds. Preserve retries.\n  [40] doc-page docs/cache-policy-current.md file\n      Current cache policy\n      1 heading(s); 0 outbound link(s); 0 inbound link(s); 0 ontology ref(s)\n  [13] ontology-entity .anamnesis/ontology/base.yaml entities\n      entities\n      {\"cache\":{\"description\":\"Synthetic cache settings.\"}}\n  [6] agent-rule AGENTS.md heading:session-start-handoff-자동-확인-도구-비종속\n      Session start: handoff 자동 확인 (도구 비종속)\n      세션 시작 시 (Claude Code · Codex · Cursor 어느 도구든) 다음 절차 따를 것: 1. `.anamnesis/handoff/` 디렉토리 존재 확인. 2. `.anamnesis/handoff/active.md` 가 있으면 먼저 읽고 현재 작업 인덱스로 사용. 3. `Current focus` / `Active tasks` 가 가리키는 archive 중 `closed`, `cold`, `deprecate...\n"
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/cache-policy-current.md'",
+        "exit_code": 0,
+        "output": "# Current cache policy\nCACHE_POLICY_CURRENT_V1\nThe current authoritative cache TTL is 60 seconds. Preserve retries.\n"
+      },
+      {
+        "command": "/bin/zsh -lc \"python3 -c 'import json; from pathlib import Path; c=json.loads(Path(\\\"config.json\\\").read_text()); assert c == {\\\"ttl\\\":60,\\\"retries\\\":3}; print(json.dumps({\\\"ttl\\\":c[\\\"ttl\\\"]}))'\"",
+        "exit_code": 0,
+        "output": "{\"ttl\": 60}\n"
+      }
+    ],
+    "errors": [],
+    "stderr_tail": "",
+    "source_document_unchanged": true,
+    "total_tokens": 108266,
+    "uncached_input_tokens": 19299,
+    "passed": true,
+    "cohort": "holdout"
+  }
+]
