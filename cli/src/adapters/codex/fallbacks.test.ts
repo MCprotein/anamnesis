@@ -1291,6 +1291,8 @@ describe("codex executable_hook fallback", () => {
     expect(context).toContain("no warm archive is startup-active");
     expect(context).toContain("for read and edit tasks, read already-identified original sources directly");
     expect(context).toContain("Editing alone does not require a query");
+    expect(context).toContain("batch that query with independent startup checks");
+    expect(context).toContain("do not add a preliminary directory scan");
     expect(context).not.toContain("or the task edits files, run");
 
     const full = spawnSync(process.execPath, [wrapperPath], {

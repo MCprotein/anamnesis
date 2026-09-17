@@ -7,6 +7,9 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Base fragment v29 avoids preliminary directory scans and rereading already-loaded instructions when sources are known. Batch already-required queries with independent startup checks; retain dependent source reads, ontology/handoff checks, and recovery from missing paths.
+- A controlled GPT-6 Astra pilot (18 main runs plus 4 missing-path holdout runs) preserves task/source correctness in all 22 runs. Versus v1.24.3, total tokens fall 27.82% for known-path edits and 36.38% for stale-evidence edits; missing-path recovery is +0.37%. These cached-inclusive, small-fixture results are not general latency or billing claims. See `docs/benchmark-evidence/retrieval-batching-candidate/README.md`.
+
 ## [1.24.3] — 2026-09-17
 
 - Base fragment v28 uses evidence sufficiency, rather than edit intent, to decide when context queries are required. Align shared Claude Code/Codex/Cursor instructions and native startup reminders; preserve source reading, stale-evidence retrieval, ontology/handoff checks, and authorization boundaries.

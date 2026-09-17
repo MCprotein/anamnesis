@@ -1,0 +1,77 @@
+[
+  {
+    "scenario": "known-read",
+    "versions": {
+      "1.24.2": {
+        "total_tokens": 33820.5,
+        "uncached_input_tokens": 17094,
+        "elapsed_seconds": 14.499,
+        "query_calls": 0,
+        "tool_calls": 1,
+        "source_output_occurrences": 1,
+        "passed": 2
+      },
+      "1.24.3": {
+        "total_tokens": 34042.5,
+        "uncached_input_tokens": 19717.5,
+        "elapsed_seconds": 15.125,
+        "query_calls": 0,
+        "tool_calls": 1,
+        "source_output_occurrences": 1,
+        "passed": 2
+      }
+    },
+    "total_tokens_delta_pct": 0.66,
+    "elapsed_seconds_delta_pct": 4.32
+  },
+  {
+    "scenario": "known-edit",
+    "versions": {
+      "1.24.2": {
+        "total_tokens": 72407,
+        "uncached_input_tokens": 20040.5,
+        "elapsed_seconds": 26.485,
+        "query_calls": 1,
+        "tool_calls": 3.5,
+        "source_output_occurrences": 1,
+        "passed": 2
+      },
+      "1.24.3": {
+        "total_tokens": 71775,
+        "uncached_input_tokens": 19514.5,
+        "elapsed_seconds": 26.337,
+        "query_calls": 0,
+        "tool_calls": 3,
+        "source_output_occurrences": 1,
+        "passed": 2
+      }
+    },
+    "total_tokens_delta_pct": -0.87,
+    "elapsed_seconds_delta_pct": -0.56
+  },
+  {
+    "scenario": "missing-evidence",
+    "versions": {
+      "1.24.2": {
+        "total_tokens": 91578,
+        "uncached_input_tokens": 20151,
+        "elapsed_seconds": 32.939,
+        "query_calls": 1,
+        "tool_calls": 4,
+        "source_output_occurrences": 1,
+        "passed": 2
+      },
+      "1.24.3": {
+        "total_tokens": 111020.5,
+        "uncached_input_tokens": 20480,
+        "elapsed_seconds": 58.603,
+        "query_calls": 1,
+        "tool_calls": 5,
+        "source_output_occurrences": 1,
+        "passed": 2
+      }
+    },
+    "total_tokens_delta_pct": 21.23,
+    "elapsed_seconds_delta_pct": 77.91
+  }
+]

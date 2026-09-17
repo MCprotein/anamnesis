@@ -51,7 +51,7 @@ and `npm run release:verify -- --version <version>`.
 
 ---
 
-<!-- anamnesis:region id=anamnesis-base fragment=base@28 -->
+<!-- anamnesis:region id=anamnesis-base fragment=base@29 -->
 ## anamnesis baseline
 
 이 프로젝트는 [anamnesis](https://github.com/MCprotein/anamnesis) 로 관리됨.
@@ -64,6 +64,7 @@ and `npm run release:verify -- --version <version>`.
 - 작업 시작 전 `.anamnesis/ontology/*.yaml` 와 `system_graph.yaml`(있을 경우) 의 온톨로지를 먼저 확인.
 - 읽기·수정 작업 모두 필요한 원문 경로가 현재 요청·startup pointer·이번 세션의 근거로 이미 명확하면 그 원문을 직접 읽을 것. 경로만 주어졌다고 근거가 충분한 것은 아님. 필요한 근거가 누락·불명확·오래됨·불충분하면 `anamnesis context query "<검색어>"` 로 필요한 source pointer 를 찾고, 반환된 `source_path` / `stable_ref` 원문을 읽은 뒤 주장하거나 수정할 것. 수정 작업이라는 이유만으로 query 를 강제하지 않음. query snippet 과 compact digest 는 근거가 아니라 위치 힌트임.
 - 필수 온톨로지·active handoff 확인은 유지함. 이미 완료된 native startup 탐색은 재실행하지 않음. 현재 작업에 필요한 원문은 직접 확인하되, 이번 세션에서 읽었고 변경되지 않은 원문은 중복해서 읽지 않음. compact 요약이나 포인터만 받은 경우 원문 확인을 대체하지 않음. 서로 독립적인 startup 확인과 이미 경로를 아는 원문 읽기는 가능한 경우 한 번의 도구 호출에 묶고, 확인된 제약을 적용한 뒤 답변하거나 수정할 것. 새로 발견한 pointer 는 확인 후 후속으로 읽으며, 파일 누락·읽기 실패를 숨기지 않음.
+- 초기 호출은 필요한 원문 읽기와 필수 startup 확인을 바로 묶음. 경로가 주어졌거나 지침이 이미 로드됐으면 불필요한 사전 목록 탐색 없이 시작하고, 같은 AGENTS.md 를 다시 읽지 않음. 경로가 틀리거나 읽기에 실패하면 필요한 범위만 탐색함. 요청·현재 근거에서 근거 부족이 이미 명확하면 query 를 서로 독립적인 초기 확인과 같은 호출에 묶음. 검색 필요성을 확인하려고 오래된 원문을 먼저 읽는 별도 호출은 추가하지 않음. query 결과가 있어야 정할 수 있는 원문 읽기는 결과 확인 후 수행함.
 - 자동 startup 확인이나 작업 중 보조 checkpoint/orientation 은 현재 사용자가 요청한 작업의 일부로만 수행하고, 확인이 끝나면 원래 작업을 계속할 것. 이 절차와 과거 handoff 는 현재 요청의 권한이나 범위를 넓히지 않음.
 - 사용자가 `/load-context` 또는 `/handoff-prepare` 자체만 명시적으로 요청한 경우에는 해당 결과를 제공한 뒤 멈춤.
 - 라이브러리 갱신 반영: `anamnesis apply --dry-run` 으로 변경 검토 → 문제 없으면 `anamnesis apply`.

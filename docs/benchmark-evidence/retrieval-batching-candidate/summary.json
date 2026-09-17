@@ -1,0 +1,194 @@
+[
+  {
+    "scenario": "known-read",
+    "versions": {
+      "1.24.3": {
+        "total_tokens": 35212,
+        "uncached_input_tokens": 14233.333,
+        "elapsed_seconds": 13.974,
+        "query_calls": 0,
+        "tool_calls": 1,
+        "source_output_occurrences": 1,
+        "passed": 3,
+        "runs": 3,
+        "token_values": [
+          34753,
+          36254,
+          34629
+        ],
+        "elapsed_values": [
+          15.444,
+          14.084,
+          12.395
+        ]
+      },
+      "candidate": {
+        "total_tokens": 35001.667,
+        "uncached_input_tokens": 23421.667,
+        "elapsed_seconds": 14.939,
+        "query_calls": 0,
+        "tool_calls": 1.667,
+        "source_output_occurrences": 1,
+        "passed": 3,
+        "runs": 3,
+        "token_values": [
+          34995,
+          35024,
+          34986
+        ],
+        "elapsed_values": [
+          14.605,
+          14.966,
+          15.247
+        ]
+      }
+    },
+    "total_tokens_delta_pct": -0.6,
+    "uncached_input_tokens_delta_pct": 64.56,
+    "elapsed_seconds_delta_pct": 6.91,
+    "paired_token_wins": 1
+  },
+  {
+    "scenario": "known-edit",
+    "versions": {
+      "1.24.3": {
+        "total_tokens": 73519,
+        "uncached_input_tokens": 19944.667,
+        "elapsed_seconds": 32.069,
+        "query_calls": 0,
+        "tool_calls": 3,
+        "source_output_occurrences": 1,
+        "passed": 3,
+        "runs": 3,
+        "token_values": [
+          73332,
+          73812,
+          73413
+        ],
+        "elapsed_values": [
+          30.752,
+          31.458,
+          33.996
+        ]
+      },
+      "candidate": {
+        "total_tokens": 53069,
+        "uncached_input_tokens": 18219,
+        "elapsed_seconds": 23.873,
+        "query_calls": 0,
+        "tool_calls": 2.333,
+        "source_output_occurrences": 1,
+        "passed": 3,
+        "runs": 3,
+        "token_values": [
+          53132,
+          53025,
+          53050
+        ],
+        "elapsed_values": [
+          22.139,
+          24.625,
+          24.855
+        ]
+      }
+    },
+    "total_tokens_delta_pct": -27.82,
+    "uncached_input_tokens_delta_pct": -8.65,
+    "elapsed_seconds_delta_pct": -25.56,
+    "paired_token_wins": 3
+  },
+  {
+    "scenario": "missing-evidence",
+    "versions": {
+      "1.24.3": {
+        "total_tokens": 113701.667,
+        "uncached_input_tokens": 17036,
+        "elapsed_seconds": 33.496,
+        "query_calls": 1,
+        "tool_calls": 5,
+        "source_output_occurrences": 1,
+        "passed": 3,
+        "runs": 3,
+        "token_values": [
+          113695,
+          113672,
+          113738
+        ],
+        "elapsed_values": [
+          31.435,
+          32.56,
+          36.492
+        ]
+      },
+      "candidate": {
+        "total_tokens": 72334.667,
+        "uncached_input_tokens": 7308,
+        "elapsed_seconds": 31.75,
+        "query_calls": 1,
+        "tool_calls": 4,
+        "source_output_occurrences": 1,
+        "passed": 3,
+        "runs": 3,
+        "token_values": [
+          72190,
+          72231,
+          72583
+        ],
+        "elapsed_values": [
+          31.78,
+          28.764,
+          34.706
+        ]
+      }
+    },
+    "total_tokens_delta_pct": -36.38,
+    "uncached_input_tokens_delta_pct": -57.1,
+    "elapsed_seconds_delta_pct": -5.21,
+    "paired_token_wins": 3
+  },
+  {
+    "scenario": "missing-path",
+    "versions": {
+      "1.24.3": {
+        "total_tokens": 98865.5,
+        "uncached_input_tokens": 19161.5,
+        "elapsed_seconds": 35.27,
+        "query_calls": 1,
+        "tool_calls": 4.5,
+        "source_output_occurrences": 1,
+        "passed": 2,
+        "runs": 2,
+        "token_values": [
+          89465,
+          108266
+        ],
+        "elapsed_values": [
+          35.283,
+          35.258
+        ]
+      },
+      "candidate": {
+        "total_tokens": 99231.5,
+        "uncached_input_tokens": 13456.5,
+        "elapsed_seconds": 36.667,
+        "query_calls": 1,
+        "tool_calls": 4,
+        "source_output_occurrences": 1,
+        "passed": 2,
+        "runs": 2,
+        "token_values": [
+          108651,
+          89812
+        ],
+        "elapsed_values": [
+          37.718,
+          35.616
+        ]
+      }
+    },
+    "total_tokens_delta_pct": 0.37,
+    "uncached_input_tokens_delta_pct": -29.77,
+    "elapsed_seconds_delta_pct": 3.96,
+    "paired_token_wins": 1
+  }
+]
