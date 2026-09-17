@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.24.3] — 2026-09-17
+
 - Base fragment v28 uses evidence sufficiency, rather than edit intent, to decide when context queries are required. Align shared Claude Code/Codex/Cursor instructions and native startup reminders; preserve source reading, stale-evidence retrieval, ontology/handoff checks, and authorization boundaries.
 - Avoid replaying completed native startup discovery or rereading unchanged originals already checked in the current session. Compact pointers and summaries still do not replace original evidence.
 
