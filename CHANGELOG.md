@@ -7,6 +7,9 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Base fragment v28 uses evidence sufficiency, rather than edit intent, to decide when context queries are required. Align shared Claude Code/Codex/Cursor instructions and native startup reminders; preserve source reading, stale-evidence retrieval, ontology/handoff checks, and authorization boundaries.
+- Avoid replaying completed native startup discovery or rereading unchanged originals already checked in the current session. Compact pointers and summaries still do not replace original evidence.
+
 ## [1.24.2] — 2026-09-08
 
 - Drain large registered-project JSON output before CLI exit, including upgrade's combined result. This prevents successful project synchronization from being reported as a JSON parse failure when output exceeds a pipe buffer.
