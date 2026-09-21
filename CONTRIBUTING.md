@@ -86,7 +86,9 @@ Trigger DSL atoms:
 | `dir_exists: <path>` | Directory exists |
 | `any_yaml_contains: <substring>` | At least one `*.yaml`/`*.yml` in the project contains it |
 
-Combinators: `any: [<expr>, …]`, `all: [<expr>, …]`. Triggers are *suggestions only* — the user always has to confirm via `init` (or by adding the fragment id to `Agentfile.fragments`).
+Combinators: `any: [<expr>, …]`, `all: [<expr>, …]`. `init` selects matching fragments automatically; use `init --dry-run` to review
+them before installation. Later `apply`/`update` reports new matches as suggestions;
+add desired fragments to the appropriate `Agentfile` scope explicitly.
 
 ### Style notes
 

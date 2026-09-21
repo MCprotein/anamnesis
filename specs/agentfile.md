@@ -101,7 +101,7 @@ overrides:
   regions:
     - file: AGENTS.md
       region_id: k8s
-      locked: true             # 사용자 소유 힌트; hard-lock 구현은 v0.8 repair workflow 대상
+      locked: true             # 사용자 소유 힌트; 현재 hard update lock 은 아님
       reason: 팀 합의로 문구 직접 관리
 ```
 
@@ -126,7 +126,7 @@ overrides:
 | 키 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `name` | `string` | ✅ | 프로젝트 식별자 |
-| `description` | `string` | ⛔ | 짧은 설명. AGENTS.md 상단 생성에 사용 |
+| `description` | `string` | ⛔ | 선택적 프로젝트 설명 메타데이터 |
 | `scopes` | `Scope[]` | ⛔ | 모노레포 하위 스코프 (v0.2+). 비우면 루트 단일 스코프 |
 
 ### 4.3 `Scope` (모노레포 — v0.2+)
@@ -135,7 +135,7 @@ overrides:
 |---|---|---|---|
 | `path` | `string` | ✅ | 프로젝트 루트 기준 상대 경로 |
 | `extends` | `string` | ⛔ | 다른 scope `path` 를 베이스로 상속 |
-| `overrides` | `object` | ⛔ | 이 스코프만의 `tools` / `fragments` 부분 오버라이드 |
+| `overrides` | `object` | ⛔ | 이 스코프만의 `tools` / `fragments_add` / `fragments_remove` 부분 오버라이드 |
 
 단일 프로젝트는 `scopes` 를 생략하거나 `- path: .` 만 둔다. 모노레포는
 루트와 하위 앱/패키지를 scope 로 선언한다.
@@ -160,7 +160,7 @@ fragment capability 가 Cursor 렌더러를 지원하지 않으면 출력되지 
 끄면 이후 `update`/`doctor` 렌더 계획에서 제외되고, 기존 산출물 정리는 별도
 repair/migration 단계에서 다룬다.
 
-**순서** — 배열의 순서가 곧 **병합/충돌 해결 우선순위**. 아래 순번일수록 나중에 렌더링되어 덮어씀. 충돌 시 anamnesis 는 경고만 내고 순서를 믿는다.
+**순서** — 선언 순서를 기본으로 하되 `requires` 의존 fragment 를 먼저 렌더링하도록 위상 정렬한다. 선언된 `conflicts`, 누락된 의존성, 최소 버전 미달, 의존성 cycle 은 오류이며 단순한 뒤 항목 우선 덮어쓰기로 해결하지 않는다.
 
 ### 4.5 `Declined`
 
@@ -168,9 +168,9 @@ repair/migration 단계에서 다룬다.
 |---|---|---|---|
 | `id` | `string` | ✅ | 거절한 fragment id |
 | `reason` | `string` | ⛔ | 로그용 이유 |
-| `declined_at` | `string` | ⛔ | `init` 에서 자동 기록. ISO 8601 권장, parser 는 과거 값 보존을 위해 문자열로 유지 |
+| `declined_at` | `string` | ⛔ | 선택적 거절 시각. ISO 8601 권장, parser 는 과거 값 보존을 위해 문자열로 유지 |
 
-rulebook 이 `declined` 에 있는 fragment 를 매칭해도 **다시 제안하지 않는다**. 단 `--force-rescan` 시 재제안.
+rulebook 이 `declined` 에 있는 fragment 를 매칭해도 **다시 제안하지 않는다**. 다시 제안받으려면 해당 `declined` 항목을 명시적으로 제거한다. 현재 CLI에는 `--force-rescan` 옵션이 없다.
 
 ### 4.6 `Settings`
 
@@ -284,14 +284,14 @@ version bump 또는 명시적 parser-policy 변경과 compatibility test 가 필
 
 ### 6.2 마이그레이션
 
-`anamnesis update` 는 `version` 이 낮으면 자동 마이그레이션 제안:
+`anamnesis update` / `apply` 는 schema migration 이 필요하면 렌더링을 중단하고 먼저 migration 을 실행하도록 안내한다. 자동 변환하지 않는다.
 
-```
-[migration] agentfile.yaml version 1 → 2 available.
-Run `anamnesis migrate agentfile` to apply.
+```bash
+anamnesis migrate agentfile          # v1 → v2 diff 미리보기
+anamnesis migrate agentfile --apply  # 백업 후 실제 변환
 ```
 
-마이그레이션은 파일을 먼저 백업한 뒤 변환 규칙 적용.
+현재 변환은 `version` 을 2로 바꾸며 기존 설정 값을 유지한다. Work 정책을 자동으로 켜지 않는다. YAML 재직렬화로 주석과 서식은 바뀔 수 있으므로 diff 를 확인한다.
 상세 command contract 는 `docs/AGENTFILE-MIGRATIONS.md` 를 따른다.
 
 ### 6.3 하위 호환
@@ -306,9 +306,9 @@ v0.1 에서는 **v0.x 전체를 실험적** 으로 간주. 안정성 보장은 v
 
 | 시점 | 동작 |
 |---|---|
-| `anamnesis init` | 신규 생성. 선택된 fragments 반영. `declined` 기록. |
+| `anamnesis init` | 신규 생성. 자동 탐지한 fragments 와 의존성 반영. `declined` 는 사용자가 별도 편집 가능. |
 | `anamnesis update --apply` | 버전 bump 반영. `declined` 는 유지. |
-| `anamnesis promote` | 프로젝트 로컬 fragment 승격 시 `fragments[]` 에 항목 추가. |
+| `anamnesis promote` | 라이브러리에 fragment 를 생성/보완하며 소비자 Agentfile 은 자동 수정하지 않음. 설치하려면 `fragments[]` 에 명시적으로 추가. |
 | 사용자 직접 편집 | 허용. 다음 `update` 시 검증. |
 
 ---
@@ -394,8 +394,10 @@ overrides:
 
 ---
 
-## 11. 열린 질문
+## 11. 구현 참조
 
-- `fragments[]` 배열 순서 대신 **의존 그래프 자동 정렬** 을 해야 하나? — v0.1 은 명시 순서, v0.2+ 자동 토폴로지 정렬 고려.
-- `params` 스키마 검증을 어디서 하나? — 각 fragment 의 `fragment.yaml` 에 JSON Schema 로 선언, anamnesis 가 검증.
-- monorepo `scopes` 의 `overrides` 정책이 충분한가? — v0.2 설계 시 재검토.
+- Agentfile parser: `cli/src/core/agentfile.ts`
+- 의존성 정렬과 검증: `cli/src/core/fragments.ts`
+- scope 상속과 추가/제거: `cli/src/core/scope.ts`, [MONOREPO.md](../docs/MONOREPO.md)
+- fragment params 선언과 진단: [FRAGMENT-AUTHORING.md](../docs/FRAGMENT-AUTHORING.md)
+- schema migration: `cli/src/commands/migrate.ts`

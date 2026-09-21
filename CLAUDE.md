@@ -10,8 +10,9 @@ this file as the Claude-specific pointer surface.
 1. Read `AGENTS.md` for project context, operating rules, and adapter-neutral instructions.
 2. Read `.anamnesis/ontology/*.yaml`, `*.bootstrap.yaml`, and
    `*.enriched.yaml` when present.
-3. If `.anamnesis/handoff/active.md` exists, read it and the
-   referenced archive before continuing work.
+3. If `.anamnesis/handoff/active.md` exists, read it first. Retrieve
+   warm archives referenced by `Current focus` / `Active tasks` when needed.
+   `Recently completed` and closed/cold/deprecated/superseded archives are not startup context.
 4. For project facts, docs, roadmap items, prior decisions, or ontology
    evidence not already loaded, run `anamnesis context query "<terms>"`
    and read the returned `source_path` / `stable_ref` before claiming or editing.

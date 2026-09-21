@@ -7,6 +7,10 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Refresh version-sensitive Next.js, Prisma and Remix guidance; archive the previous fragment versions and advance their integer versions.
+
+- Refresh repository guides against the current CLI, capability schema and adapter behavior; distinguish historical designs from shipped contracts.
+- Align generated Claude Code handoff guidance with active/warm archive selection so completed and cold history is not loaded at startup.
 - Base fragment v29 avoids preliminary directory scans and rereading already-loaded instructions when sources are known. Batch already-required queries with independent startup checks; retain dependent source reads, ontology/handoff checks, and recovery from missing paths.
 - A controlled GPT-6 Astra pilot (18 main runs plus 4 missing-path holdout runs) preserves task/source correctness in all 22 runs. Versus v1.24.3, total tokens fall 27.82% for known-path edits and 36.38% for stale-evidence edits; missing-path recovery is +0.37%. These cached-inclusive, small-fixture results are not general latency or billing claims. See `docs/benchmark-evidence/retrieval-batching-candidate/README.md`.
 

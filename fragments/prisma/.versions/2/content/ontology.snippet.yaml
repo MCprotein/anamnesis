@@ -1,0 +1,16 @@
+# Prisma slice — written by the prisma fragment.
+# Conventions assumed by this slice match the fragment's own defaults; if your
+# project uses non-default paths, override them in your top-level system_graph.yaml.
+
+prisma:
+  schema_path: prisma/schema.prisma
+  migrations_path: prisma/migrations
+  client_output: node_modules/@prisma/client
+  source_of_truth: prisma/schema.prisma
+  forbidden_in_production:
+    - "prisma db push"
+    - "prisma migrate reset"
+  preferred_workflow:
+    local: "npx prisma migrate dev --name <change>"
+    deploy: "npx prisma migrate deploy"
+    after_schema_edit: "npx prisma generate"

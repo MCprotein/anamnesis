@@ -1,6 +1,6 @@
 # fragments
 
-Stack-specific / concern-specific bundles. Each fragment provides one or more **capabilities** (`project_memory`, `ontology`, `executable_hook`, `skill`, `slash_command`) and is suggested by a rule in [`../rulebook.md`](../rulebook.md).
+Stack-specific / concern-specific bundles. Each fragment provides one or more **capabilities** (`project_memory`, `ontology`, `executable_hook`, `skill`, `slash_command`, `task_harness`) and is suggested by a rule in [`../rulebook.md`](../rulebook.md).
 
 The always-installed baseline lives at [`../base/`](../base/), not here.
 
@@ -14,8 +14,8 @@ fragments/<id>/
 │   └── ontology.snippet.yaml  # → .anamnesis/ontology/<id>.yaml
 └── adapters/
     ├── claude-code/
-    ├── codex/              # v0.2+
-    └── cursor/             # v0.3+
+    ├── codex/              # optional tool-specific sources
+    └── cursor/             # optional tool-specific sources
 ```
 
 ## Fragment catalog
@@ -56,12 +56,12 @@ coverage is added when dogfood usage shows that agents need more facts.
 ## How `init` selects fragments
 
 1. Always include the `base` fragment (from `../base/`) if present.
-2. Evaluate every rule in `rulebook.md` against the project. Rules that match → suggest a fragment id.
+2. Evaluate every rule in `rulebook.md` against the project. Matching rules select fragment IDs for initialization; `init --dry-run` previews them.
 3. Look up each suggested id in this directory. Missing fragments → error.
 4. Resolve `requires` dependencies, including optional minimum integer
    versions, then topologically sort. Detect `conflicts` pairs.
 5. Render via the adapter for each tool listed in the project's `Agentfile`.
 
-The user has the final say. `Agentfile` is editable, declined fragments
-are remembered, and future lifecycle work should keep fragment selection
-aligned with the project context the active agent actually needs.
+`init` does not ask for confirmation for each match. Review its dry-run before
+installation. After initialization, `Agentfile` is editable; later updates
+report new matches as suggestions and respect declined entries.

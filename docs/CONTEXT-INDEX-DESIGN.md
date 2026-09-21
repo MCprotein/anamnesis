@@ -11,7 +11,9 @@ retrieval. Source markdown under `.anamnesis/handoff/` remains authoritative;
 configurable retention policy is project settings plus explicit CLI overrides,
 not a separate storage backend.
 
-v1.18 plans the same pointer-first treatment for Work ledgers and bounded
+Work-ledger context-index integration remains deferred. The shipped Work CLI
+and ledger do not imply that `context query` indexes Work state. The design
+plans the same pointer-first treatment for Work ledgers and bounded
 manifests under the canonical local Work state root (normally
 `.anamnesis/work-units/*/`). Immutable raw prompt bodies remain local-private
 provenance and are never copied into index snippets. The Work ledger remains
@@ -69,7 +71,7 @@ Index these public/local project sources first:
 - Future canonical Work-state-root `work-units/*/ledger.jsonl` as authority,
   plus `unit.yaml` and projection files as regenerable inputs for
   open/terminal Work, requirement, boundary, review-gate, checkpoint, policy,
-  and lifecycle lookup once v1.18 implements the schema. Every entry derived
+  and lifecycle lookup when Work-specific index integration is implemented. Every entry derived
   from a manifest or projection must resolve to the exact ledger event stable
   ref and record hash that authorizes it. Raw prompt object bodies under the
   Work state root's `work-inputs/` are excluded; only safe event IDs and hashes
@@ -137,9 +139,11 @@ the exact source before relying on an invariant, relationship, entity, path, or
 operational rule.
 
 Managed agent surfaces repeat this as a pointer-first retrieval contract:
-when project facts, ontology, prior decisions, roadmap items, or document
-evidence are not already loaded, agents run `anamnesis context query "<terms>"`
-and then read the returned `source_path` / `stable_ref`. Query snippets are
+when required evidence is missing, unclear, stale, or insufficient,
+agents run `anamnesis context query "<terms>"`
+and then read the returned `source_path` / `stable_ref`. For both read-only and editing work,
+already-identified original files can be read directly; edit intent alone does
+not require a query. Query snippets are
 navigation hints, not authoritative memory.
 
 Prototype behavior:

@@ -28,6 +28,15 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     expect(action.content).toContain("/handoff-prepare");
   });
 
+  it("limits startup handoff reads to active warm archives", () => {
+    const { content } = planClaudeMdEntrypoint({ scopePath: ".", settings });
+    expect(content).toContain("Current focus");
+    expect(content).toContain("Active tasks");
+    expect(content).toContain("warm archives");
+    expect(content).toContain("Recently completed");
+    expect(content).not.toContain("referenced archive before continuing work");
+  });
+
   it("plans scope-local CLAUDE.md for monorepo scopes", () => {
     const action = planClaudeMdEntrypoint({
       scopePath: "apps/api",

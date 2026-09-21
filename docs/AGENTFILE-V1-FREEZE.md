@@ -1,6 +1,12 @@
 # Agentfile V1 Freeze
 
-Status: v1.0 freeze decision.
+Status: historical v1.0 freeze decision.
+
+The current schema is v2. V1 remains readable; the explicit v1-to-v2 migration
+adds the schema boundary for Work policy and prompt-capture settings without
+enabling those policies on existing projects. See [AGENTFILE-MIGRATIONS.md](AGENTFILE-MIGRATIONS.md)
+and the [current specification](../specs/agentfile.md). The decisions below
+record the v1 freeze, not the complete current settings surface.
 
 The Agentfile v1 surface is stable enough to freeze with one implementation
 tightening: unknown fields are rejected instead of silently stripped. This

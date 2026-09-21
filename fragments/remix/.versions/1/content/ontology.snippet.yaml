@@ -1,0 +1,30 @@
+# Remix slice — written by the remix fragment.
+
+remix:
+  route_module_exports:
+    - loader
+    - action
+    - meta
+    - headers
+    - ErrorBoundary
+  data_flow:
+    reads: loader
+    writes: action
+    mutation_ui: forms_and_fetcher
+  module_boundaries:
+    server_only:
+      - loader
+      - action
+      - "*.server.*"
+    client_only:
+      - "*.client.*"
+  sessions:
+    commit_required_on_response: true
+  verification:
+    tests: npm test
+    build: npm run build
+  forbidden:
+    - returning_secrets_from_loader
+    - missing_session_commit
+    - client_import_of_server_dependency
+    - mutation_without_redirect_or_revalidation_plan

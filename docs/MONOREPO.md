@@ -64,26 +64,14 @@ my-monorepo/
 
 ```bash
 cd my-monorepo
-anamnesis init --dry-run
+anamnesis init --monorepo --tools all --allow-exec-adapters --dry-run
+anamnesis init --monorepo --tools all --allow-exec-adapters
 ```
 
-Anamnesis will detect rulebook matches at the root level and propose
-fragments. For our example layout it might detect `docker-compose`
-and possibly `python-uv` (if `uv.lock` is at root). Apply with:
-
-```bash
-anamnesis init --allow-exec-adapters
-```
-
-For automatic scope detection, use:
-
-```bash
-anamnesis init --monorepo --dry-run
-```
-
-Anamnesis detects common `apps/*`, `packages/*`, and workspace layouts.
-If your repo shape is unusual, start with the generated Agentfile and
-hand-edit the scopes.
+Anamnesis detects common `apps/*`, `packages/*`, and workspace layouts and
+selects matching fragments through the rulebook. Review the preview before
+installation. Run `init` only once; if an Agentfile already exists, edit its
+scopes and use `update` instead.
 
 ### 2. Review or hand-edit `Agentfile` scopes
 
@@ -116,6 +104,8 @@ project:
         fragments_remove: []   # nothing to drop here
 tools:
   - claude-code
+  - codex
+  - cursor
 fragments:
   - { id: base, version: 2 }
   - { id: docker-compose, version: 1 }
@@ -159,9 +149,9 @@ What gets created:
 | `.codex/hooks.json` + `.anamnesis/codex-native-hooks/*.mjs` | repo-wide Codex native lifecycle hooks |
 | `.codex/skills/*/SKILL.md` | repo-wide Codex native project skills |
 
-When you actually `cd apps/api` and start a Claude Code session,
-CC reads BOTH `AGENTS.md` (root) AND `apps/api/AGENTS.md` —
-the agent gets the cumulative context.
+The generated root and scope-local `CLAUDE.md` entrypoints point to their
+corresponding `AGENTS.md` files. Inspect both levels when verifying cumulative
+root and application guidance in Claude Code.
 
 ### 4. Apply
 
@@ -180,7 +170,8 @@ anamnesis update --apply --allow-exec-adapters
 - `cat apps/api/AGENTS.md` should show the inherited + scope-specific
   regions.
 - `find . -path '*/.anamnesis/ontology/*.yaml'` lists all ontology
-  slices the Claude Code and Codex SessionStart hooks will inject.
+  slices available to Claude Code and Codex SessionStart context discovery.
+  Compact mode injects summaries and source pointers, not every full slice.
 
 ---
 
@@ -188,9 +179,9 @@ anamnesis update --apply --allow-exec-adapters
 
 ### Don't put per-scope hooks in sub-scope `.claude/hooks/`
 
-CC reads `.claude/settings.json` only at project root. Hooks installed
-at `apps/api/.claude/hooks/` won't be auto-registered. Exec adapter files
-are root-wide; use fragments at the root scope or the base scope for them.
+Anamnesis registers native hooks in the managed project root
+`.claude/settings.json`. A manually added `apps/api/.claude/hooks/` file is not
+automatically registered by anamnesis. Keep executable adapter files root-wide.
 
 ### Don't list root-wide fragments in sub-scopes
 

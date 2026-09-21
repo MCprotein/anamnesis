@@ -26,7 +26,7 @@ state, and branch inventory from drifting apart.
 anamnesis exists to make AI coding agents remember a project without the
 user repeating setup instructions every session.
 
-Two promises drive the roadmap:
+Three promises drive the roadmap:
 
 1. **Always inject the right context and ontology** — project memory,
    ontology slices, handoff state, operating rules, hooks, skills, and

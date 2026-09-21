@@ -1,7 +1,7 @@
 # rulebook
 
-> Auto-detection rules that suggest fragments. `anamnesis init` runs these against the current project and proposes matching fragments.
-> **Suggestions only** — fragments are never installed without explicit user confirmation.
+> Runtime input: the CLI parses this file to detect applicable fragments.
+> `anamnesis init` selects matching fragments plus `base`; preview the selection with `init --dry-run` before installing. Later `apply`/`update` and `status` report new matches as suggestions rather than automatically installing them.
 
 Each rule has:
 - **Trigger**: a detection condition (file existence, dependency presence, etc.)
@@ -10,7 +10,7 @@ Each rule has:
 
 ---
 
-## Format (v0.1 draft)
+## Format
 
 A rule block:
 
@@ -21,14 +21,14 @@ A rule block:
 - reason: <human-readable rationale>
 ```
 
-Supported trigger expressions (v0.1):
+Supported trigger expressions:
 
 | Expression | Matches when |
 |---|---|
 | `package_json_has: <dep>` | `package.json` has `<dep>` in any `dependencies` section |
-| `file_exists: <path>` | File exists at the given path (glob allowed) |
+| `file_exists: <path>` | Path exists relative to the project root (literal path; no glob expansion) |
 | `dir_exists: <path>` | Directory exists |
-| `pyproject_has: <dep>` | `pyproject.toml` declares `<dep>` |
+| `pyproject_has: <dep>` | `pyproject.toml` contains the literal substring `<dep>` |
 | `any_yaml_contains: <string>` | Any `*.yaml`/`*.yml` in the project contains the string |
 | `all: [<expr>, <expr>]` | All sub-expressions match |
 | `any: [<expr>, <expr>]` | At least one sub-expression matches |
@@ -37,7 +37,7 @@ Supported trigger expressions (v0.1):
 
 ## Rules
 
-<!-- Initial rules; expand as fragments are added. -->
+<!-- Parsed by cli/src/core/rulebook.ts; keep rule IDs unique. -->
 
 ## prisma
 - trigger: `any: [package_json_has: "@prisma/client", file_exists: prisma/schema.prisma]`

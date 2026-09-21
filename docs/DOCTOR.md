@@ -1,6 +1,6 @@
 # Doctor Checks
 
-`anamnesis doctor` is the read-only integrity check for installed fragments,
+`anamnesis doctor` defaults to a read-only integrity check for installed fragments,
 managed drift, adapter wiring, Codex hook ownership, continuity state, and
 ontology gaps.
 

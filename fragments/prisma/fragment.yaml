@@ -1,5 +1,5 @@
 id: prisma
-version: 2
+version: 3
 description: >
   Prisma ORM operational guidelines (migrations, schema-as-source-of-truth)
   + a PostToolUse/pre-commit hook that validates schema.prisma after edits.

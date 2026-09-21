@@ -1,59 +1,46 @@
-# cli
+# CLI source
 
-TypeScript source for the `anamnesis` CLI.
+The TypeScript implementation of `@mcprotein/anamnesis`. The package version
+and supported Node.js version are defined in [package.json](../package.json).
 
-## Status
+## Source layout
 
-v0.1 pre-alpha. Only a placeholder entrypoint (`src/index.ts`) exists — it prints help text and exits. Real command implementations are not yet written.
+| Path | Responsibility |
+| --- | --- |
+| `src/index.ts` | CLI parsing, command dispatch, help and reporting |
+| `src/api.ts` | Public programmatic API |
+| `src/commands/` | Setup, apply/update, context, Work, diagnostics, benchmarks and other commands |
+| `src/core/` | Schemas, fragment loading, render plans, managed writes, context indexing and Work state |
+| `src/adapters/` | Claude Code, Codex and Cursor capability renderers |
+| `src/introspectors/` | Deterministic ontology bootstrap extractors |
+| `src/util/` | Shared filesystem, hashing and terminal utilities |
 
-## Planned structure (v0.1)
+Capability schemas live in `src/core/fragments.ts`; the renderer contract and
+registry live in `src/core/render.ts`. There is no separate `src/capabilities/`
+implementation directory. See [capabilities](../capabilities/README.md) and
+[architecture](../docs/DESIGN.md).
 
-```
-cli/src/
-├── index.ts                 # entrypoint, arg dispatch
-├── commands/
-│   ├── init.ts
-│   ├── update.ts
-│   ├── promote.ts
-│   └── status.ts
-├── capabilities/            # rendering contracts (one file per capability)
-│   ├── project_memory.ts
-│   ├── ontology.ts
-│   ├── executable_hook.ts
-│   ├── skill.ts
-│   └── slash_command.ts
-├── adapters/
-│   └── claude-code/         # v0.1: CC only
-│       ├── project_memory.ts
-│       ├── ontology.ts
-│       ├── executable_hook.ts
-│       ├── skill.ts
-│       └── slash_command.ts
-├── core/
-│   ├── agentfile.ts         # Agentfile read/write/validate
-│   ├── manifest.ts          # .anamnesis/manifest.json read/write
-│   ├── regions.ts           # anchor-based region merge
-│   ├── rulebook.ts          # trigger evaluation
-│   └── fragments.ts         # fragment loader
-└── util/
-    ├── fs.ts
-    ├── hash.ts
-    └── diff.ts
-```
+## Build and verify
 
-## Build & run
+Run from the repository root:
 
 ```bash
 npm install
+npx tsx cli/src/index.ts --help --all
+npm run typecheck
+npm run lint
+npm test
 npm run build
-./cli/dist/index.js --help
+node cli/dist/index.js --help
 ```
 
-Local development via `npm run dev` (tsc watch mode).
+`npm run dev` runs the TypeScript compiler in watch mode. Tests are colocated
+with source as `*.test.ts`. Build output under `cli/dist/` is generated.
 
-## Principles
+Renderers produce declarative file/region actions; application and safety
+checks are separate. Commands may also maintain local context and Work state.
+Network access is command-specific, including registry and release operations;
+the CLI is not an offline-only implementation.
 
-- **Pure functions** where possible — rendering should be deterministic given (content, params, adapter).
-- **No implicit file writes** — every write goes through a single applier that respects `--dry-run`.
-- **No network calls** in v0.1 — fragments are local; registry comes in v1.0.
-- **Error messages must name the offending file and line** — this tool generates files the user will read; errors should do the same.
+See the [user guide](../docs/USER-GUIDE.md), [API](../docs/API.md) and
+[release procedure](../docs/RELEASING.md) for their respective contracts.

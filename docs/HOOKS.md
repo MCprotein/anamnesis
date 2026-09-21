@@ -25,8 +25,10 @@ The handler requires `session_id` plus Codex `turn_id`, or Claude Code
 `prompt_id` when that documented field is available. Missing stable identity,
 invalid JSON, missing executables, and command failures are fail-open and do
 not inject a briefing. Prompt text is decoded only from the documented string
-field and is never logged, fingerprinted, or returned. With the default
-`settings.work_prompt_capture` policy absent or `off`, it is not persisted.
+field and is never logged, fingerprinted, or returned. When
+`settings.work_prompt_capture` is absent or `off`, it is not persisted. Fresh
+`init` projects explicitly configure `bounded`; omission preserves legacy off
+behavior.
 With `bounded` capture in the reviewed Agentfile, the exact decoded string
 re-encoded as UTF-8 is stored temporarily as `client_exact` in the local-private
 `.anamnesis/work-prompt-stage/` tree. Lone UTF-16 surrogates fail open rather
@@ -34,9 +36,11 @@ than being replacement-encoded. Returned context contains only an opaque stage
 ID and the explicit `allocate-same`, `allocate-new`, `retain`, or `discard`
 grammar; it never contains the body or a prompt-derived hash. A due briefing
 is stored as `injected_unconfirmed`, because additional context proves model
-injection rather than visible delivery to the user. Retry boundaries and the
-same observed fingerprint are deduplicated without advancing the confirmed
-baseline.
+injection rather than visible delivery to the user. Briefing observations are deduplicated without advancing the confirmed
+baseline. Codex prompt deliveries receive separate random capture tokens even
+when they share a session and turn; retrying resolution with the same token is
+idempotent. Tokens locate staged bytes and do not establish authority or select
+a Work. See [CODEX-CONTINUITY.md](CODEX-CONTINUITY.md) for delivery limits.
 
 Compact hook context always includes the Work goal/completion contract,
 contract delta, configured review gates, changed or at-risk requirement
@@ -96,9 +100,9 @@ Claude Code same-turn batching requires the documented `prompt_id` field
 available in Claude Code 2.1.196 and later. Older payloads are rejected by the
 wrapper before any foreground CLI process is started.
 
-The session cursor keeps a bounded FIFO of SHA-256 boundary IDs so a retried or
-concurrently delivered event increments the meaningful-action counter exactly
-once. Counter, FIFO, and optional `injected_unconfirmed` observation commit in
+The session cursor keeps a 64-entry FIFO of SHA-256 boundary IDs. Retried or
+concurrently delivered events still in that window increment the
+meaningful-action counter only once; this is not an unbounded exactly-once log. Counter, FIFO, and optional `injected_unconfirmed` observation commit in
 one durable lock-scoped cursor mutation. Hidden injection does not reset the
 counter or claim visible delivery; visible confirmation resets the count but
 preserves the FIFO against late retries, while a Work switch resets the whole

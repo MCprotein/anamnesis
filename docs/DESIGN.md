@@ -1,7 +1,7 @@
-# anamnesis — 설계 문서 (v0.1 draft)
+# anamnesis — 아키텍처와 초기 설계 기록
 
-> 이 문서는 anamnesis 의 초기 설계를 기록한다. v0.1 구현의 근거이자, 이후 결정의 기준점.
-> 공개 문서(README)는 이 설계가 안정된 뒤 별도로 작성한다.
+> v0.1에서 출발한 핵심 설계 원칙과 이후 구현 방향을 기록한다.
+> 아래에서 초기 제안으로 표시한 UX와 예시는 현재 CLI 계약이 아니다.
 >
 > 현재 구현 상태와 버전별 계획은 [ROADMAP.md](ROADMAP.md)를 기준으로 한다.
 > 이 문서는 핵심 설계 원칙의 기준점이며, 최신 릴리스 상태를 모두 반영하는
@@ -50,7 +50,7 @@ anamnesis 는 **AI 코딩 에이전트가 세션마다 프로젝트 맥락을 �
 
 ### 1.3 도구 종속
 
-현재는 Claude Code 에 깊게 결합되어 있다. Codex·Cursor 에서도 같은 맥락을 공유하려면 각각 포맷에 맞게 다시 구성해야 한다.
+초기 사용자 구성은 Claude Code 에 깊게 결합되어 있었다. Codex·Cursor 에서도 같은 맥락을 공유하려면 각각 포맷에 맞게 다시 구성해야 한다.
 
 목표는 도구별 UI를 byte-for-byte 동일하게 만드는 것이 아니다. 각 도구의
 native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다: 어떤
@@ -112,7 +112,7 @@ native surface 는 다르다. 목표는 **사용자 관점의 동일성**이다:
 
 이 구조가 Codex 가 지적한 "중간 IR 필요" 를 해결한다.
 
-### 4.2 Capabilities (v0.1)
+### 4.2 현재 Capabilities
 
 | # | Capability | 설명 | CC 구현 | Codex 구현 | Cursor 구현 |
 |---|------------|------|---------|------------|-------------|
@@ -141,8 +141,8 @@ pointer 를 주입하며, Stop 훅이 dirty work 기준으로 handoff refresh �
 알린다. 이 구조는 컨텍스트 유지에는 충분하지만 archive 생명주기를 자동
 관리하지는 않는다.
 
-v1.8 방향은 repo-local markdown 과 regenerable context index 로 관리하는
-것이다:
+v1.8에서 도입한 lifecycle 은 repo-local markdown 과 regenerable context index 로 관리한다.
+`handoff close`/`deprecate`는 명시적 apply로 상태를 갱신하며 GC는 archive를 삭제하지 않는다:
 
 - `hot`: `active.md`의 현재 작업. SessionStart 에 짧은 요약만 주입.
 - `warm`: 최근 또는 active 가 참조하는 archive. SessionStart 에는 source
@@ -236,24 +236,24 @@ suggestion pipeline 으로 다루기 위한 현재 계약이다. 원격 registry
 
 ### 4.4 Rulebook
 
-`rulebook.md` 는 **자동 탐지 → 제안** 매핑. **자동 설치는 하지 않는다**.
+`rulebook.md` 는 **자동 탐지 → fragment 선택 후보** 매핑이다. `init`은 일치한 fragment와 base/의존성을 자동 선택하고, `init --dry-run`으로 계획을 확인할 수 있다. `--dry-run` 없는 `init`은 실제로 설치한다. 기존 프로젝트의 `update`는 새 후보를 보고하며 자동 추가하지 않는다.
 
 ```markdown
 ## prisma
-- trigger: package.json 에 `@prisma/client` 존재
+- trigger: `package_json_has: "@prisma/client"`
 - suggest: fragments/prisma
 - reason: schema drift 사고 빈번, 전용 검증 훅 필요
 
 ## k8s
-- trigger: `k8s/` 디렉토리 존재 또는 `apiVersion:` 포함 YAML 있음
+- trigger: `any: [dir_exists: k8s, any_yaml_contains: "apiVersion:"]`
 - suggest: fragments/k8s
 ```
 
-init 시 탐지된 fragment 는 **제안 목록** 으로 표시되고, 사용자가 확인해야 설치된다. 확정된 선택은 `agentfile.yaml` 에 기록되어 향후 `update` 에서 기준이 된다.
+CLI의 `init`에는 fragment별 대화형 승인 단계가 없다. apply된 선택은 `Agentfile`에 기록되어 향후 갱신의 기준이 된다. 사용자를 대신해 초기화하는 에이전트의 문서 처리 선택은 `anamnesis-init` 스킬에서 별도로 다룬다.
 
 ### 4.5 Agentfile (프로젝트 manifest, 1급 개념)
 
-프로젝트 루트에 생성되는 `agentfile.yaml` 이 **단일 진실의 소스** 다.
+프로젝트 루트에 기본 생성되는 `Agentfile`이 **단일 진실의 소스**다. 기존 `agentfile.yaml`/`agentfile.yml` 이름도 탐색 시 지원한다.
 
 ```yaml
 version: 1
@@ -286,17 +286,17 @@ declined:
 
 ---
 
-## 5. 라이프사이클 — 3 커맨드
+## 5. 핵심 라이프사이클
 
-Codex 리뷰 반영으로 4개 → 3개로 축소. `sync` 와 `refresh` 구분이 약해서 `update` 로 통합, `diff` 는 `update --dry-run` 으로 흡수.
+초기 설계는 init/update/promote 세 축에서 시작했다. 현재 프로젝트 적용의 명시적 명령은 `apply`이며, `update`의 호환 경로와 전체 CLI는 [USER-GUIDE.md](USER-GUIDE.md)를 따른다.
 
 ### 5.1 `anamnesis init`
 
-최초 생성. 대화형.
+최초 생성. `init --dry-run`으로 미리 보고, `init`으로 기록한다.
 
 1. 현재 디렉토리 분석 (`package.json`, `pyproject.toml`, `k8s/`, `Dockerfile`, `prisma/` 등)
-2. rulebook 에 매칭되는 fragment → **제안 목록** 표시
-3. 사용자가 선택 / 거절 / 파라미터 입력
+2. rulebook 에 매칭되는 fragment 를 자동 선택
+3. base와 필요한 의존성을 포함하고 충돌/누락을 검증
 4. `base/` 를 **무조건** 설치, 선택된 fragment 의 capabilities 를 선택된
    `tools` 어댑터로 렌더링 (`--tools all` 또는
    `--tools claude-code,codex,cursor` 로 첫 설치부터 다중 에이전트 surface 생성)
@@ -322,7 +322,7 @@ Codex 리뷰 반영으로 4개 → 3개로 축소. `sync` 와 `refresh` 구분�
    를 보존한 채 관리 region 을 추가 또는 갱신한다. 이 플래그가 없는
    기본 init 은 사용자 문서를 보완하지 않는다.
 11. 계획된 파일과 manifest 를 적용
-12. 결과 diff 요약 후 확인 → commit 여부 프롬프트
+12. 결과 요약. 자동 커밋이나 commit 여부 프롬프트는 없음
 
 ### 5.2 `anamnesis update`
 
@@ -345,11 +345,11 @@ Codex 리뷰 반영으로 4개 → 3개로 축소. `sync` 와 `refresh` 구분�
 프로젝트의 로컬 조각을 라이브러리로 승격.
 
 ```bash
-anamnesis promote ./.claude/hooks/my-custom-validate.sh
+anamnesis promote ./.claude/hooks/my-custom-validate.sh --as custom-validation
 ```
 
-- 어느 capability 로 승격할지 선택
-- 어느 fragment 에 포함시킬지 선택 (신규 fragment 생성 가능)
+- 경로로 capability를 추론하거나 `--type`으로 지정
+- `--as`로 대상 fragment 지정 (신규 fragment 생성 가능)
 - 라이브러리 로컬 복사본에 쓰기 (PR 제출은 사용자가)
 
 ### 5.4 상위 커맨드 (보조)
@@ -361,7 +361,7 @@ anamnesis promote ./.claude/hooks/my-custom-validate.sh
 - `anamnesis benchmark prompt-gate` — Codex prompt-time context delta 를
   기본 동작으로 켜기 전에 evidence, token budget, duplicate risk 를 판정
 
-v0.1 에서 `status` 는 필수, `doctor` 는 선택.
+현재 `status`와 `doctor` 모두 구현되어 있다. 초기 v0.1에서의 우선순위와 현재 지원 여부는 구분한다.
 
 ---
 
@@ -384,9 +384,9 @@ manifest 해시 단위로 관리:
 
 **주의**: JSON/YAML 설정 파일(settings.json 등)은 주석/키 순서가 의미 가지므로 리전 앵커 대신 **구조적 머지** (키 단위 패치 적용) 로 처리.
 
-### 6.2 Manifest (`.anamnesis/manifest.json`)
+### 6.2 초기 Manifest 제안 (`.anamnesis/manifest.json`)
 
-도구 중립 위치. `.claude/` 밖에 둔다.
+도구 중립 위치로 `.claude/` 밖에 둔다. 아래 JSON은 초기 설계 예시이며 현재 저장 스키마는 `cli/src/core/manifest.ts`가 정의한다. 예시 필드를 현재 manifest에 그대로 추가하지 않는다.
 
 ```json
 {
@@ -423,7 +423,7 @@ manifest 해시 단위로 관리:
 - `last_applied_hash` — 마지막으로 anamnesis 가 쓴 상태 해시
 - `current_user_hash` — 현재 파일 해시 (update 때 재계산)
 
-### 6.3 사용자 수정 감지 UX
+### 6.3 사용자 수정 감지 UX (초기 제안)
 
 `last_applied_hash ≠ current_user_hash` → 사용자 수정 있음.
 
@@ -438,7 +438,7 @@ manifest 해시 단위로 관리:
   d) View 3-way diff
 ```
 
-기본 선택은 (a). 실수로 사용자 작업이 날아갈 여지를 없앤다.
+이 대화형 선택지는 초기 제안이며 현재 CLI 메뉴가 아니다. 실제 동작은 manifest hash로 사용자 수정을 감지하고 보존하며, 복구 선택은 [REPAIR.md](REPAIR.md)를 따른다. `overrides.*.locked`는 hard lock이 아니다.
 
 ### 6.4 백업
 
@@ -509,54 +509,24 @@ main worktree hook source를 선택할 수 있다. 이때 runtime source가
 
 ### 8.1 라이브러리 (이 리포지토리)
 
-```
+```text
 anamnesis/
-├── README.md                  # 공개용 (영문)
-├── LICENSE                    # MIT 예정
-├── package.json               # TypeScript CLI
-├── docs/
-│   ├── DESIGN.md              # 이 문서
-│   └── capabilities/
-│       ├── project_memory.md
-│       ├── ontology.md
-│       ├── executable_hook.md
-│       ├── skill.md
-│       └── slash_command.md
-├── specs/
-│   ├── agentfile.md           # agentfile.yaml 스키마
-│   ├── fragment.md            # fragment.yaml 스키마
-│   ├── manifest.md            # .anamnesis/manifest.json 스키마
-│   └── rulebook.md            # rulebook.md 포맷
-├── base/                      # 공통 뼈대
-│   ├── AGENTS.md.tmpl
-│   ├── content/
-│   │   └── ontology.yaml.tmpl
-│   └── adapters/
-│       └── claude-code/
-│           ├── hooks/
-│           │   ├── inject-ontology.sh.tmpl
-│           │   └── remind-uncommitted.sh
-│           ├── skills/load-context/
-│           ├── commands/load-context.md
-│           └── settings.json.tmpl
-├── fragments/                 # 조건부 조각
-│   ├── prisma/
-│   ├── k8s/
-│   ├── nestjs/
-│   ├── nextjs/
-│   ├── fastapi/
-│   ├── python-uv/
-│   └── docker-compose/
-├── capabilities/              # 중간 IR 정의 (렌더링 계약)
-│   ├── project_memory.ts
-│   ├── ontology.ts
-│   ├── executable_hook.ts
-│   ├── skill.ts
-│   └── slash_command.ts
-├── rulebook.md                # 자동 탐지 → 제안 매핑
-├── cli/                       # TypeScript CLI 본체
-│   ├── src/
-│   └── tsconfig.json
+├── README.md
+├── LICENSE                    # MIT
+├── package.json               # CLI package/export/release contract
+├── docs/                      # guides, design decisions, benchmark evidence
+├── specs/agentfile.md          # current v1/v2 schema
+├── capabilities/              # capability overview; implementation in cli/src/
+├── base/                      # fragment.yaml + content + adapter sources
+├── fragments/                 # stack-specific fragment bundles
+├── rulebook.md                # parsed trigger rules
+├── cli/src/
+│   ├── index.ts               # CLI dispatch
+│   ├── api.ts                 # supported public TypeScript exports
+│   ├── core/                  # schemas, rendering, storage, policies
+│   ├── commands/              # command implementations
+│   ├── adapters/              # Claude Code / Codex / Cursor renderers
+│   └── introspectors/         # deterministic ontology extraction
 └── CONTRIBUTING.md
 ```
 
@@ -564,15 +534,18 @@ anamnesis/
 
 ```
 <user-project>/
-├── Agentfile                  # 심볼릭 혹은 ↓ yaml 로
-├── agentfile.yaml             # 1급 manifest (사용자가 편집)
+├── Agentfile                  # 사용자 편집 설정; agentfile.yaml 등 대체 이름과 동시 존재 금지
 ├── AGENTS.md                  # canonical content (tool-agnostic)
 ├── .anamnesis/
 │   ├── manifest.json          # 리전·파일 해시 기록
 │   ├── ontology/              # static + bootstrap + enriched ontology
-│   ├── handoff/               # active.md + timestamped archives; v1.8 lifecycle tiers planned
+│   ├── handoff/               # active.md + timestamped archives + explicit lifecycle metadata
 │   ├── task-harnesses/         # reusable/current task contracts
-│   ├── overrides/             # 사용자 승격된 로컬 오버라이드
+│   ├── context/               # regenerable index/resume pointers
+│   ├── work-units/            # Work ledger + derived views
+│   ├── work-inputs/           # private immutable source events
+│   ├── work-prompt-stage/     # bounded private prompt staging
+│   ├── work-cursors/          # disposable session pointers
 │   └── backups/               # update 전 백업
 ├── .claude/                   # Claude Code 어댑터 산출물
 │   ├── hooks/
@@ -633,19 +606,14 @@ lifecycle 을 우선한다.
 
 ---
 
-## 11. 열린 질문 (구현 전 결정 필요)
+## 11. 초기 검토 사항과 현재 결정
 
-1. **Agentfile 파일명** — `Agentfile` vs `agentfile.yaml` vs 둘 다 지원. 현재 안: 둘 다 지원하되 내부는 yaml.
-2. **구현 언어** — TypeScript (Node 20+) 로 가되, 배포 경로는 npm + 추후 단일 바이너리(pkg/bun compile). v0.1 은 `npx anamnesis` 로 충분.
-3. **모노레포 스코프** — `scopes[]` 설계는 잡혀 있지만 v0.1 에 포함할지 v0.2 로 미룰지. 내부 3 프로젝트 중 monorepo 없으면 v0.2 로 미루는 게 합리적.
-4. **온톨로지 병합** — 여러 fragment 가 `ontology.snippet.yaml` 을 제공할 때 병합 전략. YAML merge 라이브러리 (yaml ast) 필요.
-5. **Fragment 버전 관리** — semver? 단일 증가? v0.1 은 단일 정수로 시작, 외부 공개 전 semver 로 전환.
-6. **라이브러리 배포** — fragments 는 npm 에 묶여서 가느냐 별도 git 저장소냐. v0.1 은 한 저장소 내부.
-7. **CLAUDE.md 의 위치** — resolved as a Claude Code entrypoint.
-   AGENTS.md is canonical project memory; `.claude/` carries native CC
-   hooks, skills, commands, and settings. CLAUDE.md receives an
-   anamnesis-managed region pointing Claude Code at AGENTS.md, ontology,
-   and handoff state while preserving any user prose outside the region.
+- **파일 발견**: `Agentfile`, `agentfile.yaml`, `agentfile.yml`, `.anamnesis/agentfile.yaml` 중 정확히 하나. [스펙](../specs/agentfile.md) 참조.
+- **구현과 배포**: TypeScript, Node 20+, `@mcprotein/anamnesis` npm 패키지. 단일 바이너리 배포는 현재 계약이 아님.
+- **모노레포**: scope 상속과 fragment 추가/제거 지원. [MONOREPO.md](MONOREPO.md) 참조.
+- **온톨로지**: static/bootstrap/enriched 파일을 분리하고 source pointer로 조회. 임의 YAML 병합으로 의미를 확정하지 않음.
+- **Fragment 버전**: 양의 정수와 pinned archive. 원격 registry/signing은 별도 설계 문서의 범위.
+- **CLAUDE.md**: Claude Code entrypoint이며 canonical project memory는 AGENTS.md. 관리 region 밖 사용자 prose 보존.
 
 ---
 

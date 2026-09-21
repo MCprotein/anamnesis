@@ -1,6 +1,6 @@
 # Handoff Lifecycle
 
-Status: in-progress v1.8 design. Current shipped behavior includes
+Status: implemented local lifecycle, originally designed for v1.8. Shipped behavior includes
 `/handoff-prepare`, compact SessionStart injection, Stop-time reminders,
 stale-pointer and semantic freshness diagnostics, and preview-only handoff
 lifecycle reporting in `anamnesis gc --dry-run`. `anamnesis gc --apply`
@@ -84,7 +84,8 @@ Preferred storage:
 - Timestamped markdown archives remain the durable detailed record.
 - Frontmatter carries lifecycle metadata such as `handoff_status`,
   `closed_at`, `superseded_by`, `last_referenced_at`, and `retention_tier`
-  when the field becomes implemented.
+  as supported by the lifecycle parser. `last_referenced_at` is optional
+  metadata, not a promise of automatic access tracking.
 - `.anamnesis/context/index.jsonl` may index handoff pointers and short
   snippets because it is regenerable and safe to delete.
 

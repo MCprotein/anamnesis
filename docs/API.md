@@ -52,9 +52,9 @@ supported. They may change without notice and are intentionally blocked by the
 ## Not Public Yet
 
 Command functions such as `init`, `update`, `status`, `doctor`, `benchmark`,
-`migrateAgentfile`, and `ontology bootstrap` remain internal. Their CLI
-behavior is supported, but their TypeScript result shapes may still change
-during v0.x stabilization.
+`migrateAgentfile`, and `ontology bootstrap` remain internal. Their documented CLI
+behavior is supported, but internal TypeScript result shapes are outside the
+public import contract and may change without a public API major version.
 
 If a command result becomes a supported API later, it should be re-exported
 from `cli/src/api.ts`, documented here, and covered by package-level import

@@ -1,11 +1,14 @@
 # Command UX Consolidation Plan
 
-Status: shipped in v1.16.0 on 2026-07-09.
+Status: historical v1.16 plan; command consolidation and workspace profile
+display shipped in v1.16.0 on 2026-07-09. Proposed local-fragment drafting and
+profile persistence below are design directions, not claims of shipped support.
+Use [USER-GUIDE.md](USER-GUIDE.md) and CLI help for current commands.
 
 ## Problem
 
-The CLI grew by adding useful lifecycle surfaces one by one. The current
-top-level help now exposes core project commands, maintainer release gates,
+The CLI grew by adding useful lifecycle surfaces one by one. Before v1.16,
+top-level help exposed core project commands, maintainer release gates,
 benchmark harnesses, evidence tools, migration helpers, and low-level context
 subcommands in the same list.
 

@@ -2,6 +2,11 @@
 
 Status: v1.0 decision. No `anamnesis sync` command ships in v1.0.
 
+Current implementation boundary: neither `sync` nor remote `registry`/`fragment`
+commands are implemented. The remote command examples and side-effect table
+below describe a proposed design, not commands to run today. Local project
+updates use `apply` or `update`.
+
 ## Decision
 
 Do not add a top-level `anamnesis sync` command in v1.0.

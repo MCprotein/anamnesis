@@ -1,6 +1,6 @@
 # Adapter Parity Matrix
 
-v0.7 tracks **user-facing parity**, not identical native UI. Claude Code,
+anamnesis tracks **user-facing parity**, not identical native UI. Claude Code,
 Codex, and Cursor expose different primitives, so a capability can be native
 on one adapter and a fallback on another while still preserving the same user
 outcome.
