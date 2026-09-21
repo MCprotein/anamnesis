@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.24.4] — 2026-09-21
+
 - Refresh version-sensitive Next.js, Prisma and Remix guidance; archive the previous fragment versions and advance their integer versions.
 
 - Refresh repository guides against the current CLI, capability schema and adapter behavior; distinguish historical designs from shipped contracts.
