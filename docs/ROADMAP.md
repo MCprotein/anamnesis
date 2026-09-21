@@ -2492,7 +2492,7 @@ Exit criteria:
 ## v1.24 — Instruction efficiency and explicit audit
 
 Status: implementation and bounded Astra validation complete. Verify registry
-availability with `npm run release:verify -- --version 1.24.2`; implementation
+availability with `npm run release:verify -- --version 1.24.3`; implementation
 status alone is not evidence of publication.
 
 - Add explicit, read-only `context audit-instructions` with bounded local
@@ -2502,7 +2502,8 @@ status alone is not evidence of publication.
   sources. Preserve per-procedure fallback, actual trigger boundaries, executable
   adapter authorization and user/other-tool instructions.
 - Avoid repeated discovery when sufficient original sources are already known;
-  preserve exact-source evidence and stricter edit requirements. Identify native
+  preserve exact-source evidence and query when evidence is insufficient for either
+  reads or edits (base v28). Identify native
   built-in startup discovery without suppressing unrelated hooks.
 - Guide completion transitions for newly verified Work requirements using
   existing evidence, preserving cancellation, read-only and terminal boundaries.

@@ -1,0 +1,26 @@
+{
+  "model": "gpt-6-astra",
+  "reasoning_effort": "high",
+  "repetitions": 2,
+  "conditions": [
+    "1.24.2",
+    "1.24.3"
+  ],
+  "policy_sha256": {
+    "1.24.2": "2783502b705f711c73bea6b8588a31a802ccc9593b31d62dc1a041eb8d735667",
+    "1.24.3": "1c3b911cf9452edef60680cb8612464bfbe1caf04c152a97600f98b3ee6e01db"
+  },
+  "scope": "Baseline AGENTS instruction change only; real anamnesis 1.24.3 retrieval engine held constant; no native hooks; isolated synthetic fixtures, no user instructions/MCP; cold sessions; not end-to-end version or startup-hook benchmark",
+  "scenarios": [
+    "known-read",
+    "known-edit",
+    "missing-evidence"
+  ],
+  "order": "round 1 old then new, round 2 new then old; scenarios parallel up to 2; independent fixtures",
+  "codex_version": "codex-cli 0.154.0",
+  "retrieval_cli_version": "1.24.3",
+  "policy_commits": {
+    "1.24.2": "87894b6d13dd22300de2cc48714575c10acdc708",
+    "1.24.3": "94113570b78b2a0d361d576d6556672e6f1b947b"
+  }
+}

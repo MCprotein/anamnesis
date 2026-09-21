@@ -25,8 +25,74 @@ preserving user-authored content.
   through source pointers.
 - **Safe updates.** Dry-runs, managed regions, drift detection, backups, and an
   explicit executable-adapter gate protect local edits.
-- **Evidence-backed claims.** Public benchmarks use sanitized fixtures and keep
-  raw prompts and model answers out of committed artifacts.
+- **Evidence-backed claims.** Public benchmarks use sanitized fixtures, retain
+  reproducible evidence, and state the limits of each comparison.
+
+## Retrieval batching: GPT-6 Astra / high
+
+The **unreleased base v29 candidate** skips redundant discovery and batches
+already-required retrieval with independent startup checks. Compared with the
+released 1.24.3 policy, known-source edits used **27.8% fewer total tokens** and
+missing/stale-evidence edits used **36.4% fewer** in this controlled pilot.
+All **22/22 executions** passed task correctness and original-source checks.
+
+![GPT-6 Astra high-reasoning pilot: token and elapsed-time changes for four scenarios; all 22 task and source checks passed](docs/benchmark-evidence/retrieval-batching-candidate/retrieval-batching-summary.svg)
+
+| Scenario | Paired runs | Mean total tokens | Mean elapsed time |
+| --- | ---: | ---: | ---: |
+| Known-source read | 3 pairs / 6 runs | -0.6% | +6.9% |
+| Known-source edit | 3 pairs / 6 runs | **-27.8%** | -25.6% |
+| Missing / stale evidence | 3 pairs / 6 runs | **-36.4%** | -5.2% |
+| Missing-path recovery holdout | 2 pairs / 4 runs | +0.4% | +4.0% |
+
+**Measured with `gpt-6-astra`, reasoning effort `high`; low was not tested.**
+Changes compare arithmetic means, including cached input tokens, and are not
+billing savings. The retrieval engine is fixed at 1.24.3; only shared AGENTS
+policy varies. Small fixtures, uncontrolled caches, and overlapping executions
+limit generalization, especially timing. Native startup-hook efficiency and
+multi-turn behavior are not measured. Required searches and source reads remain.
+
+[Results and limitations](docs/benchmark-evidence/retrieval-batching-candidate/README.md) ·
+[Raw measurements](docs/benchmark-evidence/retrieval-batching-candidate/results.json) ·
+[Rebuild chart without model calls](docs/benchmark-evidence/retrieval-batching-candidate/render-chart.py)
+
+<details>
+<summary>Earlier Astra studies — different baselines and metrics</summary>
+
+### Earlier Astra instruction-efficiency studies
+
+Version 1.24 reduces Codex fallback context and repeated startup
+reads while preserving full procedures, source evidence and adapter permissions.
+Its read-only `anamnesis context audit-instructions` command reports instruction
+size, recorded ownership, drift and literal duplicates; it does not automatically
+rewrite instructions or control model settings. See [usage and scope](docs/INSTRUCTION-AUDIT.md).
+
+A frozen Astra/high study passed all 66 executions. On fresh reserved tasks,
+median paired total tokens fell **18.2%**, while elapsed time rose **1.8%** within
+the predeclared non-regression gate. Both arms used anamnesis with Work capture
+and Stop reminders disabled; this is not an on/off or whole-stack speed claim.
+A separate four-run Work completion follow-up measured **17.4% fewer total tokens**
+and **11.2% less time** versus its preceding repair, with correct state recovery.
+That small, tuned comparison is not independent holdout evidence, and uncached
+input increased 0.8%. Earlier Luna/Terra/Sol results above are separate studies.
+
+![Astra paired benchmark changes: fresh reserved tokens -18.2%, time +1.8%; separate tuned follow-up tokens -17.4%, time -11.2%](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/astra-summary.svg)
+
+| Study | Paired executions | Total tokens | Elapsed time |
+| --- | ---: | ---: | ---: |
+| V6 development | 9 pairs / 18 runs | -26.7% | -2.3% |
+| V6 fresh reserved | 24 pairs / 48 runs | -18.2% | +1.8% |
+| V8 vs V7 tuned follow-up | 2 pairs / 4 runs | -17.4% | -11.2% |
+
+Changes are medians of per-pair ratios, not ratios of aggregate totals.
+Reserved tasks were outcome-unseen, not content-blind. The full report discloses
+the post-measurement evaluator correction and preserves failed revisions.
+[Rebuild the chart](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/render-chart.py)
+from the checked-in JSON; this does not execute models.
+
+[Full Astra results, failed revisions and limitations](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/README.md)
+
+</details>
 
 ## Measured Work continuity
 
@@ -84,39 +150,6 @@ subagent performance claim.
 
 [V10 diagnostic evidence](docs/benchmark-evidence/work-parallel-agent-ab/v10-shadow/README.md) ·
 [Parallel-agent methodology and historical evidence](docs/benchmark-evidence/work-parallel-agent-ab/README.md)
-
-## Astra instruction efficiency
-
-Version 1.24 reduces Codex fallback context and repeated startup
-reads while preserving full procedures, source evidence and adapter permissions.
-Its read-only `anamnesis context audit-instructions` command reports instruction
-size, recorded ownership, drift and literal duplicates; it does not automatically
-rewrite instructions or control model settings. See [usage and scope](docs/INSTRUCTION-AUDIT.md).
-
-A frozen Astra/high study passed all 66 executions. On fresh reserved tasks,
-median paired total tokens fell **18.2%**, while elapsed time rose **1.8%** within
-the predeclared non-regression gate. Both arms used anamnesis with Work capture
-and Stop reminders disabled; this is not an on/off or whole-stack speed claim.
-A separate four-run Work completion follow-up measured **17.4% fewer total tokens**
-and **11.2% less time** versus its preceding repair, with correct state recovery.
-That small, tuned comparison is not independent holdout evidence, and uncached
-input increased 0.8%. Earlier Luna/Terra/Sol results above are separate studies.
-
-![Astra paired benchmark changes: fresh reserved tokens -18.2%, time +1.8%; separate tuned follow-up tokens -17.4%, time -11.2%](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/astra-summary.svg)
-
-| Study | Paired executions | Total tokens | Elapsed time |
-| --- | ---: | ---: | ---: |
-| V6 development | 9 pairs / 18 runs | -26.7% | -2.3% |
-| V6 fresh reserved | 24 pairs / 48 runs | -18.2% | +1.8% |
-| V8 vs V7 tuned follow-up | 2 pairs / 4 runs | -17.4% | -11.2% |
-
-Changes are medians of per-pair ratios, not ratios of aggregate totals.
-Reserved tasks were outcome-unseen, not content-blind. The full report discloses
-the post-measurement evaluator correction and preserves failed revisions.
-[Rebuild the chart](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/render-chart.py)
-from the checked-in JSON; this does not execute models.
-
-[Full Astra results, failed revisions and limitations](docs/benchmark-evidence/instruction-efficiency/astra-loop-2026-09-07/README.md)
 
 ## Quickstart
 
