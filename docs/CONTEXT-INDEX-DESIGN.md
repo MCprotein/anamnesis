@@ -139,10 +139,11 @@ the exact source before relying on an invariant, relationship, entity, path, or
 operational rule.
 
 Managed agent surfaces repeat this as a pointer-first retrieval contract:
-for edits or when required evidence is missing, unclear, stale, or insufficient,
+when required evidence is missing, unclear, stale, or insufficient,
 agents run `anamnesis context query "<terms>"`
-and then read the returned `source_path` / `stable_ref`. For read-only work,
-already-identified original files can be read directly. Query snippets are
+and then read the returned `source_path` / `stable_ref`. For both read-only and editing work,
+already-identified original files can be read directly; edit intent alone does
+not require a query. Query snippets are
 navigation hints, not authoritative memory.
 
 Prototype behavior:
