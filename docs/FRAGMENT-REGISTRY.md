@@ -3,6 +3,11 @@
 Status: v1.0 design accepted; remote registry implementation deferred
 post-v1.0. See `docs/REGISTRY-V1-DECISION.md`.
 
+Current implementation boundary: remote registry commands, downloads, and
+verification are not implemented. The formats and commands below are proposals,
+not supported installation instructions. Built-in and local-library fragments
+remain the available sources.
+
 ## Goal
 
 The fragment registry lets anamnesis discover reusable context, ontology, and

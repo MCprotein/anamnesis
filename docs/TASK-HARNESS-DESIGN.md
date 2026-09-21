@@ -1,6 +1,8 @@
 # Task Harness Design
 
-Status: v1.7 initial capability design and base fixture.
+Status: task-harness capability and base fixture shipped in v1.7.
+The Work integration section below separates current authority from remaining
+harness migration design.
 
 `task_harness` is a repo-local contract for a class of agent task. It tells an
 agent what success means before it edits: goal, stop condition, read/write
@@ -81,9 +83,9 @@ snippets. Long task examples belong in docs or fixtures, not in harness bodies.
 
 ## Lifecycle
 
-### v1.18 in-flight authority transition
+### Work authority and remaining harness migration design
 
-Once work units ship, `work-units/<id>/unit.yaml` and its ledger under the
+Work units shipped in v1.18. `work-units/<id>/unit.yaml` and its ledger under the
 canonical local Work state root (normally `.anamnesis/`) are the sole mutable
 authority for an in-flight task instance. Reusable harnesses remain templates
 and policy inputs, including optional review, reconciliation-briefing, and
@@ -92,10 +94,11 @@ snapshotted into the accepted work-unit contract revision. Harnesses never
 launch agents, tmux panes, or timers themselves.
 
 The legacy `current` harness kind must not remain a second mutable task record.
-v1.18 should stop creating new `current` harnesses, import an existing one as
-an immutable source input when creating the corresponding work unit, and emit
-a migration diagnostic until it is archived or converted. Until v1.18 ships,
-the current v1.7 behavior below remains unchanged.
+The intended migration is to stop creating new `current` harnesses, import an
+existing one as an immutable Work input, and diagnose it until archived or
+converted. Do not assume this migration is automatic: existing harness files
+and their retention handling remain supported. Use Work for mutable task
+progress; the legacy harness lifecycle below describes retained file behavior.
 
 `current` harnesses:
 

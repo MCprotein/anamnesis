@@ -16,7 +16,7 @@
   - 브라우저 API 사용 (`window`, `localStorage`, `IntersectionObserver`)
   - 이벤트 핸들러 (`onClick`, `onChange`)
   - third-party 라이브러리가 client-only
-- **`'use client'` 를 layout 에 붙이지 말 것** — 자식 트리 전체가 클라이언트 번들로 옮겨짐. 작은 인터랙티브 부분만 따로 client component 로 분리.
+- `'use client'` 는 import 그래프에 클라이언트 경계를 만든다. 서버에서 렌더링해 `children`/props 로 전달한 Server Component 까지 자동 전환하지는 않는다. 인터랙티브 부분은 작은 Client Component 로 분리한다.
 
 ### Data Fetching
 
@@ -48,8 +48,8 @@
 
 ### 미들웨어
 
-- `middleware.ts` 는 프로젝트 루트 (Next.js 가 거기만 인식).
-- 기본 Edge runtime — Node.js 전용 모듈 import 금지.
+- 설치된 버전 확인: Next.js 15의 `middleware.ts` 는 루트 또는 `src/`에서 `app/`·`pages/`와 같은 수준에 둔다. Next.js 16은 `proxy.ts` 전환 가이드를 따른다.
+- Next.js 15 middleware는 기본 Edge이며 15.5부터 Node runtime도 지원한다. Next.js 16 proxy는 Node runtime을 사용한다. Edge로 실행할 때는 Node 전용 API를 사용하지 않는다.
 - matcher 명시 (`config.matcher`) 로 적용 범위 좁힘. 모든 요청에 도는 미들웨어는 콜드 스타트 오래 걸림.
 
 ### 환경 변수
@@ -60,8 +60,13 @@
 
 ### 자주 하는 실수
 
-- `'use client'` 를 root layout 에 → 모든 페이지 클라이언트 렌더링됨. 큰 번들·SEO 문제.
+- root layout의 client import 범위를 불필요하게 넓혀 번들을 키우기.
 - `<img>` 사용 → CWV (LCP) 점수 저하.
 - Pages Router 의 `getServerSideProps` 패턴을 App Router 로 가져옴 → RSC 의 자연스러운 fetch 패턴 무시.
 - `error.tsx` 에 `'use client'` 안 붙임 → boundary 에서 에러 핸들 못 함.
-- Middleware 에서 Node API 사용 → Edge 런타임에서 깨짐.
+- Edge middleware에서 Node 전용 API 사용 → 런타임 오류.
+
+### 검증
+
+- 프로젝트의 build/lint 스크립트를 확인한다. Next.js 16에는 `next lint`가 없으므로 ESLint/Biome을 직접 실행하며, `next build`를 lint 검증으로 간주하지 않는다.
+- 버전별 근거: [Next.js 15 middleware](https://nextjs.org/docs/15/app/api-reference/file-conventions/middleware), [Next.js 16 전환](https://nextjs.org/docs/app/guides/upgrading/version-16), [Server/Client 경계](https://nextjs.org/docs/app/getting-started/server-and-client-components).

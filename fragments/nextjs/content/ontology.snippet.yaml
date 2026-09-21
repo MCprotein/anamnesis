@@ -26,15 +26,15 @@ nextjs:
     script: next/script
     metadata: metadata-export
   middleware:
-    file: middleware.ts (project root)
-    runtime_default: edge
+    file: "Next.js 15: middleware.ts at root or src; Next.js 16: proxy.ts"
+    runtime: "Next.js 15 middleware defaults Edge, Node supported from 15.5; Next.js 16 proxy uses Node"
     require_matcher: true
   env_exposure:
     server_only: default
     client_exposed_prefix: NEXT_PUBLIC_
     note: "NEXT_PUBLIC_* is inlined at build — not changeable at runtime"
   forbidden:
-    - "'use client' on root or shared layouts"
+    - unnecessarily_broad_client_import_boundaries
     - "<img> tag (use next/image)"
     - manual_head_tag_edits (use metadata API)
     - getServerSideProps_in_app_router

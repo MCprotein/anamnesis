@@ -1,6 +1,6 @@
 # Switching Scenarios
 
-v0.7 treats agent switching as an ordered 3x3 matrix. Same-agent rows are
+anamnesis tests agent switching as an ordered 3x3 matrix. Same-agent rows are
 included because "close and reopen the same tool" has the same continuity
 requirement as switching tools: the next session should resume from
 `.anamnesis/handoff/active.md` plus the referenced archive without a user

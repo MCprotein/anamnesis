@@ -1,5 +1,5 @@
 id: remix
-version: 1
+version: 2
 description: >
   Remix conventions — route modules, loaders/actions, nested boundaries,
   sessions, progressive enhancement, and server/client separation.

@@ -2,8 +2,8 @@
 
 ## Source of truth
 
-- **Status:** Active
-- **Last reviewed:** 2026-09-01
+- **Status:** Active presentation guidance; original redesign observations are historical.
+- **Last reviewed:** 2026-09-21 (current/target distinction)
 - **Product surfaces:** the human-readable terminal output of the `anamnesis`
   CLI, including help, lifecycle commands, diagnostics, Work and context
   workflows, trust inspection, benchmarks, and release/maintainer commands.
@@ -17,13 +17,20 @@
   system architecture, trust boundaries, storage, and execution behavior. A
   visual redesign must not change those contracts or reinterpret machine data.
 
-Observed evidence: the shared renderer currently provides ANSI tone, titles,
+Original observations (2026-09-01, before the compact-output redesign): the
+shared renderer provided ANSI tone, titles,
 sections, command rows, key-value rows, and wrapping, while high-volume
-reporters still assemble most output directly. The default `status` output
-shows healthy summaries alongside every Codex hook command, absolute key, hash,
-and stale evidence record. This makes the result technically complete but gives
+reporters still assembled most output directly. The default `status` output
+showed healthy summaries alongside every Codex hook command, absolute key, hash,
+and stale evidence record. This made the result technically complete but gave
 normal state, exceptions, provenance, and remediation almost equal visual
 weight.
+
+Current implementation: `cli/src/core/tui.ts` provides verdicts, actions,
+sections and Unicode/ASCII fallback. Compact `status` output is implemented in
+`cli/src/index.ts`; `--verbose` exposes fragments, hashes, evidence and generation
+details. The principles and success signals below remain design guidance, not
+a claim that every reporter or proposed interaction has been implemented.
 
 ## Brand
 
@@ -537,10 +544,10 @@ out, and avoid presenting a network failure as local project corruption.
   detection plus automatic ASCII fallback is sufficient for the first release,
   or whether a global `--unicode auto|always|never` option is required. Impact:
   public CLI surface and snapshot matrix.
-- [ ] **Verbose flag scope — owner: CLI maintainer.** Confirm whether
-  `--verbose` becomes a global parser option or is added only to migrated
-  reporters that suppress existing detail. Impact: help text, compatibility,
-  and consistent discovery.
+- [x] **Verbose flag scope.** `--verbose` is parsed centrally and passed to
+  migrated reporters. Its documented role is exposing fragments, hashes,
+  evidence and detailed diagnostics; reporter-specific behavior stays covered
+  by the relevant output tests.
 - [ ] **Stdout/stderr normalization — owner: CLI maintainer.** Inventory current
   reporter routing before moving warnings or progress to stderr. Impact: shell
   scripts may depend on current streams even when no documented contract exists.

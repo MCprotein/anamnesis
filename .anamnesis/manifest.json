@@ -58,8 +58,8 @@
       "fragment_version": 1,
       "template_version": 1,
       "base_rendered_hash": "sha256:aa85a84983a082095b405bfe55cad6fee6a21c983075b8e2e51247c11ecbac77",
-      "last_applied_hash": "sha256:9442ec6455c4e1346132d917982a286764e825d46ea3270b00948286ce6e3d6c",
-      "current_user_hash": "sha256:9442ec6455c4e1346132d917982a286764e825d46ea3270b00948286ce6e3d6c"
+      "last_applied_hash": "sha256:2a2e04520d712b565115a54b36d98926edbbec6743e4788dd0a41669594069f5",
+      "current_user_hash": "sha256:2a2e04520d712b565115a54b36d98926edbbec6743e4788dd0a41669594069f5"
     },
     {
       "file": "AGENTS.md",

@@ -7,6 +7,11 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Refresh version-sensitive Next.js, Prisma and Remix guidance; archive the previous fragment versions and advance their integer versions.
+
+- Refresh repository guides against the current CLI, capability schema and adapter behavior; distinguish historical designs from shipped contracts.
+- Align generated Claude Code handoff guidance with active/warm archive selection so completed and cold history is not loaded at startup.
+
 ## [1.24.2] — 2026-09-08
 
 - Drain large registered-project JSON output before CLI exit, including upgrade's combined result. This prevents successful project synchronization from being reported as a JSON parse failure when output exceeds a pipe buffer.

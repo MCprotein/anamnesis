@@ -1,10 +1,12 @@
 # README Claims
 
-Status: v1.0 evidence-backed README claim ledger.
+Status: maintained evidence-backed README claim ledger, introduced for v1.0.
 
 README claims should stay traceable to deterministic tests, dogfood records,
 switching fixtures, or public-safe benchmark reports. This file records the
-allowed claim surface before v1.0 publish.
+allowed claim surface and the evidence boundaries that still apply.
+Numeric entries below describe recorded snapshots, not a fresh run against the
+current checkout; use the linked report dates and suite versions.
 
 The generated evidence region in
 [`docs/BENCHMARK-GALLERY.md`](BENCHMARK-GALLERY.md) is refreshed by

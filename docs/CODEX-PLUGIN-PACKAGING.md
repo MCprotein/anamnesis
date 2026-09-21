@@ -4,6 +4,11 @@ Status: v1.1 research record.
 Date: 2026-05-07.
 Local evidence: `codex --version` reported `codex-cli 0.128.0`.
 
+This is a dated research record, not a statement of current upstream Codex
+plugin support. Anamnesis still emits config-layer hooks and native project
+skills; the candidate `codex-plugin` commands below are not implemented. Any
+plugin implementation must recheck upstream behavior and collect fresh evidence.
+
 ## Decision
 
 anamnesis should not emit a Codex plugin bundle by default in v1.1.

@@ -3,7 +3,9 @@
 Status: v1.18 target design with storage, typed contract, policy resolution,
 projection, session cursor, thin CLI commands, bounded prompt staging,
 prompt/safe-tool reconciliation hooks, and runtime-neutral review/delegation
-evidence plus contextual readiness implemented. Codex post-compaction recovery
+evidence plus contextual readiness and explicit `work close` implemented.
+The target contracts below also describe deferred behavior; abandoned/superseded
+lifecycle writes and reopen are not yet supported. Codex post-compaction recovery
 is available through native `SessionStart` with source `compact`. Provider
 orchestration, pre-compaction flushing, and closure orchestration remain unshipped.
 
@@ -384,7 +386,7 @@ The resolved policy, all contributing source refs, and its hash are frozen into
 each accepted contract revision. Lowering an already-required gate is a waiver and must be
 explicit; making it stricter is safe and append-only.
 
-Convenient configuration should not require hand-authoring full YAML:
+Proposed guided configuration (not implemented CLI commands or flags):
 
 ```text
 anamnesis init --review-preset off|advisory|strict
@@ -393,11 +395,11 @@ anamnesis context policy configure --scope project --review-preset advisory
 anamnesis context policy show --resolved
 ```
 
-Interactive initialization asks one short preset question and explains the
-trade-off. User defaults live in the platform/XDG anamnesis config and apply
-across projects. Project defaults belong in Agentfile settings and therefore
-require an explicit versioned Agentfile migration because the current v1
-parser rejects unknown fields. Task-specific custom detail may live in a
+The proposed guided UX would ask one short preset question and explain the
+trade-off. Current `init` is noninteractive and writes the fresh-init defaults.
+Project defaults live in Agentfile v2 `settings.work_policy`; existing v1 files
+require explicit migration before those settings can be added. The commands
+above and interactive preset selection remain future UX, not available entrypoints. Task-specific custom detail may live in a
 referenced project policy file and reusable task harnesses. `status` and
 `doctor` show the resolved preset, source precedence, unavailable providers,
 and any policy drift. Per-unit natural-language changes such as “이 작업은
@@ -844,8 +846,10 @@ bodies into repository, backup, or remote sync requires a separate explicit
 privacy choice. Missing or purged raw bodies must be reported as unavailable
 provenance, never replaced by an invented quote.
 
-Context indexing stores IDs, hashes, classifications, and source pointers, not
-raw prompt snippets. Any future MCP surface follows the same rule and requires
+Future Work-specific context indexing must store IDs, hashes, classifications,
+and source pointers, not raw prompt snippets. The current context index does
+not implement Work-ledger retrieval; use `work status` and Work commands for
+the authoritative contract. Any future MCP surface follows the same rule and requires
 an explicit privileged read to return a raw body.
 
 ## Acceptance criteria

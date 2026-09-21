@@ -220,6 +220,8 @@ for the detailed trust and execution model.
 
 ## Documentation
 
+- [Documentation map](docs/README.md) — current guides, proposals and historical records
+
 - [User guide](docs/USER-GUIDE.md) — setup, lifecycle, fragments, capabilities
 - [Work design](docs/WORK-UNIT-DESIGN.md) — requirements, evidence, policy, briefings
 - [Agent switching guide](docs/AGENT-SWITCHING-GUIDE.md) — move between supported agents

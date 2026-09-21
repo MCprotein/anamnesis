@@ -8,7 +8,7 @@ Mechanically it is a regular fragment (declares `fragment.yaml`, has `content/` 
 
 ```
 base/
-├── fragment.yaml                # 17 capabilities (covers all 6 types; v23+)
+├── fragment.yaml                # capability declarations (covers all 6 types)
 ├── content/
 │   ├── agents.snippet.md        # AGENTS.md "anamnesis-base" region
 │   └── ontology.snippet.yaml    # → .anamnesis/ontology/base.yaml
@@ -16,10 +16,10 @@ base/
 │   └── context-continuity.yaml  # → .anamnesis/task-harnesses/context-continuity.yaml
 ├── adapters/claude-code/
     ├── hooks/
-    │   ├── inject-ontology.sh    # SessionStart: cats ontology slices recursively
+    │   ├── inject-ontology.sh    # SessionStart: compact ontology summary + source pointers
     │   ├── inject-handoff.sh     # SessionStart: active.md + warm active archive pointers
     │   ├── handoff-reminder.sh   # Stop: deduped dirty-work handoff reminder
-    │   ├── work-briefing.sh      # UserPromptSubmit: opt-in capture + due briefing
+    │   ├── work-briefing.sh      # UserPromptSubmit: policy-controlled capture + due briefing
     │   ├── work-post-tool-batch.mjs # PostToolBatch: same-turn Work cadence
     │   └── remind-uncommitted.sh # PostToolUse:Edit: nags on dirty git tree
     ├── commands/
@@ -37,7 +37,7 @@ base/
 └── adapters/codex/
     └── hooks/
         ├── session-start.mjs    # Native Codex SessionStart JSON wrapper
-        ├── work-user-prompt.mjs # Native Codex opt-in capture/briefing wrapper
+        ├── work-user-prompt.mjs # Native Codex policy-controlled capture/briefing wrapper
         └── work-post-tool-use.mjs # Native Codex same-turn Work wrapper
 ```
 

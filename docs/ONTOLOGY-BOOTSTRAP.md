@@ -3,7 +3,8 @@
 > Status: implemented in 0.4.0; expanded in 0.4.1 with nextjs,
 > nestjs, fastapi, multi-scope bootstrap output, and `--scope`.
 
-Two-layer auto-generation of `.anamnesis/ontology/<fragment-id>.yaml` so
+Two-layer generation of `.anamnesis/ontology/<fragment-id>.bootstrap.yaml`
+and `<fragment-id>.enriched.yaml` alongside the static fragment slice so
 new projects don't start with an empty ontology slice.
 
 | Layer | Mode | Source | Cost | Output type |
@@ -24,7 +25,7 @@ Layer B enrichment.
 
 ## 1. Why this design
 
-Today `ontology` capability ships static snippets shipped by the
+The `ontology` capability renders static snippets from the
 fragment library. They are generic and don't contain project-specific
 truth (namespace names, ports, models, etc.). Users either edit
 `system_graph.yaml` by hand or skip the file entirely.
@@ -101,8 +102,8 @@ For each installed fragment with an introspector:
 ```
 .anamnesis/ontology/
   <id>.yaml              # static snippet (shipped by fragment, exists today)
-  <id>.bootstrap.yaml    # NEW — Layer A output, regenerable
-  <id>.enriched.yaml     # NEW — Layer B output, agent-curated
+  <id>.bootstrap.yaml    # Layer A output, regenerable
+  <id>.enriched.yaml     # Layer B output, agent-curated
 ```
 
 In multi-scope projects the same layout is rooted at the selected scope,
@@ -117,8 +118,11 @@ for example `apps/web/.anamnesis/ontology/nextjs.bootstrap.yaml`.
   when it is missing.
 - The static `<id>.yaml` stays untouched as the canonical template.
 
-`SessionStart` ontology injection reads all three and concatenates in order:
-static → bootstrap → enriched. Claude Code uses `inject-ontology.sh`; Codex
+`SessionStart` discovers static, bootstrap, and enriched files. By default it
+emits compact source pointers and an invariant digest, not full YAML bodies.
+`ANAMNESIS_SESSION_CONTEXT_MODE=full` enables full-body debug output; filename
+order is not a semantic merge or precedence rule. Agents read exact source files
+before relying on them. Claude Code uses `inject-ontology.sh`; Codex
 uses `.anamnesis/codex-native-hooks/session-start.mjs` when native hooks are
 installed, with AGENTS.md fallback instructions otherwise.
 
@@ -237,9 +241,10 @@ gets rendered to all three adapters automatically). Skill instructs the
 agent:
 
 ```
-1. Read all .anamnesis/ontology/*.yaml (static + bootstrap).
+1. Read all .anamnesis/ontology/*.yaml (static + bootstrap + existing enriched).
 2. Read project entry points (CLAUDE.md/AGENTS.md, system_graph.yaml if present, etc.).
-3. Identify semantic relationships not visible to parsers:
+3. Query relevant source pointers and read their original files, then identify
+   semantic relationships not visible to parsers:
    - data flow paths (e.g., kubelet pull → certs.d → ClusterIP)
    - cross-namespace dependencies
    - operational rules (e.g., "skip_verify unsupported on containerd v2")

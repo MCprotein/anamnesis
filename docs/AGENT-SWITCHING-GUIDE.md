@@ -1,6 +1,6 @@
 # Agent Switching Guide
 
-This guide describes the intended v0.7 user journey: install anamnesis once,
+This guide describes the cross-agent workflow: install anamnesis once,
 work in one agent, switch to another agent, and continue from the same project
 state without re-briefing the new agent.
 
@@ -93,9 +93,10 @@ agents.
 Current releases do not automatically finalize this archive. Stop hooks can
 warn when dirty work is newer than the latest handoff, and SessionStart hooks
 can inject compact pointers, but the departing agent still owns the semantic
-summary. v1.8 plans an auto-draft plus lifecycle model so completed handoffs
-can move from hot active context to warm/cold/deprecated retention tiers
-without becoming an unbounded startup payload.
+summary. `anamnesis handoff draft` generates a factual skeleton for the agent
+to finalize. `handoff close` and `handoff deprecate` preview lifecycle changes
+and apply them only with `--apply`; they do not delete archives. See
+[HANDOFF-LIFECYCLE.md](HANDOFF-LIFECYCLE.md) for the implemented retention model.
 
 ## 4. Resume In The Next Agent
 
@@ -104,8 +105,10 @@ Start the target agent in the same repository. The target agent should load:
 1. `AGENTS.md` and any tool-specific entrypoint that points to it.
 2. `.anamnesis/ontology/*.yaml`, `.bootstrap.yaml`, and `.enriched.yaml`.
 3. `.anamnesis/handoff/active.md`.
-4. The archive referenced by `active.md`, or the newest timestamped handoff
-   archive when the index is stale.
+4. Warm archives referenced by the open sections of `active.md`, when detail
+   is needed. Closed, cold, deprecated, and superseded archives are not startup
+   context. When the index is absent, native hooks fall back to the newest
+   eligible warm pointers within the configured retention count.
 
 Adapter resume surfaces:
 

@@ -1,10 +1,10 @@
 id: nextjs
-version: 1
+version: 2
 description: >
   Next.js conventions (app router primary) — RSC vs client components,
   data fetching boundaries, optimizers, route handlers, env exposure rules.
-  No executable hook in v0.1; `next build`/`next lint` are the canonical
-  validators.
+  No executable hook; use the project build and lint scripts for its
+  installed Next.js version.
 capabilities:
   - type: project_memory
     source: content/agents.snippet.md

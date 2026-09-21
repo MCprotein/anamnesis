@@ -6,10 +6,10 @@ This repository **is** anamnesis — the AI coding agent config lifecycle manage
 
 - `cli/src/` — TypeScript CLI source (commands, core primitives, adapters)
 - `cli/src/core/` — engine: `agentfile`, `manifest`, `regions`, `fragments`, `triggers`, `rulebook`, `applier`, `render`
-- `cli/src/adapters/claude-code/` — five capability renderers (project_memory, ontology, executable_hook, skill, slash_command)
-- `cli/src/commands/` — `init`, `update`, `promote`
-- `base/` — always-installed fragment (5 capabilities)
-- `fragments/` — stack-specific fragments (prisma, k8s, nestjs, fastapi, python-uv)
+- `cli/src/adapters/claude-code/` — Claude Code capability renderers; sibling `codex/` and `cursor/` adapters
+- `cli/src/commands/` — setup, apply/update, context, Work, diagnostics and benchmark commands
+- `base/` — always-installed fragment (six capability types)
+- `fragments/` — stack-specific fragments; catalog in `fragments/README.md`
 - `rulebook.md` — auto-detection rules → fragment suggestions
 - `docs/DESIGN.md` — full architecture
 - `specs/agentfile.md` — Agentfile v1 schema

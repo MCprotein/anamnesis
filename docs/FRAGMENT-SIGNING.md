@@ -3,6 +3,11 @@
 Status: v1.0 design accepted; remote signing verification implementation
 deferred post-v1.0. See `docs/REGISTRY-V1-DECISION.md`.
 
+Current implementation boundary: remote archive signature verification, trust
+stores, and unsigned-remote flags below are proposed contracts, not shipped CLI
+features. Built-in and local-library fragments use the existing package/local
+trust boundary.
+
 ## Goal
 
 Remote fragments can affect always-loaded agent instructions and may install

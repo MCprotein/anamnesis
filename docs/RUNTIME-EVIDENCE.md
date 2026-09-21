@@ -15,7 +15,7 @@ need machine-readable proof beyond terminal output.
 - `anamnesis doctor --append`
 - `anamnesis hooks summary --append`
 - `anamnesis init`
-- `anamnesis update --apply`
+- `anamnesis apply` (or compatibility `anamnesis update --apply`)
 - `anamnesis gc --apply`
 - `anamnesis benchmark report --append`
 - `anamnesis benchmark compare --append`
@@ -23,13 +23,20 @@ need machine-readable proof beyond terminal output.
 - `anamnesis benchmark retrieval --append`
 - `anamnesis benchmark task --append`
 - `anamnesis benchmark prompt-gate --append`
+- `anamnesis benchmark task-compare --append`
+- `anamnesis benchmark subagent-injection --append`
+- `anamnesis benchmark upgrade --append`
+- `anamnesis benchmark work-continuity --append`
+- `anamnesis release check --append`
 
 Each record includes:
 
 - `kind`: `dogfood-check`, `doctor-check`, `hook-log-summary`,
   `init-install`, `update-apply`, `fragment-lifecycle`, `gc-apply`,
   `benchmark-report`, `benchmark-compare`, `benchmark-trace-rollup`,
-  `retrieval-benchmark`, `agent-task-benchmark`, or `prompt-delta-gate`
+  `retrieval-benchmark`, `agent-task-benchmark`, `agent-task-benchmark-compare`,
+  `subagent-injection-benchmark`, `upgrade-benchmark`,
+  `work-continuity-benchmark`, `release-check`, or `prompt-delta-gate`
 - `generated_at`: ISO timestamp
 - `command`: command that produced the evidence
 - `project.name`: managed project name
@@ -37,7 +44,7 @@ Each record includes:
 - `details`: optional structured check/layer details
 - `artifacts`: related markdown report paths
 
-Benchmark evidence records include `summary.scorecard` under schema
+Deterministic `benchmark-report` evidence records include `summary.scorecard` under schema
 `anamnesis.benchmark.scorecard.v1`. The scorecard keeps raw dimensions visible
 instead of reducing benchmark claims to an opaque aggregate: ready layers,
 continuity checks, ontology gaps, doctor issues, Codex hook warnings, adapter
@@ -62,12 +69,13 @@ fragments, installed tools, planned change counts, monorepo detection,
 post-install bootstrap outcomes, hook registration outcomes, and install flags.
 
 Update evidence records use kind `update-apply` and are written automatically
-only for `anamnesis update --apply`. Dry-runs stay read-only and do not touch
+for `anamnesis apply` or compatibility `anamnesis update --apply`. The event
+kind remains `update-apply` for compatibility. Dry-runs stay read-only and do not touch
 the evidence log. The record captures change counts, suggested fragment count,
 backup/prune counts, Claude/Codex hook registration outcomes, and apply flags.
 
 Fragment lifecycle records use kind `fragment-lifecycle` and are written
-alongside successful `init` and `update --apply` runs. Summary schema
+alongside successful `init` and project apply runs. Summary schema
 `anamnesis.fragment_lifecycle.v1` counts local events such as `installed`,
 `updated`, `pinned-blocked`, `yanked-invalid`, and `dependency-blocked`.
 Current runs do not send webhook traffic; the JSONL record is the local update

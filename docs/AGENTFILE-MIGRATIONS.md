@@ -1,14 +1,17 @@
 # Agentfile Migration Design
 
-This document defines the v1.0 behavior contract for
-`anamnesis migrate agentfile`. The command is available with a
-dry-run/apply/backup pipeline and no built-in schema transformations because
-the Agentfile v1 freeze did not require a destructive pre-freeze transform.
-This is the behavior future migrations must preserve.
+This document defines the current behavior of `anamnesis migrate agentfile`.
+The supported target is Agentfile v2. The built-in `v1-to-v2-work-policy`
+migration changes `version: 1` to `version: 2`, preserving existing field
+values. It does not add or enable Work policies or prompt capture. V2 permits
+those optional settings; existing projects without them retain legacy-off behavior.
+
+The original v1.0 freeze needed no transform. That historical decision is
+recorded in [AGENTFILE-V1-FREEZE.md](AGENTFILE-V1-FREEZE.md).
 
 ## Goal
 
-Agentfile migrations should let pre-1.0 projects survive schema adjustments
+Agentfile migrations let existing projects survive schema adjustments
 without losing user intent. A migration is a narrow, versioned transform of the
 Agentfile itself. It does not render fragments, update managed regions, run
 introspectors, publish packages, or modify adapter surfaces.
@@ -81,7 +84,7 @@ JSON output should expose the same fields without relying on terminal wording:
   "applied": false,
   "changed": true,
   "migrations": [
-    { "id": "v1-remove-commit-on-apply", "title": "..." }
+    { "id": "v1-to-v2-work-policy", "title": "Upgrade Agentfile schema to v2", "fromVersion": 1, "toVersion": 2 }
   ],
   "backupPath": null,
   "nextCommand": "anamnesis migrate agentfile --apply"
@@ -90,14 +93,15 @@ JSON output should expose the same fields without relying on terminal wording:
 
 ## Preservation Rules
 
-The first implementation can use the existing YAML parser for known v1 fields,
-but v1.0 migration support should preserve comments and unknown forward fields
-where practical. If exact comment preservation is not implemented, the dry-run
-diff must make that formatting churn visible before `--apply`.
+When no migration is needed, the original text is preserved byte-for-byte.
+A real migration parses and reserializes YAML: field values are preserved, but
+comments and formatting may change. Inspect the dry-run diff before applying.
+Unknown fields are rejected by the source-version parser, not silently preserved
+or stripped. Downgrades and unsupported target versions are rejected.
 
-Field-specific guidance for current v0.8 risks:
+Field-specific compatibility rules:
 
-- `fragment.adapters`: keep as a v1-stable candidate. It now has parser,
+- `fragments[].adapters`: preserve the stable field. It now has parser,
   render, and diagnostic semantics.
 - `overrides.regions[].locked` and `overrides.files[].locked`: treat as
   ownership metadata, not hard update locks. If hard locks are needed before
@@ -114,25 +118,23 @@ Field-specific guidance for current v0.8 risks:
 
 ## Shipping Evidence
 
-The v1.0 surface is considered available when these behaviors stay covered:
+The current command is covered by `cli/src/commands/migrate.test.ts`:
 
 - dry-run leaves Agentfile, manifest, and managed files untouched;
 - `--apply` writes a backup and the migrated Agentfile;
 - repeated `--apply` is a no-op;
-- comment/format preservation is covered for the no-built-in-migration v1.0
-  path; future migrations that reformat must add fixtures showing the visible
-  dry-run diff;
+- no-op migrations preserve original text; real transforms expose serialized
+  output in the dry-run diff;
 - unknown or unsupported schema versions produce actionable errors;
 - migration does not run renderers or create adapter files;
 - the CLI and JSON outputs expose the next recommended command;
 - `doctor` can run after migration and report any remaining repair work.
 
-## Implementation Order
+## Apply/update boundary
 
-1. Add a migration registry and dry-run planner with no built-in migrations.
-2. Add CLI plumbing for `anamnesis migrate agentfile`.
-3. Add backup and apply support.
-4. Report the next recommended command in both human and JSON output.
-5. Add the first real migration only when a future schema version needs a
-   destructive or semantic Agentfile transform. The v1.0 freeze does not
-   require a built-in migration.
+`anamnesis apply` and `anamnesis update` check the migration plan before
+rendering. If it changes the Agentfile, they stop and direct the user to
+`anamnesis migrate agentfile --apply`. Migration itself never renders
+adapters; run the normal project apply workflow afterward.
+
+Implementation: `cli/src/commands/migrate.ts` and `cli/src/commands/update.ts`.

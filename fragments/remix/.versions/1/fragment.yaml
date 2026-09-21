@@ -1,0 +1,16 @@
+id: remix
+version: 1
+description: >
+  Remix conventions — route modules, loaders/actions, nested boundaries,
+  sessions, progressive enhancement, and server/client separation.
+capabilities:
+  - type: project_memory
+    source: content/agents.snippet.md
+    region: remix
+
+  - type: ontology
+    source: content/ontology.snippet.yaml
+
+owns:
+  - region: remix in AGENTS.md
+  - file: .anamnesis/ontology/remix.yaml

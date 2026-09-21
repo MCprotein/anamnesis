@@ -1,41 +1,37 @@
-# capabilities
+# Capabilities
 
-The **intermediate representation (IR)** that sits between tool-agnostic content and tool-specific adapters.
+Capabilities describe what a fragment supplies. Adapters translate those
+capabilities into each tool's files and instructions. This directory is a
+conceptual reference; the executable schema and renderers live under `cli/src/`.
 
-Each capability is a semantic unit with a **rendering contract** — "given this content + params, render it into this tool's native surface."
+## Supported types
 
-## The five capabilities (v0.1)
+| Type | Content and purpose |
+| --- | --- |
+| `project_memory` | Project instructions, anchored in `AGENTS.md` |
+| `ontology` | Structured project facts in `.anamnesis/ontology/` |
+| `executable_hook` | Event-driven procedures, with native execution or documented fallbacks |
+| `skill` | Reusable agent procedure with a `SKILL.md` entrypoint |
+| `slash_command` | User-invoked procedure |
+| `task_harness` | Reusable task contract under `.anamnesis/task-harnesses/` |
 
-| Capability | What it represents | Claude Code | Codex | Cursor |
-|---|---|---|---|---|
-| `project_memory` | Always-loaded free-form context | `AGENTS.md` + `CLAUDE.md` entrypoint | `AGENTS.md` | `AGENTS.md` |
-| `ontology` | Structured reference, consulted on demand | SessionStart hook injection | `AGENTS.md` instruction pointing to file | `rules` instruction |
-| `executable_hook` | Event-driven automation | `.claude/hooks/` + `settings.json` | `AGENTS.md` fallback + optional git pre-commit bridge | `.cursor/rules` fallback |
-| `skill` | Reusable work procedure | `.claude/skills/<name>/SKILL.md` | `AGENTS.md` section (fallback) | `rules` (fallback) |
-| `slash_command` | User-invoked command | `.claude/commands/*.md` | `AGENTS.md` section (fallback) | `rules` (fallback) |
-
-- ✅ native: tool runs the capability automatically
-- 🟡 best-effort: rendered as instruction/fallback mechanism
-- ❌: unsupported, recorded in `limitations.md`
-
-The canonical, test-backed parity matrix lives in
-[`docs/ADAPTER-PARITY.md`](../docs/ADAPTER-PARITY.md).
-
-## Why an IR?
-
-Without an IR, fragments would couple tightly to one tool's surface (e.g., all prisma fragments would be hardcoded to `.claude/hooks/`). The IR decouples **what a fragment wants to do** from **how a specific tool achieves it**, so adding new tool adapters (Cursor, Aider, Windsurf, …) doesn't require rewriting every fragment.
-
-See `docs/DESIGN.md` §4.1–4.2 for the full rationale.
-
-## Planned v0.2+ additions
-
-- `scoped_rule` — Cursor-native glob-matched rule injection (equivalent on CC via nested `CLAUDE.md`)
-- `pre_commit_check` — specialized form of `executable_hook` targeting git lifecycle only
+The test-backed [adapter parity matrix](../docs/ADAPTER-PARITY.md) is the
+canonical mapping to tool surfaces. Claude Code has native hooks, skills and
+commands. Codex has native skills and supported native hooks plus instruction
+fallbacks; its slash-command capability uses instructions. Cursor uses
+`AGENTS.md` and `.cursor/rules/*.mdc` fallbacks. Native hook installation and
+runtime approval are separate concerns. Executable and agent-action surfaces
+require `--allow-exec-adapters` when applying them.
 
 ## Implementation
 
-Capability rendering contracts will be implemented as TypeScript modules under `cli/src/capabilities/` during v0.1 build. Each capability exports:
+- [Fragment schema](../cli/src/core/fragments.ts): discriminated capability union and validation.
+- [Render contract](../cli/src/core/render.ts): `CapabilityRenderer.plan(capability, ctx)` returns declarative `RenderAction[]`; `RendererRegistry` selects by adapter and capability type.
+- [Adapters](../cli/src/adapters/): tool-specific renderers.
+- [Applier](../cli/src/core/applier.ts): managed region/file application and conflict handling.
 
-- `validate(input)` — check content and params
-- `render(input, adapter)` — produce adapter-specific output files
-- `regionId(input)` — deterministic id for manifest tracking
+A fragment can use common content while adapters choose native or fallback
+surfaces. Unsupported native execution is not equivalent to missing content.
+See [fragment authoring](../docs/FRAGMENT-AUTHORING.md) for source layouts,
+`adapters_supported`, and side-effect declarations. Future capability ideas
+belong in the [roadmap](../docs/ROADMAP.md), not the current schema.

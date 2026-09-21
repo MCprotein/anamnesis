@@ -16,7 +16,7 @@
 
 ### 경계
 
-- nested route 별 ErrorBoundary/CatchBoundary 역할을 고려한다.
+- Remix 2에서는 route별 `ErrorBoundary`와 `useRouteError`를 사용하고 thrown Response는 `isRouteErrorResponse`로 구분한다. `CatchBoundary`는 Remix 1 코드에 한정한다.
 - route file naming convention 은 현재 프로젝트의 Remix 버전과 router 설정을 따른다.
 
 ### 검증
@@ -30,3 +30,5 @@
 - action 이 mutation 후 redirect/revalidation 흐름을 명확히 하지 않음.
 - session commit 누락.
 - server-only dependency 를 client import 경로로 노출.
+
+버전별 근거: [Remix 2 boundary 전환](https://v2.remix.run/docs/start/v2/#catchboundary-and-errorboundary).

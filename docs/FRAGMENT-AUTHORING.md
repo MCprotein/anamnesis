@@ -1,7 +1,7 @@
 # Fragment Authoring Guide
 
-Status: v0.9 author guidance. This documents the current built-in fragment
-shape and the review bar for future public fragments.
+This guide documents the current built-in fragment shape and the review bar
+for future public fragments.
 
 ## What a Fragment Is
 
@@ -117,7 +117,7 @@ Rules:
 | `project_memory` | `source`, `region` | Inserts always-loaded guidance into `AGENTS.md`. |
 | `ontology` | `source` | Writes `.anamnesis/ontology/<id>.yaml`. |
 | `executable_hook` | `event`, `source`, optional `adapters_supported`, optional `side_effects` | Renders hook automation for adapters that support it. |
-| `skill` | `name`, `source`, optional `side_effects` | Provides a reusable procedure. Native in Claude Code, fallback elsewhere. |
+| `skill` | `name`, `source`, optional `side_effects` | Provides a reusable procedure. Native in Claude Code and Codex, with a Cursor rules fallback. |
 | `slash_command` | `name`, `source`, optional `side_effects` | Provides a user-invoked command. Native in Claude Code, fallback elsewhere. |
 | `task_harness` | `name`, `source`, optional `lifecycle`, optional `adapters_supported` | Provides a repo-local task contract under `.anamnesis/task-harnesses/<name>.yaml`. It is indexed for retrieval, not injected wholesale into startup context. |
 
@@ -225,7 +225,8 @@ questions an agent can infer with evidence.
 ## Rulebook Entry
 
 Add one rule to `rulebook.md` when the fragment should be suggested by
-`init` or `status`.
+`init` or `status`. `init` selects matching fragments automatically;
+`--dry-run` is the review step before installation.
 
 ```markdown
 ## prisma
@@ -254,7 +255,8 @@ Rules:
 - Do not mutate project files unless the hook's name and docs make that clear.
 - Prefer validation and reminders over automatic fixes.
 - Make generated hook paths explicit in `owns`.
-- Remember that `.claude` executable surfaces require
+- Remember that agent-behavior surfaces (including Claude Code, Codex, and
+  Cursor adapter files) require
   `--allow-exec-adapters`.
 
 Remote executable fragments have additional policy in
@@ -345,7 +347,8 @@ Before merging a public fragment:
 - Keep generated region ids stable.
 - Keep ontology schema fields stable and append new facts instead of rewriting
   reviewed semantic content.
-- Prefer additive changes until v1.0 freezes the public surface.
+- Preserve the frozen Agentfile v1 contract; schema changes need an explicit
+  migration and compatibility evidence.
 
 ## Common Mistakes
 

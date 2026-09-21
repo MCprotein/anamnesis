@@ -23,9 +23,12 @@ Initialize a project:
 ```bash
 cd /path/to/your/project
 anamnesis init --dry-run
-anamnesis init --allow-exec-adapters
 anamnesis init --tools all --allow-exec-adapters
 ```
+
+Run `init` once per project. Omit `--tools all` to use the default tool selection.
+The document flags below are alternatives for that initial invocation; do not
+run a second `init` after the Agentfile has been created.
 
 Optional document setup:
 

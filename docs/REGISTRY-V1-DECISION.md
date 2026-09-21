@@ -1,6 +1,8 @@
 # Registry and Signing V1 Decision
 
-Status: v1.0 decision.
+Status: historical v1.0 scope decision. Registry/signing implementation remains
+separate from this accepted design; this record is retained for its trust
+boundary rationale.
 
 anamnesis will not ship remote fragment registry installation or signature
 verification in v1.0. The design stays accepted, but implementation moves to a
