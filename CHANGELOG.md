@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- The publish workflow waits up to about 4.5 minutes (12 attempts, 5–30 second backoff) for each registry to show a new version before the parity check fails. v1.25.0 and v1.25.1 both published successfully but failed the previous 15-second window, which skipped the GitHub Release until the job was rerun.
+
 ## [1.25.1] — 2026-10-11
 
 - Fix the opt-in real Codex dogfood smokes for current Codex CLI (verified on 0.160.0). Each smoke now uses a temporary `CODEX_HOME` that links the operator's `auth.json` and trusts its own smoke hooks through the Codex app-server, because Codex skips untrusted hooks. Trust state is written only to the temporary home. `dogfoodCheck` is now async.
