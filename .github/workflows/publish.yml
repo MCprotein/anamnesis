@@ -140,6 +140,7 @@ jobs:
           exit 1
 
       - name: Verify registry parity
+        timeout-minutes: 20
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -147,11 +148,17 @@ jobs:
 
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          # A just-published version can take minutes to appear in the
+          # registry read path. v1.25.0 and v1.25.1 both failed a 15-second
+          # window although both publishes succeeded. Each registry gets up to
+          # ~4.25 min (255 s) of backoff sleeps plus up to 10 s per lookup.
+          MAX_ATTEMPTS=12
           verify_registry() {
             local registry="$1"
             local actual=""
             local attempt
-            for attempt in 1 2 3 4 5; do
+            local delay
+            for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
               if actual="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry "$registry" --@mcprotein:registry="$registry" --fetch-retries=0 --fetch-timeout=10000)"; then
                 if [[ "$actual" = "$PACKAGE_VERSION" ]]; then
                   return 0
@@ -159,12 +166,13 @@ jobs:
                 echo "::error::$registry returned $actual; expected $PACKAGE_VERSION."
                 return 1
               fi
-              if [[ "$attempt" -lt 5 ]]; then
-                echo "$registry lookup failed (attempt $attempt/5); retrying in 3 seconds."
-                sleep 3
+              if [[ "$attempt" -lt "$MAX_ATTEMPTS" ]]; then
+                delay=$(( attempt * 5 < 30 ? attempt * 5 : 30 ))
+                echo "$registry lookup failed (attempt $attempt/$MAX_ATTEMPTS); retrying in $delay seconds."
+                sleep "$delay"
               fi
             done
-            echo "::error::$registry did not confirm $PACKAGE_VERSION after 5 attempts."
+            echo "::error::$registry did not confirm $PACKAGE_VERSION after $MAX_ATTEMPTS attempts."
             return 1
           }
 
