@@ -76,6 +76,30 @@ describe("project registry", () => {
 		expect(readProjectRegistry({ registryPath }).projects).toEqual([]);
 	});
 
+	it("keeps a project valid when only the volume device number changes", () => {
+		const dir = tempDir();
+		const root = path.join(dir, "repo");
+		const registryPath = path.join(dir, "projects.json");
+		const entry = registerProject({ ...project(root), registryPath });
+		// macOS can renumber an APFS volume after a reboot or OS update.
+		const renumbered = {
+			...entry,
+			root_identity: {
+				...entry.root_identity,
+				dev: entry.root_identity.dev + 3,
+			},
+		};
+		expect(validateRegisteredProject(renumbered)).toBe(true);
+		const replacedInode = {
+			...entry,
+			root_identity: {
+				...entry.root_identity,
+				ino: entry.root_identity.ino + 1,
+			},
+		};
+		expect(validateRegisteredProject(replacedInode)).toBe(false);
+	});
+
 	it("rejects symlink project roots and symlink registry files", () => {
 		const dir = tempDir();
 		const real = path.join(dir, "real");

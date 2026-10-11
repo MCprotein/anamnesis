@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Registered projects stay valid when only the volume device number changes. macOS can renumber APFS volumes after a reboot or OS update, and the registry compared that number, so `projects plan|apply` and `upgrade --apply` skipped unchanged projects as stale. The canonical path plus inode still detects a replaced directory.
+
 - The publish workflow retries each registry up to 12 times (255 seconds of 5–30 second backoff, plus up to 10 seconds per lookup; the step is capped at 20 minutes) before the parity check fails. v1.25.0 and v1.25.1 both published successfully but failed the previous 15-second window, so the GitHub Release waited for a rerun.
 
 ## [1.25.1] — 2026-10-11
