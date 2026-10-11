@@ -183,7 +183,7 @@ describe("ensureHookRegistration — noop", () => {
     expect(status).toBe("noop");
   });
 
-  it("keeps user registrations of the same script under other matchers", () => {
+  it("keeps user matchers and rewrites a bare command left under one", () => {
     const quoted = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/prisma-validate.sh';
     const initial = {
       hooks: {
@@ -204,7 +204,7 @@ describe("ensureHookRegistration — noop", () => {
       legacyMatchers: ["Edit"],
     };
     const { settings, status } = ensureHookRegistration(initial, widened);
-    expect(status).toBe("create");
+    expect(status).toBe("migrate");
     const entries = (settings.hooks as Record<string, unknown>)
       .PostToolUse as Array<{ matcher: string }>;
     expect(entries.map((e) => e.matcher)).toEqual([
@@ -212,6 +212,9 @@ describe("ensureHookRegistration — noop", () => {
       "Read",
       "Edit|Write|NotebookEdit",
     ]);
+    const read = (entries[1] as unknown as { hooks: Array<{ command: string }> })
+      .hooks;
+    expect(read.map((h) => h.command)).toEqual([quoted]);
   });
 
   it("migrates only existing legacy forms for migrate-only registrations", () => {
@@ -360,6 +363,67 @@ describe("hand-written CLAUDE_PROJECT_DIR commands", () => {
     });
     expect(status).toBe("create");
     expect(hookRegistrationPresent(settings, REG_INJECT)).toBe(true);
+  });
+
+  it("removes a bare entry of a user-modified hook when the current form exists", () => {
+    const quoted = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/prisma-validate.sh';
+    const initial = {
+      hooks: {
+        PostToolUse: [
+          {
+            matcher: "Edit",
+            hooks: [
+              { type: "command", command: ".claude/hooks/prisma-validate.sh" },
+            ],
+          },
+          {
+            matcher: "Edit|Write|NotebookEdit",
+            hooks: [{ type: "command", command: quoted }],
+          },
+        ],
+      },
+    };
+    const { settings, status } = ensureHookRegistration(initial, {
+      ...REG_VALIDATE,
+      matcher: "Edit|Write|NotebookEdit",
+      legacyMatchers: ["Edit"],
+      migrateOnly: true,
+    });
+    expect(status).toBe("migrate");
+    expect(settings.hooks).toEqual({
+      PostToolUse: [
+        {
+          matcher: "Edit|Write|NotebookEdit",
+          hooks: [{ type: "command", command: quoted }],
+        },
+      ],
+    });
+  });
+
+  it("treats a hand-written spelling under a legacy matcher as superseded", () => {
+    const initial = {
+      hooks: {
+        PostToolUse: [
+          {
+            matcher: "Edit",
+            hooks: [
+              {
+                type: "command",
+                command: '"$CLAUDE_PROJECT_DIR/.claude/hooks/prisma-validate.sh"',
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const { settings } = ensureHookRegistration(initial, {
+      ...REG_VALIDATE,
+      matcher: "Edit|Write|NotebookEdit",
+      legacyMatchers: ["Edit"],
+    });
+    const entries = (settings.hooks as Record<string, unknown>)
+      .PostToolUse as Array<{ matcher: string }>;
+    expect(entries.map((e) => e.matcher)).toEqual(["Edit|Write|NotebookEdit"]);
   });
 
   it("does not duplicate a hand-written registration on apply", () => {

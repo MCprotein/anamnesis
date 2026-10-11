@@ -771,6 +771,20 @@ function addSettingsIssues(
   }
 
   for (const reg of expectedHooks) {
+    // A bare relative command fails when Claude's working directory is a
+    // subdirectory, even when the current form is registered as well.
+    const bareLeft = hookRegistrationLegacy(settings, reg, { bareOnly: true });
+    if (bareLeft && hookCommandRegistered(settings, reg, { projectRoot })) {
+      issues.push({
+        severity: "warning",
+        code: "hook-registration-legacy",
+        target: ".claude/settings.json",
+        message: `.claude/settings.json still registers ${reg.command} for ${reg.event} as a bare relative command next to ${claudeHookCommand(reg.command)}`,
+        repair:
+          "Run `anamnesis apply --allow-exec-adapters` to rewrite or remove the bare command.",
+      });
+      continue;
+    }
     // The current command under another matcher is a registration whose
     // matcher the user chose (for example a migrated user-modified hook).
     if (hookRegistrationPresent(settings, reg, { projectRoot })) continue;

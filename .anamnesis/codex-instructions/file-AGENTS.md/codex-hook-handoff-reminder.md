@@ -134,7 +134,7 @@ if [[ -d "$HANDOFF_DIR" ]]; then
   shopt -s nullglob
   handoff_files=("$HANDOFF_DIR"/*.md)
   shopt -u nullglob
-  for f in "${handoff_files[@]}"; do
+  for f in ${handoff_files[@]+"${handoff_files[@]}"}; do
     if mtime=$(stat -f '%m' "$f" 2>/dev/null); then
       : # BSD stat (macOS)
     elif mtime=$(stat -c '%Y' "$f" 2>/dev/null); then

@@ -48,9 +48,15 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     expect(action.content).toContain("\n@AGENTS.md\n");
   });
 
-  it("marks Codex fallback sections as Codex-only for Claude", () => {
-    const { content } = planClaudeMdEntrypoint({ scopePath: ".", settings });
-    expect(content).toContain("fallbacks\n  for Codex only");
+  it("marks Codex fallback sections as Codex-only only when Codex is enabled", () => {
+    const withCodex = planClaudeMdEntrypoint({
+      scopePath: ".",
+      settings,
+      codex: true,
+    });
+    expect(withCodex.content).toContain("are fallbacks\n  for Codex only");
+    const claudeOnly = planClaudeMdEntrypoint({ scopePath: ".", settings });
+    expect(claudeOnly.content).not.toContain("codex-instructions");
   });
 
   it("states the Work capture policy only when capture is on", () => {

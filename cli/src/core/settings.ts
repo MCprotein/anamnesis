@@ -217,7 +217,7 @@ function isSupersededHook(
   if (hook.command === reg.command) {
     return matcher === (reg.matcher ?? undefined) || legacy;
   }
-  return hook.command === claudeHookCommand(reg.command) && legacy;
+  return isClaudeHookCommand(hook.command, reg.command) && legacy;
 }
 
 /** True when the current command for `reg` is registered under any matcher. */
@@ -283,9 +283,13 @@ export function ensureHookRegistration(
   reg: HookRegistration,
   options: HookCommandOptions = {},
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
-  if (reg.migrateOnly) return migrateCommandInPlace(settings, reg);
+  if (reg.migrateOnly) return migrateCommandInPlace(settings, reg, options);
   const existingEntries = getEventEntries(settings, reg.event) ?? [];
-  const hasSuperseded = hookRegistrationLegacy(settings, reg);
+  // A bare relative command under any other matcher is rewritten in place
+  // below: it breaks when Claude's working directory is a subdirectory.
+  const hasSuperseded =
+    hookRegistrationLegacy(settings, reg) ||
+    hookRegistrationLegacy(settings, reg, { bareOnly: true });
   if (!hasSuperseded && hookRegistrationPresent(settings, reg, options)) {
     return { settings, status: "noop" };
   }
@@ -295,12 +299,22 @@ export function ensureHookRegistration(
   const hooksRoot: Record<string, unknown> = { ...((next["hooks"] as Record<string, unknown>) ?? {}) };
   next["hooks"] = hooksRoot;
 
-  // Drop superseded forms of this registration, then any group they emptied.
+  // Drop superseded forms of this registration, rewrite a bare command left
+  // under a user-chosen matcher in place, then drop any group left empty.
   const eventList: MatcherEntry[] = existingEntries
     .map((entry) => {
       if (!Array.isArray(entry.hooks)) return entry;
-      const hooks = entry.hooks.filter((h) => !isSupersededHook(entry, h, reg));
-      return hooks.length === entry.hooks.length ? entry : { ...entry, hooks };
+      const hooks = entry.hooks
+        .filter((h) => !isSupersededHook(entry, h, reg))
+        .map((h) =>
+          h.command === reg.command
+            ? { ...h, command: claudeHookCommand(reg.command) }
+            : h,
+        );
+      const unchanged =
+        hooks.length === entry.hooks.length &&
+        hooks.every((h, i) => h === entry.hooks![i]);
+      return unchanged ? entry : { ...entry, hooks };
     })
     .filter((entry) => !Array.isArray(entry.hooks) || entry.hooks.length > 0);
   hooksRoot[reg.event] = eventList;
@@ -336,18 +350,28 @@ export function ensureHookRegistration(
 function migrateCommandInPlace(
   settings: Record<string, unknown>,
   reg: HookRegistration,
+  options: HookCommandOptions = {},
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
   const entries = getEventEntries(settings, reg.event) ?? [];
+  // When the current form is already registered, a rewrite would run the
+  // hook twice; the bare entry is removed instead.
+  const alreadyCurrent = hookCommandRegistered(settings, reg, options);
   let changed = false;
-  const eventList = entries.map((entry) => {
-    if (!Array.isArray(entry.hooks)) return entry;
-    const hooks = entry.hooks.map((h) => {
-      if (h.command !== reg.command) return h;
+  const eventList = entries
+    .map((entry) => {
+      if (!Array.isArray(entry.hooks)) return entry;
+      if (!entry.hooks.some((h) => h.command === reg.command)) return entry;
       changed = true;
-      return { ...h, command: claudeHookCommand(reg.command) };
-    });
-    return changed ? { ...entry, hooks } : entry;
-  });
+      const hooks = alreadyCurrent
+        ? entry.hooks.filter((h) => h.command !== reg.command)
+        : entry.hooks.map((h) =>
+            h.command === reg.command
+              ? { ...h, command: claudeHookCommand(reg.command) }
+              : h,
+          );
+      return { ...entry, hooks };
+    })
+    .filter((entry) => !Array.isArray(entry.hooks) || entry.hooks.length > 0);
   if (!changed) return { settings, status: "noop" };
   const hooksRoot = { ...((settings["hooks"] as Record<string, unknown>) ?? {}) };
   hooksRoot[reg.event] = eventList;

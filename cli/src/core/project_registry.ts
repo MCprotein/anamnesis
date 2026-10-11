@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { z } from "zod";
-import type { ToolName } from "./agentfile.js";
+import { readAgentfile, type ToolName } from "./agentfile.js";
 
 const REGISTRY_VERSION = 1;
 const REGISTRY_DIR = "anamnesis";
@@ -307,12 +307,19 @@ export function validateRegisteredProject(entry: RegisteredProject): boolean {
 	if (!parsed.success) return false;
 	try {
 		const current = projectIdentity(parsed.data.canonical_root);
-		// The device number is not compared: macOS can renumber APFS volumes
-		// after a reboot or OS update, which made unchanged projects stale.
-		// The canonical path plus inode still detects a replaced directory.
+		if (
+			current.canonicalRoot !== parsed.data.canonical_root ||
+			current.identity.ino !== parsed.data.root_identity.ino
+		)
+			return false;
+		if (current.identity.dev === parsed.data.root_identity.dev) return true;
+		// macOS can renumber APFS volumes after a reboot or OS update. A device
+		// change alone is accepted only when the project's Agentfile still names
+		// the registered project: another volume mounted at the same path can
+		// reuse the root inode number.
 		return (
-			current.canonicalRoot === parsed.data.canonical_root &&
-			current.identity.ino === parsed.data.root_identity.ino
+			readAgentfile(parsed.data.canonical_root).project.name ===
+			parsed.data.project_name
 		);
 	} catch {
 		return false;

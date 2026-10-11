@@ -623,6 +623,7 @@ export function update(opts: UpdateOptions): UpdateResult {
         planClaudeMdEntrypoint({
           scopePath,
           settings: DEFAULT_SETTINGS,
+          codex: tools.includes("codex"),
           workPromptCapture: normalizeWorkPromptCapturePolicy(
             agentfile.version === 2
               ? agentfile.settings?.work_prompt_capture

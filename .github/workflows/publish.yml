@@ -39,6 +39,9 @@ jobs:
         run: npm run typecheck
 
       - name: Test
+        # A blocked test process failed v1.25.3's first run only after 20
+        # minutes of waiting; the suite takes about 2 minutes on the runner.
+        timeout-minutes: 15
         run: npm test
 
       - name: Build

@@ -139,7 +139,7 @@ eligible_archives() {
   local name=""
   local mtime=""
 
-  for f in "${files[@]}"; do
+  for f in ${files[@]+"${files[@]}"}; do
     name="$(basename "$f")"
     [[ "$name" != "active.md" && "$name" != "draft.md" ]] || continue
     archive_is_inactive "$f" && continue
@@ -220,7 +220,7 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
     source_pointer "$active"
   fi
   if (( ${#selected_archives[@]} > 0 )); then
-    for archive in "${selected_archives[@]}"; do
+    for archive in ${selected_archives[@]+"${selected_archives[@]}"}; do
       source_pointer "$archive"
     done
   fi
@@ -250,7 +250,7 @@ if [[ -f "$active" ]]; then
 fi
 
 if (( ${#selected_archives[@]} > 0 )); then
-  for archive in "${selected_archives[@]}"; do
+  for archive in ${selected_archives[@]+"${selected_archives[@]}"}; do
     rel="${archive#$PROJECT_ROOT/}"
     if [[ -f "$active" ]]; then
       echo "--- active referenced archived handoff: $rel ---"
