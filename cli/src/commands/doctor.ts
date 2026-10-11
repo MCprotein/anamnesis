@@ -25,6 +25,7 @@ import { effectiveScopes } from "../core/scope.js";
 import type { RenderAction } from "../core/render.js";
 import {
   claudeHookCommand,
+  hookCommandRegistered,
   hookRegistrationLegacy,
   hookRegistrationPresent,
   readSettings,
@@ -768,9 +769,14 @@ function addSettingsIssues(
   }
 
   for (const reg of expectedHooks) {
+    // The current command under another matcher is a registration whose
+    // matcher the user chose (for example a migrated user-modified hook).
     if (hookRegistrationPresent(settings, reg)) continue;
+    if (hookCommandRegistered(settings, reg)) continue;
     const matcher = reg.matcher ? `:${reg.matcher}` : "";
-    if (hookRegistrationLegacy(settings, reg)) {
+    // Only the bare relative command is reported: `apply` rewrites it for every
+    // hook. A user-modified hook keeps its own matcher after that rewrite.
+    if (hookRegistrationLegacy(settings, reg, { bareOnly: true })) {
       issues.push({
         severity: "warning",
         code: "hook-registration-legacy",

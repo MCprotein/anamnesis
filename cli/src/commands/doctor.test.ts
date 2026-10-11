@@ -666,10 +666,8 @@ capabilities:
 
     const result = doctor({ projectRoot: project, libraryRoot: library });
 
-    expect(result.issues).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: "hook-registration-missing" }),
-      ]),
+    expect(result.issues.map((issue) => issue.code)).not.toContain(
+      "hook-registration-missing",
     );
     expect(result.issues).toEqual(
       expect.arrayContaining([
@@ -680,6 +678,26 @@ capabilities:
         }),
       ]),
     );
+  });
+
+  it("accepts a current command that keeps a user-chosen matcher", () => {
+    const { project, library } = installProject();
+    const settingsFile = path.join(project, ".claude", "settings.json");
+    const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
+    for (const entries of Object.values(settings.hooks) as Array<
+      Array<{ matcher?: string }>
+    >) {
+      for (const entry of entries) {
+        entry.matcher = "Bash";
+      }
+    }
+    fs.writeFileSync(settingsFile, `${JSON.stringify(settings, null, 2)}\n`);
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+    const codes = result.issues.map((issue) => issue.code);
+
+    expect(codes).not.toContain("hook-registration-missing");
+    expect(codes).not.toContain("hook-registration-legacy");
   });
 
   it("does not require adapter wiring for fragments disabled on that adapter", () => {

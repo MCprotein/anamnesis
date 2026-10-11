@@ -187,16 +187,37 @@ function isSupersededHook(
   return hook.command === claudeHookCommand(reg.command) && legacy;
 }
 
-/** True when `reg` has any registration in a form an earlier release wrote. */
+/** True when the current command for `reg` is registered under any matcher. */
+export function hookCommandRegistered(
+  settings: Record<string, unknown>,
+  reg: HookRegistration,
+): boolean {
+  const command = claudeHookCommand(reg.command);
+  return (getEventEntries(settings, reg.event) ?? []).some(
+    (entry) =>
+      Array.isArray(entry.hooks) && entry.hooks.some((h) => h.command === command),
+  );
+}
+
+/**
+ * True when `reg` has any registration in a form an earlier release wrote.
+ * With `bareOnly`, only the bare relative command counts: the one form that
+ * `apply` can still rewrite for every hook, including user-modified ones.
+ */
 export function hookRegistrationLegacy(
   settings: Record<string, unknown>,
   reg: HookRegistration,
+  options: { bareOnly?: boolean } = {},
 ): boolean {
   const entries = getEventEntries(settings, reg.event) ?? [];
   return entries.some(
     (entry) =>
       Array.isArray(entry.hooks) &&
-      entry.hooks.some((h) => isSupersededHook(entry, h, reg)),
+      entry.hooks.some((h) =>
+        options.bareOnly
+          ? h.command === reg.command
+          : isSupersededHook(entry, h, reg),
+      ),
   );
 }
 
