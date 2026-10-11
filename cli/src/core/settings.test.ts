@@ -6,6 +6,7 @@ import {
   readSettings,
   writeSettings,
   ensureHookRegistration,
+  hookRegistrationLegacy,
   hookRegistrationPresent,
   syncHookRegistrations,
   settingsPath,
@@ -180,6 +181,58 @@ describe("ensureHookRegistration — noop", () => {
     expect(status).toBe("noop");
   });
 
+  it("keeps user registrations of the same script under other matchers", () => {
+    const quoted = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/prisma-validate.sh';
+    const initial = {
+      hooks: {
+        PostToolUse: [
+          { matcher: "Bash", hooks: [{ type: "command", command: quoted }] },
+          {
+            matcher: "Read",
+            hooks: [
+              { type: "command", command: ".claude/hooks/prisma-validate.sh" },
+            ],
+          },
+        ],
+      },
+    };
+    const widened: HookRegistration = {
+      ...REG_VALIDATE,
+      matcher: "Edit|Write|NotebookEdit",
+      legacyMatchers: ["Edit"],
+    };
+    const { settings, status } = ensureHookRegistration(initial, widened);
+    expect(status).toBe("create");
+    const entries = (settings.hooks as Record<string, unknown>)
+      .PostToolUse as Array<{ matcher: string }>;
+    expect(entries.map((e) => e.matcher)).toEqual([
+      "Bash",
+      "Read",
+      "Edit|Write|NotebookEdit",
+    ]);
+  });
+
+  it("migrates only existing legacy forms for migrate-only registrations", () => {
+    const migrateOnly: HookRegistration = { ...REG_INJECT, migrateOnly: true };
+    expect(ensureHookRegistration({}, migrateOnly).status).toBe("noop");
+    const legacy = {
+      hooks: {
+        SessionStart: [
+          {
+            hooks: [
+              { type: "command", command: ".claude/hooks/inject-ontology.sh" },
+            ],
+          },
+        ],
+      },
+    };
+    expect(hookRegistrationLegacy(legacy, REG_INJECT)).toBe(true);
+    const { settings, status } = ensureHookRegistration(legacy, migrateOnly);
+    expect(status).toBe("migrate");
+    expect(hookRegistrationPresent(settings, REG_INJECT)).toBe(true);
+    expect(hookRegistrationLegacy(settings, REG_INJECT)).toBe(false);
+  });
+
   it("replaces a legacy relative command and drops the emptied group", () => {
     const initial = {
       hooks: {
@@ -200,9 +253,10 @@ describe("ensureHookRegistration — noop", () => {
     const widened: HookRegistration = {
       ...REG_VALIDATE,
       matcher: "Edit|Write|NotebookEdit",
+      legacyMatchers: ["Edit"],
     };
     const { settings, status } = ensureHookRegistration(initial, widened);
-    expect(status).toBe("create");
+    expect(status).toBe("migrate");
     expect(settings.hooks).toEqual({
       PostToolUse: [
         {

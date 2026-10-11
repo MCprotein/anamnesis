@@ -48,6 +48,19 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     expect(action.content).toContain("\n@AGENTS.md\n");
   });
 
+  it("marks Codex fallback sections as Codex-only for Claude", () => {
+    const { content } = planClaudeMdEntrypoint({ scopePath: ".", settings });
+    expect(content).toContain("fallbacks\n  for Codex only");
+  });
+
+  it("does not import the file into itself", () => {
+    const { content } = planClaudeMdEntrypoint({
+      scopePath: ".",
+      settings: { ...settings, claude_md_path: "AGENTS.md" },
+    });
+    expect(content).not.toContain("@AGENTS.md");
+  });
+
   it("imports AGENTS.md relative to a nested CLAUDE.md path", () => {
     const { content } = planClaudeMdEntrypoint({
       scopePath: ".",

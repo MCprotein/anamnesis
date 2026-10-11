@@ -6,7 +6,7 @@ import {
   EVIDENCE_SCHEMA_VERSION,
   type RuntimeEvidenceRecord,
 } from "./evidence.js";
-import type { HookSyncResult } from "./settings.js";
+import { claudeHookCommand, type HookSyncResult } from "./settings.js";
 
 export interface LifecycleChangeSummary {
   create: number;
@@ -20,6 +20,8 @@ export interface LifecycleSyncSummary {
   total: number;
   create: number;
   noop: number;
+  /** Present only when a legacy registration form was rewritten. */
+  migrate?: number;
 }
 
 export type FragmentLifecycleEventType =
@@ -63,10 +65,12 @@ export function summarizeLifecycleChanges(
 export function summarizeLifecycleSyncStatuses(
   results: ReadonlyArray<{ status: string }>,
 ): LifecycleSyncSummary {
+  const migrate = results.filter((result) => result.status === "migrate").length;
   return {
     total: results.length,
     create: results.filter((result) => result.status === "create").length,
     noop: results.filter((result) => result.status === "noop").length,
+    ...(migrate > 0 ? { migrate } : {}),
   };
 }
 
@@ -98,7 +102,7 @@ export function hookSyncDetails(
     ...(result.registration.matcher
       ? { matcher: result.registration.matcher }
       : {}),
-    command: result.registration.command,
+    command: claudeHookCommand(result.registration.command),
   }));
 }
 

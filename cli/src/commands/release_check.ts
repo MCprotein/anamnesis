@@ -71,6 +71,7 @@ const HOOK_DOCTOR_CODES = new Set<string>([
   "codex-config-invalid",
   "codex-hook-config-invalid",
   "hook-registration-missing",
+  "hook-registration-legacy",
   "codex-hook-registration-missing",
   "codex-hook-ownership-warning",
   "codex-hook-trust-unavailable",

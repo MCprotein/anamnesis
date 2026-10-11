@@ -964,10 +964,14 @@ function syncWrittenHooks(
     if (c.target !== "file") continue;
     // create/update/noop are all "we own this file" — register. Skip
     // user-modified (caller-owned) and blocked (we didn't write it).
+    // A user-modified hook keeps its registration, but a registration an
+    // earlier release wrote in a superseded form is still migrated.
+    const migrateOnly = c.status === "user-modified";
     if (
       c.status !== "create" &&
       c.status !== "update" &&
-      c.status !== "noop"
+      c.status !== "noop" &&
+      !migrateOnly
     ) {
       continue;
     }
@@ -975,9 +979,12 @@ function syncWrittenHooks(
       regs.push({
         event: c.settingsHook.event,
         matcher: c.settingsHook.matcher,
+        legacyMatchers: c.settingsHook.legacyMatchers,
         command: c.path,
+        ...(migrateOnly ? { migrateOnly } : {}),
       });
     }
+    if (migrateOnly) continue;
     if (c.codexHook) {
       codexRegs.push(c.codexHook);
     }

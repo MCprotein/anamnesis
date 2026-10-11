@@ -24,6 +24,8 @@ import {
 import { effectiveScopes } from "../core/scope.js";
 import type { RenderAction } from "../core/render.js";
 import {
+  claudeHookCommand,
+  hookRegistrationLegacy,
   hookRegistrationPresent,
   readSettings,
   type HookRegistration,
@@ -88,6 +90,7 @@ export type DoctorIssueCode =
   | "codex-config-invalid"
   | "codex-hook-config-invalid"
   | "hook-registration-missing"
+  | "hook-registration-legacy"
   | "codex-hook-registration-missing"
   | "codex-hook-ownership-warning"
   | "codex-hook-trust-unavailable"
@@ -742,6 +745,7 @@ function addSettingsIssues(
     expectedHooks.push({
       event: action.settingsHook.event,
       matcher: action.settingsHook.matcher,
+      legacyMatchers: action.settingsHook.legacyMatchers,
       command: action.path,
     });
   }
@@ -766,6 +770,17 @@ function addSettingsIssues(
   for (const reg of expectedHooks) {
     if (hookRegistrationPresent(settings, reg)) continue;
     const matcher = reg.matcher ? `:${reg.matcher}` : "";
+    if (hookRegistrationLegacy(settings, reg)) {
+      issues.push({
+        severity: "warning",
+        code: "hook-registration-legacy",
+        target: ".claude/settings.json",
+        message: `.claude/settings.json registers ${reg.command} for ${reg.event} in a superseded form; expected ${reg.event}${matcher} with command ${claudeHookCommand(reg.command)}`,
+        repair:
+          "Run `anamnesis apply --allow-exec-adapters` to migrate the registration. Migration rewrites only anamnesis-written forms and keeps user-modified hook files.",
+      });
+      continue;
+    }
     issues.push({
       severity: "error",
       code: "hook-registration-missing",

@@ -16,7 +16,7 @@ cd "$PROJECT_ROOT"
 # Only act inside a git repo.
 git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
 
-dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') || dirty=0
 
 # Threshold tuned to avoid noise on small WIPs but flag accumulation.
 THRESHOLD=8
@@ -34,20 +34,23 @@ case "$git_dir" in
   *) git_dir="$PROJECT_ROOT/$git_dir" ;;
 esac
 state_file="$git_dir/anamnesis/uncommitted-reminder.last"
-bucket=$(( dirty / THRESHOLD ))
+bucket=0
+if [[ "$dirty" -gt "$THRESHOLD" ]]; then
+  bucket=$(( dirty / THRESHOLD ))
+fi
 last_bucket=$(cat "$state_file" 2>/dev/null || echo 0)
 [[ "$last_bucket" =~ ^[0-9]+$ ]] || last_bucket=0
 
-if [[ "$dirty" -le "$THRESHOLD" ]]; then
-  # Reset after commits so the next accumulation is noted again.
-  if [[ "$last_bucket" -ne 0 ]]; then
-    mkdir -p "${state_file%/*}" 2>/dev/null && printf '0\n' > "$state_file" 2>/dev/null || true
-  fi
-  exit 0
-fi
+write_bucket() {
+  { mkdir -p "${state_file%/*}" && printf '%s\n' "$1" > "$state_file"; } 2>/dev/null || true
+}
 
+# Record a lower block after commits so the next accumulation is noted again.
+if (( bucket < last_bucket )); then
+  write_bucket "$bucket"
+fi
 (( bucket > last_bucket )) || exit 0
-mkdir -p "${state_file%/*}" 2>/dev/null && printf '%s\n' "$bucket" > "$state_file" 2>/dev/null || true
+write_bucket "$bucket"
 
 printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$message"
 exit 0

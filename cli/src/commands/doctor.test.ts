@@ -656,6 +656,32 @@ capabilities:
     );
   });
 
+  it("warns, not errors, when hooks use a legacy relative registration", () => {
+    const { project, library } = installProject();
+    const settingsFile = path.join(project, ".claude", "settings.json");
+    const legacy = fs
+      .readFileSync(settingsFile, "utf8")
+      .replaceAll('\\"$CLAUDE_PROJECT_DIR\\"/', "");
+    fs.writeFileSync(settingsFile, legacy, "utf8");
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.issues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "hook-registration-missing" }),
+      ]),
+    );
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "hook-registration-legacy",
+          repair: expect.stringContaining("allow-exec-adapters"),
+        }),
+      ]),
+    );
+  });
+
   it("does not require adapter wiring for fragments disabled on that adapter", () => {
     const project = tmpDir("anamnesis-doctor-proj-");
     const library = makeLibrary();

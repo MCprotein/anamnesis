@@ -99,6 +99,8 @@ export interface FileChange {
   settingsHook?: {
     event: string;
     matcher?: string;
+    /** Matchers that earlier releases registered for this hook. */
+    legacyMatchers?: string[];
   };
   /**
    * Propagated from the originating FileAction. Post-apply Codex sync uses

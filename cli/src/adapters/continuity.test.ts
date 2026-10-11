@@ -143,6 +143,7 @@ describe("cross-agent context continuity acceptance", () => {
     expect(uncommittedReminder.settingsHook).toEqual({
       event: "PostToolUse",
       matcher: "Edit|Write|NotebookEdit",
+      legacyMatchers: ["Edit"],
     });
 
     const workBoundary = fileByPath(

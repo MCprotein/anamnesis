@@ -19,7 +19,10 @@ Code specifics.
   docs, roadmap items, prior decisions, and ontology evidence that is not
   already loaded. Its snippets are location hints; the returned
   `source_path` / `stable_ref` is the source to read before relying on a fact.
-- Hooks, slash commands, and skills live under `.claude/`.
+- Claude Code runs the anamnesis hooks, slash commands, and skills
+  natively from `.claude/`. The `codex-*` sections of the project memory
+  and the manuals under `.anamnesis/codex-instructions/` are fallbacks
+  for Codex only.
 
 ### Generation boundary
 

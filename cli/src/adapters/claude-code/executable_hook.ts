@@ -41,11 +41,15 @@ export const executableHookRenderer: CapabilityRenderer = {
     //   "PostToolUse:Edit" → { event: "PostToolUse", matcher: "Edit|Write|NotebookEdit" }
     //   "SessionStart"     → { event: "SessionStart" }
     const colon = capability.event.indexOf(":");
+    const rawMatcher = colon >= 0 ? capability.event.slice(colon + 1) : null;
     const settingsHook =
-      colon >= 0
+      rawMatcher !== null
         ? {
             event: capability.event.slice(0, colon),
-            matcher: claudeMatcher(capability.event.slice(colon + 1)),
+            matcher: claudeMatcher(rawMatcher),
+            ...(claudeMatcher(rawMatcher) !== rawMatcher
+              ? { legacyMatchers: [rawMatcher] }
+              : {}),
           }
         : { event: capability.event };
 

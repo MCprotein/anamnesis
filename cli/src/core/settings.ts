@@ -38,9 +38,13 @@ export interface HookRegistration {
   event: string; // "PostToolUse" / "SessionStart" / "PreToolUse" ...
   matcher?: string; // "Edit" / "Bash" / undefined for events without matchers
   command: string; // project-relative path, e.g. ".claude/hooks/x.sh"
+  /** Matchers that earlier releases registered for this hook. */
+  legacyMatchers?: string[];
+  /** Only rewrite superseded forms; never add a missing registration. */
+  migrateOnly?: boolean;
 }
 
-export type HookSyncStatus = "create" | "noop";
+export type HookSyncStatus = "create" | "migrate" | "noop";
 
 export interface HookSyncResult {
   registration: HookRegistration;
@@ -161,19 +165,34 @@ export function hookRegistrationPresent(
 }
 
 /**
- * True when an event entry carries this registration in a superseded form:
- * the legacy bare relative command (any matcher), or the current command
- * under a different matcher.
+ * True when an event entry carries this registration in a form an earlier
+ * anamnesis release wrote: the bare relative command under the current or a
+ * legacy matcher, or the current command under a legacy matcher. Entries under
+ * any other matcher are user-owned and stay untouched.
  */
 function isSupersededHook(
   entry: MatcherEntry,
   hook: { command?: string },
   reg: HookRegistration,
 ): boolean {
-  if (hook.command === reg.command) return true;
-  return (
-    hook.command === claudeHookCommand(reg.command) &&
-    (entry.matcher ?? undefined) !== (reg.matcher ?? undefined)
+  const matcher = entry.matcher ?? undefined;
+  const legacy = (reg.legacyMatchers ?? []).includes(matcher ?? "");
+  if (hook.command === reg.command) {
+    return matcher === (reg.matcher ?? undefined) || legacy;
+  }
+  return hook.command === claudeHookCommand(reg.command) && legacy;
+}
+
+/** True when `reg` is registered only in a form an earlier release wrote. */
+export function hookRegistrationLegacy(
+  settings: Record<string, unknown>,
+  reg: HookRegistration,
+): boolean {
+  const entries = getEventEntries(settings, reg.event) ?? [];
+  return entries.some(
+    (entry) =>
+      Array.isArray(entry.hooks) &&
+      entry.hooks.some((h) => isSupersededHook(entry, h, reg)),
   );
 }
 
@@ -190,12 +209,8 @@ export function ensureHookRegistration(
   reg: HookRegistration,
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
   const existingEntries = getEventEntries(settings, reg.event) ?? [];
-  const hasSuperseded = existingEntries.some(
-    (entry) =>
-      Array.isArray(entry.hooks) &&
-      entry.hooks.some((h) => isSupersededHook(entry, h, reg)),
-  );
-  if (!hasSuperseded && hookRegistrationPresent(settings, reg)) {
+  const hasSuperseded = hookRegistrationLegacy(settings, reg);
+  if (!hasSuperseded && (reg.migrateOnly || hookRegistrationPresent(settings, reg))) {
     return { settings, status: "noop" };
   }
 
@@ -214,7 +229,7 @@ export function ensureHookRegistration(
     .filter((entry) => !Array.isArray(entry.hooks) || entry.hooks.length > 0);
   hooksRoot[reg.event] = eventList;
   if (hookRegistrationPresent(next, reg)) {
-    return { settings: next, status: "create" };
+    return { settings: next, status: "migrate" };
   }
 
   // Find an existing matcher group with the same matcher value.
@@ -239,7 +254,7 @@ export function ensureHookRegistration(
     eventList.push(entry);
   }
 
-  return { settings: next, status: "create" };
+  return { settings: next, status: hasSuperseded ? "migrate" : "create" };
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +275,7 @@ export function syncHookRegistrations(
   for (const reg of registrations) {
     const next = ensureHookRegistration(settings, reg);
     settings = next.settings;
-    if (next.status === "create") changed = true;
+    if (next.status !== "noop") changed = true;
     results.push({ registration: reg, status: next.status });
   }
   if (changed) writeSettings(projectRoot, settings);
