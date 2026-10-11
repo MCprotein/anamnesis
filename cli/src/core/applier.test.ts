@@ -284,6 +284,33 @@ describe("planChanges — file", () => {
     expect(second.changes[0]!.status).toBe("user-modified");
   });
 
+  it("adopts a tracked file that already holds the new content", () => {
+    // v1 applied, then the file was updated to v2 while the manifest was
+    // restored to the v1 record (for example by a git checkout).
+    const first = planChanges([fileAction()], {
+      projectRoot: root,
+      manifest: emptyManifest(),
+      allowExecAdapters: false,
+    });
+    applyChanges(first.changes, { projectRoot: root });
+    const bumped = fileAction({ content: "new: value", fragmentVersion: 2 });
+    fs.writeFileSync(path.join(root, "system_graph.yaml"), "new: value");
+    const second = planChanges([bumped], {
+      projectRoot: root,
+      manifest: first.nextManifest,
+      allowExecAdapters: false,
+    });
+    expect(second.changes[0]!.status).toBe("update");
+    expect(second.nextManifest.files[0]!.fragment_version).toBe(2);
+    applyChanges(second.changes, { projectRoot: root });
+    const third = planChanges([bumped], {
+      projectRoot: root,
+      manifest: second.nextManifest,
+      allowExecAdapters: false,
+    });
+    expect(third.changes[0]!.status).toBe("noop");
+  });
+
   it("detects deleted file as user-modified", () => {
     const first = planChanges([fileAction()], {
       projectRoot: root,
