@@ -2,8 +2,10 @@
 name: load-context
 description: |
   Re-orient on the project's structure by reading anamnesis-managed ontology
-  files. Use at session start, after a long context-clearing pause, or when
-  the agent appears to have lost track of project conventions.
+  files. Use when the user asks for orientation, after a long
+  context-clearing pause, or when the agent has lost track of project
+  conventions. Native SessionStart hooks already inject a compact ontology
+  digest, so a new session does not need this skill by itself.
 ---
 
 # load-context

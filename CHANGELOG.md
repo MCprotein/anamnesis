@@ -7,6 +7,10 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Claude Code reuses the current `prompt_id` for later turns inside one user prompt, such as background-task notifications and queued messages. Work prompt capture no longer reports these turns as a failed stage that holds repository writes: an identical pending replay is not staged again, and different text takes the next ordinal boundary (`<prompt_id>#2`, ...) with its own classification token. The ordinal never derives from prompt bytes.
+- The generated `CLAUDE.md` states the Work capture policy when `work_prompt_capture` is enabled. In five `claude -p` runs per arm, Claude Sonnet 5.5 recorded the classification in 4/5 runs with this line versus 2/5 with hook text alone (small sample).
+- The `load-context` skill description no longer invites a reload at session start, because SessionStart hooks already inject the digest. The ontology digest matches case-insensitively in BSD awk too (`IGNORECASE` is gawk-only).
+
 - Register Claude Code hooks as `"$CLAUDE_PROJECT_DIR"/.claude/hooks/...` and prune the legacy bare relative registrations on apply. The relative form made the `work-briefing.sh` shell/Node polyglot fail with `MODULE_NOT_FOUND` on every prompt, so Work prompt capture and briefings never ran under Claude Code; the polyglot now also resolves a relative `$0`.
 - Base fragment v30 makes the uncommitted-changes and handoff reminders reach Claude Code. Claude never sees stderr from an exit-0 hook, so the Claude path now emits PostToolUse `additionalContext` (once per block of 8 dirty paths) and a user-facing Stop `systemMessage`; the Codex bridges keep their plain-text output. The Claude edit matcher widens from `Edit` to `Edit|Write|NotebookEdit`.
 - The generated `CLAUDE.md` imports `AGENTS.md` with `@AGENTS.md`. Claude Code does not load `AGENTS.md` when a `CLAUDE.md` exists, so the previous prose pointer only worked when the model chose to open it.

@@ -208,6 +208,45 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		expect(staged?.record.fidelity).toBe("client_exact");
 	});
 
+	it("does not report a failed capture when Claude reuses a classified prompt_id", () => {
+		const root = projectRoot("off", "off", true);
+		const state = resolveWorkStateRoot(root);
+		const first = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "claude-code",
+			payload: claudePayload("claude-session", "prompt-1", "fix the README"),
+			now: "2026-08-14T00:00:00.000Z",
+		});
+		const token = captureToken(first.context);
+		discardStagedWorkPrompt({
+			stateRoot: state.state_root,
+			captureId: token,
+			resolvedAt: "2026-08-14T00:00:01.000Z",
+			reason: "non_requirement",
+		});
+
+		// A background-task notification arrives in the same user prompt. It is
+		// staged under its own token, so it is still classified, not blocked.
+		const notification = () =>
+			handleWorkUserPromptSubmit({
+				project_root: root,
+				client: "claude-code",
+				payload: claudePayload(
+					"claude-session",
+					"prompt-1",
+					"<task-notification>done</task-notification>",
+				),
+				now: "2026-08-14T00:00:02.000Z",
+			});
+		const first_notification = notification();
+		expect(first_notification.context).not.toContain("could not safely stage");
+		expect(captureToken(first_notification.context)).not.toBe(token);
+		// A replay of the same notification bytes is already staged.
+		const replay = notification();
+		expect(replay.context ?? "").not.toContain("could not safely stage");
+		expect(replay.context ?? "").not.toContain("cap_");
+	});
+
 	it("preserves every same-turn Codex delivery without treating capture identity as Work authority", () => {
 		const root = projectRoot("frequent", "off", true);
 		const cursorId = seed(root, "codex", "steering-session");
@@ -296,22 +335,21 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		});
 	}, WORK_HOOK_RETRY_TEST_TIMEOUT_MS);
 
-	it("fails closed without exposing prompt-derived data on a stable-boundary collision", () => {
+	it("stages a different body on a reused Claude prompt boundary under its own token", () => {
 		const root = projectRoot("off", "off", true);
 		const firstPrompt = "first private requirement";
 		const conflictingPrompt = "different private requirement";
-		expect(
-			handleWorkUserPromptSubmit({
-				project_root: root,
-				client: "claude-code",
-				payload: claudePayload(
-					"collision-session",
-					"collision-turn",
-					firstPrompt,
-				),
-				now: "2026-08-14T00:00:00.000Z",
-			}),
-		).toMatchObject({ status: "capture_staged" });
+		const first = handleWorkUserPromptSubmit({
+			project_root: root,
+			client: "claude-code",
+			payload: claudePayload(
+				"collision-session",
+				"collision-turn",
+				firstPrompt,
+			),
+			now: "2026-08-14T00:00:00.000Z",
+		});
+		expect(first).toMatchObject({ status: "capture_staged" });
 
 		const collision = handleWorkUserPromptSubmit({
 			project_root: root,
@@ -323,11 +361,14 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			),
 			now: "2026-08-14T00:01:00.000Z",
 		});
-		expect(collision).toMatchObject({
-			status: "unavailable",
-			reason: "capture_unavailable",
-			context: expect.stringContaining("allocation remains unresolved"),
-		});
+		expect(collision).toMatchObject({ status: "capture_staged" });
+		expect(captureToken(collision.context)).not.toBe(captureToken(first.context));
+		expect(
+			readStagedWorkPrompt(
+				resolveWorkStateRoot(root).state_root,
+				captureToken(collision.context),
+			)?.body,
+		).toEqual(Buffer.from(conflictingPrompt, "utf8"));
 		expect(collision.context).not.toContain(firstPrompt);
 		expect(collision.context).not.toContain(conflictingPrompt);
 		expect(collision.context).not.toContain(sha256(firstPrompt));

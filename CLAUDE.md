@@ -23,6 +23,10 @@ Code specifics.
   natively from `.claude/`. The `codex-*` sections of the project memory
   and the manuals under `.anamnesis/codex-instructions/` are fallbacks
   for Codex only.
+- Work prompt capture is on in this project. When the UserPromptSubmit
+  hook stages a prompt, the project records one Work outcome for it
+  (same Work, new Work, retained boundary, or discard) before
+  repository writes. The hook context lists the commands.
 
 ### Generation boundary
 

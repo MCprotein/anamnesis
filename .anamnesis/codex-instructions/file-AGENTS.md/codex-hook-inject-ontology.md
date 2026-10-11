@@ -83,9 +83,10 @@ emit_invariant_digest() {
     printf -- "- %s: %s\n" "$rel" "$line"
     digest_count=$((digest_count + 1))
   done < <(
+    # tolower() keeps the match case-insensitive in every awk; IGNORECASE
+    # works only in gawk, and macOS ships BSD awk.
     awk '
-      BEGIN { IGNORECASE = 1 }
-      /(must|never|always|invariant|rule|severity:[[:space:]]*"?must|필수|금지|항상|절대)/ {
+      tolower($0) ~ /(must|never|always|invariant|rule|severity:[[:space:]]*"?must|필수|금지|항상|절대)/ {
         sub(/^[[:space:]]+/, "")
         print
       }
