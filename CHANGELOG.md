@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.25.0] — 2026-10-11
+
 - Claude Code reuses the current `prompt_id` for later turns inside one user prompt, such as background-task notifications and queued messages. Work prompt capture no longer reports these turns as a failed stage that holds repository writes: an identical pending replay is not staged again, and different text takes the next ordinal boundary (`<prompt_id>#2`, ...) with its own classification token. The ordinal never derives from prompt bytes.
 - The generated `CLAUDE.md` states the Work capture policy when `work_prompt_capture` is enabled. In five `claude -p` runs per arm, Claude Sonnet 5.5 recorded the classification in 4/5 runs with this line versus 2/5 with hook text alone (small sample).
 - The `load-context` skill description no longer invites a reload at session start, because SessionStart hooks already inject the digest. The ontology digest matches case-insensitively in BSD awk too (`IGNORECASE` is gawk-only).
