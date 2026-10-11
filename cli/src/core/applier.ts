@@ -271,9 +271,14 @@ function planRegion(
     };
   }
 
-  // Case 4: both exist — compare hashes.
+  // Case 4: both exist — compare hashes. A region that already holds exactly
+  // the new content has no user edit to preserve, even when its manifest hash
+  // is out of date; it falls through to the update below.
   const currentHash = sha256(currentRegion!.content);
-  if (currentHash !== manifestEntry!.last_applied_hash) {
+  if (
+    currentHash !== manifestEntry!.last_applied_hash &&
+    currentHash !== newContentHash
+  ) {
     pendingFileTexts.set(action.file, currentFileText);
     return {
       change: {
@@ -289,7 +294,10 @@ function planRegion(
     };
   }
 
-  if (newContentHash === currentHash) {
+  if (
+    newContentHash === currentHash &&
+    currentHash === manifestEntry!.last_applied_hash
+  ) {
     pendingFileTexts.set(action.file, currentFileText);
     return { change: { ...base, status: "noop" }, nextManifest: manifest };
   }

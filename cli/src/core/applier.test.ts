@@ -176,6 +176,39 @@ describe("planChanges — region", () => {
     expect(second.nextManifest).toEqual(first.nextManifest);
   });
 
+  it("adopts a tracked region that already holds the new content", () => {
+    const first = planChanges([regionAction()], {
+      projectRoot: root,
+      manifest: emptyManifest(),
+      allowExecAdapters: false,
+    });
+    applyChanges(first.changes, { projectRoot: root });
+    const fp = path.join(root, "AGENTS.md");
+    fs.writeFileSync(
+      fp,
+      upsertRegion(fs.readFileSync(fp, "utf8"), {
+        id: "prisma",
+        fragmentId: "prisma",
+        fragmentVersion: 2,
+        content: "new content",
+      }),
+    );
+    const bumped = regionAction({ content: "new content", fragmentVersion: 2 });
+    const second = planChanges([bumped], {
+      projectRoot: root,
+      manifest: first.nextManifest,
+      allowExecAdapters: false,
+    });
+    expect(second.changes[0]!.status).toBe("update");
+    applyChanges(second.changes, { projectRoot: root });
+    const third = planChanges([bumped], {
+      projectRoot: root,
+      manifest: second.nextManifest,
+      allowExecAdapters: false,
+    });
+    expect(third.changes[0]!.status).toBe("noop");
+  });
+
   it("detects deleted region as user-modified", () => {
     const first = planChanges([regionAction()], {
       projectRoot: root,
@@ -309,6 +342,26 @@ describe("planChanges — file", () => {
       allowExecAdapters: false,
     });
     expect(third.changes[0]!.status).toBe("noop");
+  });
+
+  it("adopts a matching executable file only when exec adapters are allowed", () => {
+    const hook = (content: string) =>
+      fileAction({ path: ".claude/hooks/x.sh", content, mode: 0o755 });
+    const first = planChanges([hook("echo v1\n")], {
+      projectRoot: root,
+      manifest: emptyManifest(),
+      allowExecAdapters: true,
+    });
+    applyChanges(first.changes, { projectRoot: root });
+    fs.writeFileSync(path.join(root, ".claude/hooks/x.sh"), "echo v2\n");
+    const plan = (allowExecAdapters: boolean) =>
+      planChanges([hook("echo v2\n")], {
+        projectRoot: root,
+        manifest: first.nextManifest,
+        allowExecAdapters,
+      }).changes[0]!.status;
+    expect(plan(true)).toBe("update");
+    expect(plan(false)).toBe("blocked");
   });
 
   it("detects deleted file as user-modified", () => {
