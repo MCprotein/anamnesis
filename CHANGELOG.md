@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.25.4] — 2026-10-11
+
 - Base fragment v31 fixes the Claude hook scripts on macOS's default bash 3.2: an empty array under `set -u` ended `handoff-reminder.sh` with "unbound variable" (Codex turned that error into a Stop block on every turn), and the same pattern is fixed in `inject-handoff.sh` and `inject-ontology.sh`.
 - `apply` rewrites a bare `.claude/hooks/...` command left under a user-chosen matcher to the `"$CLAUDE_PROJECT_DIR"` form, removes a bare entry of a user-modified hook when the current form is already registered, and treats a hand-written `$CLAUDE_PROJECT_DIR` spelling under a legacy matcher as superseded. `doctor` warns when a bare command remains next to the current form.
 - The generated `CLAUDE.md` mentions the Codex fallback sections only when the project also renders Codex, and states that `.claude/` and `.anamnesis/codex-instructions/` are at the repository root.
