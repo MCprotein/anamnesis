@@ -2024,6 +2024,10 @@ function reportDogfood(result: DogfoodResult): void {
     console.log(
       `  ${check.outcome.padEnd(7)} ${check.command.join(" ")} (${check.durationMs}ms)`,
     );
+    // A failure without its reason cannot be acted on.
+    if (check.outcome === "fail" && check.detail) {
+      console.log(`          ${check.detail.split("\n")[0]!.slice(0, 300)}`);
+    }
   }
   if (result.appendedPath) {
     console.log(`  appended: ${result.appendedPath}`);
@@ -4156,7 +4160,7 @@ async function main(argv: string[]): Promise<number> {
         const projectRoot =
           (flags["project-root"] as string | undefined) ?? process.cwd();
         const codexHookTrust = await inspectCodexHookTrust(projectRoot);
-        const result = dogfoodCheck({
+        const result = await dogfoodCheck({
           projectRoot,
           libraryRoot:
             (flags["library"] as string | undefined) ?? resolveLibraryRoot(),

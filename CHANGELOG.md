@@ -7,6 +7,10 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Fix the opt-in real Codex dogfood smokes for current Codex CLI (verified on 0.160.0). Each smoke now uses a temporary `CODEX_HOME` that links the operator's `auth.json` and trusts its own smoke hooks through the Codex app-server, because Codex skips untrusted hooks. Trust state is written only to the temporary home. `dogfoodCheck` is now async.
+- `anamnesis dogfood check` prints the reason under each failed check.
+- The Codex pre-commit bridge prints each distinct hook output line once per commit. A project-wide reminder no longer repeats once per staged file. Hook exit codes are unchanged.
+
 ## [1.25.0] — 2026-10-11
 
 - Claude Code reuses the current `prompt_id` for later turns inside one user prompt, such as background-task notifications and queued messages. Work prompt capture no longer reports these turns as a failed stage that holds repository writes: an identical pending replay is not staged again, and different text takes the next ordinal boundary (`<prompt_id>#2`, ...) with its own classification token. The ordinal never derives from prompt bytes.

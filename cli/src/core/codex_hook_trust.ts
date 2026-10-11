@@ -233,6 +233,8 @@ export interface CodexStdioTransportOptions {
   command?: string;
   args?: string[];
   cwd?: string;
+  /** Environment for the app-server process; defaults to this process's. */
+  env?: NodeJS.ProcessEnv;
   timeoutMs?: number;
   maxStderrBytes?: number;
 }
@@ -245,6 +247,7 @@ export class CodexStdioAppServerTransport implements CodexAppServerTransport {
   private readonly command: string;
   private readonly args: string[];
   private readonly cwd?: string;
+  private readonly env?: NodeJS.ProcessEnv;
   private readonly timeoutMs: number;
   private readonly maxStderrBytes: number;
   private child?: ChildProcessWithoutNullStreams;
@@ -266,6 +269,7 @@ export class CodexStdioAppServerTransport implements CodexAppServerTransport {
     this.command = options.command ?? "codex";
     this.args = options.args ?? ["app-server", "--stdio"];
     this.cwd = options.cwd;
+    this.env = options.env;
     this.timeoutMs = options.timeoutMs ?? 5_000;
     this.maxStderrBytes = options.maxStderrBytes ?? 16_384;
   }
@@ -331,6 +335,7 @@ export class CodexStdioAppServerTransport implements CodexAppServerTransport {
     try {
       child = spawn(this.command, this.args, {
         cwd: this.cwd,
+        ...(this.env ? { env: this.env } : {}),
         stdio: ["pipe", "pipe", "pipe"],
       });
     } catch (error) {
