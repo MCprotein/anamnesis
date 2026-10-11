@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- `apply` adopts a tracked managed file whose content already equals the new content, even when its manifest hash is out of date, instead of reporting it as user-modified; managed regions follow the same rule. A git checkout that restores a tracked `.anamnesis/manifest.json` while the file lives outside git (for example `.git/hooks/pre-commit`) made `projects apply` skip such projects on every run.
+
 ## [1.25.4] — 2026-10-11
 
 - Base fragment v31 fixes the Claude hook scripts on macOS's default bash 3.2: an empty array under `set -u` ended `handoff-reminder.sh` with "unbound variable" (Codex turned that error into a Stop block on every turn), and the same pattern is fixed in `inject-handoff.sh` and `inject-ontology.sh`.

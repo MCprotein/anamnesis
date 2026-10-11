@@ -271,9 +271,14 @@ function planRegion(
     };
   }
 
-  // Case 4: both exist — compare hashes.
+  // Case 4: both exist — compare hashes. A region that already holds exactly
+  // the new content has no user edit to preserve, even when its manifest hash
+  // is out of date; it falls through to the update below.
   const currentHash = sha256(currentRegion!.content);
-  if (currentHash !== manifestEntry!.last_applied_hash) {
+  if (
+    currentHash !== manifestEntry!.last_applied_hash &&
+    currentHash !== newContentHash
+  ) {
     pendingFileTexts.set(action.file, currentFileText);
     return {
       change: {
@@ -289,7 +294,10 @@ function planRegion(
     };
   }
 
-  if (newContentHash === currentHash) {
+  if (
+    newContentHash === currentHash &&
+    currentHash === manifestEntry!.last_applied_hash
+  ) {
     pendingFileTexts.set(action.file, currentFileText);
     return { change: { ...base, status: "noop" }, nextManifest: manifest };
   }
@@ -368,6 +376,15 @@ function planFile(
       status = "user-modified";
       reason = "file tracked in manifest but missing on disk";
     }
+  } else if (
+    currentHash !== manifestEntry!.last_applied_hash &&
+    currentHash === newContentHash
+  ) {
+    // The file already holds exactly the new content, so there is no user
+    // edit to preserve. This happens when a tracked manifest is restored by a
+    // git checkout while the file lives outside git (e.g. .git/hooks).
+    status = "update";
+    reason = "file already matches the new content; refreshing the manifest";
   } else if (currentHash !== manifestEntry!.last_applied_hash) {
     status = "user-modified";
     reason = "file content differs from last-applied hash";
