@@ -1,5 +1,5 @@
 id: base
-version: 29
+version: 30
 description: >
   Always-installed baseline. Provides ontology injection, uncommitted-changes
   reminder, handoff injection/reminders, the load-context slash command/skill,
@@ -26,7 +26,7 @@ capabilities:
     event: PostToolUse:Edit
     source: adapters/claude-code/hooks/remind-uncommitted.sh
     adapters_supported: [claude-code, codex]
-    side_effects: [read-only]
+    side_effects: [local-write, repo-external-write]
 
   - type: executable_hook
     event: SessionStart

@@ -11,6 +11,13 @@ import { capabilitySideEffects } from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
 
+// Fragment events name the Edit tool as the generic file-edit trigger (Codex
+// maps it to `Edit|Write|apply_patch`). Claude Code matchers are exact tool
+// names, so widen it to every Claude file-writing tool.
+const CLAUDE_MATCHER_ALIASES: Record<string, string> = {
+  Edit: "Edit|Write|NotebookEdit",
+};
+
 export const executableHookRenderer: CapabilityRenderer = {
   type: "executable_hook",
   adapter: "claude-code",
@@ -31,14 +38,18 @@ export const executableHookRenderer: CapabilityRenderer = {
     const sideEffects = capabilitySideEffects(capability);
 
     // Parse `event` into Claude Code settings.json layout:
-    //   "PostToolUse:Edit" → { event: "PostToolUse", matcher: "Edit" }
+    //   "PostToolUse:Edit" → { event: "PostToolUse", matcher: "Edit|Write|NotebookEdit" }
     //   "SessionStart"     → { event: "SessionStart" }
     const colon = capability.event.indexOf(":");
+    const rawMatcher = colon >= 0 ? capability.event.slice(colon + 1) : null;
     const settingsHook =
-      colon >= 0
+      rawMatcher !== null
         ? {
             event: capability.event.slice(0, colon),
-            matcher: capability.event.slice(colon + 1),
+            matcher: claudeMatcher(rawMatcher),
+            ...(claudeMatcher(rawMatcher) !== rawMatcher
+              ? { legacyMatchers: [rawMatcher] }
+              : {}),
           }
         : { event: capability.event };
 
@@ -56,3 +67,7 @@ export const executableHookRenderer: CapabilityRenderer = {
     ];
   },
 };
+
+function claudeMatcher(matcher: string): string {
+  return CLAUDE_MATCHER_ALIASES[matcher] ?? matcher;
+}

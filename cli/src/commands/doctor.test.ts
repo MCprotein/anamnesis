@@ -656,6 +656,50 @@ capabilities:
     );
   });
 
+  it("warns, not errors, when hooks use a legacy relative registration", () => {
+    const { project, library } = installProject();
+    const settingsFile = path.join(project, ".claude", "settings.json");
+    const legacy = fs
+      .readFileSync(settingsFile, "utf8")
+      .replaceAll('\\"$CLAUDE_PROJECT_DIR\\"/', "");
+    fs.writeFileSync(settingsFile, legacy, "utf8");
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+
+    expect(result.issues.map((issue) => issue.code)).not.toContain(
+      "hook-registration-missing",
+    );
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "hook-registration-legacy",
+          repair: expect.stringContaining("allow-exec-adapters"),
+        }),
+      ]),
+    );
+  });
+
+  it("accepts a current command that keeps a user-chosen matcher", () => {
+    const { project, library } = installProject();
+    const settingsFile = path.join(project, ".claude", "settings.json");
+    const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
+    for (const entries of Object.values(settings.hooks) as Array<
+      Array<{ matcher?: string }>
+    >) {
+      for (const entry of entries) {
+        entry.matcher = "Bash";
+      }
+    }
+    fs.writeFileSync(settingsFile, `${JSON.stringify(settings, null, 2)}\n`);
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+    const codes = result.issues.map((issue) => issue.code);
+
+    expect(codes).not.toContain("hook-registration-missing");
+    expect(codes).not.toContain("hook-registration-legacy");
+  });
+
   it("does not require adapter wiring for fragments disabled on that adapter", () => {
     const project = tmpDir("anamnesis-doctor-proj-");
     const library = makeLibrary();

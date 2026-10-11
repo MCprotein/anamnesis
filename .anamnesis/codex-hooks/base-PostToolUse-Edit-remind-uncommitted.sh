@@ -1,8 +1,12 @@
 #!/bin/bash
-# anamnesis PostToolUse hook — gentle reminder when working tree is dirty.
+# anamnesis PostToolUse hook — note when the working tree has accumulated
+# many uncommitted changes.
 #
-# Prints a single line to stderr after edits. Claude Code surfaces hook
-# stderr output back to the agent so it sees the reminder.
+# Claude Code only shows a hook's stdout JSON `additionalContext` to the model
+# (stderr from an exit-0 hook is never shown), so the Claude path emits JSON
+# and notes each new block of 8 dirty paths once instead of after every edit.
+# Codex runs this same script through its native wrapper and pre-commit
+# bridge, which set CODEX_PROJECT_DIR and wrap plain stderr text themselves.
 
 set -euo pipefail
 
@@ -10,13 +14,43 @@ PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$PROJECT_ROOT"
 
 # Only act inside a git repo.
-git rev-parse --git-dir > /dev/null 2>&1 || exit 0
+git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
 
-dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') || dirty=0
 
 # Threshold tuned to avoid noise on small WIPs but flag accumulation.
-if [[ "$dirty" -gt 8 ]]; then
-  echo "[anamnesis] $dirty uncommitted changes — consider committing logical units before continuing." >&2
+THRESHOLD=8
+message="[anamnesis] The working tree has $dirty uncommitted changes."
+
+if [[ -n "${CODEX_PROJECT_DIR:-}" ]]; then
+  if [[ "$dirty" -gt "$THRESHOLD" ]]; then
+    echo "$message" >&2
+  fi
+  exit 0
 fi
 
+case "$git_dir" in
+  /*) ;;
+  *) git_dir="$PROJECT_ROOT/$git_dir" ;;
+esac
+state_file="$git_dir/anamnesis/uncommitted-reminder.last"
+bucket=0
+if [[ "$dirty" -gt "$THRESHOLD" ]]; then
+  bucket=$(( dirty / THRESHOLD ))
+fi
+last_bucket=$(cat "$state_file" 2>/dev/null || echo 0)
+[[ "$last_bucket" =~ ^[0-9]+$ ]] || last_bucket=0
+
+write_bucket() {
+  { mkdir -p "${state_file%/*}" && printf '%s\n' "$1" > "$state_file"; } 2>/dev/null || true
+}
+
+# Record a lower block after commits so the next accumulation is noted again.
+if (( bucket < last_bucket )); then
+  write_bucket "$bucket"
+fi
+(( bucket > last_bucket )) || exit 0
+write_bucket "$bucket"
+
+printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$message"
 exit 0

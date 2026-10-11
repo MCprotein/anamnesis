@@ -47,6 +47,8 @@ export interface FileAction {
   settingsHook?: {
     event: string;
     matcher?: string;
+    /** Matchers that earlier releases registered for this hook. */
+    legacyMatchers?: string[];
   };
   /**
    * If set, the applier writes the file normally and the command layer then

@@ -417,7 +417,7 @@ describe("init", () => {
     expect(claudeMd).toContain(
       "anamnesis:region id=anamnesis-claude-code-entrypoint",
     );
-    expect(claudeMd).toContain("`AGENTS.md` is the canonical");
+    expect(claudeMd).toContain("\n@AGENTS.md\n");
     expect(claudeMd).toContain("/ontology-enrich");
 
     // Manifest tracks the region.

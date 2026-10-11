@@ -6,6 +6,11 @@
 # handoff timestamp, then prints a reminder only when current work appears
 # newer than the last handoff. To avoid repeated Stop-hook noise, it stores the
 # last emitted dirty-state fingerprint outside the tracked worktree.
+#
+# Claude Code never shows stderr from an exit-0 hook, so the Claude path emits
+# a user-facing `systemMessage` (non-blocking: it does not force the agent to
+# keep working). Codex runs this script through its native wrapper, which sets
+# CODEX_PROJECT_DIR and wraps the plain stderr text itself.
 
 set -euo pipefail
 
@@ -183,7 +188,14 @@ fi
 
 write_state "$dirty_fingerprint"
 
-echo "[anamnesis] $dirty_count uncommitted change(s) are newer than the latest handoff." >&2
-echo "[anamnesis] If you are stopping or switching agents, run /handoff-prepare so .anamnesis/handoff/active.md and an archive are current." >&2
+line1="[anamnesis] $dirty_count uncommitted change(s) are newer than the latest handoff."
+line2="[anamnesis] If you are stopping or switching agents, run /handoff-prepare so .anamnesis/handoff/active.md and an archive are current."
+
+if [[ -n "${CODEX_PROJECT_DIR:-}" ]]; then
+  echo "$line1" >&2
+  echo "$line2" >&2
+else
+  printf '{"systemMessage":"%s\\n%s"}\n' "$line1" "$line2"
+fi
 
 exit 0

@@ -280,7 +280,7 @@ export function handleWorkUserPromptSubmit(
 					"This cursor has no native session binding; compact recovery is unavailable until explicit rebind.",
 					"After explicitly selecting the intended Work, rerun:",
 					nativeSessionSwitchCommand(cursorId, parsed.value.sessionId),
-					"The session reference is a locator, not Work authority. Do not infer a Work from this cursor.",
+					"The session reference is a locator, not Work authority; this cursor does not determine the Work.",
 				].join("\n")
 				: null;
 			const additionalContextLength = (captureContext?.length ?? 0) + (bindingContext?.length ?? 0);
@@ -715,8 +715,8 @@ function stagePromptAtBoundary(
 			status: "failed",
 			context: [
 				"Anamnesis could not safely stage this prompt, so its Work allocation remains unresolved.",
-				"Do not make repository writes or external changes for this prompt until it is submitted again at a fresh stable prompt boundary or the local capture integrity/privacy issue is repaired.",
-				"Do not bypass staging, infer a Work from the current cursor, or echo the prompt into diagnostics.",
+				"Repository writes and external changes for this prompt wait until it is submitted again at a fresh stable prompt boundary or the local capture integrity/privacy issue is repaired; tell the user which of the two is needed.",
+				"Staging has no bypass, the current cursor does not determine a Work, and the prompt text stays out of diagnostics.",
 			].join("\n"),
 		};
 	}
@@ -724,15 +724,14 @@ function stagePromptAtBoundary(
 
 function renderPromptClassificationContext(captureId: string): string {
 	return [
-		"Anamnesis staged this decoded user prompt for explicit Work classification.",
-		"Exact draft formats and commands: anamnesis work --help. Do not guess draft fields.",
-		`Opaque stage token: ${captureId}`,
-		"Before repository writes or external effects, choose exactly one outcome. The token is a locator, not user authority; do not infer a Work from the current cursor.",
-		"- Same Work: first run `anamnesis work status --work <exact-work-id> --json`, prepare a strict accepted/same_unit contract draft using `@staged` for this prompt, then run `anamnesis work prompt allocate-same --stage <token> --work <id> --draft <file> --expected-head <ledger-head> --expected-contract-revision <n> --expected-contract-hash <hash>`.",
-		"- New Work: prepare a strict accepted/new_unit contract draft using `@staged`, then run `anamnesis work prompt allocate-new --stage <token> --work <new-id> --draft <file>`.",
-		"- Ambiguous boundary: prepare a strict provisional/needs_user boundary draft and run `anamnesis work prompt retain --stage <token> --draft <file>`, then ask its one boundary question.",
-		"- Interruption/non-requirement: run `anamnesis work prompt discard --stage <token> --reason interruption|non_requirement`.",
-		"Use the exact opaque token shown above in place of <token>. Do not retrieve, quote, summarize, log, or reinject the staged bytes; the user message already supplies them in this turn.",
+		"Anamnesis staged this user prompt for Work classification. This project's Work policy records one outcome for it before repository writes or external effects.",
+		`Opaque stage token: ${captureId} (a local locator for <token> below; it carries no user authority, and the current cursor does not determine the Work).`,
+		"Outcomes and their commands (draft formats: `anamnesis work --help`):",
+		"- Same Work: `anamnesis work status --work <exact-work-id> --json`, a strict accepted/same_unit contract draft using `@staged`, then `anamnesis work prompt allocate-same --stage <token> --work <id> --draft <file> --expected-head <ledger-head> --expected-contract-revision <n> --expected-contract-hash <hash>`.",
+		"- New Work: a strict accepted/new_unit contract draft using `@staged`, then `anamnesis work prompt allocate-new --stage <token> --work <new-id> --draft <file>`.",
+		"- Ambiguous boundary: a strict provisional/needs_user boundary draft, `anamnesis work prompt retain --stage <token> --draft <file>`, then its one boundary question to the user.",
+		"- Interruption (e.g. a side question) or non-requirement: `anamnesis work prompt discard --stage <token> --reason interruption|non_requirement`.",
+		"The prompt text is already in this turn's user message; the staged bytes are not needed in commands, logs, or summaries.",
 	].join("\n");
 }
 
@@ -975,12 +974,12 @@ export function renderWorkBriefingContext(
 	// sliced after assembly.
 	const lines = [
 		`Anamnesis Work briefing: ${boundedSemanticField(briefing.work.title ?? briefing.work_id, 512)} (${boundedSemanticField(briefing.work_id, 128)}; r${briefing.contract_revision}; ${briefing.lifecycle}).`,
-		"Delivery: injected_unconfirmed (not visible).",
+		"Delivery: injected_unconfirmed (this context is not visible to the user).",
 		autoContinue
-			? "Action: brief requirements/done/remaining/blockers/progress; continue the same task under the latest request. Before reporting execution done, use work transition for newly verified requirements with existing evidence. Pause/cancel/redirection wins; read-only means no writes."
-			: "Visibly brief the requirements, done, remaining, blockers, and progress. This Work is terminal; do not continue or restart it automatically.",
+			? "Expected: a short user-visible brief (requirements, done, remaining, blockers, progress), then the same task continues under the latest request. Newly verified requirements with existing evidence are recorded with work transition before execution is reported done. A pause, cancel, or redirection in the latest request takes precedence; a read-only request means no writes."
+			: "Expected: a short user-visible brief (requirements, done, remaining, blockers, progress). This Work is terminal, so it does not continue or restart automatically.",
 		fullBlock === null
-			? `Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; compact context never replaces the complete projection.`
+			? `Required retrieval: this is a compact projection; the complete requirement list for the visible brief comes from ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))}.`
 			: "Authoritative completeness: all current requirements follow; no retrieval needed.",
 		`Completion contract: ${boundedSemanticField(briefing.work.completion_contract ?? "not recorded", 700)}`,
 		`Progress: ${briefing.progress.percent}% (${briefing.progress.verified}/${briefing.progress.denominator} verified/applicable)`,
@@ -1024,9 +1023,9 @@ export function renderWorkBriefingContext(
 		} else {
 			const retrievalIndex = 3;
 			lines[retrievalIndex] =
-				`Required retrieval: run ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))} before the visible briefing; the complete projection did not fit in this hook context.`;
+				`Required retrieval: the complete projection did not fit in this hook context; the requirement list for the visible brief comes from ${shellCommandForStatus(boundedSemanticField(briefing.work_id, 128))}.`;
 			appendOptional(
-				`Full requirement enumeration unavailable in one hook context (${briefing.requirements.length} requirements, ${fullBlock.length} characters). The required authoritative status retrieval above remains mandatory.`,
+				`Full requirement enumeration unavailable in one hook context (${briefing.requirements.length} requirements, ${fullBlock.length} characters); the status retrieval above is the authoritative list.`,
 			);
 		}
 	}
@@ -1174,7 +1173,7 @@ function onboardingUnavailable(
 			...(nativeSessionId === undefined
 				? []
 				: ["The session reference is a locator, not Work authority; select the Work explicitly."]),
-			"Then continue the current task. Do not infer or switch a global Work.",
+			"The current task continues either way; no global Work is inferred or switched, and a staged prompt above still gets its classification outcome.",
 		].join("\n"),
 	};
 }

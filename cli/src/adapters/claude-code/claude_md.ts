@@ -14,42 +14,64 @@ export function planClaudeMdEntrypoint(opts: {
   settings: AgentfileSettings;
 }): RegionAction {
   const scopePath = opts.scopePath || ".";
-  const file =
-    scopePath === "."
-      ? opts.settings.claude_md_path
-      : path.posix.join(scopePath, opts.settings.claude_md_path);
+  const scoped = (file: string) =>
+    scopePath === "." ? file : path.posix.join(scopePath, file);
+  const file = scoped(opts.settings.claude_md_path);
+  // Claude Code does not load AGENTS.md when a CLAUDE.md exists, and a prose
+  // "read AGENTS.md" pointer is only followed when the model decides to open
+  // it. An `@` import (relative to this CLAUDE.md) always loads it.
+  const agentsFile = scoped(opts.settings.agents_md_path);
+  const agentsImport =
+    agentsFile === file
+      ? null
+      : path.posix.relative(path.posix.dirname(file), agentsFile);
 
   return {
     kind: "region",
     file,
     regionId: CLAUDE_MD_REGION_ID,
     fragmentId: "anamnesis-claude-code",
-    fragmentVersion: 1,
-    content: renderClaudeMdEntrypoint(opts.settings),
+    fragmentVersion: 2,
+    content: renderClaudeMdEntrypoint(agentsImport),
   };
 }
 
-function renderClaudeMdEntrypoint(settings: AgentfileSettings): string {
+function renderClaudeMdEntrypoint(agentsImport: string | null): string {
+  const intro =
+    agentsImport === null
+      ? [
+          "This project is managed by anamnesis. This file is also the",
+          "canonical cross-agent project memory; this region adds the Claude",
+          "Code specifics.",
+        ]
+      : [
+          `@${agentsImport}`,
+          "",
+          `This project is managed by anamnesis. The import above loads \`${agentsImport}\`,`,
+          "the canonical cross-agent project memory; this region adds the Claude",
+          "Code specifics.",
+        ];
   return [
     "## Claude Code entrypoint",
     "",
-    "This project is managed by anamnesis. `AGENTS.md` is the canonical",
-    "cross-agent project memory; Claude Code should read it first and treat",
-    "this file as the Claude-specific pointer surface.",
+    ...intro,
     "",
-    "### Start here",
+    "### Claude Code context",
     "",
-    `1. Read \`${settings.agents_md_path}\` for project context, operating rules, and adapter-neutral instructions.`,
-    "2. Read `.anamnesis/ontology/*.yaml`, `*.bootstrap.yaml`, and",
-    "   `*.enriched.yaml` when present.",
-    "3. If `.anamnesis/handoff/active.md` exists, read it first. Retrieve",
-    "   warm archives referenced by `Current focus` / `Active tasks` when needed.",
-    "   `Recently completed` and closed/cold/deprecated/superseded archives are not startup context.",
-    "4. For project facts, docs, roadmap items, prior decisions, or ontology",
-    "   evidence not already loaded, run `anamnesis context query \"<terms>\"`",
-    "   and read the returned `source_path` / `stable_ref` before claiming or editing.",
-    "5. Use Claude Code native surfaces under `.claude/` for hooks, slash",
-    "   commands, and skills when installed.",
+    "- SessionStart hooks inject a compact ontology digest and, when a handoff",
+    "  exists, the active handoff summary, each with source pointers. The",
+    "  pointed-to ontology slices and handoff files (the active index plus warm",
+    "  archives referenced by `Current focus` / `Active tasks`) hold the exact",
+    "  content when a task depends on it. `Recently completed` and",
+    "  closed/cold/deprecated/superseded archives are history, not startup context.",
+    "- `anamnesis context query \"<terms>\"` finds source pointers for project",
+    "  docs, roadmap items, prior decisions, and ontology evidence that is not",
+    "  already loaded. Its snippets are location hints; the returned",
+    "  `source_path` / `stable_ref` is the source to read before relying on a fact.",
+    "- Claude Code runs the anamnesis hooks, slash commands, and skills",
+    "  natively from `.claude/`. The `codex-*` sections of the project memory",
+    "  and the manuals under `.anamnesis/codex-instructions/` are fallbacks",
+    "  for Codex only.",
     "",
     "### Generation boundary",
     "",

@@ -199,7 +199,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		});
 		expect(result.context).not.toContain(prompt);
 		expect(result.context).not.toContain(sha256(prompt));
-		expect(result.context).toContain("do not infer a Work from the current cursor");
+		expect(result.context).toContain("the current cursor does not determine the Work");
 		const staged = readStagedWorkPrompt(
 			resolveWorkStateRoot(root).state_root,
 			captureId,
@@ -262,7 +262,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			reason: "capture_staged",
 			context: expect.stringContaining(captureId),
 		});
-		expect(result.context).toContain("choose exactly one outcome");
+		expect(result.context).toContain("records one outcome for it before repository writes");
 		expect(readStagedWorkPrompt(state.state_root, captureId)).toBeDefined();
 	});
 
@@ -444,7 +444,7 @@ describe("foreground Work UserPromptSubmit hook", () => {
 		});
 		expect(first).toMatchObject({ status: "briefing_due" });
 		expect(first.context).toContain("injected_unconfirmed");
-		expect(first.context).toContain("brief requirements/done/remaining/blockers/progress");
+		expect(first.context).toContain("short user-visible brief (requirements, done, remaining, blockers, progress)");
 		expect(
 			handleWorkUserPromptSubmit({
 				project_root: root,
@@ -505,13 +505,13 @@ describe("foreground Work UserPromptSubmit hook", () => {
 			"compact",
 			false,
 		);
-		expect(openContext).toContain("continue the same task");
-		expect(openContext).toContain("use work transition for newly verified requirements with existing evidence");
-		expect(openContext).toContain("read-only means no writes");
-		expect(openContext).toContain("Pause/cancel/redirection wins");
-		expect(terminalContext).not.toContain("use work transition for newly verified requirements");
+		expect(openContext).toContain("the same task continues");
+		expect(openContext).toContain("Newly verified requirements with existing evidence are recorded with work transition");
+		expect(openContext).toContain("a read-only request means no writes");
+		expect(openContext).toContain("A pause, cancel, or redirection in the latest request takes precedence");
+		expect(terminalContext).not.toContain("recorded with work transition");
 		expect(terminalContext).toContain("This Work is terminal");
-		expect(terminalContext).not.toContain("continue the same task");
+		expect(terminalContext).not.toContain("the same task continues");
 	});
 
 	it("keeps default compact briefings sufficient to retrieve and report complete Work truth", () => {
@@ -1274,7 +1274,7 @@ describe("same-turn Work post-tool hook", () => {
 		).cursor;
 		expect(output).toMatchObject({ status: "briefing_due" });
 		expect(output.context).toContain("This Work is terminal");
-		expect(output.context).not.toContain("continue the same task");
+		expect(output.context).not.toContain("the same task continues");
 		expect(finalStatus.projection.lifecycle).toBe("completed");
 		expect(finalCursor).toMatchObject({
 			observed_revision: finalStatus.projection.contract_revision,

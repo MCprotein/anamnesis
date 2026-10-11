@@ -146,7 +146,7 @@ describe("instruction continuity contract", () => {
 
 describe("Claude startup source retrieval guidance", () => {
   it.each(["inject-ontology.sh", "inject-handoff.sh"])(
-    "%s permits grounded edits without losing compact/full source boundaries",
+    "%s keeps compact/full source boundaries with factual pointers",
     (hook) => {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-query-guidance-"));
       try {
@@ -163,13 +163,14 @@ describe("Claude startup source retrieval guidance", () => {
           expect(result.status).toBe(0);
           expect(result.stderr).toBe("");
           if (mode === "compact") {
-            expect(result.stdout).toContain("for read and edit tasks");
-            expect(result.stdout).toContain("Editing alone does not require a query");
-            expect(result.stdout).toContain("missing, unresolved, ambiguous, stale or insufficient");
-            expect(result.stdout).toContain("read returned source_path/stable_ref");
-            expect(result.stdout).toContain("batch that query with independent startup checks");
-            expect(result.stdout).toContain("do not add a preliminary directory scan");
-            expect(result.stdout).not.toContain("or the task edits files, run");
+            // Context-query guidance lives once in the imported CLAUDE.md /
+            // AGENTS.md; the hooks carry only factual source pointers.
+            expect(result.stdout).not.toContain("Context query rule");
+            expect(result.stdout).toContain(
+              hook === "inject-ontology.sh"
+                ? "the source files above hold the exact"
+                : "In-flight details:",
+            );
             expect(result.stdout).not.toContain("ORIGINAL_SOURCE_BODY");
           } else {
             expect(result.stdout).toContain("ORIGINAL_SOURCE_BODY");
