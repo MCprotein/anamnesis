@@ -81,6 +81,10 @@ describe("project registry", () => {
 		const root = path.join(dir, "repo");
 		const registryPath = path.join(dir, "projects.json");
 		const entry = registerProject({ ...project(root), registryPath });
+		fs.writeFileSync(
+			path.join(root, "Agentfile"),
+			"version: 2\nproject:\n  name: demo\ntools:\n  - claude-code\nfragments: []\n",
+		);
 		// macOS can renumber an APFS volume after a reboot or OS update.
 		const renumbered = {
 			...entry,
@@ -90,6 +94,12 @@ describe("project registry", () => {
 			},
 		};
 		expect(validateRegisteredProject(renumbered)).toBe(true);
+		// Another volume at the same path with a different project is stale.
+		expect(
+			validateRegisteredProject({ ...renumbered, project_name: "other" }),
+		).toBe(false);
+		fs.rmSync(path.join(root, "Agentfile"));
+		expect(validateRegisteredProject(renumbered)).toBe(false);
 		const replacedInode = {
 			...entry,
 			root_identity: {

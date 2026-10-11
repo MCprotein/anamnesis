@@ -14,6 +14,8 @@ export function planClaudeMdEntrypoint(opts: {
   settings: AgentfileSettings;
   /** True when the Agentfile enables Work prompt capture. */
   workPromptCapture?: boolean;
+  /** True when the Agentfile also renders Codex surfaces. */
+  codex?: boolean;
 }): RegionAction {
   const scopePath = opts.scopePath || ".";
   const scoped = (file: string) =>
@@ -37,6 +39,7 @@ export function planClaudeMdEntrypoint(opts: {
     content: renderClaudeMdEntrypoint(
       agentsImport,
       opts.workPromptCapture === true,
+      opts.codex === true,
     ),
   };
 }
@@ -44,6 +47,7 @@ export function planClaudeMdEntrypoint(opts: {
 function renderClaudeMdEntrypoint(
   agentsImport: string | null,
   workPromptCapture: boolean,
+  codex: boolean,
 ): string {
   const intro =
     agentsImport === null
@@ -77,9 +81,14 @@ function renderClaudeMdEntrypoint(
     "  already loaded. Its snippets are location hints; the returned",
     "  `source_path` / `stable_ref` is the source to read before relying on a fact.",
     "- Claude Code runs the anamnesis hooks, slash commands, and skills",
-    "  natively from `.claude/`. The `codex-*` sections of the project memory",
-    "  and the manuals under `.anamnesis/codex-instructions/` are fallbacks",
-    "  for Codex only.",
+    "  natively from `.claude/` at the repository root.",
+    ...(codex
+      ? [
+          "- The `codex-*` sections of the project memory and the manuals under",
+          "  `.anamnesis/codex-instructions/` at the repository root are fallbacks",
+          "  for Codex only.",
+        ]
+      : []),
     // Measured on Claude Sonnet 5.5: stated here as project policy, the Work
     // classification was recorded in 4/5 runs versus 2/5 from hook text alone.
     ...(workPromptCapture

@@ -7,6 +7,13 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Base fragment v31 fixes the Claude hook scripts on macOS's default bash 3.2: an empty array under `set -u` ended `handoff-reminder.sh` with "unbound variable" (Codex turned that error into a Stop block on every turn), and the same pattern is fixed in `inject-handoff.sh` and `inject-ontology.sh`.
+- `apply` rewrites a bare `.claude/hooks/...` command left under a user-chosen matcher to the `"$CLAUDE_PROJECT_DIR"` form, removes a bare entry of a user-modified hook when the current form is already registered, and treats a hand-written `$CLAUDE_PROJECT_DIR` spelling under a legacy matcher as superseded. `doctor` warns when a bare command remains next to the current form.
+- The generated `CLAUDE.md` mentions the Codex fallback sections only when the project also renders Codex, and states that `.claude/` and `.anamnesis/codex-instructions/` are at the repository root.
+- A registered project whose volume device number changed stays valid only when its Agentfile still names the registered project; another volume mounted at the same path can reuse the root inode number.
+- Work prompt staging treats a concurrent hook that staged the same bytes at the same ordinal as a replay instead of adding a second token.
+- CLI integration tests kill a blocked child process after 60 seconds, and the publish workflow limits the test step to 15 minutes.
+
 ## [1.25.3] — 2026-10-11
 
 - `doctor` accepts hand-written hook commands that spell `$CLAUDE_PROJECT_DIR` differently (unquoted, fully quoted, or `${CLAUDE_PROJECT_DIR}`) as the same registration. A managed hook that a user registered under a different event is reported as warning `hook-registration-moved` instead of error `hook-registration-missing`.

@@ -1,10 +1,27 @@
-import { spawnSync } from "node:child_process";
+import {
+  type SpawnSyncOptionsWithStringEncoding,
+  spawnSync as rawSpawnSync,
+} from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+
+// A blocked CLI child would otherwise hang the whole Vitest worker: a
+// synchronous spawn cannot be interrupted by the per-test timeout.
+function spawnSync(
+  command: string,
+  args: readonly string[],
+  options: SpawnSyncOptionsWithStringEncoding,
+) {
+  return rawSpawnSync(command, args, {
+    timeout: 60_000,
+    killSignal: "SIGKILL",
+    ...options,
+  });
+}
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

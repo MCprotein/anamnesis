@@ -744,8 +744,13 @@ function stagePromptAtBoundary(
 						stage(ordinalBoundary.boundaryStableId).record.capture_id,
 					);
 				} catch (error) {
-					// A concurrent hook took this ordinal first; try the next one.
-					if (stagedBody(stateRoot, ordinalBoundary) === undefined) throw error;
+					// A concurrent hook took this ordinal first. The same bytes are a
+					// replay; other bytes move on to the next ordinal.
+					const raced = stagedBody(stateRoot, ordinalBoundary);
+					if (raced === undefined) throw error;
+					if (raced !== "resolved" && raced.equals(body)) {
+						return { status: "already_staged" };
+					}
 					continue;
 				}
 			}

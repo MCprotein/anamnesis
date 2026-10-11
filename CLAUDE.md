@@ -20,8 +20,9 @@ Code specifics.
   already loaded. Its snippets are location hints; the returned
   `source_path` / `stable_ref` is the source to read before relying on a fact.
 - Claude Code runs the anamnesis hooks, slash commands, and skills
-  natively from `.claude/`. The `codex-*` sections of the project memory
-  and the manuals under `.anamnesis/codex-instructions/` are fallbacks
+  natively from `.claude/` at the repository root.
+- The `codex-*` sections of the project memory and the manuals under
+  `.anamnesis/codex-instructions/` at the repository root are fallbacks
   for Codex only.
 - Work prompt capture is on in this project. When the UserPromptSubmit
   hook stages a prompt, the project records one Work outcome for it

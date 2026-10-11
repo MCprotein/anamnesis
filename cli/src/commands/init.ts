@@ -416,6 +416,7 @@ export function init(opts: InitOptions): InitResult {
         planClaudeMdEntrypoint({
           scopePath,
           settings: DEFAULT_SETTINGS,
+          codex: tools.includes("codex"),
           workPromptCapture: normalizeWorkPromptCapturePolicy(
             agentfile.settings?.work_prompt_capture,
           ).enabled,

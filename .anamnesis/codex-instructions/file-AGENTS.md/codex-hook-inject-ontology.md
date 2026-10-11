@@ -103,7 +103,7 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
       source_pointer "$USER_ONTOLOGY" "user-managed top-level ontology"
     fi
     if (( ${#ontology_files[@]} > 0 )); then
-      for f in "${ontology_files[@]}"; do
+      for f in ${ontology_files[@]+"${ontology_files[@]}"}; do
         source_pointer "$f" "managed ontology slice"
       done
     fi
@@ -113,7 +113,7 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
       emit_invariant_digest "$USER_ONTOLOGY"
     fi
     if (( ${#ontology_files[@]} > 0 )); then
-      for f in "${ontology_files[@]}"; do
+      for f in ${ontology_files[@]+"${ontology_files[@]}"}; do
         emit_invariant_digest "$f"
       done
     fi
@@ -133,7 +133,7 @@ if [[ -f "$USER_ONTOLOGY" ]]; then
 fi
 
 if (( ${#ontology_files[@]} > 0 )); then
-  for f in "${ontology_files[@]}"; do
+  for f in ${ontology_files[@]+"${ontology_files[@]}"}; do
     rel="${f#$PROJECT_ROOT/}"
     echo "--- $rel ---"
     cat "$f"

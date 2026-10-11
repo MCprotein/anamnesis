@@ -825,7 +825,7 @@ function releaseRealCodexHome(codexHome: string): void {
   const linked = path.join(codexHome, "auth.json");
   const keep = (reason: unknown) =>
     console.error(
-      `anamnesis dogfood: kept ${codexHome}; Codex auth.json there was not written back (${reason instanceof Error ? reason.message : String(reason)}).`,
+      `anamnesis dogfood: kept ${codexHome}; its auth.json may hold a refreshed Codex credential that was not written back (${reason instanceof Error ? reason.message : String(reason)}). Review it, then delete the directory.`,
     );
   // This runs in each smoke's `finally`, so it never throws: an exception
   // there would replace the smoke's result.
