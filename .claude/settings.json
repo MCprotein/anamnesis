@@ -5,22 +5,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/inject-ontology.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/inject-ontology.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/inject-handoff.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/inject-handoff.sh"
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit",
+        "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/remind-uncommitted.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/remind-uncommitted.sh"
           }
         ]
       }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/handoff-reminder.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/handoff-reminder.sh"
           }
         ]
       }
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/work-briefing.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/work-briefing.sh"
           }
         ]
       }
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/work-post-tool-batch.mjs"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/work-post-tool-batch.mjs"
           }
         ]
       }

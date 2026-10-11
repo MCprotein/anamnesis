@@ -11,7 +11,7 @@
 ```bash
 #!/bin/sh
 ':' //; set -eu
-':' //; exec "${ANAMNESIS_NODE:-node}" -e 'require(process.argv[1])' "$0" "$@"
+':' //; exec "${ANAMNESIS_NODE:-node}" -e 'require(require("node:path").resolve(process.argv[1]))' "$0" "$@"
 // anamnesis Work UserPromptSubmit hook for Claude Code.
 // This shell/Node polyglot keeps the installed hook path stable while using a
 // byte-preserving JSON preflight. Raw prompt bytes never enter argv, logs, or

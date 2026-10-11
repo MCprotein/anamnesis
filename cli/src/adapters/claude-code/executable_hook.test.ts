@@ -1166,10 +1166,9 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(compact.stdout).toContain("- .anamnesis/handoff/middle.md");
     expect(compact.stdout).not.toContain("- .anamnesis/handoff/old.md");
     expect(compact.stdout).toContain(
-      "Retrieval rule: read the referenced warm archive",
+      "In-flight details: the referenced warm archive",
     );
-    expect(compact.stdout).toContain("anamnesis context query");
-    expect(compact.stdout).toContain("source_path/stable_ref");
+    expect(compact.stdout).not.toContain("Context query rule");
   });
 
   it("dedupes handoff reminders for the same dirty git fingerprint", () => {
@@ -1194,9 +1193,12 @@ describe("executableHookRenderer (claude-code)", () => {
         encoding: "utf8",
       });
 
+    // Claude Code never shows exit-0 stderr; the reminder is a user-facing
+    // systemMessage that does not force the agent to keep working.
     const first = runHook();
     expect(first.status).toBe(0);
-    expect(first.stderr).toContain(
+    expect(first.stderr).toBe("");
+    expect(JSON.parse(first.stdout).systemMessage).toContain(
       "1 uncommitted change(s) are newer than the latest handoff",
     );
     expect(
@@ -1207,14 +1209,75 @@ describe("executableHookRenderer (claude-code)", () => {
 
     const second = runHook();
     expect(second.status).toBe(0);
-    expect(second.stderr).toBe("");
+    expect(second.stdout).toBe("");
 
     fs.writeFileSync(path.join(projectRoot, "second.txt"), "new dirty\n", "utf8");
 
     const third = runHook();
     expect(third.status).toBe(0);
-    expect(third.stderr).toContain(
+    expect(JSON.parse(third.stdout).systemMessage).toContain(
       "2 uncommitted change(s) are newer than the latest handoff",
     );
+  });
+
+  it("keeps plain stderr reminders for the Codex bridges", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    expect(
+      spawnSync("git", ["init"], { cwd: projectRoot, encoding: "utf8" }).status,
+    ).toBe(0);
+    fs.writeFileSync(path.join(projectRoot, "codex.txt"), "dirty\n", "utf8");
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/handoff-reminder.sh",
+    );
+    const result = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: projectRoot,
+        CODEX_PROJECT_DIR: projectRoot,
+      },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("/handoff-prepare");
+  });
+
+  it("notes accumulated uncommitted changes to Claude once per block", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    expect(
+      spawnSync("git", ["init"], { cwd: projectRoot, encoding: "utf8" }).status,
+    ).toBe(0);
+    for (let i = 0; i < 9; i += 1) {
+      fs.writeFileSync(path.join(projectRoot, `dirty-${i}.txt`), "x\n", "utf8");
+    }
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/remind-uncommitted.sh",
+    );
+    const run = (env: Record<string, string>) =>
+      spawnSync("bash", [hook], {
+        cwd: projectRoot,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot, ...env },
+        encoding: "utf8",
+      });
+
+    const first = run({});
+    expect(first.status).toBe(0);
+    expect(JSON.parse(first.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "PostToolUse",
+        additionalContext: expect.stringContaining("uncommitted changes"),
+      },
+    });
+    expect(run({}).stdout).toBe("");
+
+    const codex = run({ CODEX_PROJECT_DIR: projectRoot });
+    expect(codex.stdout).toBe("");
+    expect(codex.stderr).toContain("uncommitted changes");
   });
 });

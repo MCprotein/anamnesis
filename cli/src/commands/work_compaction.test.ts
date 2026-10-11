@@ -124,7 +124,7 @@ describe("read-only Work compaction recovery", () => {
     const recovered = cli(["hook-session-start", "--client", "codex"], compactPayload);
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(recovered.stdout).toContain("Preserve latest requirement");
-    expect(recovered.stdout).toContain("Pause/cancel/redirection wins");
+    expect(recovered.stdout).toContain("A pause, cancel, or redirection in the latest request takes precedence");
     expect(snapshot(root)).toEqual(beforeCompact);
     expect(statusWork({ project_root: root, work_id: "wu_compact" }).projection.ledger_head).toBe(ledgerBefore);
   });
@@ -161,8 +161,8 @@ describe("read-only Work compaction recovery", () => {
     const first = resume(root, { source: "compact", session_id: "session", prompt: "must not be staged", transcript_path: "/untrusted" });
     expect(first.context).toContain("Tests pass and changes reviewed");
     expect(first.context).toContain("Preserve latest requirement");
-    expect(first.context).toContain("continue the same task under the latest request");
-    expect(first.context).toContain("Pause/cancel/redirection wins");
+    expect(first.context).toContain("the same task continues under the latest request");
+    expect(first.context).toContain("A pause, cancel, or redirection in the latest request takes precedence");
     expect(first.context).not.toContain("private original prompt");
     expect(resume(root)).toEqual(first);
     expect(snapshot(root)).toEqual(before);
@@ -293,7 +293,7 @@ describe("read-only Work compaction recovery", () => {
 
     const result = resume(root);
     expect(result.context).toContain("This Work is terminal");
-    expect(result.context).not.toContain("continue the same task");
+    expect(result.context).not.toContain("the same task continues");
   });
 
   it("retries when Work closes after the first projection fold", () => {
@@ -342,7 +342,7 @@ describe("read-only Work compaction recovery", () => {
     const result = resume(root);
     expect(status).toHaveBeenCalledTimes(2);
     expect(result.context).toContain("This Work is terminal");
-    expect(result.context).not.toContain("continue the same task");
+    expect(result.context).not.toContain("the same task continues");
   });
 
   it("rejects recovery when the session cursor changes during the status read", () => {
@@ -385,6 +385,6 @@ describe("read-only Work compaction recovery", () => {
 
     expect(cli.status, cli.stderr).toBe(0);
     expect(cli.stdout).toContain("Tests pass and changes reviewed");
-    expect(cli.stdout).toContain("continue the same task");
+    expect(cli.stdout).toContain("the same task continues");
   });
 });

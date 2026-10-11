@@ -1,23 +1,25 @@
-<!-- anamnesis:region id=anamnesis-claude-code-entrypoint fragment=anamnesis-claude-code@1 -->
+<!-- anamnesis:region id=anamnesis-claude-code-entrypoint fragment=anamnesis-claude-code@2 -->
 ## Claude Code entrypoint
 
-This project is managed by anamnesis. `AGENTS.md` is the canonical
-cross-agent project memory; Claude Code should read it first and treat
-this file as the Claude-specific pointer surface.
+@AGENTS.md
 
-### Start here
+This project is managed by anamnesis. The import above loads `AGENTS.md`,
+the canonical cross-agent project memory; this region adds the Claude
+Code specifics.
 
-1. Read `AGENTS.md` for project context, operating rules, and adapter-neutral instructions.
-2. Read `.anamnesis/ontology/*.yaml`, `*.bootstrap.yaml`, and
-   `*.enriched.yaml` when present.
-3. If `.anamnesis/handoff/active.md` exists, read it first. Retrieve
-   warm archives referenced by `Current focus` / `Active tasks` when needed.
-   `Recently completed` and closed/cold/deprecated/superseded archives are not startup context.
-4. For project facts, docs, roadmap items, prior decisions, or ontology
-   evidence not already loaded, run `anamnesis context query "<terms>"`
-   and read the returned `source_path` / `stable_ref` before claiming or editing.
-5. Use Claude Code native surfaces under `.claude/` for hooks, slash
-   commands, and skills when installed.
+### Claude Code context
+
+- SessionStart hooks inject a compact ontology digest and, when a handoff
+  exists, the active handoff summary, each with source pointers. The
+  pointed-to ontology slices and handoff files (the active index plus warm
+  archives referenced by `Current focus` / `Active tasks`) hold the exact
+  content when a task depends on it. `Recently completed` and
+  closed/cold/deprecated/superseded archives are history, not startup context.
+- `anamnesis context query "<terms>"` finds source pointers for project
+  docs, roadmap items, prior decisions, and ontology evidence that is not
+  already loaded. Its snippets are location hints; the returned
+  `source_path` / `stable_ref` is the source to read before relying on a fact.
+- Hooks, slash commands, and skills live under `.claude/`.
 
 ### Generation boundary
 

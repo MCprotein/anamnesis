@@ -21,7 +21,8 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     expect(action.file).toBe("CLAUDE.md");
     expect(action.regionId).toBe(CLAUDE_MD_REGION_ID);
     expect(action.content).toContain("Claude Code entrypoint");
-    expect(action.content).toContain("`AGENTS.md` is the canonical");
+    expect(action.content).toContain("\n@AGENTS.md\n");
+    expect(action.content).toContain("canonical cross-agent project memory");
     expect(action.content).toContain("anamnesis context query");
     expect(action.content).toContain("source_path");
     expect(action.content).toContain("/ontology-enrich");
@@ -32,7 +33,7 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     const { content } = planClaudeMdEntrypoint({ scopePath: ".", settings });
     expect(content).toContain("Current focus");
     expect(content).toContain("Active tasks");
-    expect(content).toContain("warm archives");
+    expect(content).toContain("warm\n  archives");
     expect(content).toContain("Recently completed");
     expect(content).not.toContain("referenced archive before continuing work");
   });
@@ -44,5 +45,15 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     });
 
     expect(action.file).toBe("apps/api/CLAUDE.md");
+    expect(action.content).toContain("\n@AGENTS.md\n");
+  });
+
+  it("imports AGENTS.md relative to a nested CLAUDE.md path", () => {
+    const { content } = planClaudeMdEntrypoint({
+      scopePath: ".",
+      settings: { ...settings, claude_md_path: ".claude/CLAUDE.md" },
+    });
+
+    expect(content).toContain("\n@../AGENTS.md\n");
   });
 });

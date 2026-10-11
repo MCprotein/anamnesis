@@ -220,13 +220,12 @@ if [[ "$SESSION_CONTEXT_MODE" != "full" ]]; then
   fi
   echo
   if [[ -f "$active" && ${#selected_archives[@]} -gt 0 ]]; then
-    echo "Retrieval rule: read active.md and the referenced warm archive before continuing non-trivial in-flight work."
+    echo "In-flight details: active.md and the referenced warm archive hold the full state of this work."
   elif [[ -f "$active" ]]; then
-    echo "Retrieval rule: read active.md before continuing non-trivial in-flight work; no warm archive is startup-active."
+    echo "In-flight details: active.md holds the full state of this work; no warm archive is startup-active."
   else
-    echo "Retrieval rule: read the referenced warm archive before continuing non-trivial in-flight work."
+    echo "In-flight details: the referenced warm archive holds the full state of this work."
   fi
-  echo "Context query rule: for read and edit tasks, read already-identified original sources directly; an explicit path alone does not establish sufficient evidence. When required evidence is missing, unresolved, ambiguous, stale or insufficient, run \`anamnesis context query \"<terms>\"\` and read returned source_path/stable_ref before claiming or editing. Editing alone does not require a query. If retrieval is already required by the request or current evidence, batch that query with independent startup checks; do not add a preliminary directory scan or reread loaded instructions. Read newly returned sources after inspecting the query result."
   echo "--- end of handoff ---"
   exit 0
 fi

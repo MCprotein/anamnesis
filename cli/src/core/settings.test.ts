@@ -68,7 +68,10 @@ describe("ensureHookRegistration — create", () => {
         SessionStart: [
           {
             hooks: [
-              { type: "command", command: ".claude/hooks/inject-ontology.sh" },
+              {
+                type: "command",
+                command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/inject-ontology.sh',
+              },
             ],
           },
         ],
@@ -144,7 +147,10 @@ describe("ensureHookRegistration — noop", () => {
         SessionStart: [
           {
             hooks: [
-              { type: "command", command: ".claude/hooks/inject-ontology.sh" },
+              {
+                type: "command",
+                command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/inject-ontology.sh',
+              },
             ],
           },
         ],
@@ -163,7 +169,7 @@ describe("ensureHookRegistration — noop", () => {
             hooks: [
               {
                 type: "command",
-                command: ".claude/hooks/prisma-validate.sh",
+                command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/prisma-validate.sh',
               },
             ],
           },
@@ -172,6 +178,49 @@ describe("ensureHookRegistration — noop", () => {
     };
     const { status } = ensureHookRegistration(initial, REG_VALIDATE);
     expect(status).toBe("noop");
+  });
+
+  it("replaces a legacy relative command and drops the emptied group", () => {
+    const initial = {
+      hooks: {
+        PostToolUse: [
+          {
+            matcher: "Edit",
+            hooks: [
+              { type: "command", command: ".claude/hooks/prisma-validate.sh" },
+            ],
+          },
+          {
+            matcher: "Bash",
+            hooks: [{ type: "command", command: "user-hook.sh" }],
+          },
+        ],
+      },
+    };
+    const widened: HookRegistration = {
+      ...REG_VALIDATE,
+      matcher: "Edit|Write|NotebookEdit",
+    };
+    const { settings, status } = ensureHookRegistration(initial, widened);
+    expect(status).toBe("create");
+    expect(settings.hooks).toEqual({
+      PostToolUse: [
+        {
+          matcher: "Bash",
+          hooks: [{ type: "command", command: "user-hook.sh" }],
+        },
+        {
+          matcher: "Edit|Write|NotebookEdit",
+          hooks: [
+            {
+              type: "command",
+              command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/prisma-validate.sh',
+            },
+          ],
+        },
+      ],
+    });
+    expect(ensureHookRegistration(settings, widened).status).toBe("noop");
   });
 
 

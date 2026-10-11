@@ -5,6 +5,10 @@
 //     contributes only specific entries under `hooks.<event>[].hooks[]`.
 //   * All operations are idempotent: if our entry already exists for the
 //     given (event, matcher, command), do nothing.
+//   * Commands are written as `"$CLAUDE_PROJECT_DIR"/<path>` so hooks resolve
+//     when Claude's working directory is a subdirectory, and so polyglot
+//     scripts see an absolute `$0`. Legacy bare project-relative commands are
+//     pruned when the current form is ensured.
 //   * No manifest tracking. Re-running update keeps registrations alive
 //     without wiping anything else in settings.json. If a user explicitly
 //     removes our entry but keeps the fragment installed, anamnesis will
@@ -15,10 +19,10 @@
 //   {
 //     "hooks": {
 //       "PostToolUse": [
-//         { "matcher": "Edit", "hooks": [{ "type": "command", "command": ".claude/hooks/x.sh" }] }
+//         { "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/x.sh" }] }
 //       ],
 //       "SessionStart": [
-//         { "hooks": [{ "type": "command", "command": ".claude/hooks/y.sh" }] }
+//         { "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/y.sh" }] }
 //       ]
 //     }
 //   }
@@ -48,6 +52,15 @@ export interface HookSyncResult {
 // ---------------------------------------------------------------------------
 
 export const SETTINGS_PATH = ".claude/settings.json";
+
+/**
+ * Settings command for a project-relative hook path. Claude Code exports
+ * `CLAUDE_PROJECT_DIR` to hook processes; the quotes keep paths with spaces
+ * intact.
+ */
+export function claudeHookCommand(projectRelativePath: string): string {
+  return `"$CLAUDE_PROJECT_DIR"/${projectRelativePath}`;
+}
 
 // ---------------------------------------------------------------------------
 // Read / Write
@@ -136,14 +149,32 @@ export function hookRegistrationPresent(
 ): boolean {
   const entries = getEventEntries(settings, reg.event);
   if (!entries) return false;
+  const command = claudeHookCommand(reg.command);
   for (const entry of entries) {
     if ((entry.matcher ?? undefined) !== (reg.matcher ?? undefined)) continue;
     if (!Array.isArray(entry.hooks)) continue;
     for (const h of entry.hooks) {
-      if (h.command === reg.command) return true;
+      if (h.command === command) return true;
     }
   }
   return false;
+}
+
+/**
+ * True when an event entry carries this registration in a superseded form:
+ * the legacy bare relative command (any matcher), or the current command
+ * under a different matcher.
+ */
+function isSupersededHook(
+  entry: MatcherEntry,
+  hook: { command?: string },
+  reg: HookRegistration,
+): boolean {
+  if (hook.command === reg.command) return true;
+  return (
+    hook.command === claudeHookCommand(reg.command) &&
+    (entry.matcher ?? undefined) !== (reg.matcher ?? undefined)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +189,13 @@ export function ensureHookRegistration(
   settings: Record<string, unknown>,
   reg: HookRegistration,
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
-  if (hookRegistrationPresent(settings, reg)) {
+  const existingEntries = getEventEntries(settings, reg.event) ?? [];
+  const hasSuperseded = existingEntries.some(
+    (entry) =>
+      Array.isArray(entry.hooks) &&
+      entry.hooks.some((h) => isSupersededHook(entry, h, reg)),
+  );
+  if (!hasSuperseded && hookRegistrationPresent(settings, reg)) {
     return { settings, status: "noop" };
   }
 
@@ -167,17 +204,25 @@ export function ensureHookRegistration(
   const hooksRoot: Record<string, unknown> = { ...((next["hooks"] as Record<string, unknown>) ?? {}) };
   next["hooks"] = hooksRoot;
 
-  const eventList: MatcherEntry[] = Array.isArray(hooksRoot[reg.event])
-    ? [...(hooksRoot[reg.event] as MatcherEntry[])]
-    : [];
+  // Drop superseded forms of this registration, then any group they emptied.
+  const eventList: MatcherEntry[] = existingEntries
+    .map((entry) => {
+      if (!Array.isArray(entry.hooks)) return entry;
+      const hooks = entry.hooks.filter((h) => !isSupersededHook(entry, h, reg));
+      return hooks.length === entry.hooks.length ? entry : { ...entry, hooks };
+    })
+    .filter((entry) => !Array.isArray(entry.hooks) || entry.hooks.length > 0);
   hooksRoot[reg.event] = eventList;
+  if (hookRegistrationPresent(next, reg)) {
+    return { settings: next, status: "create" };
+  }
 
   // Find an existing matcher group with the same matcher value.
   const targetMatcherIndex = eventList.findIndex(
     (e) => (e.matcher ?? undefined) === (reg.matcher ?? undefined),
   );
 
-  const hookEntry = { type: "command", command: reg.command };
+  const hookEntry = { type: "command", command: claudeHookCommand(reg.command) };
 
   if (targetMatcherIndex >= 0) {
     const existing = eventList[targetMatcherIndex]!;

@@ -179,12 +179,12 @@ Full procedure and manual fallback (relative to project root): `.anamnesis/codex
 Read this manual only at its declared trigger when this specific handler lacks enabled native support, or when asked to inspect it. Enabled native handlers may succeed silently; absent output alone is not a fallback trigger. Another handler on the same event does not establish support for this one. Do not preload future-trigger manuals or replay enabled native handlers.
 <!-- /anamnesis:region -->
 
-<!-- anamnesis:region id=codex-hook-remind-uncommitted fragment=base@27 -->
+<!-- anamnesis:region id=codex-hook-remind-uncommitted fragment=base@30 -->
 ### base hook: `remind-uncommitted.sh`
 
 **When:** `PostToolUse:Edit` (Claude Code event; Codex uses native support where available, otherwise fallback instructions).
 **Codex native path:** when executable adapter writes are allowed, anamnesis installs a JSON wrapper under `.anamnesis/codex-native-hooks/` and registers `PostToolUse:Edit|Write|apply_patch` in `.codex/hooks.json`. This region remains the manual fallback.
-**Declared side effects:** `read-only`.
+**Declared side effects:** `local-write`, `repo-external-write`.
 **Intent:** the referenced procedure documents what should happen at this trigger point. Use the manual fallback only when the corresponding native execution is unavailable.
 
 Full procedure and manual fallback (relative to project root): `.anamnesis/codex-instructions/file-AGENTS.md/codex-hook-remind-uncommitted.md`.

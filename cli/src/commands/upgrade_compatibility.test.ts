@@ -523,7 +523,7 @@ describe("upgrade compatibility matrix", () => {
       claudeSettings.hooks?.Stop?.flatMap((entry) =>
         entry.hooks.map((hook) => hook.command),
       ),
-    ).toContain(".claude/hooks/feature.sh");
+    ).toContain('"$CLAUDE_PROJECT_DIR"/.claude/hooks/feature.sh');
 
     const codexConfig = fs.readFileSync(
       path.join(project, ".codex/config.toml"),

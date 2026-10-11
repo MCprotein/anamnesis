@@ -7,6 +7,11 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Register Claude Code hooks as `"$CLAUDE_PROJECT_DIR"/.claude/hooks/...` and prune the legacy bare relative registrations on apply. The relative form made the `work-briefing.sh` shell/Node polyglot fail with `MODULE_NOT_FOUND` on every prompt, so Work prompt capture and briefings never ran under Claude Code; the polyglot now also resolves a relative `$0`.
+- Base fragment v30 makes the uncommitted-changes and handoff reminders reach Claude Code. Claude never sees stderr from an exit-0 hook, so the Claude path now emits PostToolUse `additionalContext` (once per block of 8 dirty paths) and a user-facing Stop `systemMessage`; the Codex bridges keep their plain-text output. The Claude edit matcher widens from `Edit` to `Edit|Write|NotebookEdit`.
+- The generated `CLAUDE.md` imports `AGENTS.md` with `@AGENTS.md`. Claude Code does not load `AGENTS.md` when a `CLAUDE.md` exists, so the previous prose pointer only worked when the model chose to open it.
+- Claude SessionStart hooks no longer repeat the context-query rule (now loaded once through the imported `CLAUDE.md`/`AGENTS.md`) and state source pointers as facts instead of imperative rules. Work hook context, shared by Claude Code and Codex, is restated as factual policy with the same outcomes and commands; Claude Code's hook guidance notes that command-style injected text can trigger prompt-injection defenses.
+
 ## [1.24.4] — 2026-09-21
 
 - Refresh version-sensitive Next.js, Prisma and Remix guidance; archive the previous fragment versions and advance their integer versions.
