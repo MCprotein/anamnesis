@@ -7,7 +7,7 @@ could include breaking changes.
 
 ## [Unreleased]
 
-- The publish workflow waits up to about 4.5 minutes (12 attempts, 5–30 second backoff) for each registry to show a new version before the parity check fails. v1.25.0 and v1.25.1 both published successfully but failed the previous 15-second window, which skipped the GitHub Release until the job was rerun.
+- The publish workflow retries each registry up to 12 times (about 4.5 minutes of 5–30 second backoff, plus up to 10 seconds per lookup; the step is capped at 20 minutes) before the parity check fails. v1.25.0 and v1.25.1 both published successfully but failed the previous 15-second window, so the GitHub Release waited for a rerun.
 
 ## [1.25.1] — 2026-10-11
 

@@ -140,6 +140,7 @@ jobs:
           exit 1
 
       - name: Verify registry parity
+        timeout-minutes: 20
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -149,7 +150,8 @@ jobs:
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
           # A just-published version can take minutes to appear in the
           # registry read path. v1.25.0 and v1.25.1 both failed a 15-second
-          # window although both publishes succeeded. Back off up to ~4.5 min.
+          # window although both publishes succeeded. Each registry gets up to
+          # ~4.5 min of backoff sleeps plus up to 10 s per lookup.
           MAX_ATTEMPTS=12
           verify_registry() {
             local registry="$1"
