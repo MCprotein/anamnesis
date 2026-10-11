@@ -6,6 +6,8 @@ import {
   readSettings,
   writeSettings,
   ensureHookRegistration,
+  hookCommandEvents,
+  hookCommandRegistered,
   hookRegistrationLegacy,
   hookRegistrationPresent,
   syncHookRegistrations,
@@ -317,6 +319,41 @@ describe("ensureHookRegistration — noop", () => {
 });
 
 // ---------------------------------------------------------------------------
+
+describe("hand-written CLAUDE_PROJECT_DIR commands", () => {
+  it("treats common spellings as the same hook command", () => {
+    for (const command of [
+      "$CLAUDE_PROJECT_DIR/.claude/hooks/inject-ontology.sh",
+      '"$CLAUDE_PROJECT_DIR/.claude/hooks/inject-ontology.sh"',
+      "${CLAUDE_PROJECT_DIR}/.claude/hooks/inject-ontology.sh",
+    ]) {
+      const settings = {
+        hooks: { SessionStart: [{ hooks: [{ type: "command", command }] }] },
+      };
+      expect(hookRegistrationPresent(settings, REG_INJECT)).toBe(true);
+    }
+  });
+
+  it("reports the events where a moved hook is registered", () => {
+    const settings = {
+      hooks: {
+        Stop: [
+          {
+            matcher: "",
+            hooks: [
+              {
+                type: "command",
+                command: "$CLAUDE_PROJECT_DIR/.claude/hooks/prisma-validate.sh",
+              },
+            ],
+          },
+        ],
+      },
+    };
+    expect(hookCommandRegistered(settings, REG_VALIDATE)).toBe(false);
+    expect(hookCommandEvents(settings, REG_VALIDATE)).toEqual(["Stop"]);
+  });
+});
 
 describe("hookRegistrationPresent", () => {
   it("returns false on empty settings", () => {

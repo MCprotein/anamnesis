@@ -70,6 +70,27 @@ export function claudeHookCommand(projectRelativePath: string): string {
   return `"$CLAUDE_PROJECT_DIR"/${projectRelativePath}`;
 }
 
+/**
+ * True when a settings command runs this hook through CLAUDE_PROJECT_DIR in
+ * any common spelling a user may write by hand: quoted or unquoted, with or
+ * without braces.
+ */
+function isClaudeHookCommand(
+  command: string | undefined,
+  projectRelativePath: string,
+): boolean {
+  if (command === undefined) return false;
+  const p = projectRelativePath;
+  return [
+    claudeHookCommand(p),
+    `$CLAUDE_PROJECT_DIR/${p}`,
+    `"$CLAUDE_PROJECT_DIR/${p}"`,
+    `\${CLAUDE_PROJECT_DIR}/${p}`,
+    `"\${CLAUDE_PROJECT_DIR}"/${p}`,
+    `"\${CLAUDE_PROJECT_DIR}/${p}"`,
+  ].includes(command.trim());
+}
+
 // ---------------------------------------------------------------------------
 // Read / Write
 // ---------------------------------------------------------------------------
@@ -157,12 +178,11 @@ export function hookRegistrationPresent(
 ): boolean {
   const entries = getEventEntries(settings, reg.event);
   if (!entries) return false;
-  const command = claudeHookCommand(reg.command);
   for (const entry of entries) {
     if ((entry.matcher ?? undefined) !== (reg.matcher ?? undefined)) continue;
     if (!Array.isArray(entry.hooks)) continue;
     for (const h of entry.hooks) {
-      if (h.command === command) return true;
+      if (isClaudeHookCommand(h.command, reg.command)) return true;
     }
   }
   return false;
@@ -192,10 +212,22 @@ export function hookCommandRegistered(
   settings: Record<string, unknown>,
   reg: HookRegistration,
 ): boolean {
-  const command = claudeHookCommand(reg.command);
-  return (getEventEntries(settings, reg.event) ?? []).some(
-    (entry) =>
-      Array.isArray(entry.hooks) && entry.hooks.some((h) => h.command === command),
+  return hookCommandEvents(settings, reg).includes(reg.event);
+}
+
+/** Events under which this hook's CLAUDE_PROJECT_DIR command is registered. */
+export function hookCommandEvents(
+  settings: Record<string, unknown>,
+  reg: HookRegistration,
+): string[] {
+  const hooks = settings["hooks"];
+  if (!hooks || typeof hooks !== "object") return [];
+  return Object.keys(hooks as Record<string, unknown>).filter((event) =>
+    (getEventEntries(settings, event) ?? []).some(
+      (entry) =>
+        Array.isArray(entry.hooks) &&
+        entry.hooks.some((h) => isClaudeHookCommand(h.command, reg.command)),
+    ),
   );
 }
 
