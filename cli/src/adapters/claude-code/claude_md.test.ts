@@ -53,6 +53,18 @@ describe("Claude Code CLAUDE.md entrypoint", () => {
     expect(content).toContain("fallbacks\n  for Codex only");
   });
 
+  it("states the Work capture policy only when capture is on", () => {
+    const off = planClaudeMdEntrypoint({ scopePath: ".", settings });
+    const on = planClaudeMdEntrypoint({
+      scopePath: ".",
+      settings,
+      workPromptCapture: true,
+    });
+    expect(off.content).not.toContain("Work prompt capture is on");
+    expect(on.content).toContain("Work prompt capture is on in this project");
+    expect(on.content).toContain("before\n  repository writes");
+  });
+
   it("does not import the file into itself", () => {
     const { content } = planClaudeMdEntrypoint({
       scopePath: ".",

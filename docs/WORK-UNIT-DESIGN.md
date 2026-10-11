@@ -157,7 +157,11 @@ absence disables it. The setting is reviewable in the installation Git diff.
 a deterministic identity derived from the native client/session/turn boundary,
 never from prompt bytes, and enforces TTL, per-entry, total-byte, and entry-count
 budgets. Codex requires `session_id + turn_id`; Claude Code stages only when an
-actual `prompt_id` is present. The stored fidelity is `client_exact`: exact
+actual `prompt_id` is present. Claude Code reuses one `prompt_id` for later
+turns inside a user prompt, such as background-task notifications and queued
+messages. A pending stage with identical text is a replay and is not staged
+again; different text takes the next ordinal boundary (`<prompt_id>#2`, ...)
+and needs its own classification. The ordinal never derives from prompt bytes. The stored fidelity is `client_exact`: exact
 decoded prompt text re-encoded as UTF-8, not a claim about original transport
 or JSON escape bytes. Lone surrogate input is rejected rather than normalized.
 

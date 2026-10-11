@@ -12,6 +12,8 @@ export const CLAUDE_MD_REGION_ID = "anamnesis-claude-code-entrypoint";
 export function planClaudeMdEntrypoint(opts: {
   scopePath: string;
   settings: AgentfileSettings;
+  /** True when the Agentfile enables Work prompt capture. */
+  workPromptCapture?: boolean;
 }): RegionAction {
   const scopePath = opts.scopePath || ".";
   const scoped = (file: string) =>
@@ -32,11 +34,17 @@ export function planClaudeMdEntrypoint(opts: {
     regionId: CLAUDE_MD_REGION_ID,
     fragmentId: "anamnesis-claude-code",
     fragmentVersion: 2,
-    content: renderClaudeMdEntrypoint(agentsImport),
+    content: renderClaudeMdEntrypoint(
+      agentsImport,
+      opts.workPromptCapture === true,
+    ),
   };
 }
 
-function renderClaudeMdEntrypoint(agentsImport: string | null): string {
+function renderClaudeMdEntrypoint(
+  agentsImport: string | null,
+  workPromptCapture: boolean,
+): string {
   const intro =
     agentsImport === null
       ? [
@@ -72,6 +80,16 @@ function renderClaudeMdEntrypoint(agentsImport: string | null): string {
     "  natively from `.claude/`. The `codex-*` sections of the project memory",
     "  and the manuals under `.anamnesis/codex-instructions/` are fallbacks",
     "  for Codex only.",
+    // Measured on Claude Sonnet 5.5: stated here as project policy, the Work
+    // classification was recorded in 4/5 runs versus 2/5 from hook text alone.
+    ...(workPromptCapture
+      ? [
+          "- Work prompt capture is on in this project. When the UserPromptSubmit",
+          "  hook stages a prompt, the project records one Work outcome for it",
+          "  (same Work, new Work, retained boundary, or discard) before",
+          "  repository writes. The hook context lists the commands.",
+        ]
+      : []),
     "",
     "### Generation boundary",
     "",

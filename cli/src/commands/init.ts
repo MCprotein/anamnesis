@@ -46,6 +46,7 @@ import {
   type RenderContext,
 } from "../core/render.js";
 import { registerClaudeCode } from "../adapters/claude-code/index.js";
+import { normalizeWorkPromptCapturePolicy } from "../core/work_prompt_policy.js";
 import { planClaudeMdEntrypoint } from "../adapters/claude-code/claude_md.js";
 import { registerCodex } from "../adapters/codex/index.js";
 import { registerCursor } from "../adapters/cursor/index.js";
@@ -415,6 +416,9 @@ export function init(opts: InitOptions): InitResult {
         planClaudeMdEntrypoint({
           scopePath,
           settings: DEFAULT_SETTINGS,
+          workPromptCapture: normalizeWorkPromptCapturePolicy(
+            agentfile.settings?.work_prompt_capture,
+          ).enabled,
         }),
       );
     }
