@@ -849,12 +849,24 @@ function releaseRealCodexHome(codexHome: string): void {
       fs.copyFileSync(linked, staging);
       fs.renameSync(staging, target);
     } catch (error) {
-      if (staging !== undefined) fs.rmSync(staging, { force: true });
+      if (staging !== undefined) {
+        try {
+          fs.rmSync(staging, { force: true });
+        } catch {
+          // The kept-home message below still reports the original error.
+        }
+      }
       keep(error);
       return;
     }
   }
-  fs.rmSync(codexHome, { recursive: true, force: true });
+  try {
+    fs.rmSync(codexHome, { recursive: true, force: true });
+  } catch (error) {
+    console.error(
+      `anamnesis dogfood: could not remove ${codexHome} (${error instanceof Error ? error.message : String(error)}).`,
+    );
+  }
 }
 
 async function runRealCodexNativeSmokeIfEnabled(): Promise<CommandCheck> {
