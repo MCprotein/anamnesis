@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.25.3] — 2026-10-11
+
 - `doctor` accepts hand-written hook commands that spell `$CLAUDE_PROJECT_DIR` differently (unquoted, fully quoted, or `${CLAUDE_PROJECT_DIR}`) as the same registration. A managed hook that a user registered under a different event is reported as warning `hook-registration-moved` instead of error `hook-registration-missing`.
 
 ## [1.25.2] — 2026-10-11
