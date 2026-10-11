@@ -307,9 +307,11 @@ export function validateRegisteredProject(entry: RegisteredProject): boolean {
 	if (!parsed.success) return false;
 	try {
 		const current = projectIdentity(parsed.data.canonical_root);
+		// The device number is not compared: macOS can renumber APFS volumes
+		// after a reboot or OS update, which made unchanged projects stale.
+		// The canonical path plus inode still detects a replaced directory.
 		return (
 			current.canonicalRoot === parsed.data.canonical_root &&
-			current.identity.dev === parsed.data.root_identity.dev &&
 			current.identity.ino === parsed.data.root_identity.ino
 		);
 	} catch {
