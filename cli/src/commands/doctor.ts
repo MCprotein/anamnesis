@@ -25,6 +25,7 @@ import { effectiveScopes } from "../core/scope.js";
 import type { RenderAction } from "../core/render.js";
 import {
   claudeHookCommand,
+  hookCommandEvents,
   hookCommandRegistered,
   hookRegistrationLegacy,
   hookRegistrationPresent,
@@ -92,6 +93,7 @@ export type DoctorIssueCode =
   | "codex-hook-config-invalid"
   | "hook-registration-missing"
   | "hook-registration-legacy"
+  | "hook-registration-moved"
   | "codex-hook-registration-missing"
   | "codex-hook-ownership-warning"
   | "codex-hook-trust-unavailable"
@@ -771,8 +773,8 @@ function addSettingsIssues(
   for (const reg of expectedHooks) {
     // The current command under another matcher is a registration whose
     // matcher the user chose (for example a migrated user-modified hook).
-    if (hookRegistrationPresent(settings, reg)) continue;
-    if (hookCommandRegistered(settings, reg)) continue;
+    if (hookRegistrationPresent(settings, reg, { projectRoot })) continue;
+    if (hookCommandRegistered(settings, reg, { projectRoot })) continue;
     const matcher = reg.matcher ? `:${reg.matcher}` : "";
     // Only the bare relative command is reported: `apply` rewrites it for every
     // hook. A user-modified hook keeps its own matcher after that rewrite.
@@ -784,6 +786,18 @@ function addSettingsIssues(
         message: `.claude/settings.json registers ${reg.command} for ${reg.event} in a superseded form; expected ${reg.event}${matcher} with command ${claudeHookCommand(reg.command)}`,
         repair:
           "Run `anamnesis apply --allow-exec-adapters` to migrate the registration. Migration rewrites only anamnesis-written forms and keeps user-modified hook files.",
+      });
+      continue;
+    }
+    const movedTo = hookCommandEvents(settings, reg, { projectRoot });
+    if (movedTo.length > 0) {
+      issues.push({
+        severity: "warning",
+        code: "hook-registration-moved",
+        target: ".claude/settings.json",
+        message: `.claude/settings.json registers ${reg.command} under ${movedTo.join(", ")} instead of ${reg.event}${matcher}`,
+        repair:
+          "`anamnesis apply --allow-exec-adapters` registers the hook under the expected event again unless the hook file is user-modified. A move is kept only for a user-modified hook file.",
       });
       continue;
     }

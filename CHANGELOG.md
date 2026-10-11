@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- `doctor` accepts hand-written hook commands that spell `$CLAUDE_PROJECT_DIR` differently (unquoted, fully quoted, or `${CLAUDE_PROJECT_DIR}`) as the same registration. A managed hook that a user registered under a different event is reported as warning `hook-registration-moved` instead of error `hook-registration-missing`.
+
 ## [1.25.2] — 2026-10-11
 
 - Registered projects stay valid when only the volume device number changes. macOS can renumber APFS volumes after a reboot or OS update, and the registry compared that number, so `projects plan|apply` and `upgrade --apply` skipped unchanged projects as stale. The canonical path plus inode still detects a replaced directory.

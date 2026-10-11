@@ -700,6 +700,28 @@ capabilities:
     expect(codes).not.toContain("hook-registration-legacy");
   });
 
+  it("warns, not errors, when a user moved a managed hook to another event", () => {
+    const { project, library } = installProject();
+    const settingsFile = path.join(project, ".claude", "settings.json");
+    const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
+    settings.hooks.Stop = settings.hooks.SessionStart;
+    delete settings.hooks.SessionStart;
+    fs.writeFileSync(settingsFile, `${JSON.stringify(settings, null, 2)}\n`);
+
+    const result = doctor({ projectRoot: project, libraryRoot: library });
+    const codes = result.issues.map((issue) => issue.code);
+
+    expect(codes).not.toContain("hook-registration-missing");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: "warning",
+          code: "hook-registration-moved",
+        }),
+      ]),
+    );
+  });
+
   it("does not require adapter wiring for fragments disabled on that adapter", () => {
     const project = tmpDir("anamnesis-doctor-proj-");
     const library = makeLibrary();
