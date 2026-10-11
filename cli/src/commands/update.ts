@@ -966,7 +966,9 @@ function syncWrittenHooks(
     // user-modified (caller-owned) and blocked (we didn't write it).
     // A user-modified hook keeps its registration, but a registration an
     // earlier release wrote in a superseded form is still migrated.
-    const migrateOnly = c.status === "user-modified";
+    const migrateOnly =
+      c.status === "user-modified" &&
+      fs.existsSync(path.join(projectRoot, c.path));
     if (
       c.status !== "create" &&
       c.status !== "update" &&

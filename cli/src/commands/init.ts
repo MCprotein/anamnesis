@@ -13,6 +13,7 @@ import {
   planWorkPromptPrivacy,
   assertWorkPromptPrivacyOwnership,
 } from "../core/work_prompt_privacy.js";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import {
   AGENTFILE_SETTING_DEFAULTS,
@@ -816,7 +817,9 @@ function syncWrittenHooks(
     // `blocked` (we didn't write it).
     // A user-modified hook keeps its registration, but a registration an
     // earlier release wrote in a superseded form is still migrated.
-    const migrateOnly = c.status === "user-modified";
+    const migrateOnly =
+      c.status === "user-modified" &&
+      fs.existsSync(path.join(projectRoot, c.path));
     if (
       c.status !== "create" &&
       c.status !== "update" &&

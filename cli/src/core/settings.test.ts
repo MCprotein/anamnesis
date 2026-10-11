@@ -233,6 +233,42 @@ describe("ensureHookRegistration — noop", () => {
     expect(hookRegistrationLegacy(settings, REG_INJECT)).toBe(false);
   });
 
+  it("keeps the user's matcher when migrating a user-modified hook", () => {
+    const initial = {
+      hooks: {
+        PostToolUse: [
+          {
+            matcher: "Edit",
+            hooks: [
+              { type: "command", command: ".claude/hooks/prisma-validate.sh" },
+            ],
+          },
+        ],
+      },
+    };
+    const reg: HookRegistration = {
+      ...REG_VALIDATE,
+      matcher: "Edit|Write|NotebookEdit",
+      legacyMatchers: ["Edit"],
+      migrateOnly: true,
+    };
+    const { settings, status } = ensureHookRegistration(initial, reg);
+    expect(status).toBe("migrate");
+    expect(settings.hooks).toEqual({
+      PostToolUse: [
+        {
+          matcher: "Edit",
+          hooks: [
+            {
+              type: "command",
+              command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/prisma-validate.sh',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it("replaces a legacy relative command and drops the emptied group", () => {
     const initial = {
       hooks: {

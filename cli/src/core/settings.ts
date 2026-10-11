@@ -40,7 +40,11 @@ export interface HookRegistration {
   command: string; // project-relative path, e.g. ".claude/hooks/x.sh"
   /** Matchers that earlier releases registered for this hook. */
   legacyMatchers?: string[];
-  /** Only rewrite superseded forms; never add a missing registration. */
+  /**
+   * For hook files the user modified: rewrite the bare relative command to
+   * the current form in place and keep the user's matcher. Never add a
+   * missing registration.
+   */
   migrateOnly?: boolean;
 }
 
@@ -183,7 +187,7 @@ function isSupersededHook(
   return hook.command === claudeHookCommand(reg.command) && legacy;
 }
 
-/** True when `reg` is registered only in a form an earlier release wrote. */
+/** True when `reg` has any registration in a form an earlier release wrote. */
 export function hookRegistrationLegacy(
   settings: Record<string, unknown>,
   reg: HookRegistration,
@@ -208,9 +212,10 @@ export function ensureHookRegistration(
   settings: Record<string, unknown>,
   reg: HookRegistration,
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
+  if (reg.migrateOnly) return migrateCommandInPlace(settings, reg);
   const existingEntries = getEventEntries(settings, reg.event) ?? [];
   const hasSuperseded = hookRegistrationLegacy(settings, reg);
-  if (!hasSuperseded && (reg.migrateOnly || hookRegistrationPresent(settings, reg))) {
+  if (!hasSuperseded && hookRegistrationPresent(settings, reg)) {
     return { settings, status: "noop" };
   }
 
@@ -257,6 +262,27 @@ export function ensureHookRegistration(
   return { settings: next, status: hasSuperseded ? "migrate" : "create" };
 }
 
+function migrateCommandInPlace(
+  settings: Record<string, unknown>,
+  reg: HookRegistration,
+): { settings: Record<string, unknown>; status: HookSyncStatus } {
+  const entries = getEventEntries(settings, reg.event) ?? [];
+  let changed = false;
+  const eventList = entries.map((entry) => {
+    if (!Array.isArray(entry.hooks)) return entry;
+    const hooks = entry.hooks.map((h) => {
+      if (h.command !== reg.command) return h;
+      changed = true;
+      return { ...h, command: claudeHookCommand(reg.command) };
+    });
+    return changed ? { ...entry, hooks } : entry;
+  });
+  if (!changed) return { settings, status: "noop" };
+  const hooksRoot = { ...((settings["hooks"] as Record<string, unknown>) ?? {}) };
+  hooksRoot[reg.event] = eventList;
+  return { settings: { ...settings, hooks: hooksRoot }, status: "migrate" };
+}
+
 // ---------------------------------------------------------------------------
 // Higher-level sync — used by `init` and `update` after applyChanges.
 // ---------------------------------------------------------------------------
@@ -276,6 +302,9 @@ export function syncHookRegistrations(
     const next = ensureHookRegistration(settings, reg);
     settings = next.settings;
     if (next.status !== "noop") changed = true;
+    // A user-modified hook that needed no migration is not an anamnesis
+    // registration, so it stays out of the reported results.
+    if (reg.migrateOnly && next.status === "noop") continue;
     results.push({ registration: reg, status: next.status });
   }
   if (changed) writeSettings(projectRoot, settings);
