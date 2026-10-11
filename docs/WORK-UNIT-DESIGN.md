@@ -161,7 +161,9 @@ actual `prompt_id` is present. Claude Code reuses one `prompt_id` for later
 turns inside a user prompt, such as background-task notifications and queued
 messages. A pending stage with identical text is a replay and is not staged
 again; different text takes the next ordinal boundary (`<prompt_id>#2`, ...)
-and needs its own classification. The ordinal never derives from prompt bytes. The stored fidelity is `client_exact`: exact
+and needs its own classification. The ordinal never derives from prompt bytes.
+One user prompt has at most 256 ordinal boundaries, classified ones included;
+past that limit the capture fails closed as before. The stored fidelity is `client_exact`: exact
 decoded prompt text re-encoded as UTF-8, not a claim about original transport
 or JSON escape bytes. Lone surrogate input is rejected rather than normalized.
 

@@ -24,6 +24,7 @@ import {
 	normalizeWorkPromptCapturePolicy,
 } from "../core/work_prompt_policy.js";
 import {
+	assertWorkPromptStagePrivacyBoundary,
 	deriveWorkPromptCaptureId,
 	readStagedWorkPrompt,
 	readWorkPromptStageOutcome,
@@ -81,8 +82,8 @@ type PromptCaptureResult =
 
 const MAX_STABLE_ID_LENGTH = 512;
 // Later turns that reuse one Claude prompt_id (notifications, queued
-// messages) each take one ordinal boundary.
-const MAX_PROMPT_BOUNDARY_ORDINAL = 64;
+// messages) each take one ordinal boundary, including classified ones.
+const MAX_PROMPT_BOUNDARY_ORDINAL = 256;
 // Prompt injection still uses revision CAS because its expensive projection
 // read need not serialize tool hooks. Same-turn action accounting uses the
 // lock-scoped cursor mutator below instead.
@@ -725,16 +726,32 @@ function stagePromptAtBoundary(
 		// A pending stage with the same bytes is a replay. Other bytes go to the
 		// next free ordinal boundary (`<prompt_id>#2`, ...), so they are still
 		// classified. Identity never derives from prompt bytes.
+		// The ordinal reads below create the stage directories, so the privacy
+		// boundary is checked before them, as stageWorkPrompt does itself.
+		assertWorkPromptStagePrivacyBoundary(input.project_root, stateRoot);
 		for (let ordinal = 1; ordinal <= MAX_PROMPT_BOUNDARY_ORDINAL; ordinal += 1) {
-			const boundaryId =
-				ordinal === 1
-					? boundary.boundaryStableId
-					: `${boundary.boundaryStableId}#${ordinal}`;
-			const existing = stagedBody(stateRoot, { ...boundary, boundaryStableId: boundaryId });
+			const ordinalBoundary = {
+				...boundary,
+				boundaryStableId:
+					ordinal === 1
+						? boundary.boundaryStableId
+						: `${boundary.boundaryStableId}#${ordinal}`,
+			};
+			const existing = stagedBody(stateRoot, ordinalBoundary);
 			if (existing === undefined) {
-				return stagedContext(stage(boundaryId).record.capture_id);
+				try {
+					return stagedContext(
+						stage(ordinalBoundary.boundaryStableId).record.capture_id,
+					);
+				} catch (error) {
+					// A concurrent hook took this ordinal first; try the next one.
+					if (stagedBody(stateRoot, ordinalBoundary) === undefined) throw error;
+					continue;
+				}
 			}
-			if (existing.equals(body)) return { status: "already_staged" };
+			if (existing !== "resolved" && existing.equals(body)) {
+				return { status: "already_staged" };
+			}
 		}
 		throw new Error("Claude prompt boundary has no free ordinal");
 	} catch {
@@ -757,14 +774,14 @@ function stagedContext(captureId: string): PromptCaptureResult {
 }
 
 /**
- * Body of the prompt staged for this Claude boundary, or undefined when the
- * boundary has no stage. A classified boundary (body already released)
- * returns an empty buffer, which never equals a submitted prompt.
+ * Body of the pending prompt staged for this Claude boundary, `"resolved"`
+ * when the boundary is already classified (its body is released), or
+ * undefined when the boundary has no stage.
  */
 function stagedBody(
 	stateRoot: string,
 	boundary: Pick<ParsedBoundary, "sessionId" | "boundaryStableId">,
-): Buffer | undefined {
+): Buffer | "resolved" | undefined {
 	const captureId = deriveWorkPromptCaptureId({
 		client: "claude-code",
 		sessionId: boundary.sessionId,
@@ -774,7 +791,7 @@ function stagedBody(
 	if (staged) return staged.body;
 	return readWorkPromptStageOutcome(stateRoot, captureId) === undefined
 		? undefined
-		: Buffer.alloc(0);
+		: "resolved";
 }
 
 function renderPromptClassificationContext(captureId: string): string {
