@@ -237,6 +237,7 @@ describe("codex executable_hook fallback", () => {
     expect(result.stderr.split("\n").filter((l) => l === "project reminder"))
       .toHaveLength(1);
     expect(result.stderr).toContain("file a.txt");
+    expect(result.stderr).toContain("file b.txt");
     expect(result.stderr).toContain("file bad.txt");
   });
 

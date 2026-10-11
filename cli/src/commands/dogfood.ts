@@ -9,6 +9,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { status, StatusError, type StatusResult } from "./status.js";
 import { doctor, DoctorError, type DoctorResult } from "./doctor.js";
 import {
@@ -731,6 +732,7 @@ async function prepareRealCodexHome(
 ): Promise<void> {
   const auth = operatorCodexAuthPath();
   if (fs.existsSync(auth)) {
+    operatorAuthSnapshots.set(codexHome, fileSha256(auth));
     fs.symlinkSync(auth, path.join(codexHome, "auth.json"));
   }
   const transport = new CodexStdioAppServerTransport({
@@ -748,7 +750,12 @@ async function prepareRealCodexHome(
           hook.trustStatus === "untrusted" &&
           owned.some((dir) => isInsideDirectory(hook.sourcePath, dir)),
       );
-    if (untrusted.length === 0) return;
+    if (untrusted.length === 0) {
+      // Every smoke starts with a fresh home, so its own hooks are untrusted.
+      throw new Error(
+        "Codex hooks/list reported no untrusted hook inside the smoke home or project",
+      );
+    }
     const config = await transport.readConfig(project);
     const userLayer = (config.layers ?? []).find(
       (layer) =>
@@ -797,19 +804,46 @@ function isInsideDirectory(candidate: string, directory: string): boolean {
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+/** Operator auth.json hash at link time, per temporary CODEX_HOME. */
+const operatorAuthSnapshots = new Map<string, string>();
+
+function fileSha256(file: string): string {
+  return createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
 /**
  * Remove a temporary CODEX_HOME. If Codex replaced the linked auth.json with
- * a regular file (a token refresh saved by rename), copy it back first: a
- * rotated refresh token must not be lost with the temporary home.
+ * a regular file (a token refresh saved by rename), that file holds the only
+ * copy of a rotated refresh token. It is written back atomically, but only
+ * when the operator's file is unchanged since the link was made, so newer
+ * operator credentials are never overwritten. When the token cannot be
+ * written back, the temporary home is kept and its path is reported.
  */
 function releaseRealCodexHome(codexHome: string): void {
+  const snapshot = operatorAuthSnapshots.get(codexHome);
+  operatorAuthSnapshots.delete(codexHome);
   const linked = path.join(codexHome, "auth.json");
+  let replaced = false;
   try {
-    if (fs.lstatSync(linked).isFile()) {
-      fs.copyFileSync(linked, operatorCodexAuthPath());
+    replaced = fs.lstatSync(linked).isFile();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (replaced) {
+    try {
+      const target = fs.realpathSync(operatorCodexAuthPath());
+      if (snapshot === undefined || fileSha256(target) !== snapshot) {
+        throw new Error("the operator auth.json changed during the smoke");
+      }
+      const staging = `${target}.anamnesis-${process.pid}.tmp`;
+      fs.copyFileSync(linked, staging);
+      fs.renameSync(staging, target);
+    } catch (error) {
+      console.error(
+        `anamnesis dogfood: kept ${codexHome}; Codex refreshed auth.json there and it was not written back (${error instanceof Error ? error.message : String(error)}).`,
+      );
+      return;
     }
-  } catch {
-    // No auth.json in the temporary home: nothing to keep.
   }
   fs.rmSync(codexHome, { recursive: true, force: true });
 }
