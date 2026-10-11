@@ -283,7 +283,7 @@ export function ensureHookRegistration(
   reg: HookRegistration,
   options: HookCommandOptions = {},
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
-  if (reg.migrateOnly) return migrateCommandInPlace(settings, reg);
+  if (reg.migrateOnly) return migrateCommandInPlace(settings, reg, options);
   const existingEntries = getEventEntries(settings, reg.event) ?? [];
   // A bare relative command under any other matcher is rewritten in place
   // below: it breaks when Claude's working directory is a subdirectory.
@@ -350,11 +350,12 @@ export function ensureHookRegistration(
 function migrateCommandInPlace(
   settings: Record<string, unknown>,
   reg: HookRegistration,
+  options: HookCommandOptions = {},
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
   const entries = getEventEntries(settings, reg.event) ?? [];
   // When the current form is already registered, a rewrite would run the
   // hook twice; the bare entry is removed instead.
-  const alreadyCurrent = hookCommandRegistered(settings, reg);
+  const alreadyCurrent = hookCommandRegistered(settings, reg, options);
   let changed = false;
   const eventList = entries
     .map((entry) => {
