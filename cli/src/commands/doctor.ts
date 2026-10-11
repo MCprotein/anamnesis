@@ -773,8 +773,8 @@ function addSettingsIssues(
   for (const reg of expectedHooks) {
     // The current command under another matcher is a registration whose
     // matcher the user chose (for example a migrated user-modified hook).
-    if (hookRegistrationPresent(settings, reg)) continue;
-    if (hookCommandRegistered(settings, reg)) continue;
+    if (hookRegistrationPresent(settings, reg, { projectRoot })) continue;
+    if (hookCommandRegistered(settings, reg, { projectRoot })) continue;
     const matcher = reg.matcher ? `:${reg.matcher}` : "";
     // Only the bare relative command is reported: `apply` rewrites it for every
     // hook. A user-modified hook keeps its own matcher after that rewrite.
@@ -789,7 +789,7 @@ function addSettingsIssues(
       });
       continue;
     }
-    const movedTo = hookCommandEvents(settings, reg);
+    const movedTo = hookCommandEvents(settings, reg, { projectRoot });
     if (movedTo.length > 0) {
       issues.push({
         severity: "warning",
@@ -797,7 +797,7 @@ function addSettingsIssues(
         target: ".claude/settings.json",
         message: `.claude/settings.json registers ${reg.command} under ${movedTo.join(", ")} instead of ${reg.event}${matcher}`,
         repair:
-          "Keep it if the event change is intentional. Otherwise register the hook under the expected event; `anamnesis apply --allow-exec-adapters` adds it when the hook file is not user-modified.",
+          "`anamnesis apply --allow-exec-adapters` registers the hook under the expected event again unless the hook file is user-modified. A move is kept only for a user-modified hook file.",
       });
       continue;
     }

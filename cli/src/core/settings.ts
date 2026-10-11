@@ -70,25 +70,37 @@ export function claudeHookCommand(projectRelativePath: string): string {
   return `"$CLAUDE_PROJECT_DIR"/${projectRelativePath}`;
 }
 
+/** Where a settings file lives, for spelling checks that depend on it. */
+export interface HookCommandOptions {
+  /** Project root; an unquoted CLAUDE_PROJECT_DIR breaks when it has spaces. */
+  projectRoot?: string;
+}
+
 /**
  * True when a settings command runs this hook through CLAUDE_PROJECT_DIR in
- * any common spelling a user may write by hand: quoted or unquoted, with or
- * without braces.
+ * a common spelling a user may write by hand. Unquoted spellings count only
+ * when the project root has no whitespace, because the shell splits them
+ * otherwise.
  */
 function isClaudeHookCommand(
   command: string | undefined,
   projectRelativePath: string,
+  options: HookCommandOptions = {},
 ): boolean {
   if (command === undefined) return false;
   const p = projectRelativePath;
-  return [
+  const quoted = [
     claudeHookCommand(p),
-    `$CLAUDE_PROJECT_DIR/${p}`,
     `"$CLAUDE_PROJECT_DIR/${p}"`,
-    `\${CLAUDE_PROJECT_DIR}/${p}`,
     `"\${CLAUDE_PROJECT_DIR}"/${p}`,
     `"\${CLAUDE_PROJECT_DIR}/${p}"`,
-  ].includes(command.trim());
+  ];
+  const unquoted = [`$CLAUDE_PROJECT_DIR/${p}`, `\${CLAUDE_PROJECT_DIR}/${p}`];
+  const unquotedSafe =
+    options.projectRoot === undefined || !/\s/.test(options.projectRoot);
+  return [...quoted, ...(unquotedSafe ? unquoted : [])].includes(
+    command.trim(),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +187,7 @@ function getEventEntries(
 export function hookRegistrationPresent(
   settings: Record<string, unknown>,
   reg: HookRegistration,
+  options: HookCommandOptions = {},
 ): boolean {
   const entries = getEventEntries(settings, reg.event);
   if (!entries) return false;
@@ -182,7 +195,7 @@ export function hookRegistrationPresent(
     if ((entry.matcher ?? undefined) !== (reg.matcher ?? undefined)) continue;
     if (!Array.isArray(entry.hooks)) continue;
     for (const h of entry.hooks) {
-      if (isClaudeHookCommand(h.command, reg.command)) return true;
+      if (isClaudeHookCommand(h.command, reg.command, options)) return true;
     }
   }
   return false;
@@ -211,14 +224,16 @@ function isSupersededHook(
 export function hookCommandRegistered(
   settings: Record<string, unknown>,
   reg: HookRegistration,
+  options: HookCommandOptions = {},
 ): boolean {
-  return hookCommandEvents(settings, reg).includes(reg.event);
+  return hookCommandEvents(settings, reg, options).includes(reg.event);
 }
 
 /** Events under which this hook's CLAUDE_PROJECT_DIR command is registered. */
 export function hookCommandEvents(
   settings: Record<string, unknown>,
   reg: HookRegistration,
+  options: HookCommandOptions = {},
 ): string[] {
   const hooks = settings["hooks"];
   if (!hooks || typeof hooks !== "object") return [];
@@ -226,7 +241,9 @@ export function hookCommandEvents(
     (getEventEntries(settings, event) ?? []).some(
       (entry) =>
         Array.isArray(entry.hooks) &&
-        entry.hooks.some((h) => isClaudeHookCommand(h.command, reg.command)),
+        entry.hooks.some((h) =>
+          isClaudeHookCommand(h.command, reg.command, options),
+        ),
     ),
   );
 }
@@ -264,11 +281,12 @@ export function hookRegistrationLegacy(
 export function ensureHookRegistration(
   settings: Record<string, unknown>,
   reg: HookRegistration,
+  options: HookCommandOptions = {},
 ): { settings: Record<string, unknown>; status: HookSyncStatus } {
   if (reg.migrateOnly) return migrateCommandInPlace(settings, reg);
   const existingEntries = getEventEntries(settings, reg.event) ?? [];
   const hasSuperseded = hookRegistrationLegacy(settings, reg);
-  if (!hasSuperseded && hookRegistrationPresent(settings, reg)) {
+  if (!hasSuperseded && hookRegistrationPresent(settings, reg, options)) {
     return { settings, status: "noop" };
   }
 
@@ -286,7 +304,7 @@ export function ensureHookRegistration(
     })
     .filter((entry) => !Array.isArray(entry.hooks) || entry.hooks.length > 0);
   hooksRoot[reg.event] = eventList;
-  if (hookRegistrationPresent(next, reg)) {
+  if (hookRegistrationPresent(next, reg, options)) {
     return { settings: next, status: "migrate" };
   }
 
@@ -352,7 +370,7 @@ export function syncHookRegistrations(
   const results: HookSyncResult[] = [];
   let changed = false;
   for (const reg of registrations) {
-    const next = ensureHookRegistration(settings, reg);
+    const next = ensureHookRegistration(settings, reg, { projectRoot });
     settings = next.settings;
     if (next.status !== "noop") changed = true;
     // A user-modified hook that needed no migration is not an anamnesis

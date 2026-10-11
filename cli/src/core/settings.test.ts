@@ -321,17 +321,56 @@ describe("ensureHookRegistration — noop", () => {
 // ---------------------------------------------------------------------------
 
 describe("hand-written CLAUDE_PROJECT_DIR commands", () => {
+  const sessionStart = (command: string) => ({
+    hooks: { SessionStart: [{ hooks: [{ type: "command", command }] }] },
+  });
+
   it("treats common spellings as the same hook command", () => {
     for (const command of [
       "$CLAUDE_PROJECT_DIR/.claude/hooks/inject-ontology.sh",
       '"$CLAUDE_PROJECT_DIR/.claude/hooks/inject-ontology.sh"',
       "${CLAUDE_PROJECT_DIR}/.claude/hooks/inject-ontology.sh",
+      '"${CLAUDE_PROJECT_DIR}"/.claude/hooks/inject-ontology.sh',
+      '"${CLAUDE_PROJECT_DIR}/.claude/hooks/inject-ontology.sh"',
+      '  "$CLAUDE_PROJECT_DIR"/.claude/hooks/inject-ontology.sh  ',
     ]) {
-      const settings = {
-        hooks: { SessionStart: [{ hooks: [{ type: "command", command }] }] },
-      };
-      expect(hookRegistrationPresent(settings, REG_INJECT)).toBe(true);
+      expect(hookRegistrationPresent(sessionStart(command), REG_INJECT)).toBe(
+        true,
+      );
     }
+    expect(
+      hookRegistrationPresent(
+        sessionStart("$CLAUDE_PROJECT_DIR/.claude/hooks/inject-ontology.sh --flag"),
+        REG_INJECT,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not accept unquoted spellings when the project root has spaces", () => {
+    const unquoted = sessionStart(
+      "$CLAUDE_PROJECT_DIR/.claude/hooks/inject-ontology.sh",
+    );
+    expect(
+      hookRegistrationPresent(unquoted, REG_INJECT, {
+        projectRoot: "/Users/me/My Projects/app",
+      }),
+    ).toBe(false);
+    const { settings, status } = ensureHookRegistration(unquoted, REG_INJECT, {
+      projectRoot: "/Users/me/My Projects/app",
+    });
+    expect(status).toBe("create");
+    expect(hookRegistrationPresent(settings, REG_INJECT)).toBe(true);
+  });
+
+  it("does not duplicate a hand-written registration on apply", () => {
+    const handWritten = sessionStart(
+      "$CLAUDE_PROJECT_DIR/.claude/hooks/inject-ontology.sh",
+    );
+    const { settings, status } = ensureHookRegistration(handWritten, REG_INJECT, {
+      projectRoot: "/Users/me/app",
+    });
+    expect(status).toBe("noop");
+    expect(settings).toBe(handWritten);
   });
 
   it("reports the events where a moved hook is registered", () => {
