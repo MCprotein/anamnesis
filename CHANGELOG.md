@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+## [1.25.1] — 2026-10-11
+
 - Fix the opt-in real Codex dogfood smokes for current Codex CLI (verified on 0.160.0). Each smoke now uses a temporary `CODEX_HOME` that links the operator's `auth.json` and trusts its own smoke hooks through the Codex app-server, because Codex skips untrusted hooks. Trust state is written only to the temporary home. `dogfoodCheck` is now async.
 - `anamnesis dogfood check` prints the reason under each failed check.
 - The Codex pre-commit bridge prints each distinct hook output line once per commit. A project-wide reminder no longer repeats once per staged file. Hook exit codes are unchanged.
