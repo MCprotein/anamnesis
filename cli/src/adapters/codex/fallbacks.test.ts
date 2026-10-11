@@ -184,6 +184,63 @@ describe("codex executable_hook fallback", () => {
     }
   });
 
+  it("prints each distinct pre-commit hook line once and keeps hook exit codes", () => {
+    if (process.platform === "win32") return;
+    const projectRoot = tmpDir("anamnesis-codex-precommit-");
+    fs.mkdirSync(path.join(projectRoot, ".git", "hooks"), { recursive: true });
+    fs.writeFileSync(
+      path.join(fragmentDir, "adapters/claude-code/hooks/x.sh"),
+      "#!/bin/bash\n",
+    );
+    const fragment: FragmentDefinition = {
+      id: "myfrag",
+      version: 2,
+      requires: [],
+      conflicts: [],
+      owns: [],
+      capabilities: [],
+    };
+    const preCommit = executableHookRenderer
+      .plan(
+        {
+          type: "executable_hook",
+          event: "PostToolUse:Edit",
+          source: "adapters/claude-code/hooks/x.sh",
+          adapters_supported: ["codex"],
+          side_effects: ["read-only"],
+        },
+        makeContext(fragmentDir, fragment, ".", projectRoot),
+      )
+      .find((a) => a.kind === "file" && a.path === ".git/hooks/pre-commit");
+    if (preCommit?.kind !== "file") throw new Error("pre-commit not planned");
+
+    const repo = tmpDir("anamnesis-codex-precommit-repo-");
+    const git = (...args: string[]) =>
+      spawnSync("git", args, { cwd: repo, encoding: "utf8" });
+    expect(git("init", "-q").status).toBe(0);
+    const hookDir = path.join(repo, ".anamnesis", "codex-hooks");
+    fs.mkdirSync(hookDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(hookDir, "reminder.sh"),
+      '#!/bin/bash\necho "project reminder" >&2\necho "file $CODEX_TOOL_FILE_PATH" >&2\n[[ "$CODEX_TOOL_FILE_PATH" == bad.txt ]] && exit 3\nexit 0\n',
+      { mode: 0o755 },
+    );
+    const bridge = path.join(repo, ".git", "hooks", "pre-commit");
+    fs.writeFileSync(bridge, preCommit.content, { mode: 0o755 });
+    for (const name of ["a.txt", "b.txt", "bad.txt"]) {
+      fs.writeFileSync(path.join(repo, name), "x\n");
+    }
+    expect(git("add", ".").status).toBe(0);
+
+    const result = spawnSync(bridge, [], { cwd: repo, encoding: "utf8" });
+    expect(result.status).toBe(3);
+    expect(result.stderr.split("\n").filter((l) => l === "project reminder"))
+      .toHaveLength(1);
+    expect(result.stderr).toContain("file a.txt");
+    expect(result.stderr).toContain("file b.txt");
+    expect(result.stderr).toContain("file bad.txt");
+  });
+
   it("installs Codex native SessionStart wrapper for the base continuity hooks", () => {
     fs.mkdirSync(path.join(fragmentDir, "adapters/codex/hooks"), {
       recursive: true,

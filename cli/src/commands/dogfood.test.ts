@@ -56,9 +56,9 @@ describe("dogfoodCheck", () => {
     delete process.env.ANAMNESIS_REAL_CODEX_TOOL_SMOKE;
   });
 
-  it("scores a fully rendered cross-agent project and appends markdown", () => {
+  it("scores a fully rendered cross-agent project and appends markdown", async () => {
     const { project, library } = setupDogfoodProject();
-    const result = dogfoodCheck({
+    const result = await dogfoodCheck({
       projectRoot: project,
       libraryRoot: library,
       append: true,
@@ -163,7 +163,7 @@ describe("dogfoodCheck", () => {
     });
   }, DOGFOOD_TEST_TIMEOUT_MS);
 
-  it("compares the score with the previous appended result", () => {
+  it("compares the score with the previous appended result", async () => {
     const { project, library } = setupDogfoodProject();
     fs.mkdirSync(path.join(project, "docs"));
     fs.writeFileSync(
@@ -171,7 +171,7 @@ describe("dogfoodCheck", () => {
       "## Previous\n\nContinuity readiness score: 4/5 (old)\n",
     );
 
-    const result = dogfoodCheck({
+    const result = await dogfoodCheck({
       projectRoot: project,
       libraryRoot: library,
       append: true,
@@ -189,14 +189,14 @@ describe("dogfoodCheck", () => {
     );
   }, DOGFOOD_TEST_TIMEOUT_MS);
 
-  it("does not count skipped required verification scripts as passing", () => {
+  it("does not count skipped required verification scripts as passing", async () => {
     const { project, library } = setupDogfoodProject();
     fs.writeFileSync(
       path.join(project, "package.json"),
       JSON.stringify({ scripts: {} }, null, 2),
     );
 
-    const result = dogfoodCheck({
+    const result = await dogfoodCheck({
       projectRoot: project,
       libraryRoot: library,
       now: () => new Date("2026-04-30T10:00:00.000Z"),

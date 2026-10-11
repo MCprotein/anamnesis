@@ -9,6 +9,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { status, StatusError, type StatusResult } from "./status.js";
 import { doctor, DoctorError, type DoctorResult } from "./doctor.js";
 import {
@@ -18,7 +19,10 @@ import {
 } from "./ontology.js";
 import { init } from "./init.js";
 import type { ToolName } from "../core/agentfile.js";
-import type { CodexHookTrustInspection } from "../core/codex_hook_trust.js";
+import {
+  CodexStdioAppServerTransport,
+  type CodexHookTrustInspection,
+} from "../core/codex_hook_trust.js";
 import {
   appendEvidenceRecord,
   EVIDENCE_SCHEMA_VERSION,
@@ -91,7 +95,7 @@ export class DogfoodError extends Error {
 
 const SUPPORTED_TOOLS: ToolName[] = ["claude-code", "codex", "cursor"];
 
-export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
+export async function dogfoodCheck(opts: DogfoodOptions): Promise<DogfoodResult> {
   const projectRoot = path.resolve(opts.projectRoot);
   const libraryRoot = path.resolve(opts.libraryRoot);
   const outputPath = path.resolve(
@@ -126,7 +130,7 @@ export function dogfoodCheck(opts: DogfoodOptions): DogfoodResult {
     throw e;
   }
 
-  const checks = runVerificationChecks(
+  const checks = await runVerificationChecks(
     projectRoot,
     libraryRoot,
     opts.runner ?? runCommand,
@@ -264,19 +268,19 @@ function dogfoodEvidenceRecord(input: {
   };
 }
 
-function runVerificationChecks(
+async function runVerificationChecks(
   projectRoot: string,
   libraryRoot: string,
   runner: (cmd: string[], opts: { cwd: string }) => CommandCheck,
-): CommandCheck[] {
+): Promise<CommandCheck[]> {
   return [
     runActiveHandoffSimulation(libraryRoot),
     runStaleHandoffSimulation(libraryRoot),
     runCodexNativeDispatchSimulation(libraryRoot),
-    runRealCodexNativeSmokeIfEnabled(),
-    runRealCodexProjectHookSmokeIfEnabled(),
-    runRealCodexUserPromptSmokeIfEnabled(),
-    runRealCodexToolTurnSmokeIfEnabled(),
+    await runRealCodexNativeSmokeIfEnabled(),
+    await runRealCodexProjectHookSmokeIfEnabled(),
+    await runRealCodexUserPromptSmokeIfEnabled(),
+    await runRealCodexToolTurnSmokeIfEnabled(),
     runNpmScript(projectRoot, "typecheck", ["npm", "run", "typecheck"], runner),
     runNpmScript(projectRoot, "test", ["npm", "test"], runner),
   ];
@@ -713,7 +717,159 @@ function runCodexNativeDispatchSimulation(libraryRoot: string): CommandCheck {
   }
 }
 
-function runRealCodexNativeSmokeIfEnabled(): CommandCheck {
+/**
+ * Make a temporary CODEX_HOME usable by a real Codex CLI run. It links the
+ * operator's auth.json (never copies it), then trusts the smoke hooks through
+ * the app-server: Codex skips untrusted hooks, and every smoke hook is new.
+ * Only hooks defined inside the temporary home or project are trusted, and
+ * trust state is written only to the temporary home's config. Credentials in
+ * a keyring (no auth.json) are not linked, so such a run fails to
+ * authenticate.
+ */
+async function prepareRealCodexHome(
+  codexHome: string,
+  project: string,
+): Promise<void> {
+  const auth = operatorCodexAuthPath();
+  if (fs.existsSync(auth)) {
+    operatorAuthSnapshots.set(codexHome, fileSha256(auth));
+    fs.symlinkSync(auth, path.join(codexHome, "auth.json"));
+  }
+  const transport = new CodexStdioAppServerTransport({
+    cwd: project,
+    env: { ...process.env, CODEX_HOME: codexHome },
+    timeoutMs: 15_000,
+  });
+  try {
+    const listed = await transport.listHooks([project]);
+    const owned = [codexHome, project].map((dir) => fs.realpathSync(dir));
+    const untrusted = listed.data
+      .flatMap((entry) => entry.hooks)
+      .filter(
+        (hook) =>
+          hook.trustStatus === "untrusted" &&
+          owned.some((dir) => isInsideDirectory(hook.sourcePath, dir)),
+      );
+    if (untrusted.length === 0) {
+      // Every smoke starts with a fresh home, so its own hooks are untrusted.
+      throw new Error(
+        "Codex hooks/list reported no untrusted hook inside the smoke home or project",
+      );
+    }
+    const config = await transport.readConfig(project);
+    const userLayer = (config.layers ?? []).find(
+      (layer) =>
+        layer.name.type === "user" &&
+        (layer.name.profile === null || layer.name.profile === undefined),
+    );
+    if (!userLayer) {
+      throw new Error("Codex config/read did not expose the user layer");
+    }
+    await transport.batchWrite({
+      edits: [
+        {
+          keyPath: "hooks.state",
+          value: Object.fromEntries(
+            untrusted.map((hook) => [
+              hook.key,
+              { trusted_hash: hook.currentHash },
+            ]),
+          ),
+          mergeStrategy: "upsert",
+        },
+      ],
+      expectedVersion: userLayer.version,
+      reloadUserConfig: true,
+    });
+  } finally {
+    await transport.close();
+  }
+}
+
+function operatorCodexAuthPath(): string {
+  return path.join(
+    process.env.CODEX_HOME || path.join(os.homedir(), ".codex"),
+    "auth.json",
+  );
+}
+
+function isInsideDirectory(candidate: string, directory: string): boolean {
+  let resolved: string;
+  try {
+    resolved = fs.realpathSync(candidate);
+  } catch {
+    resolved = path.resolve(candidate);
+  }
+  const relative = path.relative(directory, resolved);
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+/** Operator auth.json hash at link time, per temporary CODEX_HOME. */
+const operatorAuthSnapshots = new Map<string, string>();
+
+function fileSha256(file: string): string {
+  return createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+/**
+ * Remove a temporary CODEX_HOME. If Codex replaced the linked auth.json with
+ * a regular file (a token refresh saved by rename), that file holds the only
+ * copy of a rotated refresh token. It is written back atomically, but only
+ * when the operator's file is unchanged since the link was made, so newer
+ * operator credentials are never overwritten. When the token cannot be
+ * written back, the temporary home is kept and its path is reported.
+ */
+function releaseRealCodexHome(codexHome: string): void {
+  const snapshot = operatorAuthSnapshots.get(codexHome);
+  operatorAuthSnapshots.delete(codexHome);
+  const linked = path.join(codexHome, "auth.json");
+  const keep = (reason: unknown) =>
+    console.error(
+      `anamnesis dogfood: kept ${codexHome}; Codex auth.json there was not written back (${reason instanceof Error ? reason.message : String(reason)}).`,
+    );
+  // This runs in each smoke's `finally`, so it never throws: an exception
+  // there would replace the smoke's result.
+  let replaced = false;
+  try {
+    replaced = fs.lstatSync(linked).isFile();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      keep(error);
+      return;
+    }
+  }
+  if (replaced) {
+    let staging: string | undefined;
+    try {
+      const target = fs.realpathSync(operatorCodexAuthPath());
+      if (snapshot === undefined || fileSha256(target) !== snapshot) {
+        throw new Error("the operator auth.json changed during the smoke");
+      }
+      staging = `${target}.anamnesis-${process.pid}.tmp`;
+      fs.copyFileSync(linked, staging);
+      fs.renameSync(staging, target);
+    } catch (error) {
+      if (staging !== undefined) {
+        try {
+          fs.rmSync(staging, { force: true });
+        } catch {
+          // The kept-home message below still reports the original error.
+        }
+      }
+      keep(error);
+      return;
+    }
+  }
+  try {
+    fs.rmSync(codexHome, { recursive: true, force: true });
+  } catch (error) {
+    console.error(
+      `anamnesis dogfood: could not remove ${codexHome} (${error instanceof Error ? error.message : String(error)}).`,
+    );
+  }
+}
+
+async function runRealCodexNativeSmokeIfEnabled(): Promise<CommandCheck> {
   const command = ["anamnesis", "dogfood", "real-codex-native-smoke"];
   const start = Date.now();
   if (process.env.ANAMNESIS_REAL_CODEX_SMOKE !== "1") {
@@ -762,6 +918,7 @@ function runRealCodexNativeSmokeIfEnabled(): CommandCheck {
       "utf8",
     );
 
+    await prepareRealCodexHome(codexHome, project);
     const result = spawnSync(
       "codex",
       [
@@ -820,12 +977,12 @@ function runRealCodexNativeSmokeIfEnabled(): CommandCheck {
       fs.rmSync(project, { recursive: true, force: true });
     }
     if (codexHome !== undefined) {
-      fs.rmSync(codexHome, { recursive: true, force: true });
+      releaseRealCodexHome(codexHome);
     }
   }
 }
 
-function runRealCodexProjectHookSmokeIfEnabled(): CommandCheck {
+async function runRealCodexProjectHookSmokeIfEnabled(): Promise<CommandCheck> {
   const command = ["anamnesis", "dogfood", "real-codex-project-hook-smoke"];
   const start = Date.now();
   if (process.env.ANAMNESIS_REAL_CODEX_SMOKE !== "1") {
@@ -887,6 +1044,7 @@ function runRealCodexProjectHookSmokeIfEnabled(): CommandCheck {
       "utf8",
     );
 
+    await prepareRealCodexHome(codexHome, project);
     const result = spawnSync(
       "codex",
       [
@@ -948,12 +1106,12 @@ function runRealCodexProjectHookSmokeIfEnabled(): CommandCheck {
       fs.rmSync(project, { recursive: true, force: true });
     }
     if (codexHome !== undefined) {
-      fs.rmSync(codexHome, { recursive: true, force: true });
+      releaseRealCodexHome(codexHome);
     }
   }
 }
 
-function runRealCodexUserPromptSmokeIfEnabled(): CommandCheck {
+async function runRealCodexUserPromptSmokeIfEnabled(): Promise<CommandCheck> {
   const command = ["anamnesis", "dogfood", "real-codex-user-prompt-smoke"];
   const start = Date.now();
   if (process.env.ANAMNESIS_REAL_CODEX_SMOKE !== "1") {
@@ -1014,6 +1172,7 @@ function runRealCodexUserPromptSmokeIfEnabled(): CommandCheck {
       "utf8",
     );
 
+    await prepareRealCodexHome(codexHome, project);
     const result = spawnSync(
       "codex",
       [
@@ -1078,12 +1237,12 @@ function runRealCodexUserPromptSmokeIfEnabled(): CommandCheck {
       fs.rmSync(project, { recursive: true, force: true });
     }
     if (codexHome !== undefined) {
-      fs.rmSync(codexHome, { recursive: true, force: true });
+      releaseRealCodexHome(codexHome);
     }
   }
 }
 
-function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
+async function runRealCodexToolTurnSmokeIfEnabled(): Promise<CommandCheck> {
   const command = ["anamnesis", "dogfood", "real-codex-tool-turn-smoke"];
   const start = Date.now();
   if (process.env.ANAMNESIS_REAL_CODEX_TOOL_SMOKE !== "1") {
@@ -1095,9 +1254,25 @@ function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
     );
   }
 
+  let codexHome: string | undefined;
   let project: string | undefined;
   try {
+    codexHome = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-home-"));
     project = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-codex-tool-"));
+    // The project must be trusted in the home config before the hooks are
+    // listed and trusted; the exec `-c` override applies only to that run.
+    fs.writeFileSync(
+      path.join(codexHome, "config.toml"),
+      [
+        "[features]",
+        "hooks = true",
+        "",
+        `[projects.${JSON.stringify(project)}]`,
+        'trust_level = "trusted"',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
     const sentinel = path.join(project, "codex-tool-turn-sentinel.log");
     const outputFile = path.join(project, "tool-output.txt");
     const hookPath = path.join(project, "codex-tool-turn-smoke.mjs");
@@ -1143,6 +1318,7 @@ function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
       "utf8",
     );
 
+    await prepareRealCodexHome(codexHome, project);
     const result = spawnSync(
       "codex",
       [
@@ -1164,6 +1340,7 @@ function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
         cwd: project,
         env: {
           ...process.env,
+          CODEX_HOME: codexHome,
           ANAMNESIS_CODEX_TOOL_SMOKE_SENTINEL: sentinel,
         },
         input: "",
@@ -1223,6 +1400,9 @@ function runRealCodexToolTurnSmokeIfEnabled(): CommandCheck {
   } finally {
     if (project !== undefined) {
       fs.rmSync(project, { recursive: true, force: true });
+    }
+    if (codexHome !== undefined) {
+      releaseRealCodexHome(codexHome);
     }
   }
 }

@@ -44,20 +44,27 @@ STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACMR)"
 status=0
 shopt -s nullglob
 
-for hook in "$HOOK_DIR"/*.sh; do
-  if [[ -z "$STAGED_FILES" ]]; then
-    CLAUDE_PROJECT_DIR="$PROJECT_ROOT" CODEX_PROJECT_DIR="$PROJECT_ROOT" "$hook" || status=$?
-    continue
-  fi
+# A hook runs once per staged file, and a project-wide hook (for example the
+# uncommitted-changes reminder) prints the same line each time. Each hook's
+# output is collected and every distinct line is printed once.
+hook_output="$(mktemp)"
+trap 'rm -f "$hook_output"' EXIT
 
-  while IFS= read -r file; do
-    [[ -n "$file" ]] || continue
-    CLAUDE_PROJECT_DIR="$PROJECT_ROOT" \\
-    CODEX_PROJECT_DIR="$PROJECT_ROOT" \\
-    CLAUDE_TOOL_FILE_PATH="$file" \\
-    CODEX_TOOL_FILE_PATH="$file" \\
-      "$hook" || status=$?
-  done <<< "$STAGED_FILES"
+for hook in "$HOOK_DIR"/*.sh; do
+  : > "$hook_output"
+  if [[ -z "$STAGED_FILES" ]]; then
+    CLAUDE_PROJECT_DIR="$PROJECT_ROOT" CODEX_PROJECT_DIR="$PROJECT_ROOT" "$hook" >> "$hook_output" 2>&1 || status=$?
+  else
+    while IFS= read -r file; do
+      [[ -n "$file" ]] || continue
+      CLAUDE_PROJECT_DIR="$PROJECT_ROOT" \\
+      CODEX_PROJECT_DIR="$PROJECT_ROOT" \\
+      CLAUDE_TOOL_FILE_PATH="$file" \\
+      CODEX_TOOL_FILE_PATH="$file" \\
+        "$hook" >> "$hook_output" 2>&1 || status=$?
+    done <<< "$STAGED_FILES"
+  fi
+  awk '!seen[$0]++' "$hook_output" >&2
 done
 
 exit "$status"
