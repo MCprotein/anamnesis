@@ -823,25 +823,34 @@ function releaseRealCodexHome(codexHome: string): void {
   const snapshot = operatorAuthSnapshots.get(codexHome);
   operatorAuthSnapshots.delete(codexHome);
   const linked = path.join(codexHome, "auth.json");
+  const keep = (reason: unknown) =>
+    console.error(
+      `anamnesis dogfood: kept ${codexHome}; Codex auth.json there was not written back (${reason instanceof Error ? reason.message : String(reason)}).`,
+    );
+  // This runs in each smoke's `finally`, so it never throws: an exception
+  // there would replace the smoke's result.
   let replaced = false;
   try {
     replaced = fs.lstatSync(linked).isFile();
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      keep(error);
+      return;
+    }
   }
   if (replaced) {
+    let staging: string | undefined;
     try {
       const target = fs.realpathSync(operatorCodexAuthPath());
       if (snapshot === undefined || fileSha256(target) !== snapshot) {
         throw new Error("the operator auth.json changed during the smoke");
       }
-      const staging = `${target}.anamnesis-${process.pid}.tmp`;
+      staging = `${target}.anamnesis-${process.pid}.tmp`;
       fs.copyFileSync(linked, staging);
       fs.renameSync(staging, target);
     } catch (error) {
-      console.error(
-        `anamnesis dogfood: kept ${codexHome}; Codex refreshed auth.json there and it was not written back (${error instanceof Error ? error.message : String(error)}).`,
-      );
+      if (staging !== undefined) fs.rmSync(staging, { force: true });
+      keep(error);
       return;
     }
   }
