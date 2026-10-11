@@ -720,15 +720,16 @@ function runCodexNativeDispatchSimulation(libraryRoot: string): CommandCheck {
  * Make a temporary CODEX_HOME usable by a real Codex CLI run. It links the
  * operator's auth.json (never copies it), then trusts the smoke hooks through
  * the app-server: Codex skips untrusted hooks, and every smoke hook is new.
- * Trust state is written only to the temporary home's config.
+ * Only hooks defined inside the temporary home or project are trusted, and
+ * trust state is written only to the temporary home's config. Credentials in
+ * a keyring (no auth.json) are not linked, so such a run fails to
+ * authenticate.
  */
 async function prepareRealCodexHome(
   codexHome: string,
   project: string,
 ): Promise<void> {
-  const sourceHome =
-    process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
-  const auth = path.join(sourceHome, "auth.json");
+  const auth = operatorCodexAuthPath();
   if (fs.existsSync(auth)) {
     fs.symlinkSync(auth, path.join(codexHome, "auth.json"));
   }
@@ -739,9 +740,14 @@ async function prepareRealCodexHome(
   });
   try {
     const listed = await transport.listHooks([project]);
+    const owned = [codexHome, project].map((dir) => fs.realpathSync(dir));
     const untrusted = listed.data
       .flatMap((entry) => entry.hooks)
-      .filter((hook) => hook.trustStatus === "untrusted");
+      .filter(
+        (hook) =>
+          hook.trustStatus === "untrusted" &&
+          owned.some((dir) => isInsideDirectory(hook.sourcePath, dir)),
+      );
     if (untrusted.length === 0) return;
     const config = await transport.readConfig(project);
     const userLayer = (config.layers ?? []).find(
@@ -771,6 +777,41 @@ async function prepareRealCodexHome(
   } finally {
     await transport.close();
   }
+}
+
+function operatorCodexAuthPath(): string {
+  return path.join(
+    process.env.CODEX_HOME || path.join(os.homedir(), ".codex"),
+    "auth.json",
+  );
+}
+
+function isInsideDirectory(candidate: string, directory: string): boolean {
+  let resolved: string;
+  try {
+    resolved = fs.realpathSync(candidate);
+  } catch {
+    resolved = path.resolve(candidate);
+  }
+  const relative = path.relative(directory, resolved);
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+/**
+ * Remove a temporary CODEX_HOME. If Codex replaced the linked auth.json with
+ * a regular file (a token refresh saved by rename), copy it back first: a
+ * rotated refresh token must not be lost with the temporary home.
+ */
+function releaseRealCodexHome(codexHome: string): void {
+  const linked = path.join(codexHome, "auth.json");
+  try {
+    if (fs.lstatSync(linked).isFile()) {
+      fs.copyFileSync(linked, operatorCodexAuthPath());
+    }
+  } catch {
+    // No auth.json in the temporary home: nothing to keep.
+  }
+  fs.rmSync(codexHome, { recursive: true, force: true });
 }
 
 async function runRealCodexNativeSmokeIfEnabled(): Promise<CommandCheck> {
@@ -881,7 +922,7 @@ async function runRealCodexNativeSmokeIfEnabled(): Promise<CommandCheck> {
       fs.rmSync(project, { recursive: true, force: true });
     }
     if (codexHome !== undefined) {
-      fs.rmSync(codexHome, { recursive: true, force: true });
+      releaseRealCodexHome(codexHome);
     }
   }
 }
@@ -1010,7 +1051,7 @@ async function runRealCodexProjectHookSmokeIfEnabled(): Promise<CommandCheck> {
       fs.rmSync(project, { recursive: true, force: true });
     }
     if (codexHome !== undefined) {
-      fs.rmSync(codexHome, { recursive: true, force: true });
+      releaseRealCodexHome(codexHome);
     }
   }
 }
@@ -1141,7 +1182,7 @@ async function runRealCodexUserPromptSmokeIfEnabled(): Promise<CommandCheck> {
       fs.rmSync(project, { recursive: true, force: true });
     }
     if (codexHome !== undefined) {
-      fs.rmSync(codexHome, { recursive: true, force: true });
+      releaseRealCodexHome(codexHome);
     }
   }
 }
@@ -1306,7 +1347,7 @@ async function runRealCodexToolTurnSmokeIfEnabled(): Promise<CommandCheck> {
       fs.rmSync(project, { recursive: true, force: true });
     }
     if (codexHome !== undefined) {
-      fs.rmSync(codexHome, { recursive: true, force: true });
+      releaseRealCodexHome(codexHome);
     }
   }
 }
