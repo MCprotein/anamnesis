@@ -8,6 +8,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
+import { paramDeclarationsSchema } from "./fragment_params.js";
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -103,6 +104,9 @@ export const fragmentSchema = z.object({
   conflicts: z.array(z.string()).default([]),
   capabilities: z.array(capabilitySchema),
   owns: z.array(ownsEntrySchema).default([]),
+  // Optional param declarations. Agentfile `fragments[].params` values are
+  // validated against them and substituted into text sources at render time.
+  params: paramDeclarationsSchema.optional(),
 });
 
 export type FragmentRequirement = z.infer<typeof fragmentRequirementSchema>;

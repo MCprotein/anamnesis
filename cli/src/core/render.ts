@@ -5,6 +5,11 @@
 // the actions to disk) is a separate concern implemented later.
 
 import type { ToolName } from "./agentfile.js";
+import {
+  ParamTemplateError,
+  renderParamTemplate,
+  type ResolvedParams,
+} from "./fragment_params.js";
 import type {
   Capability,
   CapabilitySideEffect,
@@ -99,7 +104,11 @@ export interface RenderContext {
    */
   scopePath?: string;
   settings: AgentfileSettings;
-  params: Record<string, unknown>;
+  /**
+   * Validated param values for this fragment (defaults applied). Callers
+   * resolve them with `resolveFragmentParams`; renderers only substitute.
+   */
+  params: ResolvedParams;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +120,65 @@ export class RenderError extends Error {
     super(message);
     this.name = "RenderError";
   }
+}
+
+/**
+ * Apply fragment param substitution to a text source. Fragments that declare
+ * no params get the source back unchanged.
+ */
+export function renderFragmentText(
+  ctx: RenderContext,
+  source: string,
+  sourceLabel: string,
+): string {
+  try {
+    return renderParamTemplate({
+      source,
+      declarations: ctx.fragment.params,
+      values: ctx.params,
+      sourceLabel: `fragment '${ctx.fragment.id}' ${sourceLabel}`,
+    });
+  } catch (e) {
+    if (e instanceof ParamTemplateError) throw new RenderError(e.message);
+    throw e;
+  }
+}
+
+/** Identity of a render target; actions with the same key write one place. */
+export function renderActionKey(action: RenderAction): string {
+  return action.kind === "region"
+    ? `region|${action.file}|${action.regionId}`
+    : `file|${action.path}`;
+}
+
+/**
+ * Targets that two actions of a param-declaring fragment would write with
+ * different content. Scope-independent targets (skills under `.claude/`,
+ * `.codex/`) are planned once per scope, and dedupe keeps only the first, so
+ * scope-specific params there would otherwise be dropped silently.
+ */
+export function findParamTargetConflicts(
+  actions: readonly RenderAction[],
+  paramFragmentIds: ReadonlySet<string>,
+): Array<{ fragmentId: string; target: string }> {
+  const first = new Map<string, RenderAction>();
+  const conflicts = new Map<string, { fragmentId: string; target: string }>();
+  for (const action of actions) {
+    if (!paramFragmentIds.has(action.fragmentId)) continue;
+    const key = renderActionKey(action);
+    const prior = first.get(key);
+    if (!prior) {
+      first.set(key, action);
+      continue;
+    }
+    if (prior.content !== action.content && !conflicts.has(key)) {
+      conflicts.set(key, {
+        fragmentId: action.fragmentId,
+        target: action.kind === "region" ? `${action.file} [region:${action.regionId}]` : action.path,
+      });
+    }
+  }
+  return [...conflicts.values()];
 }
 
 // ---------------------------------------------------------------------------

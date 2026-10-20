@@ -13,7 +13,12 @@ import {
   type FragmentDefinition,
 } from "../core/fragments.js";
 import {
+  resolveFragmentParams,
+  type FragmentParamProblem,
+} from "../core/fragment_params.js";
+import {
   RendererRegistry,
+  findParamTargetConflicts,
   type AgentfileSettings,
   type RenderAction,
   type RenderContext,
@@ -33,6 +38,12 @@ export interface InstalledRenderPlanProblem {
   fragmentId?: string;
   target?: string;
   message: string;
+}
+
+export interface InstalledRenderParamProblem extends FragmentParamProblem {
+  scopePath: string;
+  /** Managed target, for problems about rendered output rather than a key. */
+  target?: string;
 }
 
 export interface InstalledRenderActionScope {
@@ -62,10 +73,18 @@ export function collectInstalledRenderActions(opts: {
 }): {
   actions: RenderAction[];
   problems: InstalledRenderPlanProblem[];
+  /** Agentfile params problems; fragments with errors are not planned. */
+  paramProblems: InstalledRenderParamProblem[];
+  /** Fragment ids whose output depends on params (declared or supplied). */
+  parameterizedFragmentIds: string[];
 } {
   const registry = buildRendererRegistry();
   const actions: RenderAction[] = [];
   const problems: InstalledRenderPlanProblem[] = [];
+  const paramProblems: InstalledRenderParamProblem[] = [];
+  const seenParamProblems = new Set<string>();
+  const parameterized = new Set<string>();
+  const declaredParamFragments = new Set<string>();
   const settings = opts.settings ?? DEFAULT_SETTINGS;
 
   for (const scope of opts.scopes) {
@@ -80,13 +99,32 @@ export function collectInstalledRenderActions(opts: {
       if (!resolved) continue;
 
       const { entry, fragment, fragmentDir } = resolved;
+      const params = resolveFragmentParams({
+        fragmentId: fragment.id,
+        declarations: fragment.params,
+        values: entry.params,
+      });
+      for (const problem of params.problems) {
+        // Child scopes inherit root entries; report each problem once.
+        const key = `${problem.code}|${problem.fragmentId}|${problem.key}|${problem.message}`;
+        if (seenParamProblems.has(key)) continue;
+        seenParamProblems.add(key);
+        paramProblems.push({ ...problem, scopePath: scope.path });
+      }
+      // Only fragments that declare params substitute them, so only their
+      // output can drift because of params.
+      if (fragment.params !== undefined) {
+        parameterized.add(fragment.id);
+        declaredParamFragments.add(fragment.id);
+      }
+      if (params.blocking) continue;
       const ctx: RenderContext = {
         fragment,
         fragmentDir,
         projectRoot: opts.projectRoot,
         scopePath: scope.path,
         settings,
-        params: {},
+        params: params.values,
       };
 
       for (const tool of scope.tools) {
@@ -117,9 +155,23 @@ export function collectInstalledRenderActions(opts: {
     }
   }
 
+  for (const conflict of findParamTargetConflicts(actions, declaredParamFragments)) {
+    paramProblems.push({
+      code: "fragment-param-scope-conflict",
+      severity: "error",
+      scopePath: ".",
+      fragmentId: conflict.fragmentId,
+      key: "",
+      target: conflict.target,
+      message: `${conflict.target} is shared by all scopes, but scopes render different content for fragment '${conflict.fragmentId}'; give every scope entry of this fragment the same params`,
+    });
+  }
+
   return {
     actions: dedupeActions(actions),
     problems,
+    paramProblems,
+    parameterizedFragmentIds: [...parameterized].sort(),
   };
 }
 

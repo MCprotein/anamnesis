@@ -81,7 +81,10 @@ import {
   analyzeAgentConfigDamage,
   type AgentConfigDamageStatus,
 } from "../core/agent_config_damage.js";
-import { collectInstalledRenderActions } from "./render_plan.js";
+import {
+  collectInstalledRenderActions,
+  type InstalledRenderParamProblem,
+} from "./render_plan.js";
 import {
   planChanges,
   type PlannedChange,
@@ -206,6 +209,23 @@ export interface DocumentGraphStatus {
   summary: ContextDocsSummary;
 }
 
+/**
+ * Agentfile `fragments[].params` health. `renderDrift` lists clean managed
+ * targets whose rendered output would change on the next `apply` because the
+ * params (or a param-declaring fragment's source) changed without a fragment
+ * version bump.
+ */
+export interface FragmentParamsStatus {
+  ok: boolean;
+  problems: InstalledRenderParamProblem[];
+  renderDrift: Array<{ fragmentId: string; target: string }>;
+  summary: {
+    errors: number;
+    warnings: number;
+    renderDrift: number;
+  };
+}
+
 export interface StatusResult {
   agentfile: Agentfile;
   /** Flat union across all scopes — preserved for back-compat and quick overview. */
@@ -244,6 +264,8 @@ export interface StatusResult {
   sessionContextBudget: SessionContextBudgetResult;
   /** Fragment updates held back by preserved or blocked managed surfaces. */
   partialAdoptions: PartialAdoptionStatus[];
+  /** Agentfile fragment params validation and pending param re-render. */
+  params: FragmentParamsStatus;
   suggested: Rule[];
   declined: DeclinedEntry[];
   /** Counts for quick check / CLI summary. */
@@ -268,6 +290,8 @@ export interface StatusResult {
     agentConfigDamageInfo: number;
     sessionContextBudgetWarnings: number;
     partialAdoptions: number;
+    paramProblems: number;
+    paramRenderDrift: number;
     suggestedCount: number;
     declinedCount: number;
     declinedStaleCount: number;
@@ -527,6 +551,12 @@ export function status(opts: StatusOptions): StatusResult {
     fragments: scopes.flatMap((scope) => scope.fragments),
     changes: plannedChanges,
   });
+  const params = collectParamsStatus({
+    problems: installedRenderPlan.paramProblems,
+    parameterizedFragmentIds: installedRenderPlan.parameterizedFragmentIds,
+    fragments,
+    changes: plannedChanges,
+  });
   const dependencies = collectDependencyStatus({
     libraryRoot,
     scopes: effectiveScopeList,
@@ -595,6 +625,8 @@ export function status(opts: StatusOptions): StatusResult {
     agentConfigDamageInfo: agentConfigDamage.summary.info,
     sessionContextBudgetWarnings: sessionContextBudgetResult.warnings.length,
     partialAdoptions: partialAdoptions.length,
+    paramProblems: params.problems.length,
+    paramRenderDrift: params.renderDrift.length,
     suggestedCount: suggested.length,
     declinedCount: declined.length,
     declinedStaleCount: declined.filter((d) => !d.matched).length,
@@ -624,6 +656,7 @@ export function status(opts: StatusOptions): StatusResult {
     agentConfigDamage,
     sessionContextBudget: sessionContextBudgetResult,
     partialAdoptions,
+    params,
     suggested,
     declined,
     summary,
@@ -675,6 +708,43 @@ function collectPartialAdoptions(input: {
       };
     })
     .sort((a, b) => a.fragmentId.localeCompare(b.fragmentId));
+}
+
+function collectParamsStatus(input: {
+  problems: readonly InstalledRenderParamProblem[];
+  parameterizedFragmentIds: readonly string[];
+  fragments: readonly FragmentStatus[];
+  changes: readonly PlannedChange[];
+}): FragmentParamsStatus {
+  const parameterized = new Set(input.parameterizedFragmentIds);
+  // A pending version upgrade is already reported as an update; only flag
+  // re-renders at the installed version.
+  const upgrading = new Set(
+    input.fragments
+      .filter((fragment) => fragment.status === "update-available")
+      .map((fragment) => fragment.id),
+  );
+  const renderDrift = input.changes
+    .filter(
+      (change) =>
+        change.status === "update" &&
+        parameterized.has(change.fragmentId) &&
+        !upgrading.has(change.fragmentId),
+    )
+    .map((change) => ({ fragmentId: change.fragmentId, target: changeTarget(change) }))
+    .sort((a, b) =>
+      a.fragmentId === b.fragmentId
+        ? a.target.localeCompare(b.target)
+        : a.fragmentId.localeCompare(b.fragmentId),
+    );
+  const errors = input.problems.filter((p) => p.severity === "error").length;
+  const warnings = input.problems.filter((p) => p.severity === "warning").length;
+  return {
+    ok: errors === 0 && warnings === 0 && renderDrift.length === 0,
+    problems: [...input.problems],
+    renderDrift,
+    summary: { errors, warnings, renderDrift: renderDrift.length },
+  };
 }
 
 function safePlannedChanges(input: {

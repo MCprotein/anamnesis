@@ -14,6 +14,7 @@ import {
 } from "../../core/capability_side_effects.js";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
 import { RenderError } from "../../core/render.js";
+import { readSkillFile } from "../claude-code/skill.js";
 
 const FRONTMATTER_RE = /^---\n[\s\S]*?\n---\n+/;
 
@@ -71,7 +72,7 @@ export const skillRenderer: CapabilityRenderer = {
         `fragment '${ctx.fragment.id}' skill '${capability.name}' missing SKILL.md`,
       );
     }
-    const raw = fs.readFileSync(path.join(sourceDir, "SKILL.md"), "utf8");
+    const raw = readSkillFile(ctx, sourceDir, capability.source, "SKILL.md");
     const body = stripFrontmatter(raw).trimStart();
     const sideEffects = capabilitySideEffects(capability);
 
@@ -98,7 +99,7 @@ export const skillRenderer: CapabilityRenderer = {
         path: path.posix.join(".codex/skills", capability.name, rel),
         fragmentId: ctx.fragment.id,
         fragmentVersion: ctx.fragment.version,
-        content: fs.readFileSync(path.join(sourceDir, rel), "utf8"),
+        content: readSkillFile(ctx, sourceDir, capability.source, rel),
         sideEffects,
       })),
       {

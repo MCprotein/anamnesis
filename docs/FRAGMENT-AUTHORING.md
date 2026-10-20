@@ -105,6 +105,8 @@ Rules:
 - `conflicts` lists fragment ids that should not be selected together without
   a user decision.
 - `capabilities` describe what the fragment provides.
+- `params` optionally declares project values the fragment renders (see
+  [Params](#params)).
 - `owns` documents managed regions/files for reviewers and future repair
   workflows.
 - Detection triggers do not live in `fragment.yaml`; they live in
@@ -132,6 +134,108 @@ external systems. Allowed values are `read-only`, `local-write`,
 `repo-external-write`, `git-hook`, `network`, `credential-touching`, and
 `external-production`. If an executable hook omits this metadata, renderers
 treat it conservatively as `local-write`.
+
+## Params
+
+A fragment can take project-specific values from Agentfile
+`fragments[].params`. This keeps project identifiers out of the public
+fragment: the fragment ships the generic text and a placeholder, and each
+project supplies its own values.
+
+Declare params in `fragment.yaml`:
+
+```yaml
+params:
+  owner:
+    type: string            # string | integer | boolean | string[] | object[]
+    required: true
+    description: Team that approves rule changes.
+  docs:
+    type: string[]
+    max_items: 20           # lists default to 100 items
+  rules:
+    type: object[]
+    fields:
+      text: { type: string, required: true, max_length: 500 }
+      source: { type: string }
+```
+
+Rules:
+
+- Param and field names match `^[a-z][a-z0-9_]*$`.
+- `required: true` and `default` are mutually exclusive. A `default` must be
+  a valid value for its type.
+- Strings default to at most 2000 UTF-16 code units (`max_length`; an emoji
+  counts as 2). Strings must not contain an `anamnesis:region` anchor,
+  control characters other than tab and newline, Unicode format characters
+  (bidi overrides, zero-width spaces; ZWJ and ZWNJ are allowed), or
+  U+2028/U+2029.
+- Supported types are scalars, `string[]`, and `object[]` of scalar fields.
+  There is no single `object`, nested object, or `enum` type. Declare such
+  settings as flat scalar params (for example `merge_ready_review_blocker`).
+- Projects set values in Agentfile:
+
+  ```yaml
+  fragments:
+    - id: my-fragment
+      version: 1
+      params:
+        owner: platform team
+        rules:
+          - text: Run local CI before review.
+            source: work:w1#e3
+  ```
+
+Template syntax in `project_memory` sources and in skill `*.md` files:
+
+| Tag | Output |
+|---|---|
+| `{{params.NAME}}` | A `string`, `integer`, or `boolean` value. An unset optional param renders as empty text. |
+| `{{#each params.NAME}}…{{/each}}` | The block once per item of a `string[]` or `object[]` param, in list order. |
+| `{{this}}` | The current `string[]` item inside a loop. |
+| `{{this.FIELD}}` | A field of the current `object[]` item. An unset optional field renders as empty text. |
+
+- Substitution runs only for fragments that declare `params`. A fragment
+  without declarations renders its sources byte-for-byte unchanged.
+- Other `{{ ... }}` text (for example GitHub Actions `${{ github.sha }}`)
+  stays verbatim. Malformed `params`/`#`/`/`/`this` tags fail the render.
+- Loops do not nest. There are no conditionals or expressions.
+- Substituted values are not scanned again, so a value cannot inject tags.
+- The rendered text must not contain more `anamnesis:region` anchors than the
+  source. This also rejects an anchor assembled from several values.
+- Skill YAML frontmatter is never substituted, because it can carry agent
+  permissions such as `allowed-tools`. A param tag inside frontmatter fails
+  the render.
+- A misspelled tag that does not start with `params`, `#`, `/`, or `this`
+  (for example `{{Params.x}}` or `{{params.x}`) stays verbatim. Review the
+  rendered output.
+- Skill files are written to paths that all scopes share. If two scopes give
+  the same fragment different params that change a skill file, `apply` stops
+  and `status`/`doctor` report `fragment-param-scope-conflict`. Give every
+  scope entry of the fragment the same params.
+- Hook scripts, ontology slices, slash commands, task harnesses, and skill
+  files that are not Markdown are copied verbatim. Params never reach
+  executable content.
+
+Diagnostics:
+
+| Code | Severity | Effect |
+|---|---|---|
+| `fragment-param-unknown` | warning | The Agentfile key is not declared. `apply` ignores it. |
+| `fragment-param-missing` | error | A required param has no value. `apply` stops before any write. |
+| `fragment-param-invalid` | error | A value does not match its declaration. `apply` stops before any write. |
+| `fragment-param-render-drift` | warning | A clean managed target of a param-declaring fragment differs from the output of the current params. Run `anamnesis apply`. |
+| `fragment-param-scope-conflict` | error | Scopes render different content for one shared target. `apply` stops before any write. |
+
+`status` reports these under `params`, and `doctor` reports them as issues.
+`init` writes Agentfile entries without params, so it applies only declared
+defaults and refuses a fragment that has a required param. Add such a
+fragment to Agentfile with its params, then run `anamnesis apply`.
+
+Changing params does not need a fragment version bump: the rendered content
+hash changes, so the next `apply` rewrites clean managed regions and files.
+Adding, removing, or changing a param declaration changes generated output,
+so bump the fragment version as usual.
 
 ## Task Harnesses
 

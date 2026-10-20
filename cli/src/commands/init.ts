@@ -41,6 +41,10 @@ import {
 } from "../core/monorepo.js";
 import { ProjectContext } from "../core/triggers.js";
 import {
+  resolveFragmentParams,
+  type ResolvedParams,
+} from "../core/fragment_params.js";
+import {
   RendererRegistry,
   type RenderAction,
   type RenderContext,
@@ -395,6 +399,28 @@ export function init(opts: InitOptions): InitResult {
     })),
   ];
 
+  // `init` writes Agentfile entries without params, so only declared
+  // defaults apply. A fragment with a required param cannot be initialized
+  // automatically; the user adds the value to Agentfile and runs `apply`.
+  const resolvedParams = new Map<string, ResolvedParams>();
+  for (const { ordered } of renderTargets) {
+    for (const frag of ordered) {
+      if (resolvedParams.has(frag.id)) continue;
+      const params = resolveFragmentParams({
+        fragmentId: frag.id,
+        declarations: frag.params,
+        values: undefined,
+      });
+      if (params.blocking) {
+        throw new InitError(
+          `${params.problems.map((p) => p.message).join("; ")}. ` +
+            `Remove the fragment from this init, then add it to Agentfile with params and run 'anamnesis apply'.`,
+        );
+      }
+      resolvedParams.set(frag.id, params.values);
+    }
+  }
+
   const actions: RenderAction[] = [];
   for (const { scopePath, ordered } of renderTargets) {
     for (const frag of ordered) {
@@ -405,7 +431,7 @@ export function init(opts: InitOptions): InitResult {
         projectRoot,
         scopePath,
         settings: DEFAULT_SETTINGS,
-        params: {},
+        params: resolvedParams.get(frag.id) ?? {},
       };
       for (const tool of tools) {
         actions.push(...registry.planFragment(renderCtx, tool));

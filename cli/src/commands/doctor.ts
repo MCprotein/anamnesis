@@ -65,6 +65,7 @@ import {
 } from "../core/agent_config_damage.js";
 import {
   collectInstalledRenderActions,
+  type InstalledRenderParamProblem,
   type InstalledRenderPlanProblem,
 } from "./render_plan.js";
 
@@ -83,6 +84,11 @@ export type DoctorIssueCode =
   | "fragment-dependency-cycle"
   | "fragment-update-available"
   | "fragment-partial-adoption"
+  | "fragment-param-unknown"
+  | "fragment-param-missing"
+  | "fragment-param-invalid"
+  | "fragment-param-render-drift"
+  | "fragment-param-scope-conflict"
   | "tracked-entry-missing"
   | "tracked-entry-user-modified"
   | "adapter-renderer-missing"
@@ -258,6 +264,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
     });
     ontologyRecommendation = st.ontologyRecommendation;
     addStatusIssues(st.entries, st.fragments, st.partialAdoptions, issues);
+    addParamRenderDriftIssues(st.params.renderDrift, issues);
     addDependencyIssues(st.dependencies.problems, issues);
     addContinuityIssues(st.continuity.checks, issues);
     addOntologyGapIssues(st.ontology.gaps, issues);
@@ -278,6 +285,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
     scopes: effectiveScopes(agentfile),
   });
   addRenderPlanProblems(renderPlan.problems, issues);
+  addParamProblemIssues(renderPlan.paramProblems, issues);
   const renderActions = renderPlan.actions;
   addExecutableSecurityIssues(
     analyzeExecutableSecurity(renderActions).issues,
@@ -682,6 +690,45 @@ function continuityIssueCode(check: ContinuityCheck): DoctorIssueCode {
 // ---------------------------------------------------------------------------
 // Adapter / settings diagnostics
 // ---------------------------------------------------------------------------
+
+function addParamProblemIssues(
+  problems: readonly InstalledRenderParamProblem[],
+  issues: DoctorIssue[],
+): void {
+  for (const problem of problems) {
+    issues.push({
+      severity: problem.severity,
+      code: problem.code,
+      scopePath: problem.scopePath,
+      fragmentId: problem.fragmentId,
+      target:
+        problem.target ?? `Agentfile fragments[${problem.fragmentId}].params.${problem.key}`,
+      message: problem.message,
+      repair:
+        problem.code === "fragment-param-unknown"
+          ? "remove the key from Agentfile or check the fragment's declared params"
+          : problem.code === "fragment-param-scope-conflict"
+            ? "give every scope entry of this fragment the same params, then run `anamnesis apply`"
+            : "fix the value in Agentfile fragments[].params, then run `anamnesis apply`",
+    });
+  }
+}
+
+function addParamRenderDriftIssues(
+  drift: ReturnType<typeof status>["params"]["renderDrift"],
+  issues: DoctorIssue[],
+): void {
+  for (const item of drift) {
+    issues.push({
+      severity: "warning",
+      code: "fragment-param-render-drift",
+      fragmentId: item.fragmentId,
+      target: item.target,
+      message: `${item.target} does not match the current fragment params`,
+      repair: "run `anamnesis apply --dry-run`, review, then `anamnesis apply`",
+    });
+  }
+}
 
 function addRenderPlanProblems(
   problems: readonly InstalledRenderPlanProblem[],
