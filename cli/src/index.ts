@@ -561,6 +561,17 @@ For a changed requirement, keep the old definition and append a new one:
     supersedes: [r1]
 Do not remove r1, rewrite its summary, or use superseded_by. Unrelated new
 requirements are appended without supersedes; unchanged requirements stay intact.
+Work-wide must/never rules from the user go in an optional constraints list,
+not in requirements (constraints never count toward progress):
+constraints:
+  - id: c1
+    kind: never            # must | never
+    text: The rule in one sentence
+    source_event_ids: ["@staged"]
+    expires: 2026-10-23    # optional date or condition
+    promote_candidate: true  # optional: worth keeping as a project rule
+Constraints follow the requirement rules: keep every earlier one unchanged and
+replace one only with a new constraint that lists it in supersedes.
 Use classification: same_unit, and supply the exact current authority from status:
   anamnesis work prompt allocate-same --stage <token> --work <id> --draft <file>
     --expected-head <ledger_head> --expected-contract-revision <contract_revision>
@@ -3606,6 +3617,18 @@ function reportWorkStatus(
 			"  policy drift: current project policy differs; frozen Work policy retained",
 		);
   }
+	const constraints = projection.constraints ?? [];
+	if (constraints.length > 0) {
+		console.log("  constraints (rules; not counted in progress):");
+		for (const constraint of constraints) {
+			if (!opts.verbose && constraint.superseded_by !== undefined) continue;
+			printWrapped(
+				ui,
+				`- ${constraint.id} [${constraint.kind}] — ${constraint.text}${constraint.expires ? ` (expires: ${constraint.expires})` : ""}${constraint.superseded_by ? ` (superseded by ${constraint.superseded_by})` : ""}`,
+				{ indent: 4 },
+			);
+		}
+	}
 	const visibleRequirements = opts.verbose
 		? projection.requirements
 		: projection.requirements.filter(

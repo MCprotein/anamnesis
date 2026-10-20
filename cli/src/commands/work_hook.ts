@@ -1060,6 +1060,7 @@ export function renderWorkBriefingContext(
 			: "Authoritative completeness: all current requirements follow; no retrieval needed.",
 		`Completion contract: ${boundedSemanticField(briefing.work.completion_contract ?? "not recorded", 700)}`,
 		`Progress: ${briefing.progress.percent}% (${briefing.progress.verified}/${briefing.progress.denominator} verified/applicable)`,
+		...constraintLines(briefing),
 		...(briefing.baseline_available || fullBlock === null
 			? [
 					briefing.baseline_available
@@ -1108,6 +1109,31 @@ export function renderWorkBriefingContext(
 	}
 	for (const line of optionalLines) appendOptional(line);
 	return lines.join("\n");
+}
+
+/**
+ * Constraints stay visible in every briefing: count and hash always, the
+ * active list within a fixed budget. They are rules, not progress items.
+ */
+function constraintLines(briefing: WorkBriefingSnapshot): string[] {
+	const constraints = briefing.constraints;
+	if (!constraints) return [];
+	const changed = [
+		...(briefing.delta.constraints_added ?? []),
+		...(briefing.delta.constraints_superseded ?? []).map(
+			(item) => `${item.constraint_id}->${item.superseded_by}`,
+		),
+	];
+	return [
+		`Work constraints (rules, not progress items): ${constraints.active_count} active, ${constraints.superseded_count} superseded, hash ${constraints.hash}; changed=${boundedIds(changed, 250)}`,
+		`Active constraints: ${boundedList(
+			constraints.active,
+			900,
+			(item) =>
+				`${item.id}|${item.kind}|${JSON.stringify(boundedSemanticField(item.text, 300))}${item.expires ? `|expires ${JSON.stringify(boundedSemanticField(item.expires, 80))}` : ""}`,
+			" | ",
+		)}`,
+	];
 }
 
 function boundedIds(ids: readonly string[], budget = LIST_BUDGET): string {

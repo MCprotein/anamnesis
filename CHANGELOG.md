@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Work contracts accept an optional `constraints` list of must/never rules with user source provenance (`id`, `kind`, `text`, `source_event_ids`, optional `expires`, `promote_candidate`, `supersedes`). Constraints are append-only like requirements, never count toward progress, and appear in `work status`, `work brief`, and the hook briefing with a count, a hash, and the changed IDs. A contract with constraints uses `anamnesis.work-contract-event.v2`; contracts without constraints keep v1 and their existing hashes.
+
 ## [1.25.5] — 2026-10-11
 
 - `apply` adopts a tracked managed file whose content already equals the new content, even when its manifest hash is out of date, instead of reporting it as user-modified; managed regions follow the same rule. A git checkout that restores a tracked `.anamnesis/manifest.json` while the file lives outside git (for example `.git/hooks/pre-commit`) made `projects apply` skip such projects on every run.

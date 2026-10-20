@@ -35,6 +35,18 @@ const requirementDraftSchema = z
 	})
 	.strict();
 
+const constraintDraftSchema = z
+	.object({
+		id: nonEmpty,
+		kind: z.enum(["must", "never"]),
+		text: nonEmpty,
+		source_event_ids: uniqueNonEmpty.min(1),
+		expires: nonEmpty.optional(),
+		promote_candidate: z.boolean().optional(),
+		supersedes: uniqueNonEmpty.optional(),
+	})
+	.strict();
+
 export const workContractDraftSchema = z
 	.object({
 		work: z
@@ -62,6 +74,8 @@ export const workContractDraftSchema = z
 				})
 				.strict(),
 		),
+		/** Optional must/never Work constraints; omitted or empty means none. */
+		constraints: z.array(constraintDraftSchema).optional(),
 	})
 	.strict();
 
@@ -189,6 +203,14 @@ export function parseStagedWorkContractDraft(
 			...conflict,
 			source_event_ids: replace(conflict.source_event_ids),
 		})),
+		...(draft.constraints === undefined
+			? {}
+			: {
+					constraints: draft.constraints.map((constraint) => ({
+						...constraint,
+						source_event_ids: replace(constraint.source_event_ids),
+					})),
+				}),
 	});
 	if (replacements === 0) {
 		throw new Error(

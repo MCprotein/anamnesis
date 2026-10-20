@@ -242,6 +242,45 @@ neither clearly supersedes the other, both remain visible and the effective
 requirement becomes `blocked` or `needs_user` rather than letting the agent
 guess.
 
+### Work constraints (implemented)
+
+A `constraint` is a must/never rule that applies to the whole Work, such as
+"do not run `git stash`" or "keep the old API contract". It is not a
+completion item. The contract stores it in an optional `constraints` list:
+
+```yaml
+constraints:
+  - id: c1
+    kind: never              # must | never
+    text: Agent summary of the rule
+    source_event_ids: [evt_01...]  # the user's source event (required)
+    expires: 2026-10-23      # optional date or condition sentence
+    promote_candidate: true  # optional: candidate for a project-level rule
+    supersedes: [c0]         # optional: replaces an earlier constraint
+```
+
+- Constraints follow the requirement lineage rules. A revision keeps every
+  earlier constraint with the same `kind`, `text`, `expires`,
+  `promote_candidate`, and `supersedes`. It may only add source events. A
+  replacement is a new constraint that lists the old ID in `supersedes`.
+- Constraint IDs are unique and do not reuse a requirement ID.
+- Constraints never enter the progress denominator, readiness, or close
+  checks.
+- A contract with at least one constraint uses the event discriminator
+  `anamnesis.work-contract-event.v2`. A contract without constraints keeps
+  `anamnesis.work-contract-event.v1`, the same payload, and the same contract
+  hash. Existing ledgers therefore fold to byte-identical contract and
+  projection hashes. A CLI older than this change rejects a v2 record with a
+  schema-discriminator error instead of silently dropping constraints.
+- The projection and briefing carry `constraints` only when the Work has
+  them. The briefing shows the active count, the superseded count, a hash of
+  the active set, the active list within a fixed budget, and the added or
+  superseded constraint IDs since the confirmed baseline.
+
+Rules that apply to many Works still belong in project policy. A constraint
+with `promote_candidate: true` marks a rule that an agent may later propose
+for that policy; anamnesis does not promote it automatically.
+
 The default user view is therefore two-pane in concept even when rendered as
 plain text:
 

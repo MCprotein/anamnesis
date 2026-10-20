@@ -23,6 +23,7 @@ import {
 	WORK_EXECUTION_LIMITS,
 	type WorkContractDefinition,
 	type WorkDelegationOutcomePayload,
+	workContractEventSchemaVersion,
 	type WorkInstanceRef,
 	type WorkReviewAttemptPayload,
 	workArtifactRefSchema,
@@ -470,6 +471,7 @@ export interface WorkReadinessInput extends WorkReadInput {
 export interface WorkBriefSection {
 	id:
 		| "work"
+		| "constraints"
 		| "requirements"
 		| "done"
 		| "remaining"
@@ -1817,18 +1819,14 @@ function allocateStagedPrompt(
 			);
 		}
 	}
-	const contract: WorkContractDefinition = {
-		...draft,
-		work: { id: input.work_id, ...draft.work },
-		policy_snapshot: policy,
-	};
+	const contract = contractFromDraft(draft, input.work_id, policy);
 	const event: TypedWorkEvent = {
 		event_id: eventId,
 		occurred_at: occurredAt,
 		kind:
 			decision === "allocate_new" ? "work_created" : "work_contract_revised",
 		payload: {
-			schema_version: "anamnesis.work-contract-event.v1",
+			schema_version: workContractEventSchemaVersion(contract),
 			work_id: input.work_id,
 			contract_revision: revision,
 			previous_contract_revision: previousRevision,
@@ -1922,18 +1920,14 @@ function appendContract(
 		revision,
 		priorPolicy?.policy ?? resolveCommandPolicy(input),
 	);
-	const contract: WorkContractDefinition = {
-		...draft,
-		work: { id: input.work_id, ...draft.work },
-		policy_snapshot: policy,
-	};
+	const contract = contractFromDraft(draft, input.work_id, policy);
 	const contractHash = calculateWorkContractHash(contract);
 	const event: TypedWorkEvent = {
 		event_id: input.event_id,
 		occurred_at: input.occurred_at,
 		kind: revision === 1 ? "work_created" : "work_contract_revised",
 		payload: {
-			schema_version: "anamnesis.work-contract-event.v1",
+			schema_version: workContractEventSchemaVersion(contract),
 			work_id: input.work_id,
 			contract_revision: revision,
 			previous_contract_revision: previousRevision,
@@ -2138,6 +2132,21 @@ export function assertProgressRetryIsAppendCompatible(
 	}
 }
 
+/** Build the canonical contract; an empty constraint list means none. */
+function contractFromDraft(
+	draft: WorkContractDraft,
+	workId: string,
+	policy: WorkContractDefinition["policy_snapshot"],
+): WorkContractDefinition {
+	const { constraints, ...rest } = draft;
+	return {
+		...rest,
+		work: { id: workId, ...draft.work },
+		policy_snapshot: policy,
+		...(constraints && constraints.length > 0 ? { constraints } : {}),
+	};
+}
+
 function assertCurrentSourceReferenced(
 	draft: WorkContractDraft,
 	sourceEventId: string,
@@ -2147,6 +2156,9 @@ function assertCurrentSourceReferenced(
 			item.source_event_ids.includes(sourceEventId),
 		) ||
 		draft.open_conflicts.some((item) =>
+			item.source_event_ids.includes(sourceEventId),
+		) ||
+		(draft.constraints ?? []).some((item) =>
 			item.source_event_ids.includes(sourceEventId),
 		);
 	if (!referenced)
@@ -2477,6 +2489,18 @@ function orderedBriefSections(
 				`required_gates: ${briefing.configured_required_gates.join(", ") || "none"}`,
 			],
 		},
+		...(briefing.constraints
+			? [
+					{
+						id: "constraints" as const,
+						label: "Constraints",
+						values: briefing.constraints.active.map(
+							(item) =>
+								`${item.id} [${item.kind}]: ${item.text}${item.expires ? ` (expires: ${item.expires})` : ""}`,
+						),
+					},
+				]
+			: []),
 		{
 			id: "requirements",
 			label: "Requirements",

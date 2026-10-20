@@ -28,6 +28,31 @@ export interface WorkBriefingDelta {
 	superseded: Array<{ requirement_id: string; superseded_by: string }>;
 	conflicts_added: string[];
 	conflicts_resolved: string[];
+	/** Present only when the Work has constraints. */
+	constraints_added?: string[];
+	constraints_superseded?: Array<{
+		constraint_id: string;
+		superseded_by: string;
+	}>;
+}
+
+/**
+ * Deterministic constraint view for briefings. `hash` covers every active
+ * constraint so a compact briefing can stand in for the full list.
+ */
+export interface WorkBriefingConstraints {
+	active_count: number;
+	superseded_count: number;
+	hash: string;
+	active: Array<{
+		id: string;
+		kind: "must" | "never";
+		text: string;
+		source_event_ids: string[];
+		expires?: string;
+		promote_candidate?: boolean;
+	}>;
+	superseded: Array<{ constraint_id: string; superseded_by: string }>;
 }
 
 export interface WorkBriefingSnapshot {
@@ -63,6 +88,8 @@ export interface WorkBriefingSnapshot {
 		superseded_by: string;
 	}>;
 	conflicts: string[];
+	/** Present only when the Work has constraints (contract event v2). */
+	constraints?: WorkBriefingConstraints;
 	blockers: { requirement_ids: string[]; conflict_ids: string[] };
 	progress: WorkProjectionProgress & {
 		mode: "count" | "weighted";
@@ -156,6 +183,7 @@ export function buildWorkBriefingSnapshot(
 				superseded_by: requirement.superseded_by,
 			})),
 		conflicts: sortedUnique(input.projection.conflicts),
+		...briefingConstraints(input.projection),
 		blockers: {
 			requirement_ids: requirementIdsByStatus.blocked,
 			conflict_ids: sortedUnique(input.projection.conflicts),
@@ -405,6 +433,69 @@ function validBaseline(
 	}
 }
 
+function briefingConstraints(
+	projection: WorkProjection,
+): { constraints?: WorkBriefingConstraints } {
+	const all = projection.constraints ?? [];
+	if (all.length === 0) return {};
+	const active = all
+		.filter((item) => item.superseded_by === undefined)
+		.map((item) => ({
+			id: item.id,
+			kind: item.kind,
+			text: item.text,
+			source_event_ids: sortedUnique(item.source_event_ids),
+			...(item.expires === undefined ? {} : { expires: item.expires }),
+			...(item.promote_candidate === undefined
+				? {}
+				: { promote_candidate: item.promote_candidate }),
+		}))
+		.sort((left, right) => compareCodeUnits(left.id, right.id));
+	const superseded = all
+		.filter(
+			(item): item is typeof item & { superseded_by: string } =>
+				item.superseded_by !== undefined,
+		)
+		.map((item) => ({
+			constraint_id: item.id,
+			superseded_by: item.superseded_by,
+		}))
+		.sort((left, right) =>
+			compareCodeUnits(left.constraint_id, right.constraint_id),
+		);
+	return {
+		constraints: {
+			active_count: active.length,
+			superseded_count: superseded.length,
+			hash: sha256(canonicalJson(active)),
+			active,
+			superseded,
+		},
+	};
+}
+
+function constraintDelta(
+	previous: WorkBriefingConstraints | undefined,
+	current: WorkBriefingConstraints | undefined,
+): Pick<WorkBriefingDelta, "constraints_added" | "constraints_superseded"> {
+	if (!current) return {};
+	const previousIds = new Set([
+		...(previous?.active ?? []).map((item) => item.id),
+		...(previous?.superseded ?? []).map((item) => item.constraint_id),
+	]);
+	const previousSuperseded = new Set(
+		(previous?.superseded ?? []).map((item) => item.constraint_id),
+	);
+	return {
+		constraints_added: current.active
+			.map((item) => item.id)
+			.filter((id) => !previousIds.has(id)),
+		constraints_superseded: current.superseded.filter(
+			(item) => !previousSuperseded.has(item.constraint_id),
+		),
+	};
+}
+
 function diffBriefings(
 	previous: WorkBriefingSnapshot | null,
 	current: Omit<WorkBriefingSnapshot, "baseline_available" | "delta">,
@@ -416,6 +507,7 @@ function diffBriefings(
 			superseded: [...current.superseded_requirements],
 			conflicts_added: [...current.conflicts],
 			conflicts_resolved: [],
+			...constraintDelta(undefined, current.constraints),
 		};
 	}
 	const previousStatuses = statusMap(previous);
@@ -451,6 +543,7 @@ function diffBriefings(
 		conflicts_resolved: previous.conflicts.filter(
 			(conflict) => !current.conflicts.includes(conflict),
 		),
+		...constraintDelta(previous.constraints, current.constraints),
 	};
 }
 
@@ -468,6 +561,7 @@ function fingerprintBriefing(
 		| "requirement_evidence"
 		| "superseded_requirements"
 		| "conflicts"
+		| "constraints"
 		| "progress"
 		| "configured_required_gates"
 		| "next_requirement_ids"
@@ -493,6 +587,11 @@ function fingerprintBriefing(
 			requirement_evidence: value.requirement_evidence,
 			superseded_requirements: value.superseded_requirements,
 			conflicts: value.conflicts,
+			// Absent for Works without constraints, so stored fingerprints of
+			// existing briefings stay valid.
+			...(value.constraints === undefined
+				? {}
+				: { constraints: value.constraints }),
 			progress: value.progress,
 			configured_required_gates: value.configured_required_gates,
 			next_requirement_ids: value.next_requirement_ids,

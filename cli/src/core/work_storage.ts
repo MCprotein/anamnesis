@@ -14,7 +14,9 @@ import {
 	assertWorkLedgerEvent,
 	readWorkLedger,
 	WORK_LEDGER_SCHEMA_VERSION,
+	isCanonicalTypedWorkSchema,
 	WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS,
+	WORK_TYPED_EVENT_SCHEMAS,
 	type WorkLedgerEvent,
 	type WorkLedgerRecord,
 	withWorkLedgerLock,
@@ -648,9 +650,7 @@ function canonicalManagedCandidate(candidate: string): string {
 function isTypedWorkPayload(
 	payload: Record<string, unknown> | undefined,
 ): boolean {
-	return Object.values(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS).includes(
-		String(payload?.schema_version ?? "") as never,
-	);
+	return WORK_TYPED_EVENT_SCHEMAS.has(String(payload?.schema_version ?? ""));
 }
 
 function delegationWaiverDraft(
@@ -864,14 +864,7 @@ function appendPublishedLedgerUnlocked(
 		...unsigned,
 		record_hash: sha256(Buffer.from(canonicalJson(unsigned), "utf8")),
 	};
-	const expectedTypedSchema =
-		WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS[
-			record.kind as keyof typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS
-		];
-	if (
-		expectedTypedSchema !== undefined &&
-		expectedTypedSchema === record.payload.schema_version
-	) {
+	if (isCanonicalTypedWorkSchema(record.kind, record.payload.schema_version)) {
 		// Preflight the exact candidate projection while the ledger lock is held.
 		// This makes aggregate evidence bounds a durable append precondition.
 		foldWorkProjection([...current.records, record]);

@@ -4,8 +4,10 @@ import { isHash, sha256 } from "../util/hash.js";
 import {
 	type AppendWorkLedgerOptions,
 	type AppendWorkLedgerResult,
+	isCanonicalTypedWorkSchema,
 	readWorkLedger,
 	WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS,
+	WORK_TYPED_EVENT_SCHEMAS,
 	type WorkLedgerEvent,
 	type WorkLedgerRecord,
 } from "./work_ledger.js";
@@ -17,6 +19,13 @@ import {
 
 export const WORK_CONTRACT_EVENT_SCHEMA_VERSION =
 	"anamnesis.work-contract-event.v1" as const;
+/**
+ * Contract revision that carries Work constraints. A contract without
+ * constraints keeps the v1 discriminator and hash, so existing ledgers and
+ * older CLIs read it unchanged.
+ */
+export const WORK_CONTRACT_EVENT_SCHEMA_VERSION_V2 =
+	"anamnesis.work-contract-event.v2" as const;
 export const WORK_PROGRESS_EVENT_SCHEMA_VERSION =
 	"anamnesis.work-progress-event.v1" as const;
 export const WORK_LIFECYCLE_EVENT_SCHEMA_VERSION =
@@ -47,6 +56,9 @@ export const WORK_EXECUTION_LIMITS = {
 	maxChildContracts: 32,
 	maxRequirementsPerChild: 1_000,
 	maxSourcePointersPerChild: 256,
+	maxConstraints: 256,
+	maxConstraintTextUtf8Bytes: 2_048,
+	maxConstraintExpiresUtf8Bytes: 256,
 } as const;
 
 const nonEmpty = z
@@ -330,6 +342,25 @@ export const workRequirementDefinitionSchema = z
 	})
 	.strict();
 
+/**
+ * A must/never rule that applies to the whole Work. Constraints carry user
+ * source provenance like requirements, but they are not completion items:
+ * they never enter the progress denominator.
+ */
+export const workConstraintDefinitionSchema = z
+	.object({
+		id: nonEmpty,
+		kind: z.enum(["must", "never"]),
+		text: boundedUtf8(WORK_EXECUTION_LIMITS.maxConstraintTextUtf8Bytes),
+		source_event_ids: stringList.min(1),
+		expires: boundedTrimmed(
+			WORK_EXECUTION_LIMITS.maxConstraintExpiresUtf8Bytes,
+		).optional(),
+		promote_candidate: z.boolean().optional(),
+		supersedes: stringList.optional(),
+	})
+	.strict();
+
 const workBoundarySchema = z
 	.object({
 		state: z.enum(["provisional", "needs_user", "accepted"]),
@@ -361,12 +392,20 @@ const contractDefinitionSchema = z
 		policy_snapshot: z.unknown(),
 		requirements: z.array(workRequirementDefinitionSchema),
 		open_conflicts: z.array(openConflictSchema),
+		constraints: z
+			.array(workConstraintDefinitionSchema)
+			.min(1)
+			.max(WORK_EXECUTION_LIMITS.maxConstraints)
+			.optional(),
 	})
 	.strict();
 
 const contractPayloadSchema = z
 	.object({
-		schema_version: z.literal(WORK_CONTRACT_EVENT_SCHEMA_VERSION),
+		schema_version: z.enum([
+			WORK_CONTRACT_EVENT_SCHEMA_VERSION,
+			WORK_CONTRACT_EVENT_SCHEMA_VERSION_V2,
+		]),
 		work_id: nonEmpty,
 		contract_revision: positiveInteger,
 		previous_contract_revision: positiveInteger.nullable(),
@@ -637,6 +676,9 @@ export const workDelegationWaiverPayloadSchema = z
 export type WorkRequirementDefinition = z.infer<
 	typeof workRequirementDefinitionSchema
 >;
+export type WorkConstraintDefinition = z.infer<
+	typeof workConstraintDefinitionSchema
+>;
 export type WorkContractDefinition = Omit<
 	z.infer<typeof contractDefinitionSchema>,
 	"policy_snapshot"
@@ -749,6 +791,17 @@ export function calculateWorkContractHash(
 			source_event_ids: sortedStrings(item.source_event_ids),
 		}))
 		.sort((left, right) => compareCodeUnits(left.id, right.id));
+	// Constraints enter the hash only when present, so every v1 contract
+	// keeps its stored hash.
+	const constraints = parsed.constraints
+		?.map((item) => ({
+			...item,
+			source_event_ids: sortedStrings(item.source_event_ids),
+			...(item.supersedes
+				? { supersedes: sortedStrings(item.supersedes) }
+				: {}),
+		}))
+		.sort((left, right) => compareCodeUnits(left.id, right.id));
 	return sha256(
 		canonicalJson({
 			work: parsed.work,
@@ -762,8 +815,18 @@ export function calculateWorkContractHash(
 			},
 			requirements,
 			open_conflicts: openConflicts,
+			...(constraints === undefined ? {} : { constraints }),
 		}),
 	);
+}
+
+/** The contract event discriminator that a contract definition requires. */
+export function workContractEventSchemaVersion(
+	contract: Pick<WorkContractDefinition, "constraints">,
+): "anamnesis.work-contract-event.v1" | "anamnesis.work-contract-event.v2" {
+	return (contract.constraints?.length ?? 0) > 0
+		? WORK_CONTRACT_EVENT_SCHEMA_VERSION_V2
+		: WORK_CONTRACT_EVENT_SCHEMA_VERSION;
 }
 
 export function parseTypedWorkEvent(event: WorkLedgerEvent): TypedWorkEvent {
@@ -857,6 +920,7 @@ export function validateWorkEventAppend(
 			throw new Error("typed work_created requires an empty Work ledger");
 		assertContractRevision(parsed.payload, null, null);
 		assertInitialContractGraph(parsed.payload.contract.requirements);
+		assertInitialConstraints(parsed.payload.contract.constraints ?? []);
 		return;
 	}
 	if (mode !== "typed" || !state) {
@@ -875,6 +939,10 @@ export function validateWorkEventAppend(
 		assertContractLineage(
 			state.requirements,
 			parsed.payload.contract.requirements,
+		);
+		assertConstraintLineage(
+			state.constraints,
+			parsed.payload.contract.constraints ?? [],
 		);
 		if (parsed.payload.contract_hash === state.contract_hash) {
 			throw new Error("no-op Work contract revision is forbidden");
@@ -1008,6 +1076,14 @@ function parseContractPayload(value: unknown): WorkContractPayload {
 		"conflict",
 	);
 	assertContractGraph(contract.requirements);
+	if (parsed.schema_version !== workContractEventSchemaVersion(contract)) {
+		throw new Error(
+			contract.constraints
+				? "Work contract with constraints requires anamnesis.work-contract-event.v2"
+				: "anamnesis.work-contract-event.v2 requires at least one constraint",
+		);
+	}
+	assertConstraintGraph(contract);
 	return { ...parsed, contract };
 }
 
@@ -1080,6 +1156,7 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 	contract_hash: string;
 	requirement_ids: Set<string>;
 	requirements: WorkRequirementDefinition[];
+	constraints: WorkConstraintDefinition[];
 	requirement_statuses: Map<
 		string,
 		| "pending"
@@ -1096,13 +1173,9 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 } | null {
 	let state: ReturnType<typeof typedState> = null;
 	for (const [index, record] of records.entries()) {
-		const expectedSchema =
-			WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS[
-				record.kind as keyof typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS
-			];
 		if (
-			expectedSchema !== undefined &&
-			record.payload.schema_version !== expectedSchema
+			CANONICAL_TYPED_KINDS.has(record.kind) &&
+			!isCanonicalTypedWorkSchema(record.kind, record.payload.schema_version)
 		) {
 			throw new Error(
 				`canonical typed Work event ${record.kind} requires its exact schema discriminator`,
@@ -1123,6 +1196,7 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 			if (state) throw new Error("repeated typed work_created");
 			assertContractRevision(parsed.payload, null, null);
 			assertInitialContractGraph(parsed.payload.contract.requirements);
+			assertInitialConstraints(parsed.payload.contract.constraints ?? []);
 			state = contractState(parsed.payload);
 		} else if (parsed.kind === "work_contract_revised") {
 			if (!state)
@@ -1142,6 +1216,10 @@ function typedState(records: readonly WorkLedgerRecord[]): {
 			assertContractLineage(
 				state.requirements,
 				parsed.payload.contract.requirements,
+			);
+			assertConstraintLineage(
+				state.constraints,
+				parsed.payload.contract.constraints ?? [],
 			);
 			state = contractState(parsed.payload, state);
 		} else if (
@@ -1248,6 +1326,11 @@ function contractState(
 			payload.contract.requirements.map((item) => item.id),
 		),
 		requirements: payload.contract.requirements.map((item) => ({
+			...item,
+			source_event_ids: [...item.source_event_ids],
+			...(item.supersedes ? { supersedes: [...item.supersedes] } : {}),
+		})),
+		constraints: (payload.contract.constraints ?? []).map((item) => ({
 			...item,
 			source_event_ids: [...item.source_event_ids],
 			...(item.supersedes ? { supersedes: [...item.supersedes] } : {}),
@@ -2067,6 +2150,89 @@ function assertContractLineage(
 	}
 }
 
+function assertConstraintGraph(contract: WorkContractDefinition): void {
+	const constraints = contract.constraints ?? [];
+	assertUniqueIds(
+		constraints.map((item) => item.id),
+		"constraint",
+	);
+	const requirementIds = new Set(contract.requirements.map((item) => item.id));
+	const constraintIds = new Set(constraints.map((item) => item.id));
+	for (const constraint of constraints) {
+		if (requirementIds.has(constraint.id))
+			throw new Error(
+				`Work constraint ID ${constraint.id} collides with a requirement ID`,
+			);
+		for (const target of constraint.supersedes ?? []) {
+			if (target === constraint.id)
+				throw new Error("Work constraint cannot supersede itself");
+			if (!constraintIds.has(target))
+				throw new Error(
+					`Work constraint supersedes unknown constraint ${target}`,
+				);
+		}
+	}
+}
+
+function assertInitialConstraints(
+	constraints: readonly WorkConstraintDefinition[],
+): void {
+	if (constraints.some((item) => (item.supersedes?.length ?? 0) > 0))
+		throw new Error("initial Work contract cannot supersede prior constraints");
+}
+
+/**
+ * Constraints follow the requirement rules: a revision keeps every earlier
+ * constraint with the same meaning, may only add source events, and replaces
+ * a constraint only through a new constraint that names it in `supersedes`.
+ */
+function assertConstraintLineage(
+	previous: readonly WorkConstraintDefinition[],
+	next: readonly WorkConstraintDefinition[],
+): void {
+	const previousById = new Map(previous.map((item) => [item.id, item]));
+	const nextById = new Map(next.map((item) => [item.id, item]));
+	const previouslySuperseded = new Set(
+		previous.flatMap((item) => item.supersedes ?? []),
+	);
+	for (const [id, before] of previousById) {
+		const after = nextById.get(id);
+		if (!after)
+			throw new Error(`Work contract revision removed constraint ${id}`);
+		if (
+			before.kind !== after.kind ||
+			before.text !== after.text ||
+			before.expires !== after.expires ||
+			before.promote_candidate !== after.promote_candidate ||
+			canonicalJson(sortedStrings(before.supersedes ?? [])) !==
+				canonicalJson(sortedStrings(after.supersedes ?? []))
+		)
+			throw new Error(`Work constraint ${id} semantic definition is immutable`);
+		const sources = new Set(after.source_event_ids);
+		if (!before.source_event_ids.every((source) => sources.has(source)))
+			throw new Error(`Work constraint ${id} source_event_ids are append-only`);
+	}
+	const owner = new Map<string, string>();
+	for (const constraint of next) {
+		for (const target of constraint.supersedes ?? []) {
+			const existing = owner.get(target);
+			if (existing && existing !== constraint.id)
+				throw new Error(
+					`Work constraint ${target} has multiple superseding constraints`,
+				);
+			owner.set(target, constraint.id);
+			if (!previousById.has(constraint.id)) {
+				if (!previousById.has(target))
+					throw new Error(
+						`Work constraint supersedes unknown prior constraint ${target}`,
+					);
+				if (previouslySuperseded.has(target))
+					throw new Error(`Work constraint ${target} is already superseded`);
+			}
+		}
+	}
+}
+
 function compareCodeUnits(left: string, right: string): number {
 	const limit = Math.min(left.length, right.length);
 	for (let index = 0; index < limit; index += 1) {
@@ -2089,9 +2255,7 @@ function ledgerMode(
 }
 
 function isTypedPayload(payload: Record<string, unknown>): boolean {
-	return Object.values(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS).includes(
-		payload.schema_version as never,
-	);
+	return WORK_TYPED_EVENT_SCHEMAS.has(String(payload.schema_version ?? ""));
 }
 
 function addRepoPathIssue(
