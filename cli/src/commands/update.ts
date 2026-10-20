@@ -57,6 +57,7 @@ import {
 import { ProjectContext } from "../core/triggers.js";
 import {
   RendererRegistry,
+  findParamTargetConflicts,
   type RenderAction,
   type RenderContext,
 } from "../core/render.js";
@@ -663,6 +664,16 @@ export function update(opts: UpdateOptions): UpdateResult {
     }
   }
 
+  const declaredParamFragments = new Set(
+    perScope.flatMap((s) =>
+      s.ordered.filter((r) => r.fragment.params !== undefined).map((r) => r.fragment.id),
+    ),
+  );
+  for (const conflict of findParamTargetConflicts(actions, declaredParamFragments)) {
+    paramErrors.push(
+      `${conflict.target} is shared by all scopes, but scopes render different params for fragment '${conflict.fragmentId}'; set those params on the root scope entry only`,
+    );
+  }
   if (paramErrors.length > 0) {
     throw new UpdateError(
       `Agentfile fragment params are invalid:\n${paramErrors.map((m) => `  - ${m}`).join("\n")}\n` +

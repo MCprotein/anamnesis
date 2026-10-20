@@ -52,7 +52,10 @@ const objectFieldSchema: z.ZodType<ParamObjectField, unknown> = z
     max_length: z.number().int().positive().optional(),
     description: z.string().optional(),
   })
-  .strict();
+  .strict()
+  .refine((field) => field.max_length === undefined || field.type === "string", {
+    message: "max_length applies only to string fields",
+  });
 
 const paramDeclarationSchema: z.ZodType<ParamDeclaration, unknown> = z
   .object({
@@ -167,7 +170,15 @@ export interface FragmentParamResolution {
 const REGION_ANCHOR_PATTERN = /<!--\s*\/?\s*anamnesis:region/i;
 // Control characters other than tab and newline make output unstable across
 // tools and are never meaningful in agent instructions.
-const CONTROL_CHAR_PATTERN = /[\u0000-\u0008\u000b-\u001f\u007f]/;
+// Unicode format characters (bidi overrides, zero-width marks) and the
+// U+2028/U+2029 separators can hide text from a reviewer of the Agentfile.
+const CONTROL_CHAR_PATTERN =
+  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u2028\u2029]|\p{Cf}/u;
+const GLOBAL_REGION_ANCHOR_PATTERN = /<!--\s*\/?\s*anamnesis:region/gi;
+
+function countRegionAnchors(text: string): number {
+  return text.match(GLOBAL_REGION_ANCHOR_PATTERN)?.length ?? 0;
+}
 
 function validateString(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return "expected a string";
@@ -178,7 +189,7 @@ function validateString(value: unknown, maxLength: number): string | null {
     return "string must not contain an anamnesis region anchor";
   }
   if (CONTROL_CHAR_PATTERN.test(value)) {
-    return "string must not contain control characters other than tab and newline";
+    return "string must not contain control, format, or line-separator characters other than tab and newline";
   }
   return null;
 }
@@ -495,6 +506,12 @@ export function renderParamTemplate(input: {
         fail("{{this}} is only valid inside {{#each}}");
         break;
     }
+  }
+  // Per-value checks cannot see anchors assembled from several values (for
+  // example "<!--" in one item and "/anamnesis:region -->" in the next).
+  // Rendering must never add a region anchor that the source did not have.
+  if (countRegionAnchors(out) > countRegionAnchors(input.source)) {
+    fail("rendered params form an anamnesis region anchor");
   }
   return out;
 }

@@ -55,6 +55,10 @@ describe("paramDeclarationsSchema", () => {
     ["invalid default", { x: { type: "integer", default: "two" } }],
     ["max_items on scalar", { x: { type: "string", max_items: 3 } }],
     ["max_length on integer", { x: { type: "integer", max_length: 3 } }],
+    [
+      "max_length on an integer field",
+      { x: { type: "object[]", fields: { n: { type: "integer", max_length: 3 } } } },
+    ],
   ])("rejects %s", (_label, raw) => {
     expect(paramDeclarationsSchema.safeParse(raw).success).toBe(false);
   });
@@ -107,6 +111,9 @@ describe("resolveFragmentParams", () => {
     ["region anchor in a value", { title: "x <!-- /anamnesis:region --> y" }],
     ["region anchor in a nested field", { rules: [{ text: "<!-- anamnesis:region id=x -->" }] }],
     ["control character", { title: "a\u0007b" }],
+    ["bidi override", { title: "a\u202eb" }],
+    ["zero-width space", { title: "a\u200bb" }],
+    ["line separator", { title: "a\u2028b" }],
     ["string longer than max_length", { title: "x".repeat(2001) }],
     ["list longer than max_items", { docs: Array.from({ length: 101 }, () => "d") }],
   ])("rejects %s", (_label, values) => {
@@ -216,6 +223,39 @@ describe("renderParamTemplate", () => {
   ])("rejects %s", (_label, source, pattern) => {
     expect(() => render(source)).toThrow(ParamTemplateError);
     expect(() => render(source)).toThrow(pattern);
+  });
+
+  it("rejects a region anchor assembled from several list items", () => {
+    expect(() =>
+      render("{{#each params.docs}}{{this}}\n{{/each}}", {
+        docs: ["a <!--", "/anamnesis:region -->", "outside"],
+      }),
+    ).toThrow(/form an anamnesis region anchor/);
+  });
+
+  it("rejects a region anchor assembled from adjacent scalars", () => {
+    const declarations = decls({ x: { type: "string" }, y: { type: "string" } });
+    const values = resolveFragmentParams({
+      fragmentId: "t",
+      declarations,
+      values: { x: "<!--", y: " /anamnesis:region -->" },
+    }).values;
+    expect(() =>
+      renderParamTemplate({
+        source: "{{params.x}}{{params.y}}",
+        declarations,
+        values,
+        sourceLabel: "x.md",
+      }),
+    ).toThrow(/form an anamnesis region anchor/);
+  });
+
+  it("keeps region anchors that the source already has", () => {
+    const declarations = decls({ x: { type: "string" } });
+    const source = "<!-- anamnesis:region id=a -->{{params.x}}<!-- /anamnesis:region -->";
+    expect(
+      renderParamTemplate({ source, declarations, values: { x: "v" }, sourceLabel: "x.md" }),
+    ).toBe("<!-- anamnesis:region id=a -->v<!-- /anamnesis:region -->");
   });
 
   it("rejects a broken loop body even when the list is empty", () => {

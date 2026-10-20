@@ -88,6 +88,7 @@ export type DoctorIssueCode =
   | "fragment-param-missing"
   | "fragment-param-invalid"
   | "fragment-param-render-drift"
+  | "fragment-param-scope-conflict"
   | "tracked-entry-missing"
   | "tracked-entry-user-modified"
   | "adapter-renderer-missing"

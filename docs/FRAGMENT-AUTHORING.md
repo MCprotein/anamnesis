@@ -165,9 +165,13 @@ Rules:
 - Param and field names match `^[a-z][a-z0-9_]*$`.
 - `required: true` and `default` are mutually exclusive. A `default` must be
   a valid value for its type.
-- Strings default to at most 2000 characters (`max_length`). Strings must not
-  contain an `anamnesis:region` anchor or control characters other than tab
-  and newline.
+- Strings default to at most 2000 UTF-16 code units (`max_length`; an emoji
+  counts as 2). Strings must not contain an `anamnesis:region` anchor,
+  control characters other than tab and newline, Unicode format characters
+  (bidi overrides, zero-width marks), or U+2028/U+2029.
+- Supported types are scalars, `string[]`, and `object[]` of scalar fields.
+  There is no single `object`, nested object, or `enum` type. Declare such
+  settings as flat scalar params (for example `merge_ready_review_blocker`).
 - Projects set values in Agentfile:
 
   ```yaml
@@ -196,6 +200,18 @@ Template syntax in `project_memory` sources and in skill `*.md` files:
   stays verbatim. Malformed `params`/`#`/`/`/`this` tags fail the render.
 - Loops do not nest. There are no conditionals or expressions.
 - Substituted values are not scanned again, so a value cannot inject tags.
+- The rendered text must not contain more `anamnesis:region` anchors than the
+  source. This also rejects an anchor assembled from several values.
+- Skill YAML frontmatter is never substituted, because it can carry agent
+  permissions such as `allowed-tools`. A param tag inside frontmatter fails
+  the render.
+- A misspelled tag that does not start with `params`, `#`, `/`, or `this`
+  (for example `{{Params.x}}` or `{{params.x}`) stays verbatim. Review the
+  rendered output.
+- Skill files are written to paths that all scopes share. If two scopes give
+  the same fragment different params that change a skill file, `apply` stops
+  and `doctor` reports `fragment-param-scope-conflict`. Set such params on the
+  root scope entry only.
 - Hook scripts, ontology slices, slash commands, task harnesses, and skill
   files that are not Markdown are copied verbatim. Params never reach
   executable content.
@@ -207,7 +223,8 @@ Diagnostics:
 | `fragment-param-unknown` | warning | The Agentfile key is not declared. `apply` ignores it. |
 | `fragment-param-missing` | error | A required param has no value. `apply` stops before any write. |
 | `fragment-param-invalid` | error | A value does not match its declaration. `apply` stops before any write. |
-| `fragment-param-render-drift` | warning | A clean managed target differs from the output of the current params. Run `anamnesis apply`. |
+| `fragment-param-render-drift` | warning | A clean managed target of a param-declaring fragment differs from the output of the current params. Run `anamnesis apply`. |
+| `fragment-param-scope-conflict` | error | Scopes render different content for one shared target. `apply` stops before any write. |
 
 `status` reports these under `params`, and `doctor` reports them as issues.
 `init` writes Agentfile entries without params, so it applies only declared

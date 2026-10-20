@@ -18,6 +18,7 @@ import {
 } from "../core/fragment_params.js";
 import {
   RendererRegistry,
+  findParamTargetConflicts,
   type AgentfileSettings,
   type RenderAction,
   type RenderContext,
@@ -29,7 +30,8 @@ import { registerCursor } from "../adapters/cursor/index.js";
 export type InstalledRenderPlanProblemCode =
   | "fragment-library-missing"
   | "adapter-renderer-missing"
-  | "render-plan-failed";
+  | "render-plan-failed"
+  | "fragment-param-scope-conflict";
 
 export interface InstalledRenderPlanProblem {
   code: InstalledRenderPlanProblemCode;
@@ -81,6 +83,7 @@ export function collectInstalledRenderActions(opts: {
   const paramProblems: InstalledRenderParamProblem[] = [];
   const seenParamProblems = new Set<string>();
   const parameterized = new Set<string>();
+  const declaredParamFragments = new Set<string>();
   const settings = opts.settings ?? DEFAULT_SETTINGS;
 
   for (const scope of opts.scopes) {
@@ -107,8 +110,11 @@ export function collectInstalledRenderActions(opts: {
         seenParamProblems.add(key);
         paramProblems.push({ ...problem, scopePath: scope.path });
       }
-      if (fragment.params !== undefined || entry.params !== undefined) {
+      // Only fragments that declare params substitute them, so only their
+      // output can drift because of params.
+      if (fragment.params !== undefined) {
         parameterized.add(fragment.id);
+        declaredParamFragments.add(fragment.id);
       }
       if (params.blocking) continue;
       const ctx: RenderContext = {
@@ -146,6 +152,16 @@ export function collectInstalledRenderActions(opts: {
         }
       }
     }
+  }
+
+  for (const conflict of findParamTargetConflicts(actions, declaredParamFragments)) {
+    problems.push({
+      code: "fragment-param-scope-conflict",
+      scopePath: ".",
+      fragmentId: conflict.fragmentId,
+      target: conflict.target,
+      message: `${conflict.target} is shared by all scopes, but scopes render different params for fragment '${conflict.fragmentId}'`,
+    });
   }
 
   return {

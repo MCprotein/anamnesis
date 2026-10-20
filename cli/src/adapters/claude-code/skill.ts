@@ -36,10 +36,15 @@ function walkFiles(
   }
 }
 
+const FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+const PARAM_TAG_RE = /\{\{\s*(?:params\b|#|\/|this\b)/;
+
 /**
- * Read one skill file. Markdown files receive fragment param substitution;
+ * Read one skill file. Markdown bodies receive fragment param substitution;
  * scripts and other files are copied verbatim so params never reach
- * executable code.
+ * executable code. YAML frontmatter is never substituted: it carries agent
+ * permissions (for example `allowed-tools`), and a multi-line value could add
+ * keys there. A param tag inside frontmatter fails the render.
  */
 export function readSkillFile(
   ctx: RenderContext,
@@ -49,7 +54,15 @@ export function readSkillFile(
 ): string {
   const raw = fs.readFileSync(path.join(sourceDir, rel), "utf8");
   if (!isParamTemplatedSkillFile(rel)) return raw;
-  return renderFragmentText(ctx, raw, `skill source ${path.posix.join(source, rel)}`);
+  if (ctx.fragment.params === undefined) return raw;
+  const label = `skill source ${path.posix.join(source, rel)}`;
+  const frontmatter = FRONTMATTER_RE.exec(raw)?.[0] ?? "";
+  if (PARAM_TAG_RE.test(frontmatter)) {
+    throw new RenderError(
+      `fragment '${ctx.fragment.id}' ${label}: params are not allowed in skill frontmatter`,
+    );
+  }
+  return frontmatter + renderFragmentText(ctx, raw.slice(frontmatter.length), label);
 }
 
 export const skillRenderer: CapabilityRenderer = {
