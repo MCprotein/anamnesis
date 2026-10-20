@@ -16,7 +16,14 @@ cd "$PROJECT_ROOT"
 # Only act inside a git repo.
 git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
 
-dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') || dirty=0
+# Exclude anamnesis' local-private Work state; it is never committed and
+# changes on every Work command.
+dirty=$(git status --porcelain -- \
+  ':(top,glob,exclude)**/.anamnesis/work-units/**' \
+  ':(top,glob,exclude)**/.anamnesis/work-inputs/**' \
+  ':(top,glob,exclude)**/.anamnesis/work-cursors/**' \
+  ':(top,glob,exclude)**/.anamnesis/work-prompt-stage/**' \
+  2>/dev/null | wc -l | tr -d ' ') || dirty=0
 
 # Threshold tuned to avoid noise on small WIPs but flag accumulation.
 THRESHOLD=8

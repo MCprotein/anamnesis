@@ -7,6 +7,9 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Base fragment v32: startup and subagent-preamble ontology pointers skip linked Git worktrees inside the project (a directory whose `.git` file points into `.../worktrees/<name>`, for example `.claude/worktrees/<name>`). Those copies of another checkout's ontology made 36 of 46 preamble pointers in one project; submodules stay included. The Claude `inject-ontology.sh`, the Codex `session-start.mjs`, and `context subagent-preamble` apply the same rule.
+- Base fragment v32: the Stop handoff reminder and the uncommitted-change note ignore anamnesis' local-private Work state (`.anamnesis/work-units/`, `work-inputs/`, `work-cursors/`, `work-prompt-stage/`). Each Work ledger append changed the dirty fingerprint, so the reminder repeated on every Stop while the real uncommitted work stayed the same.
+
 - `work transition --batch <file>` applies several evidence-only requirement transitions with one lock and one expected head. The whole batch is validated before any write, and one invalid transition rejects all of them; an exact retry after a crash appends only the missing tail. `work evidence plan --input <gh-json>` builds that batch draft from PR JSON the agent fetched (open → `in_progress`, merged → `implemented_unverified`, closed → skipped) with no network access, no `verified` claims, no status downgrades, and deterministic event IDs so a repeated poll plans nothing new.
 
 - Work contracts accept an optional `constraints` list of must/never rules with user source provenance (`id`, `kind`, `text`, `source_event_ids`, optional `expires`, `promote_candidate`, `supersedes`). Constraints are append-only like requirements, never count toward progress, and appear in `work status`, `work brief`, and the hook briefing with a count, a hash, and the changed IDs. A contract with constraints uses `anamnesis.work-contract-event.v2`; contracts without constraints keep v1 and their existing hashes.

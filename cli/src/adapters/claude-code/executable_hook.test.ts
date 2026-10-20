@@ -1220,6 +1220,69 @@ describe("executableHookRenderer (claude-code)", () => {
     );
   });
 
+  it("ignores anamnesis Work state when fingerprinting handoff reminders", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    expect(
+      spawnSync("git", ["init"], { cwd: projectRoot, encoding: "utf8" }).status,
+    ).toBe(0);
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/handoff-reminder.sh",
+    );
+    const runHook = () =>
+      spawnSync("bash", [hook], {
+        cwd: projectRoot,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+        encoding: "utf8",
+      });
+    const ledger = path.join(
+      projectRoot,
+      ".anamnesis/work-units/wu_x/ledger.jsonl",
+    );
+    fs.mkdirSync(path.dirname(ledger), { recursive: true });
+    fs.mkdirSync(path.join(projectRoot, ".anamnesis/work-cursors"), {
+      recursive: true,
+    });
+    fs.writeFileSync(ledger, "{}\n", "utf8");
+    fs.writeFileSync(
+      path.join(projectRoot, ".anamnesis/work-cursors/c.yaml"),
+      "x\n",
+      "utf8",
+    );
+
+    // Work state alone is not uncommitted work.
+    const stateOnly = runHook();
+    expect(stateOnly.status).toBe(0);
+    expect(stateOnly.stdout).toBe("");
+
+    fs.writeFileSync(path.join(projectRoot, "real.txt"), "dirty\n", "utf8");
+    const first = runHook();
+    expect(JSON.parse(first.stdout).systemMessage).toContain(
+      "1 uncommitted change(s) are newer than the latest handoff",
+    );
+
+    // A ledger append between Stop events keeps the same dirty fingerprint.
+    for (let i = 0; i < 3; i += 1) {
+      fs.appendFileSync(ledger, `{"n":${i}}\n`, "utf8");
+      const again = runHook();
+      expect(again.status).toBe(0);
+      expect(again.stdout).toBe("");
+    }
+
+    const uncommitted = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/remind-uncommitted.sh")],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+        encoding: "utf8",
+      },
+    );
+    expect(uncommitted.status).toBe(0);
+    expect(uncommitted.stdout).toBe("");
+  });
+
   it("keeps plain stderr reminders for the Codex bridges", () => {
     if (process.platform === "win32") return;
 
