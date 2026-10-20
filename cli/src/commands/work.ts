@@ -1018,6 +1018,117 @@ export function planWorkEvidence(input: WorkEvidencePlanInput): WorkEvidencePlan
 	});
 }
 
+export interface WorkSubagentContextInput extends WorkReadInput {
+	lane_id?: string;
+}
+
+/** Bounded Work facts a delegated worker needs; never raw prompt bodies. */
+export interface WorkSubagentContext {
+	work_id: string;
+	title: string | null;
+	completion_contract: string | null;
+	contract_revision: number;
+	contract_hash: string | null;
+	lifecycle: WorkProjection["lifecycle"];
+	constraints: Array<{
+		id: string;
+		kind: "must" | "never";
+		text: string;
+		source_event_ids: string[];
+		expires?: string;
+	}>;
+	constraints_hash: string | null;
+	lane: null | {
+		lane_id: string;
+		assessment_id: string;
+		assessment_revision: number;
+		assessment_stale: boolean;
+		decision: "parallel" | "solo" | "not_parallelizable";
+		requirements: Array<{ id: string; summary: string; status: string }>;
+		repository_scopes: Array<{ kind: string; path?: string; access: string }>;
+		external_effects: Array<{
+			resource_kind: string;
+			resource_ref: string;
+			access: string;
+			irreversible: boolean;
+		}>;
+		depends_on: string[];
+		other_lane_ids: string[];
+	};
+}
+
+/**
+ * Read-only: the Work contract slice for one worker lane. The lane comes
+ * from the latest `work delegation assess` record; a lane recorded against
+ * an older contract revision is returned with `assessment_stale: true`.
+ */
+export function workSubagentContext(
+	input: WorkSubagentContextInput,
+): WorkSubagentContext {
+	assertSafeId(input.work_id, "work ID");
+	const locations = workLocations(input);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const projection = foldWorkProjection(ledger.records);
+	if (projection.work_id !== input.work_id || !projection.contract_hash)
+		throw new Error(`Work ${input.work_id} has no typed contract`);
+	const briefing = buildWorkBriefingSnapshot({ projection });
+	let lane: WorkSubagentContext["lane"] = null;
+	if (input.lane_id !== undefined) {
+		const assessment = latestParallelismAssessment(ledger.records);
+		if (!assessment)
+			throw new Error(
+				`Work ${input.work_id} has no lane assessment; record one with work delegation assess`,
+			);
+		const found = assessment.payload.lanes.find(
+			(item) => item.lane_id === input.lane_id,
+		);
+		if (!found)
+			throw new Error(
+				`lane ${input.lane_id} is not in assessment ${assessment.payload.assessment_id}`,
+			);
+		const requirements = new Map(
+			projection.requirements.map((item) => [item.id, item]),
+		);
+		lane = {
+			lane_id: found.lane_id,
+			assessment_id: assessment.payload.assessment_id,
+			assessment_revision: assessment.payload.basis_contract_revision,
+			assessment_stale:
+				assessment.payload.basis_contract_revision !==
+				projection.contract_revision,
+			decision: assessment.payload.decision,
+			requirements: found.requirement_ids.map((id) => ({
+				id,
+				summary: requirements.get(id)?.summary ?? "(not in current contract)",
+				status: requirements.get(id)?.status ?? "unknown",
+			})),
+			repository_scopes: found.repository_scopes.map((scope) => ({ ...scope })),
+			external_effects: found.external_effects.map((effect) => ({ ...effect })),
+			depends_on: [...found.depends_on],
+			other_lane_ids: assessment.payload.lanes
+				.map((item) => item.lane_id)
+				.filter((id) => id !== found.lane_id),
+		};
+	}
+	return {
+		work_id: projection.work_id,
+		title: projection.title,
+		completion_contract: projection.completion_contract,
+		contract_revision: projection.contract_revision,
+		contract_hash: projection.contract_hash,
+		lifecycle: projection.lifecycle,
+		constraints: (briefing.constraints?.active ?? []).map((item) => ({
+			id: item.id,
+			kind: item.kind,
+			text: item.text,
+			source_event_ids: item.source_event_ids,
+			...(item.expires === undefined ? {} : { expires: item.expires }),
+		})),
+		constraints_hash: briefing.constraints?.hash ?? null,
+		lane,
+	};
+}
+
 export function closeWork(input: WorkCloseInput): WorkMutationResult {
 	assertSafeId(input.work_id, "work ID");
 	const draft = parseSingleWorkDraft(

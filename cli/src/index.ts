@@ -899,6 +899,9 @@ Flags (context subagent-preamble):
   --json                        Print structured JSON
   --write                       Write .anamnesis/context/subagent-preamble.md
   --output <path>               Override preamble output path
+  --work <id>                   Add the Work contract and every active constraint
+  --lane <lane-id>              With --work: add the lane's requirements, write
+                                scopes, external effects, and dependencies
 
 Flags (handoff draft):
   --project-root <path>         Target directory (default: cwd)
@@ -4799,7 +4802,7 @@ async function main(argv: string[]): Promise<number> {
           `       anamnesis context resume [--json] [--write] [--output=<path>]`,
         );
         console.error(
-          `       anamnesis context subagent-preamble [--json] [--write] [--output=<path>]`,
+          `       anamnesis context subagent-preamble [--work <id> [--lane <lane-id>]] [--json] [--write] [--output=<path>]`,
         );
         return 1;
       }
@@ -4874,6 +4877,9 @@ async function main(argv: string[]): Promise<number> {
               (flags["project-root"] as string | undefined) ?? process.cwd(),
             write: flags["write"] === true,
             outputPath: flags["output"] as string | undefined,
+            workId: flags["work"] as string | undefined,
+            laneId: flags["lane"] as string | undefined,
+            stateRoot: flags["state-root"] as string | undefined,
           });
           if (flags["json"] === true) {
             console.log(JSON.stringify(result, null, 2));

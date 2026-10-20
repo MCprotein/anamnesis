@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { readEvidenceSummary } from "../core/evidence.js";
 import {
@@ -18,6 +19,7 @@ import {
   sessionContextBudget,
   type SessionContextBudgetSource,
 } from "./session_context_budget.js";
+import { type WorkSubagentContext, workSubagentContext } from "./work.js";
 
 export const CONTEXT_RESUME_SCHEMA_VERSION = "anamnesis.context_resume.v1";
 export const CONTEXT_RESUME_PATH = ".anamnesis/context/resume.md";
@@ -81,6 +83,12 @@ export interface ContextSubagentPreambleResult {
   preamble: string;
   startupSources: SessionContextBudgetSource[];
   agentControlSources: string[];
+  /** Present with `--work`: the Work slice for this worker. */
+  work?: WorkSubagentContext;
+  /** AGENTS.md region holding team rules, when the team fragment is installed. */
+  teamRulesSource: string | null;
+  /** User-global instruction files that exist (paths only, never content). */
+  globalInstructionSources: string[];
   resume: ContextResumeResult;
   summary: {
     lines: number;
@@ -89,6 +97,7 @@ export interface ContextSubagentPreambleResult {
     startupSourcePointers: number;
     agentControlSources: number;
     resumeTokens: number;
+    workConstraints: number;
   };
   writtenPath?: string;
 }
@@ -98,6 +107,10 @@ export interface ContextSubagentPreambleOptions {
   write?: boolean;
   outputPath?: string;
   now?: () => Date;
+  /** Add the Work contract slice: constraints and, with laneId, the lane. */
+  workId?: string;
+  laneId?: string;
+  stateRoot?: string;
 }
 
 export function contextResume(opts: ContextResumeOptions): ContextResumeResult {
@@ -203,17 +216,34 @@ export function contextSubagentPreamble(
     now: stableNow,
   });
   const agentControlSources = agentControlSourcePaths(projectRoot);
+  if (opts.laneId !== undefined && opts.workId === undefined)
+    throw new Error("--lane requires --work");
+  const work =
+    opts.workId === undefined
+      ? undefined
+      : workSubagentContext({
+          project_root: projectRoot,
+          state_root: opts.stateRoot,
+          work_id: opts.workId,
+          lane_id: opts.laneId,
+        });
+  const teamRulesSource = teamRulesRegion(projectRoot);
+  const globalInstructionSources = globalInstructionPaths();
   const preamble = renderSubagentPreamble({
     generatedAt,
     agentControlSources,
     startupSources: budget.sources,
     resume,
+    work,
+    teamRulesSource,
+    globalInstructionSources,
   });
   const summary = summarizePreamble({
     preamble,
     startupSources: budget.sources,
     agentControlSources,
     resume,
+    workConstraints: work?.constraints.length ?? 0,
   });
 
   let writtenPath: string | undefined;
@@ -232,6 +262,9 @@ export function contextSubagentPreamble(
     preamble,
     startupSources: budget.sources,
     agentControlSources,
+    ...(work ? { work } : {}),
+    teamRulesSource,
+    globalInstructionSources,
     resume,
     summary,
     writtenPath,
@@ -294,6 +327,9 @@ function renderSubagentPreamble(input: {
   agentControlSources: string[];
   startupSources: SessionContextBudgetSource[];
   resume: ContextResumeResult;
+  work?: WorkSubagentContext;
+  teamRulesSource: string | null;
+  globalInstructionSources: string[];
 }): string {
   const lines = [
     "# anamnesis subagent preamble",
@@ -309,6 +345,21 @@ function renderSubagentPreamble(input: {
     "## required_agent_control_sources",
     ...listOrNone(input.agentControlSources),
     "",
+    "## team_rules",
+    input.teamRulesSource
+      ? `- ${input.teamRulesSource} (read before acting; it is the project's team rule set)`
+      : "- (none; no team rules region in AGENTS.md)",
+    "",
+    "## global_instruction_sources",
+    ...(input.globalInstructionSources.length > 0
+      ? [
+          ...input.globalInstructionSources.map(
+            (item) => `- ${item} (exists; the user's own rules also apply to you)`,
+          ),
+        ]
+      : ["- (none found)"]),
+    "",
+    ...(input.work ? renderWorkSection(input.work) : []),
     "## startup_source_pointers",
     ...listOrNone(input.startupSources.map(sourcePointerLine)),
     "",
@@ -324,6 +375,81 @@ function renderSubagentPreamble(input: {
   return lines.join("\n");
 }
 
+function renderWorkSection(work: WorkSubagentContext): string[] {
+  const lines = [
+    "## work_contract",
+    `- work_id: ${work.work_id}`,
+    `- contract_revision: ${work.contract_revision} (${work.contract_hash ?? "no hash"})`,
+    `- lifecycle: ${work.lifecycle}`,
+    `- title: ${cleanText(work.title ?? "(none)", 300)}`,
+    `- completion_contract: ${cleanText(work.completion_contract ?? "(none)", 700)}`,
+    `- authoritative status: anamnesis work status --work ${work.work_id} --json`,
+    "",
+    "## work_constraints",
+    work.constraints.length > 0
+      ? `- ${work.constraints.length} active, hash ${work.constraints_hash}. Every rule applies to you; none is a progress item.`
+      : "- (none recorded)",
+    ...work.constraints.map(
+      (item) =>
+        `- ${item.id} [${item.kind}] ${cleanText(item.text, 600)}${item.expires ? ` (expires: ${cleanText(item.expires, 120)})` : ""} (source: ${item.source_event_ids.join(", ")})`,
+    ),
+  ];
+  if (work.lane) {
+    const lane = work.lane;
+    lines.push(
+      "",
+      "## lane",
+      `- lane_id: ${lane.lane_id} (assessment ${lane.assessment_id}, decision ${lane.decision})`,
+      ...(lane.assessment_stale
+        ? [
+            `- WARNING: assessed at contract revision ${lane.assessment_revision}, current is ${work.contract_revision}. Ask the leader to reassess before you rely on this scope.`,
+          ]
+        : []),
+      "- requirements:",
+      ...lane.requirements.map(
+        (item) => `  - ${item.id} [${item.status}] ${cleanText(item.summary, 300)}`,
+      ),
+      "- repository_scopes (write only inside write scopes):",
+      ...lane.repository_scopes.map(
+        (scope) => `  - ${scope.access} ${scope.kind}${scope.path ? ` ${scope.path}` : ""}`,
+      ),
+      "- external_effects:",
+      ...(lane.external_effects.length > 0
+        ? lane.external_effects.map(
+            (effect) =>
+              `  - ${effect.access} ${effect.resource_kind} ${effect.resource_ref}${effect.irreversible ? " (irreversible)" : ""}`,
+          )
+        : ["  - (none allowed)"]),
+      `- depends_on: ${lane.depends_on.join(", ") || "(none)"}`,
+      `- other lanes (do not change their scope): ${lane.other_lane_ids.join(", ") || "(none)"}`,
+      "- verification owner: leader. Report evidence; do not mark requirements verified.",
+    );
+  }
+  lines.push("");
+  return lines;
+}
+
+function teamRulesRegion(projectRoot: string): string | null {
+  const agents = path.join(projectRoot, "AGENTS.md");
+  try {
+    const content = fs.readFileSync(agents, "utf8");
+    const match = /<!-- anamnesis:region id=(team[A-Za-z0-9_-]*) /u.exec(content);
+    return match ? `AGENTS.md#${match[1]}` : null;
+  } catch {
+    return null;
+  }
+}
+
+function globalInstructionPaths(): string[] {
+  const home = os.homedir();
+  return [
+    [".claude", "CLAUDE.md"],
+    [".codex", "AGENTS.md"],
+  ]
+    .filter((parts) => fs.existsSync(path.join(home, ...parts)))
+    .map((parts) => `~/${parts.join("/")}`);
+}
+
 function listOrNone(items: readonly string[]): string[] {
   return items.length > 0 ? items.map((item) => `- ${item}`) : ["- (none)"];
 }
@@ -333,6 +459,7 @@ function summarizePreamble(input: {
   startupSources: readonly SessionContextBudgetSource[];
   agentControlSources: readonly string[];
   resume: ContextResumeResult;
+  workConstraints: number;
 }): ContextSubagentPreambleResult["summary"] {
   const lines = input.preamble.split(/\r?\n/).length;
   const chars = input.preamble.length;
@@ -343,6 +470,7 @@ function summarizePreamble(input: {
     startupSourcePointers: input.startupSources.length,
     agentControlSources: input.agentControlSources.length,
     resumeTokens: input.resume.summary.estimatedTokens,
+    workConstraints: input.workConstraints,
   };
 }
 

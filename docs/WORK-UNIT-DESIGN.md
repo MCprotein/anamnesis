@@ -749,7 +749,13 @@ an evidenced user waiver.
 Delegated children are not assumed to receive SessionStart hooks or the
 leader's entire conversation. The leader must pass a bounded contract containing
 the Work ID/revision, assigned requirement IDs, invariants, scope and
-side-effect exclusions, expected artifact/evidence, and source pointers. A
+side-effect exclusions, expected artifact/evidence, and source pointers.
+`anamnesis context subagent-preamble --work <id> --lane <lane-id>` prints that
+slice from the ledger (implemented): the contract revision and hash, every
+active constraint with its source event IDs, and the lane's requirement IDs,
+repository scopes, external effects, and dependencies from the latest
+assessment. A lane from an older contract revision is marked stale. It adds
+no prompt body and records no worker lifecycle. A
 delegation result never advances progress by itself; the leader integrates it
 and records independent verification evidence first. Existing parallel user
 sessions are not discovered or commandeered as a worker pool.

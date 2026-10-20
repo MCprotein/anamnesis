@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- `context subagent-preamble --work <id> [--lane <lane-id>]` adds the Work slice for a delegated worker: contract revision and hash, every active constraint with its source event IDs, and the lane's requirements, repository scopes, external effects, dependencies, and other lane IDs from the latest `work delegation assess` record. A lane assessed against an older contract revision carries a warning. The preamble also names an AGENTS.md `team` rules region when present and lists the user-global instruction files that exist, by path only. It never includes prompt bodies.
+
 - Base fragment v32: startup and subagent-preamble ontology pointers skip linked Git worktrees inside the project (a directory whose `.git` file points into `.../worktrees/<name>`, for example `.claude/worktrees/<name>`). Those copies of another checkout's ontology made 36 of 46 preamble pointers in one project; submodules stay included. The Claude `inject-ontology.sh`, the Codex `session-start.mjs`, and `context subagent-preamble` apply the same rule.
 - Base fragment v32: the Stop handoff reminder and the uncommitted-change note ignore anamnesis' local-private Work state (`.anamnesis/work-units/`, `work-inputs/`, `work-cursors/`, `work-prompt-stage/`). Each Work ledger append changed the dirty fingerprint, so the reminder repeated on every Stop while the real uncommitted work stayed the same.
 
