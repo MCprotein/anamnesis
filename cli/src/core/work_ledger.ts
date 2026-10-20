@@ -29,12 +29,42 @@ export type CanonicalTypedWorkEventKind =
 export type CanonicalTypedWorkEventSchema =
   (typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS)[CanonicalTypedWorkEventKind];
 
+/**
+ * Later schema revisions a kind also accepts. The pair registry above keeps
+ * the original discriminator; v1 contract records stay byte-identical, and
+ * v2 contract records are written only when the contract has constraints.
+ */
+export const WORK_TYPED_EVENT_KIND_ADDITIONAL_SCHEMAS: Partial<
+  Record<CanonicalTypedWorkEventKind, readonly string[]>
+> = {
+  work_created: ["anamnesis.work-contract-event.v2"],
+  work_contract_revised: ["anamnesis.work-contract-event.v2"],
+};
+
+/** True when `schema` is an accepted discriminator for canonical `kind`. */
+export function isCanonicalTypedWorkSchema(
+  kind: string,
+  schema: unknown,
+): boolean {
+  if (!Object.hasOwn(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS, kind)) return false;
+  const typedKind = kind as CanonicalTypedWorkEventKind;
+  return (
+    schema === WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS[typedKind] ||
+    (WORK_TYPED_EVENT_KIND_ADDITIONAL_SCHEMAS[typedKind] ?? []).includes(
+      String(schema),
+    )
+  );
+}
+
 const TYPED_WORK_KINDS = new Set<string>(
   Object.keys(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS),
 );
-const TYPED_WORK_SCHEMAS = new Set<string>(
-  Object.values(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS),
-);
+/** Every typed Work schema discriminator, including later revisions. */
+export const WORK_TYPED_EVENT_SCHEMAS: ReadonlySet<string> = new Set<string>([
+  ...Object.values(WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS),
+  ...Object.values(WORK_TYPED_EVENT_KIND_ADDITIONAL_SCHEMAS).flat(),
+]);
+const TYPED_WORK_SCHEMAS = WORK_TYPED_EVENT_SCHEMAS;
 const EXECUTION_EVIDENCE_KINDS = new Set<string>([
   "work_review_requested",
   "work_review_attempt_recorded",

@@ -110,7 +110,18 @@ file_fingerprint() {
   printf '%s:%s:%s\n' "${size:-unknown}" "${mtime:-unknown}" "${hash:-unknown}"
 }
 
-dirty_status=$(git status --porcelain=v1 --untracked-files=all 2>/dev/null || true)
+# anamnesis' own local-private Work state (ledger, sources, cursors, prompt
+# stage) changes on every Work command and is never committed. Counting it
+# made the fingerprint change after each ledger append, so the reminder
+# repeated with no real WIP change. Exclude it everywhere below.
+work_state_excludes=(
+  ':(top,glob,exclude)**/.anamnesis/work-units/**'
+  ':(top,glob,exclude)**/.anamnesis/work-inputs/**'
+  ':(top,glob,exclude)**/.anamnesis/work-cursors/**'
+  ':(top,glob,exclude)**/.anamnesis/work-prompt-stage/**'
+)
+
+dirty_status=$(git status --porcelain=v1 --untracked-files=all -- "${work_state_excludes[@]}" 2>/dev/null || true)
 dirty_count=$(printf '%s\n' "$dirty_status" | sed '/^$/d' | wc -l | tr -d ' ')
 if (( dirty_count == 0 )); then
   write_state "clean:$(git rev-parse HEAD 2>/dev/null || true)"
@@ -148,9 +159,9 @@ while IFS= read -r file; do
   fi
 done < <(
   {
-    git diff --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
-    git diff --cached --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
-    git ls-files --others --exclude-standard 2>/dev/null || true
+    git diff --name-only --diff-filter=ACMRTUXB -- "${work_state_excludes[@]}" 2>/dev/null || true
+    git diff --cached --name-only --diff-filter=ACMRTUXB -- "${work_state_excludes[@]}" 2>/dev/null || true
+    git ls-files --others --exclude-standard -- "${work_state_excludes[@]}" 2>/dev/null || true
   } | sort -u
 )
 
@@ -167,14 +178,14 @@ dirty_fingerprint=$(
     printf 'head:%s\n' "$(git rev-parse HEAD 2>/dev/null || true)"
     printf 'status:\n%s\n' "$dirty_status"
     printf 'worktree-diff:\n'
-    git diff --binary --no-ext-diff 2>/dev/null || true
+    git diff --binary --no-ext-diff -- "${work_state_excludes[@]}" 2>/dev/null || true
     printf 'cached-diff:\n'
-    git diff --cached --binary --no-ext-diff 2>/dev/null || true
+    git diff --cached --binary --no-ext-diff -- "${work_state_excludes[@]}" 2>/dev/null || true
     printf 'untracked:\n'
     while IFS= read -r file; do
       [[ -f "$file" ]] || continue
       printf '%s:%s\n' "$file" "$(file_fingerprint "$file")"
-    done < <(git ls-files --others --exclude-standard 2>/dev/null || true)
+    done < <(git ls-files --others --exclude-standard -- "${work_state_excludes[@]}" 2>/dev/null || true)
   } | git hash-object --stdin 2>/dev/null || true
 )
 

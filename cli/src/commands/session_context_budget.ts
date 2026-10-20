@@ -11,6 +11,7 @@ import {
   handoffPolicyToLifecycleThresholds,
   resolveHandoffRetentionPolicy,
 } from "../core/handoff_policy.js";
+import { isLinkedGitWorktreeRoot } from "../util/linked_worktree.js";
 
 export const SESSION_CONTEXT_BUDGET_SCHEMA_VERSION =
   "anamnesis.session_context_budget.v1";
@@ -143,6 +144,10 @@ function ontologySourcePaths(projectRoot: string): string[] {
       const abs = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         if (SKIP_DIRS.has(entry.name)) continue;
+        // A linked worktree inside the project (for example
+        // .claude/worktrees/<name>) holds copies of another checkout's
+        // ontology; it is not a sub-scope of this project.
+        if (isLinkedGitWorktreeRoot(abs)) continue;
         visit(abs);
         continue;
       }

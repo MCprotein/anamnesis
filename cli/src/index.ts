@@ -210,6 +210,8 @@ import {
   statusWork,
   switchWork,
   transitionWork,
+  transitionWorkBatch,
+  planWorkEvidence,
   type WorkBriefResult,
   type WorkCloseInput,
   type WorkEvidenceMutationInput,
@@ -561,6 +563,17 @@ For a changed requirement, keep the old definition and append a new one:
     supersedes: [r1]
 Do not remove r1, rewrite its summary, or use superseded_by. Unrelated new
 requirements are appended without supersedes; unchanged requirements stay intact.
+Work-wide must/never rules from the user go in an optional constraints list,
+not in requirements (constraints never count toward progress):
+constraints:
+  - id: c1
+    kind: never            # must | never
+    text: The rule in one sentence
+    source_event_ids: ["@staged"]
+    expires: 2026-10-23    # optional date or condition
+    promote_candidate: true  # optional: worth keeping as a project rule
+Constraints follow the requirement rules: keep every earlier one unchanged and
+replace one only with a new constraint that lists it in supersedes.
 Use classification: same_unit, and supply the exact current authority from status:
   anamnesis work prompt allocate-same --stage <token> --work <id> --draft <file>
     --expected-head <ledger_head> --expected-contract-revision <contract_revision>
@@ -590,6 +603,18 @@ Progress: a transition draft contains requirement_id, status and evidence_refs.
 Verified requires real evidence; tool completion alone is not verification.
   anamnesis work transition --work <id> --event-id <unique-id> --occurred-at <ISO>
     --expected-head <ledger_head> --draft <file>
+Several evidence-only transitions (no waivers) take one batch file, one lock and
+one expected head; one invalid transition rejects the whole batch:
+  anamnesis work transition --work <id> --batch <file> --expected-head <ledger_head>
+    --occurred-at <ISO>
+  batch file: schema_version: anamnesis.work-transition-batch.v1, work_id, and
+  transitions: [{event_id, requirement_id, status, evidence_refs}]
+A batch draft from PR JSON you fetched yourself (no network; open -> in_progress,
+merged -> implemented_unverified, closed -> skipped, never verified):
+  gh pr list --state all --limit 500 --json number,url,state,body,headRefOid,mergedAt,mergeCommit,isDraft > prs.json
+  anamnesis work evidence plan --work <id> --input prs.json [--marker Work-Requirements]
+    [--output batch.json]
+  PR body line: "Work-Requirements: r1, r2 — note". Review the draft before applying.
 
 Use anamnesis --help --all for other Work commands and source-input flags.
 `);
@@ -874,6 +899,9 @@ Flags (context subagent-preamble):
   --json                        Print structured JSON
   --write                       Write .anamnesis/context/subagent-preamble.md
   --output <path>               Override preamble output path
+  --work <id>                   Add the Work contract and every active constraint
+  --lane <lane-id>              With --work: add the lane's requirements, write
+                                scopes, external effects, and dependencies
 
 Flags (handoff draft):
   --project-root <path>         Target directory (default: cwd)
@@ -3606,6 +3634,18 @@ function reportWorkStatus(
 			"  policy drift: current project policy differs; frozen Work policy retained",
 		);
   }
+	const constraints = projection.constraints ?? [];
+	if (constraints.length > 0) {
+		console.log("  constraints (rules; not counted in progress):");
+		for (const constraint of constraints) {
+			if (!opts.verbose && constraint.superseded_by !== undefined) continue;
+			printWrapped(
+				ui,
+				`- ${constraint.id} [${constraint.kind}] — ${constraint.text}${constraint.expires ? ` (expires: ${constraint.expires})` : ""}${constraint.superseded_by ? ` (superseded by ${constraint.superseded_by})` : ""}`,
+				{ indent: 4 },
+			);
+		}
+	}
 	const visibleRequirements = opts.verbose
 		? projection.requirements
 		: projection.requirements.filter(
@@ -4189,6 +4229,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "create" &&
         sub !== "amend" &&
         sub !== "transition" &&
+        sub !== "evidence" &&
         sub !== "close" &&
 				sub !== "review" &&
 				sub !== "delegation" &&
@@ -4469,6 +4510,86 @@ async function main(argv: string[]): Promise<number> {
 					return result.allowed ? 0 : 1;
 				}
 
+        if (sub === "evidence") {
+          if (positional[1] !== "plan")
+            throw new Error("work evidence requires plan");
+          const projectRoot =
+            optionalWorkFlag(flags, "project-root") ?? process.cwd();
+          const plan = planWorkEvidence({
+            project_root: projectRoot,
+            state_root: optionalWorkFlag(flags, "state-root"),
+            work_id: requiredWorkFlag(flags, "work"),
+            pull_requests_json: fs.readFileSync(
+              path.resolve(projectRoot, requiredWorkFlag(flags, "input")),
+            ),
+            marker: optionalWorkFlag(flags, "marker"),
+          });
+          const output = optionalWorkFlag(flags, "output");
+          if (output && plan.batch) {
+            fs.writeFileSync(
+              path.resolve(projectRoot, output),
+              `${JSON.stringify(plan.batch, null, 2)}\n`,
+              { encoding: "utf8", flag: "wx" },
+            );
+          }
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(plan, null, 2)}\n`);
+          } else {
+            console.log(
+              `Work ${plan.work_id} evidence plan: ${plan.batch?.transitions.length ?? 0} transition(s), ${plan.skipped.length} skipped, ${plan.unknown_requirement_ids.length} unknown requirement ID(s)`,
+            );
+            for (const item of plan.batch?.transitions ?? [])
+              console.log(`  ${item.requirement_id} -> ${item.status} (${item.event_id})`);
+            console.log(`  expected_head: ${plan.expected_head ?? "null"}`);
+            if (output)
+              console.log(
+                plan.batch
+                  ? `  batch draft written: ${output}`
+                  : "  no transitions; no batch draft written",
+              );
+          }
+          return 0;
+        }
+
+        if (sub === "transition" && flags.batch !== undefined) {
+          for (const forbidden of [
+            "draft",
+            "event-id",
+            "source-file",
+            "source-stdin",
+            "source-event-id",
+          ]) {
+            if (flags[forbidden] !== undefined)
+              throw new Error(
+                `work transition --batch does not accept --${forbidden}`,
+              );
+          }
+          const projectRoot =
+            optionalWorkFlag(flags, "project-root") ?? process.cwd();
+          const result = transitionWorkBatch({
+            project_root: projectRoot,
+            state_root: optionalWorkFlag(flags, "state-root"),
+            work_id: requiredWorkFlag(flags, "work"),
+            occurred_at: workTimestamp(flags, true),
+            expected_head: requiredWorkFlag(flags, "expected-head"),
+            draft: fs.readFileSync(
+              path.resolve(projectRoot, requiredWorkFlag(flags, "batch")),
+            ),
+          });
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+          } else {
+            console.log(
+              `Work ${result.work_id}: ${result.appended_count} transition(s) appended, ${result.idempotent_count} already committed`,
+            );
+            console.log(`  ledger_head: ${result.ledger_head}`);
+            console.log(
+              `  progress: ${result.projection.progress.percent}% (${result.projection.progress.verified}/${result.projection.progress.applicable} verified)`,
+            );
+          }
+          return 0;
+        }
+
         if (sub === "create" || sub === "amend" || sub === "transition") {
           const input = workMutationInput(flags, sub);
           const result =
@@ -4681,7 +4802,7 @@ async function main(argv: string[]): Promise<number> {
           `       anamnesis context resume [--json] [--write] [--output=<path>]`,
         );
         console.error(
-          `       anamnesis context subagent-preamble [--json] [--write] [--output=<path>]`,
+          `       anamnesis context subagent-preamble [--work <id> [--lane <lane-id>]] [--json] [--write] [--output=<path>]`,
         );
         return 1;
       }
@@ -4756,6 +4877,9 @@ async function main(argv: string[]): Promise<number> {
               (flags["project-root"] as string | undefined) ?? process.cwd(),
             write: flags["write"] === true,
             outputPath: flags["output"] as string | undefined,
+            workId: flags["work"] as string | undefined,
+            laneId: flags["lane"] as string | undefined,
+            stateRoot: flags["state-root"] as string | undefined,
           });
           if (flags["json"] === true) {
             console.log(JSON.stringify(result, null, 2));

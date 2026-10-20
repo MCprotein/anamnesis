@@ -29,10 +29,48 @@ PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 USER_ONTOLOGY="$PROJECT_ROOT/system_graph.yaml"
 SESSION_CONTEXT_MODE="${ANAMNESIS_SESSION_CONTEXT_MODE:-compact}"
 
+# Linked worktrees inside the project (for example .claude/worktrees/<name>)
+# hold copies of another checkout's ontology, not sub-scopes. Their .git is a
+# file whose gitdir ends in .../worktrees/<name> and holds a commondir file;
+# a submodule's gitdir (under modules/) has no commondir and stays included.
+linked_worktree_roots=()
+while IFS= read -r marker; do
+  gitdir_line=$(head -n 1 "$marker" 2>/dev/null || true)
+  # Trim like git: drop a trailing CR or spaces before matching.
+  gitdir_line="${gitdir_line%"${gitdir_line##*[![:space:]]}"}"
+  if [[ "$gitdir_line" =~ ^gitdir:[[:space:]]*(.*/worktrees/[^/]+)/?$ ]]; then
+    gitdir="${BASH_REMATCH[1]}"
+    case "$gitdir" in
+      /*) ;;
+      *) gitdir="${marker%/.git}/$gitdir" ;;
+    esac
+    if [[ -f "$gitdir/commondir" ]]; then
+      linked_worktree_roots+=("${marker%/.git}")
+    fi
+  fi
+done < <(
+  find "$PROJECT_ROOT" -mindepth 2 \
+    -type d \( -name node_modules -o -name .git -o -name dist -o -name build \
+       -o -name .next -o -name .venv -o -name venv -o -name __pycache__ \) -prune -o \
+    -name .git -type f -size -5k -print 2>/dev/null
+)
+
+in_linked_worktree() {
+  local file="$1"
+  local root=""
+  for root in ${linked_worktree_roots[@]+"${linked_worktree_roots[@]}"}; do
+    case "$file" in
+      "$root"/*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 # Walk all .anamnesis/ontology/*.yaml at any depth (multi-scope monorepo
-# support), skipping common heavy directories.
+# support), skipping common heavy directories and linked worktrees.
 ontology_files=()
 while IFS= read -r f; do
+  in_linked_worktree "$f" && continue
   ontology_files+=("$f")
 done < <(
   find "$PROJECT_ROOT" \

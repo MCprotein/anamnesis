@@ -242,6 +242,94 @@ neither clearly supersedes the other, both remain visible and the effective
 requirement becomes `blocked` or `needs_user` rather than letting the agent
 guess.
 
+### Batch transitions and PR evidence plans (implemented)
+
+`anamnesis work transition --batch <file>` applies several evidence-only
+progress transitions for one Work:
+
+```yaml
+schema_version: anamnesis.work-transition-batch.v1
+work_id: wu_01...
+transitions:
+  - event_id: t-r1-pr12
+    requirement_id: r1
+    status: implemented_unverified
+    evidence_refs: ["https://github.com/<owner>/<repo>/pull/12 MERGED ..."]
+```
+
+- One ledger lock and one `--expected-head` cover the whole batch. Every
+  transition is validated against the ledger and the earlier batch entries
+  before any byte is written. One invalid transition rejects the batch.
+- Waivers are excluded, because each waiver needs its own user source event.
+  A requirement appears at most once per batch.
+- The records are written with one write and one `fsync`. The ledger tail
+  rule still recovers a torn final record, so a crash can leave a committed
+  prefix of the batch. An exact retry with the same expected head finds that
+  prefix right after the head and appends only the rest. Unlike a single
+  transition, a batch retry is not idempotent once another event follows the
+  batch: it fails with a head conflict, and the caller rereads status.
+
+`anamnesis work evidence plan --work <id> --input <gh-json>` turns PR JSON
+that the agent already fetched (`gh pr list|view --json ...`) into a batch
+draft. It reads no network and writes no ledger record. `gh pr list` returns
+30 PRs by default, so pass `--limit` (the plan accepts up to 500).
+
+- A PR links requirements with a body line `<marker>: <ids> — <note>`. The
+  default marker is `Work-Requirements`; `--marker` selects another label.
+  `-` alone means "no requirement". Unknown IDs are reported, not guessed.
+- Status rule: `OPEN` → `in_progress`, `MERGED` → `implemented_unverified`,
+  `CLOSED` → skipped. The plan never proposes `verified`, never lowers a
+  status, and skips blocked, waived, or superseded requirements.
+- Event IDs derive from Work, requirement, PR URL, state, head, and merge
+  commit. A repeated poll over the same PR state therefore plans nothing new.
+- The agent reviews the draft and applies it with `transition --batch`. A
+  polling loop stays in the agent runtime; anamnesis adds no daemon.
+
+### Work constraints (implemented)
+
+A `constraint` is a must/never rule that applies to the whole Work, such as
+"do not run `git stash`" or "keep the old API contract". It is not a
+completion item. The contract stores it in an optional `constraints` list:
+
+```yaml
+constraints:
+  - id: c1
+    kind: never              # must | never
+    text: Agent summary of the rule
+    source_event_ids: [evt_01...]  # the user's source event (required)
+    expires: 2026-10-23      # optional date or condition sentence
+    promote_candidate: true  # optional: candidate for a project-level rule
+    supersedes: [c0]         # optional: replaces an earlier constraint
+```
+
+- Constraints follow the requirement lineage rules. A revision keeps every
+  earlier constraint with the same `kind`, `text`, `expires`,
+  `promote_candidate`, and `supersedes`. It may only add source events. A
+  replacement is a new constraint that lists the old ID in `supersedes`.
+- Constraint IDs are unique and do not reuse a requirement ID.
+- Constraints never enter the progress denominator, readiness, or close
+  checks.
+- A contract with at least one constraint uses the event discriminator
+  `anamnesis.work-contract-event.v2`. A contract without constraints keeps
+  `anamnesis.work-contract-event.v1`, the same payload, and the same contract
+  hash. Existing ledgers therefore fold to byte-identical contract and
+  projection hashes. A CLI older than this change rejects a v2 record with a
+  schema-discriminator error instead of silently dropping constraints.
+  Because constraints cannot be removed, the first constraint makes that
+  Work unreadable to older CLIs; upgrade every CLI and hook that shares the
+  ledger first.
+- The projection and briefing carry `constraints` only when the Work has
+  them. The briefing shows the active count, the superseded count, a hash of
+  the active set, the active list within a fixed budget, and the added or
+  superseded constraint IDs since the confirmed baseline. The hook briefing
+  lists active constraints within a fixed budget in both `compact` and
+  `full` detail; when the list does not fit, it says how many were omitted
+  and points to `work status`, which is the complete list.
+
+Rules that apply to many Works still belong in project policy. A constraint
+with `promote_candidate: true` marks a rule that an agent may later propose
+for that policy; anamnesis does not promote it automatically.
+
 The default user view is therefore two-pane in concept even when rendered as
 plain text:
 
@@ -670,7 +758,13 @@ an evidenced user waiver.
 Delegated children are not assumed to receive SessionStart hooks or the
 leader's entire conversation. The leader must pass a bounded contract containing
 the Work ID/revision, assigned requirement IDs, invariants, scope and
-side-effect exclusions, expected artifact/evidence, and source pointers. A
+side-effect exclusions, expected artifact/evidence, and source pointers.
+`anamnesis context subagent-preamble --work <id> --lane <lane-id>` prints that
+slice from the ledger (implemented): the contract revision and hash, every
+active constraint with its source event IDs, and the lane's requirement IDs,
+repository scopes, external effects, and dependencies from the latest
+assessment. A lane from an older contract revision is marked stale. It adds
+no prompt body and records no worker lifecycle. A
 delegation result never advances progress by itself; the leader integrates it
 and records independent verification evidence first. Existing parallel user
 sessions are not discovered or commandeered as a worker pool.

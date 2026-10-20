@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import {
   accessSync,
   constants,
+  lstatSync,
   readdirSync,
   readFileSync,
   statSync,
@@ -143,6 +144,29 @@ function isUnderOntologyDir(filePath) {
   return /\/\.anamnesis\/ontology\/[^/]+\.yaml$/.test(normalized);
 }
 
+function isLinkedWorktreeRoot(dir) {
+  const marker = join(dir, ".git");
+  let content;
+  try {
+    const stat = lstatSync(marker);
+    if (!stat.isFile() || stat.size > 4096) return false;
+    content = readFileSync(marker, "utf8");
+  } catch {
+    return false;
+  }
+  const match = /^gitdir:\s*(.+?)\s*$/mu.exec(content);
+  if (!match) return false;
+  const gitdir = resolve(dir, match[1]);
+  if (!/(?:^|[\\/])worktrees[\\/][^\\/]+[\\/]?$/u.test(gitdir)) return false;
+  // Only a linked worktree's private gitdir has `commondir`; a submodule's
+  // gitdir under modules/ does not.
+  try {
+    return statSync(join(gitdir, "commondir")).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function walkOntologyFiles(projectRoot) {
   const out = [];
   const stack = [projectRoot];
@@ -159,6 +183,10 @@ function walkOntologyFiles(projectRoot) {
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
         if (SKIP_DIRS.has(entry.name)) continue;
+        // Skip linked worktrees inside the project (for example
+        // .claude/worktrees/<name>): their ontology is a copy of another
+        // checkout. Submodules point into modules/ and stay included.
+        if (isLinkedWorktreeRoot(abs)) continue;
         stack.push(abs);
         continue;
       }

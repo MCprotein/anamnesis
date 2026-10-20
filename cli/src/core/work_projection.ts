@@ -6,13 +6,14 @@ import {
 	parseTypedWorkEvent,
 	validateWorkLedgerSemantics,
 	WORK_EXECUTION_LIMITS,
+	type WorkConstraintDefinition,
 	type WorkDelegationProvider,
 	type WorkInstanceRef,
 	type WorkReviewProvider,
 } from "./work_contract.js";
 import {
 	readWorkLedger,
-	WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS,
+	isCanonicalTypedWorkSchema,
 	type WorkLedgerRecord,
 	withWorkLedgerLock,
 } from "./work_ledger.js";
@@ -41,6 +42,22 @@ export interface ProjectedRequirement {
 	weight?: number;
 	superseded_by?: string;
 	updated_at: string;
+}
+
+/**
+ * A must/never Work constraint in the current view. Constraints are not
+ * requirements: they have no status and never enter `progress`.
+ */
+export interface ProjectedConstraint {
+	id: string;
+	kind: "must" | "never";
+	text: string;
+	source_event_ids: string[];
+	expires?: string;
+	promote_candidate?: boolean;
+	supersedes?: string[];
+	superseded_by?: string;
+	added_revision: number;
 }
 
 export interface WorkProjectionProgress {
@@ -133,6 +150,8 @@ export interface WorkProjection {
 	ledger_head: string | null;
 	last_event_id: string | null;
 	requirements: ProjectedRequirement[];
+	/** Present only when the contract has constraints (contract event v2). */
+	constraints?: ProjectedConstraint[];
 	conflicts: string[];
 	diagnostics: string[];
 	progress: WorkProjectionProgress;
@@ -199,6 +218,7 @@ export function foldWorkProjection(
 	let policyHash: string | null = null;
 	let policySnapshot: WorkPolicySnapshot | null = null;
 	const requirements = new Map<string, ProjectedRequirement>();
+	let constraints: ProjectedConstraint[] = [];
 	const conflicts = new Set<string>();
 	const diagnostics = new Set<string>();
 	validateWorkLedgerSemantics(records);
@@ -207,6 +227,7 @@ export function foldWorkProjection(
 		const payload = record.payload;
 		if (
 			payload.schema_version === "anamnesis.work-contract-event.v1" ||
+			payload.schema_version === "anamnesis.work-contract-event.v2" ||
 			payload.schema_version === "anamnesis.work-progress-event.v1" ||
 			payload.schema_version === "anamnesis.work-lifecycle-event.v1"
 		) {
@@ -276,6 +297,12 @@ export function foldWorkProjection(
 				conflicts.clear();
 				for (const conflict of typed.payload.contract.open_conflicts)
 					conflicts.add(conflict.id);
+				constraints = projectConstraints(
+					typed.payload.contract.constraints ?? [],
+					constraints,
+					typed.payload.contract_revision,
+					limits.maxSummaryUtf8Bytes,
+				);
 			} else if (typed.kind === "work_requirement_transitioned") {
 				const requirement = existingRequirement(
 					requirements,
@@ -478,6 +505,7 @@ export function foldWorkProjection(
 		ledger_head: records.at(-1)?.record_hash ?? null,
 		last_event_id: records.at(-1)?.event_id ?? null,
 		requirements: requirementList,
+		...(constraints.length > 0 ? { constraints } : {}),
 		conflicts: [...conflicts],
 		diagnostics: [...diagnostics].slice(0, limits.maxRequirements),
 		progress,
@@ -492,6 +520,47 @@ export function foldWorkProjection(
 			conflicts.size === 0,
 	};
 	return { ...unsigned, projection_hash: sha256(canonicalJson(unsigned)) };
+}
+
+function projectConstraints(
+	definitions: readonly WorkConstraintDefinition[],
+	previous: readonly ProjectedConstraint[],
+	revision: number,
+	maxTextUtf8Bytes: number,
+): ProjectedConstraint[] {
+	const addedRevision = new Map(
+		previous.map((item) => [item.id, item.added_revision]),
+	);
+	const supersededBy = new Map<string, string>();
+	for (const definition of definitions)
+		for (const target of definition.supersedes ?? [])
+			supersededBy.set(target, definition.id);
+	return definitions.map((definition) => ({
+		id: definition.id,
+		kind: definition.kind,
+		text: boundedText(definition.text, "Work constraint text", maxTextUtf8Bytes),
+		source_event_ids: [...definition.source_event_ids],
+		...(definition.expires === undefined ? {} : { expires: definition.expires }),
+		...(definition.promote_candidate === undefined
+			? {}
+			: { promote_candidate: definition.promote_candidate }),
+		...(definition.supersedes === undefined
+			? {}
+			: { supersedes: [...definition.supersedes] }),
+		...(supersededBy.has(definition.id)
+			? { superseded_by: supersededBy.get(definition.id) }
+			: {}),
+		added_revision: addedRevision.get(definition.id) ?? revision,
+	}));
+}
+
+/** Constraints that still apply: not replaced by a later constraint. */
+export function activeWorkConstraints(
+	projection: Pick<WorkProjection, "constraints">,
+): ProjectedConstraint[] {
+	return (projection.constraints ?? []).filter(
+		(item) => item.superseded_by === undefined,
+	);
 }
 
 type ReviewDetail = ProjectedStaleReviewEvidence;
@@ -812,13 +881,8 @@ function projectExecutionEvidence(
 }
 
 function isExecutionEvidenceRecord(record: WorkLedgerRecord): boolean {
-	const schema =
-		WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS[
-			record.kind as keyof typeof WORK_TYPED_EVENT_KIND_SCHEMA_PAIRS
-		];
 	return (
-		schema !== undefined &&
-		schema === record.payload.schema_version &&
+		isCanonicalTypedWorkSchema(record.kind, record.payload.schema_version) &&
 		[
 			"work_review_requested",
 			"work_review_attempt_recorded",

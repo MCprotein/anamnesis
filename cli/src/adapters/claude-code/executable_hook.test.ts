@@ -1220,6 +1220,95 @@ describe("executableHookRenderer (claude-code)", () => {
     );
   });
 
+  it("ignores anamnesis Work state when fingerprinting handoff reminders", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    expect(
+      spawnSync("git", ["init"], { cwd: projectRoot, encoding: "utf8" }).status,
+    ).toBe(0);
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/handoff-reminder.sh",
+    );
+    const runHook = () =>
+      spawnSync("bash", [hook], {
+        cwd: projectRoot,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+        encoding: "utf8",
+      });
+    const ledger = path.join(
+      projectRoot,
+      ".anamnesis/work-units/wu_x/ledger.jsonl",
+    );
+    fs.mkdirSync(path.dirname(ledger), { recursive: true });
+    fs.mkdirSync(path.join(projectRoot, ".anamnesis/work-cursors"), {
+      recursive: true,
+    });
+    fs.writeFileSync(ledger, "{}\n", "utf8");
+    fs.writeFileSync(
+      path.join(projectRoot, ".anamnesis/work-cursors/c.yaml"),
+      "x\n",
+      "utf8",
+    );
+
+    // Work state alone is not uncommitted work.
+    const stateOnly = runHook();
+    expect(stateOnly.status).toBe(0);
+    expect(stateOnly.stdout).toBe("");
+
+    fs.writeFileSync(path.join(projectRoot, "real.txt"), "dirty\n", "utf8");
+    const first = runHook();
+    expect(JSON.parse(first.stdout).systemMessage).toContain(
+      "1 uncommitted change(s) are newer than the latest handoff",
+    );
+
+    // A ledger append between Stop events keeps the same dirty fingerprint.
+    for (let i = 0; i < 3; i += 1) {
+      fs.appendFileSync(ledger, `{"n":${i}}\n`, "utf8");
+      const again = runHook();
+      expect(again.status).toBe(0);
+      expect(again.stdout).toBe("");
+    }
+
+    // Tracked Work state shows one status line per file; nine modified
+    // ledgers pass the old 8-line threshold but are not uncommitted work.
+    const git = (args: string[]) =>
+      spawnSync("git", args, { cwd: projectRoot, encoding: "utf8" });
+    const ledgers = Array.from({ length: 9 }, (_, i) =>
+      path.join(projectRoot, `.anamnesis/work-units/wu_${i}/ledger.jsonl`),
+    );
+    for (const file of ledgers) {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "{}\n", "utf8");
+    }
+    expect(git(["add", "-f", ...ledgers]).status).toBe(0);
+    expect(
+      git([
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.invalid",
+        "commit",
+        "-q",
+        "--no-verify",
+        "-m",
+        "state",
+      ]).status,
+    ).toBe(0);
+    for (const file of ledgers) fs.appendFileSync(file, "{}\n", "utf8");
+    const uncommitted = spawnSync(
+      "bash",
+      [path.resolve("base/adapters/claude-code/hooks/remind-uncommitted.sh")],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+        encoding: "utf8",
+      },
+    );
+    expect(uncommitted.status).toBe(0);
+    expect(uncommitted.stdout).toBe("");
+  });
+
   it("keeps plain stderr reminders for the Codex bridges", () => {
     if (process.platform === "win32") return;
 

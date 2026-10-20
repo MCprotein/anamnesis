@@ -143,6 +143,22 @@ Subagents do not all receive context through the same mechanism:
   preamble or require the subagent to read and report the exact source
   pointers it used before doing context-sensitive work.
 
+For a worker that owns one lane of a Work, add the Work slice:
+
+```bash
+anamnesis context subagent-preamble --work <work-id> --lane <lane-id>
+```
+
+The preamble then also lists the Work ID and contract revision, every active
+Work constraint with its source event IDs, and the lane from the latest
+`work delegation assess` record: requirement IDs, repository write scopes,
+allowed external effects, dependencies, and the other lane IDs. A lane that
+was assessed against an older contract revision carries a warning. The
+preamble names the AGENTS.md team-rules region when one exists and lists the
+user-global instruction files that exist, by path only. Raw prompt bodies are
+never included. Startup source pointers skip linked worktrees inside the
+project, such as `.claude/worktrees/<name>`.
+
 For tasks that depend on project memory, accept a subagent report only when it
 names the sources it used, such as `AGENTS.md`,
 `.anamnesis/handoff/active.md`, startup-active warm handoff archives,

@@ -35,6 +35,18 @@ const requirementDraftSchema = z
 	})
 	.strict();
 
+const constraintDraftSchema = z
+	.object({
+		id: nonEmpty,
+		kind: z.enum(["must", "never"]),
+		text: nonEmpty,
+		source_event_ids: uniqueNonEmpty.min(1),
+		expires: nonEmpty.optional(),
+		promote_candidate: z.boolean().optional(),
+		supersedes: uniqueNonEmpty.optional(),
+	})
+	.strict();
+
 export const workContractDraftSchema = z
 	.object({
 		work: z
@@ -62,6 +74,8 @@ export const workContractDraftSchema = z
 				})
 				.strict(),
 		),
+		/** Optional must/never Work constraints; omitted or empty means none. */
+		constraints: z.array(constraintDraftSchema).optional(),
 	})
 	.strict();
 
@@ -88,6 +102,74 @@ export const workTransitionDraftSchema = z
 			.optional(),
 	})
 	.strict();
+
+export const WORK_TRANSITION_BATCH_SCHEMA_VERSION =
+	"anamnesis.work-transition-batch.v1" as const;
+
+/**
+ * Several evidence-only transitions for one Work. Waivers are excluded
+ * because each waiver needs its own user source event.
+ */
+export const workTransitionBatchDraftObjectSchema = z
+	.object({
+		schema_version: z.literal(WORK_TRANSITION_BATCH_SCHEMA_VERSION),
+		work_id: nonEmpty.optional(),
+		transitions: z
+			.array(
+				z
+					.object({
+						event_id: nonEmpty,
+						requirement_id: nonEmpty,
+						status: z.enum([
+							"pending",
+							"in_progress",
+							"implemented_unverified",
+							"verified",
+							"blocked",
+						]),
+						evidence_refs: uniqueNonEmpty,
+					})
+					.strict(),
+			)
+			.min(1)
+			.max(256),
+	})
+	.strict();
+
+/** Reject repeated event IDs and a requirement that appears twice. */
+export function refineWorkTransitionBatch(
+	value: Pick<
+		z.infer<typeof workTransitionBatchDraftObjectSchema>,
+		"transitions"
+	>,
+	context: z.RefinementCtx,
+): void {
+	const eventIds = new Set<string>();
+	const requirementIds = new Set<string>();
+	for (const [index, item] of value.transitions.entries()) {
+		if (eventIds.has(item.event_id))
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `duplicate event_id: ${item.event_id}`,
+				path: ["transitions", index, "event_id"],
+			});
+		if (requirementIds.has(item.requirement_id))
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `requirement appears twice in one batch: ${item.requirement_id}`,
+				path: ["transitions", index, "requirement_id"],
+			});
+		eventIds.add(item.event_id);
+		requirementIds.add(item.requirement_id);
+	}
+}
+
+export const workTransitionBatchDraftSchema =
+	workTransitionBatchDraftObjectSchema.superRefine(refineWorkTransitionBatch);
+
+export type WorkTransitionBatchDraft = z.infer<
+	typeof workTransitionBatchDraftSchema
+>;
 
 /** Strict, user-authorized draft for closing a Work lifecycle. */
 export const workCloseDraftSchema = z
@@ -189,6 +271,14 @@ export function parseStagedWorkContractDraft(
 			...conflict,
 			source_event_ids: replace(conflict.source_event_ids),
 		})),
+		...(draft.constraints === undefined
+			? {}
+			: {
+					constraints: draft.constraints.map((constraint) => ({
+						...constraint,
+						source_event_ids: replace(constraint.source_event_ids),
+					})),
+				}),
 	});
 	if (replacements === 0) {
 		throw new Error(

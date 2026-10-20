@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { TextDecoder } from "node:util";
 import { z } from "zod";
 
 import { findAgentfile, readAgentfile } from "../core/agentfile.js";
@@ -7,8 +8,10 @@ import {
 	parseStagedWorkContractDraft,
 	parseWorkContractDraft,
 	parseWorkPromptRetainDraft,
+	refineWorkTransitionBatch,
 	type WorkContractDraft,
 	workCloseDraftSchema,
+	workTransitionBatchDraftObjectSchema,
 	workTransitionDraftSchema,
 } from "../core/work_command_draft.js";
 import {
@@ -23,6 +26,7 @@ import {
 	WORK_EXECUTION_LIMITS,
 	type WorkContractDefinition,
 	type WorkDelegationOutcomePayload,
+	workContractEventSchemaVersion,
 	type WorkInstanceRef,
 	type WorkReviewAttemptPayload,
 	workArtifactRefSchema,
@@ -47,6 +51,10 @@ import {
 	type WorkExecutionInputs,
 	workExecutionInputsSchema,
 } from "../core/work_execution_inputs.js";
+import {
+	buildWorkEvidencePlan,
+	type WorkEvidencePlan,
+} from "../core/work_evidence_plan.js";
 import { readWorkLedger } from "../core/work_ledger.js";
 import {
 	compareWorkPolicySnapshots,
@@ -85,6 +93,7 @@ import {
 	appendCanonicalTypedWorkEventWithPublishedSource,
 	appendCanonicalTypedWorkEvidenceEvent,
 	appendCanonicalTypedWorkProgressEvent,
+	appendCanonicalTypedWorkProgressEvents,
 	type PublishedWorkSourceAllocation,
 	publishAndAppendCanonicalTypedWorkSourceEvent,
 	publishWorkSourceEvent,
@@ -223,6 +232,10 @@ const delegationWaiveDraftSchema = z
 const transitionWithExecutionInputsSchema = workTransitionDraftSchema.extend({
 	execution_inputs: workExecutionInputsSchema.optional(),
 });
+const transitionBatchWithExecutionInputsSchema =
+	workTransitionBatchDraftObjectSchema
+		.extend({ execution_inputs: workExecutionInputsSchema.optional() })
+		.superRefine(refineWorkTransitionBatch);
 const closeWithExecutionInputsSchema = workCloseDraftSchema.extend({
 	execution_inputs: workExecutionInputsSchema.optional(),
 });
@@ -470,6 +483,7 @@ export interface WorkReadinessInput extends WorkReadInput {
 export interface WorkBriefSection {
 	id:
 		| "work"
+		| "constraints"
 		| "requirements"
 		| "done"
 		| "remaining"
@@ -836,6 +850,282 @@ export function transitionWork(input: WorkMutationInput): WorkMutationResult {
 		allocation: null,
 		projection: nextProjection,
 		...(readiness ? { readiness } : {}),
+	};
+}
+
+export interface WorkTransitionBatchInput {
+	project_root: string;
+	state_root?: string;
+	work_id: string;
+	occurred_at: string;
+	expected_head: string;
+	draft: Buffer;
+}
+
+export interface WorkTransitionBatchResult {
+	schema_version: "anamnesis.work-transition-batch-result.v1";
+	work_id: string;
+	ledger_path: string;
+	projection_path: string;
+	ledger_head: string;
+	appended_count: number;
+	idempotent_count: number;
+	transitions: Array<{
+		event_id: string;
+		requirement_id: string;
+		status: string;
+	}>;
+	projection: WorkProjection;
+	readiness?: WorkProtectedActionReadiness;
+}
+
+/**
+ * Apply several evidence-only transitions with one lock and one expected
+ * head. The whole batch is validated first; any invalid transition rejects
+ * every transition. Waivers stay single transitions with a user source.
+ */
+export function transitionWorkBatch(
+	input: WorkTransitionBatchInput,
+): WorkTransitionBatchResult {
+	if (!input.expected_head)
+		throw new Error("work transition --batch requires an explicit expected_head");
+	assertSafeId(input.work_id, "work ID");
+	const draft = parseSingleWorkDraft(
+		input.draft,
+		transitionBatchWithExecutionInputsSchema,
+	);
+	if (draft.work_id !== undefined && draft.work_id !== input.work_id)
+		throw new Error(
+			`transition batch targets Work ${draft.work_id}, not ${input.work_id}`,
+		);
+	for (const item of draft.transitions) {
+		assertSafeId(item.event_id, "event ID");
+		if (item.status === "verified" && item.evidence_refs.length === 0)
+			throw new Error(
+				`verified Work requirement transition requires evidence: ${item.requirement_id}`,
+			);
+	}
+	const locations = workLocations(input);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const baseIndex = ledger.records.findIndex(
+		(record) => record.record_hash === input.expected_head,
+	);
+	if (baseIndex < 0)
+		throw new Error(
+			`work ledger head conflict: expected ${input.expected_head}, actual ${ledger.head ?? "null"}`,
+		);
+	// Fold at the expected head so an exact retry after a partial crash
+	// rebuilds the same events against the same contract basis.
+	const basisRecords = ledger.records.slice(0, baseIndex + 1);
+	const projection = foldWorkProjection(basisRecords);
+	if (projection.work_id !== input.work_id || !projection.contract_hash)
+		throw new Error(
+			`Work ${input.work_id} has no typed contract to transition`,
+		);
+	if (currentBoundaryState(basisRecords) !== "accepted")
+		throw new Error("Work progress requires an accepted boundary");
+	let readiness: WorkProtectedActionReadiness | undefined;
+	if (
+		draft.transitions.some((item) =>
+			["in_progress", "implemented_unverified", "verified"].includes(
+				item.status,
+			),
+		)
+	) {
+		readiness = readinessForProjection(
+			input,
+			projection,
+			"implementation_entry",
+			draft.execution_inputs,
+		);
+		if (!readiness.allowed)
+			throw new Error(
+				`Work implementation entry is blocked: ${readiness.blockers.join(", ")}`,
+			);
+	}
+	const basisContractHash = projection.contract_hash;
+	const events = draft.transitions.map((item) =>
+		progressEvent(
+			{ ...input, event_id: item.event_id } as WorkMutationInput,
+			{
+				requirement_id: item.requirement_id,
+				status: item.status,
+				evidence_refs: item.evidence_refs,
+			},
+			basisContractHash,
+		),
+	);
+	const appended = appendCanonicalTypedWorkProgressEvents({
+		stateRoot: locations.stateRoot,
+		ledgerPath: locations.ledgerPath,
+		ledgerEvents: events,
+		expectedHead: input.expected_head,
+	});
+	const nextProjection = rebuildWorkProjection(
+		locations.ledgerPath,
+		locations.projectionPath,
+	);
+	return {
+		schema_version: "anamnesis.work-transition-batch-result.v1",
+		work_id: nextProjection.work_id,
+		ledger_path: locations.ledgerPath,
+		projection_path: locations.projectionPath,
+		ledger_head: appended.head,
+		appended_count: appended.records.length - appended.idempotent_count,
+		idempotent_count: appended.idempotent_count,
+		transitions: draft.transitions.map((item) => ({
+			event_id: item.event_id,
+			requirement_id: item.requirement_id,
+			status: item.status,
+		})),
+		projection: nextProjection,
+		...(readiness ? { readiness } : {}),
+	};
+}
+
+export interface WorkEvidencePlanInput extends WorkReadInput {
+	/** Bytes of `gh pr list --json ...` or `gh pr view --json ...` output. */
+	pull_requests_json: Buffer;
+	marker?: string;
+}
+
+/**
+ * Read-only: build a `transition --batch` draft from PR JSON the caller
+ * already fetched. No network access, no ledger write.
+ */
+export function planWorkEvidence(input: WorkEvidencePlanInput): WorkEvidencePlan {
+	assertSafeId(input.work_id, "work ID");
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(
+			new TextDecoder("utf-8", { fatal: true }).decode(input.pull_requests_json),
+		);
+	} catch (error) {
+		throw new Error("evidence plan input must be UTF-8 JSON from gh", {
+			cause: error,
+		});
+	}
+	const locations = workLocations(input);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const projection = foldWorkProjection(ledger.records);
+	if (projection.work_id !== input.work_id || !projection.contract_hash)
+		throw new Error(`Work ${input.work_id} has no typed contract`);
+	return buildWorkEvidencePlan({
+		projection,
+		committed_event_ids: new Set(ledger.records.map((item) => item.event_id)),
+		pull_requests: parsed,
+		marker: input.marker,
+	});
+}
+
+export interface WorkSubagentContextInput extends WorkReadInput {
+	lane_id?: string;
+}
+
+/** Bounded Work facts a delegated worker needs; never raw prompt bodies. */
+export interface WorkSubagentContext {
+	work_id: string;
+	title: string | null;
+	completion_contract: string | null;
+	contract_revision: number;
+	contract_hash: string | null;
+	lifecycle: WorkProjection["lifecycle"];
+	constraints: Array<{
+		id: string;
+		kind: "must" | "never";
+		text: string;
+		source_event_ids: string[];
+		expires?: string;
+	}>;
+	constraints_hash: string | null;
+	lane: null | {
+		lane_id: string;
+		assessment_id: string;
+		assessment_revision: number;
+		assessment_stale: boolean;
+		decision: "parallel" | "solo" | "not_parallelizable";
+		requirements: Array<{ id: string; summary: string; status: string }>;
+		repository_scopes: Array<{ kind: string; path?: string; access: string }>;
+		external_effects: Array<{
+			resource_kind: string;
+			resource_ref: string;
+			access: string;
+			irreversible: boolean;
+		}>;
+		depends_on: string[];
+		other_lane_ids: string[];
+	};
+}
+
+/**
+ * Read-only: the Work contract slice for one worker lane. The lane comes
+ * from the latest `work delegation assess` record; a lane recorded against
+ * an older contract revision is returned with `assessment_stale: true`.
+ */
+export function workSubagentContext(
+	input: WorkSubagentContextInput,
+): WorkSubagentContext {
+	assertSafeId(input.work_id, "work ID");
+	const locations = workLocations(input);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const projection = foldWorkProjection(ledger.records);
+	if (projection.work_id !== input.work_id || !projection.contract_hash)
+		throw new Error(`Work ${input.work_id} has no typed contract`);
+	const briefing = buildWorkBriefingSnapshot({ projection });
+	let lane: WorkSubagentContext["lane"] = null;
+	if (input.lane_id !== undefined) {
+		const assessment = latestParallelismAssessment(ledger.records);
+		if (!assessment)
+			throw new Error(
+				`Work ${input.work_id} has no lane assessment; record one with work delegation assess`,
+			);
+		const found = assessment.payload.lanes.find(
+			(item) => item.lane_id === input.lane_id,
+		);
+		if (!found)
+			throw new Error(
+				`lane ${input.lane_id} is not in assessment ${assessment.payload.assessment_id}`,
+			);
+		const requirements = new Map(
+			projection.requirements.map((item) => [item.id, item]),
+		);
+		lane = {
+			lane_id: found.lane_id,
+			assessment_id: assessment.payload.assessment_id,
+			assessment_revision: assessment.payload.basis_contract_revision,
+			assessment_stale:
+				assessment.payload.basis_contract_revision !==
+				projection.contract_revision,
+			decision: assessment.payload.decision,
+			requirements: found.requirement_ids.map((id) => ({
+				id,
+				summary: requirements.get(id)?.summary ?? "(not in current contract)",
+				status: requirements.get(id)?.status ?? "unknown",
+			})),
+			repository_scopes: found.repository_scopes.map((scope) => ({ ...scope })),
+			external_effects: found.external_effects.map((effect) => ({ ...effect })),
+			depends_on: [...found.depends_on],
+			other_lane_ids: assessment.payload.lanes
+				.map((item) => item.lane_id)
+				.filter((id) => id !== found.lane_id),
+		};
+	}
+	return {
+		work_id: projection.work_id,
+		title: projection.title,
+		completion_contract: projection.completion_contract,
+		contract_revision: projection.contract_revision,
+		contract_hash: projection.contract_hash,
+		lifecycle: projection.lifecycle,
+		constraints: (briefing.constraints?.active ?? []).map((item) => ({
+			id: item.id,
+			kind: item.kind,
+			text: item.text,
+			source_event_ids: item.source_event_ids,
+			...(item.expires === undefined ? {} : { expires: item.expires }),
+		})),
+		constraints_hash: briefing.constraints?.hash ?? null,
+		lane,
 	};
 }
 
@@ -1817,18 +2107,14 @@ function allocateStagedPrompt(
 			);
 		}
 	}
-	const contract: WorkContractDefinition = {
-		...draft,
-		work: { id: input.work_id, ...draft.work },
-		policy_snapshot: policy,
-	};
+	const contract = contractFromDraft(draft, input.work_id, policy);
 	const event: TypedWorkEvent = {
 		event_id: eventId,
 		occurred_at: occurredAt,
 		kind:
 			decision === "allocate_new" ? "work_created" : "work_contract_revised",
 		payload: {
-			schema_version: "anamnesis.work-contract-event.v1",
+			schema_version: workContractEventSchemaVersion(contract),
 			work_id: input.work_id,
 			contract_revision: revision,
 			previous_contract_revision: previousRevision,
@@ -1922,18 +2208,14 @@ function appendContract(
 		revision,
 		priorPolicy?.policy ?? resolveCommandPolicy(input),
 	);
-	const contract: WorkContractDefinition = {
-		...draft,
-		work: { id: input.work_id, ...draft.work },
-		policy_snapshot: policy,
-	};
+	const contract = contractFromDraft(draft, input.work_id, policy);
 	const contractHash = calculateWorkContractHash(contract);
 	const event: TypedWorkEvent = {
 		event_id: input.event_id,
 		occurred_at: input.occurred_at,
 		kind: revision === 1 ? "work_created" : "work_contract_revised",
 		payload: {
-			schema_version: "anamnesis.work-contract-event.v1",
+			schema_version: workContractEventSchemaVersion(contract),
 			work_id: input.work_id,
 			contract_revision: revision,
 			previous_contract_revision: previousRevision,
@@ -2138,6 +2420,21 @@ export function assertProgressRetryIsAppendCompatible(
 	}
 }
 
+/** Build the canonical contract; an empty constraint list means none. */
+function contractFromDraft(
+	draft: WorkContractDraft,
+	workId: string,
+	policy: WorkContractDefinition["policy_snapshot"],
+): WorkContractDefinition {
+	const { constraints, ...rest } = draft;
+	return {
+		...rest,
+		work: { id: workId, ...draft.work },
+		policy_snapshot: policy,
+		...(constraints && constraints.length > 0 ? { constraints } : {}),
+	};
+}
+
 function assertCurrentSourceReferenced(
 	draft: WorkContractDraft,
 	sourceEventId: string,
@@ -2147,6 +2444,9 @@ function assertCurrentSourceReferenced(
 			item.source_event_ids.includes(sourceEventId),
 		) ||
 		draft.open_conflicts.some((item) =>
+			item.source_event_ids.includes(sourceEventId),
+		) ||
+		(draft.constraints ?? []).some((item) =>
 			item.source_event_ids.includes(sourceEventId),
 		);
 	if (!referenced)
@@ -2477,6 +2777,18 @@ function orderedBriefSections(
 				`required_gates: ${briefing.configured_required_gates.join(", ") || "none"}`,
 			],
 		},
+		...(briefing.constraints
+			? [
+					{
+						id: "constraints" as const,
+						label: "Constraints",
+						values: briefing.constraints.active.map(
+							(item) =>
+								`${item.id} [${item.kind}]: ${item.text}${item.expires ? ` (expires: ${item.expires})` : ""}`,
+						),
+					},
+				]
+			: []),
 		{
 			id: "requirements",
 			label: "Requirements",
