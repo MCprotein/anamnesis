@@ -143,7 +143,8 @@ export class ParamTemplateError extends Error {
 export type FragmentParamProblemCode =
   | "fragment-param-unknown"
   | "fragment-param-missing"
-  | "fragment-param-invalid";
+  | "fragment-param-invalid"
+  | "fragment-param-scope-conflict";
 
 export interface FragmentParamProblem {
   code: FragmentParamProblemCode;
@@ -172,8 +173,9 @@ const REGION_ANCHOR_PATTERN = /<!--\s*\/?\s*anamnesis:region/i;
 // tools and are never meaningful in agent instructions.
 // Unicode format characters (bidi overrides, zero-width marks) and the
 // U+2028/U+2029 separators can hide text from a reviewer of the Agentfile.
+// ZWJ/ZWNJ stay allowed: emoji sequences and several scripts need them.
 const CONTROL_CHAR_PATTERN =
-  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u2028\u2029]|\p{Cf}/u;
+  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u2028\u2029]|(?![\u200c\u200d])\p{Cf}/u;
 const GLOBAL_REGION_ANCHOR_PATTERN = /<!--\s*\/?\s*anamnesis:region/gi;
 
 function countRegionAnchors(text: string): number {

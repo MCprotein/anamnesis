@@ -168,7 +168,8 @@ Rules:
 - Strings default to at most 2000 UTF-16 code units (`max_length`; an emoji
   counts as 2). Strings must not contain an `anamnesis:region` anchor,
   control characters other than tab and newline, Unicode format characters
-  (bidi overrides, zero-width marks), or U+2028/U+2029.
+  (bidi overrides, zero-width spaces; ZWJ and ZWNJ are allowed), or
+  U+2028/U+2029.
 - Supported types are scalars, `string[]`, and `object[]` of scalar fields.
   There is no single `object`, nested object, or `enum` type. Declare such
   settings as flat scalar params (for example `merge_ready_review_blocker`).
@@ -210,8 +211,8 @@ Template syntax in `project_memory` sources and in skill `*.md` files:
   rendered output.
 - Skill files are written to paths that all scopes share. If two scopes give
   the same fragment different params that change a skill file, `apply` stops
-  and `doctor` reports `fragment-param-scope-conflict`. Set such params on the
-  root scope entry only.
+  and `status`/`doctor` report `fragment-param-scope-conflict`. Give every
+  scope entry of the fragment the same params.
 - Hook scripts, ontology slices, slash commands, task harnesses, and skill
   files that are not Markdown are copied verbatim. Params never reach
   executable content.

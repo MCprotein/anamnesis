@@ -126,6 +126,15 @@ describe("resolveFragmentParams", () => {
     expect(r.problems.map((p) => p.code)).toContain("fragment-param-invalid");
   });
 
+  it("allows ZWJ emoji sequences", () => {
+    const r = resolveFragmentParams({
+      fragmentId: "team",
+      declarations: RULES_DECLS,
+      values: { title: "family \u{1F468}\u200d\u{1F469}\u200d\u{1F467}" },
+    });
+    expect(r.blocking).toBe(false);
+  });
+
   it("allows tabs and newlines in strings", () => {
     const r = resolveFragmentParams({
       fragmentId: "team",

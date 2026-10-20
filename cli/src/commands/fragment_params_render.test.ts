@@ -286,6 +286,9 @@ describe("fragment params render", () => {
       },
     });
     expect(() => apply(project, lib)).toThrow(/shared by all scopes/);
+    const st = status({ projectRoot: project, libraryRoot: lib });
+    expect(st.params.ok).toBe(false);
+    expect(st.params.problems.map((p) => p.code)).toContain("fragment-param-scope-conflict");
     const dr = doctor({ projectRoot: project, libraryRoot: lib });
     expect(dr.issues).toContainEqual(
       expect.objectContaining({ code: "fragment-param-scope-conflict", severity: "error" }),

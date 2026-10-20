@@ -30,8 +30,7 @@ import { registerCursor } from "../adapters/cursor/index.js";
 export type InstalledRenderPlanProblemCode =
   | "fragment-library-missing"
   | "adapter-renderer-missing"
-  | "render-plan-failed"
-  | "fragment-param-scope-conflict";
+  | "render-plan-failed";
 
 export interface InstalledRenderPlanProblem {
   code: InstalledRenderPlanProblemCode;
@@ -43,6 +42,8 @@ export interface InstalledRenderPlanProblem {
 
 export interface InstalledRenderParamProblem extends FragmentParamProblem {
   scopePath: string;
+  /** Managed target, for problems about rendered output rather than a key. */
+  target?: string;
 }
 
 export interface InstalledRenderActionScope {
@@ -155,12 +156,14 @@ export function collectInstalledRenderActions(opts: {
   }
 
   for (const conflict of findParamTargetConflicts(actions, declaredParamFragments)) {
-    problems.push({
+    paramProblems.push({
       code: "fragment-param-scope-conflict",
+      severity: "error",
       scopePath: ".",
       fragmentId: conflict.fragmentId,
+      key: "",
       target: conflict.target,
-      message: `${conflict.target} is shared by all scopes, but scopes render different params for fragment '${conflict.fragmentId}'`,
+      message: `${conflict.target} is shared by all scopes, but scopes render different content for fragment '${conflict.fragmentId}'; give every scope entry of this fragment the same params`,
     });
   }
 

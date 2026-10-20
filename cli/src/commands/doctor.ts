@@ -701,12 +701,15 @@ function addParamProblemIssues(
       code: problem.code,
       scopePath: problem.scopePath,
       fragmentId: problem.fragmentId,
-      target: `Agentfile fragments[${problem.fragmentId}].params.${problem.key}`,
+      target:
+        problem.target ?? `Agentfile fragments[${problem.fragmentId}].params.${problem.key}`,
       message: problem.message,
       repair:
         problem.code === "fragment-param-unknown"
           ? "remove the key from Agentfile or check the fragment's declared params"
-          : "fix the value in Agentfile fragments[].params, then run `anamnesis apply`",
+          : problem.code === "fragment-param-scope-conflict"
+            ? "give every scope entry of this fragment the same params, then run `anamnesis apply`"
+            : "fix the value in Agentfile fragments[].params, then run `anamnesis apply`",
     });
   }
 }

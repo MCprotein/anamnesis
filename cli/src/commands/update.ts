@@ -671,7 +671,7 @@ export function update(opts: UpdateOptions): UpdateResult {
   );
   for (const conflict of findParamTargetConflicts(actions, declaredParamFragments)) {
     paramErrors.push(
-      `${conflict.target} is shared by all scopes, but scopes render different params for fragment '${conflict.fragmentId}'; set those params on the root scope entry only`,
+      `${conflict.target} is shared by all scopes, but scopes render different content for fragment '${conflict.fragmentId}'; give every scope entry of this fragment the same params`,
     );
   }
   if (paramErrors.length > 0) {
