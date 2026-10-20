@@ -242,6 +242,46 @@ neither clearly supersedes the other, both remain visible and the effective
 requirement becomes `blocked` or `needs_user` rather than letting the agent
 guess.
 
+### Batch transitions and PR evidence plans (implemented)
+
+`anamnesis work transition --batch <file>` applies several evidence-only
+progress transitions for one Work:
+
+```yaml
+schema_version: anamnesis.work-transition-batch.v1
+work_id: wu_01...
+transitions:
+  - event_id: t-r1-pr12
+    requirement_id: r1
+    status: implemented_unverified
+    evidence_refs: ["https://github.com/<owner>/<repo>/pull/12 MERGED ..."]
+```
+
+- One ledger lock and one `--expected-head` cover the whole batch. Every
+  transition is validated against the ledger and the earlier batch entries
+  before any byte is written. One invalid transition rejects the batch.
+- Waivers are excluded, because each waiver needs its own user source event.
+  A requirement appears at most once per batch.
+- The records are written with one write and one `fsync`. The ledger tail
+  rule still recovers a torn final record, so a crash can leave a committed
+  prefix of the batch. An exact retry with the same expected head finds that
+  prefix right after the head and appends only the rest.
+
+`anamnesis work evidence plan --work <id> --input <gh-json>` turns PR JSON
+that the agent already fetched (`gh pr list|view --json ...`) into a batch
+draft. It reads no network and writes no ledger record.
+
+- A PR links requirements with a body line `<marker>: <ids> — <note>`. The
+  default marker is `Work-Requirements`; `--marker` selects another label.
+  `-` alone means "no requirement". Unknown IDs are reported, not guessed.
+- Status rule: `OPEN` → `in_progress`, `MERGED` → `implemented_unverified`,
+  `CLOSED` → skipped. The plan never proposes `verified`, never lowers a
+  status, and skips blocked or waived requirements.
+- Event IDs derive from Work, requirement, PR URL, state, head, and merge
+  commit. A repeated poll over the same PR state therefore plans nothing new.
+- The agent reviews the draft and applies it with `transition --batch`. A
+  polling loop stays in the agent runtime; anamnesis adds no daemon.
+
 ### Work constraints (implemented)
 
 A `constraint` is a must/never rule that applies to the whole Work, such as

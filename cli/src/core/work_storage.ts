@@ -144,6 +144,23 @@ export interface AppendCanonicalTypedWorkProgressEventInput {
   expectedHead: string | null;
 }
 
+export interface AppendCanonicalTypedWorkProgressBatchInput {
+  stateRoot: string;
+  ledgerPath: string;
+  ledgerEvents: readonly WorkLedgerEvent[];
+  expectedHead: string;
+}
+
+export interface AppendWorkLedgerBatchResult {
+  records: WorkLedgerRecord[];
+  head: string;
+  /** Batch events that were already committed by an earlier exact attempt. */
+  idempotent_count: number;
+}
+
+/** Upper bound for one `work transition --batch` append. */
+export const WORK_PROGRESS_BATCH_LIMIT = 256;
+
 export interface AppendCanonicalTypedWorkEvidenceEventInput {
 	stateRoot: string;
 	ledgerPath: string;
@@ -345,6 +362,138 @@ export function appendCanonicalTypedWorkProgressEvent(
 			stateRoot,
 		),
 	);
+}
+
+/**
+ * Append several source-free progress events under one ledger lock and one
+ * expected head. Every event is validated against the ledger plus the
+ * earlier batch events before any byte is written; one invalid event
+ * rejects the whole batch. The records are then written with one write and
+ * one fsync. An exact retry after a partial crash finds the committed prefix
+ * right after `expectedHead` and appends only the rest.
+ */
+export function appendCanonicalTypedWorkProgressEvents(
+	input: AppendCanonicalTypedWorkProgressBatchInput,
+	options: WorkStorageOptions = {},
+): AppendWorkLedgerBatchResult {
+	if (input.ledgerEvents.length === 0)
+		throw new Error("Work progress batch is empty");
+	if (input.ledgerEvents.length > WORK_PROGRESS_BATCH_LIMIT)
+		throw new Error(
+			`Work progress batch exceeds ${WORK_PROGRESS_BATCH_LIMIT} transitions`,
+		);
+	const events = input.ledgerEvents.map((ledgerEvent) => {
+		assertWorkLedgerEvent(ledgerEvent);
+		const event = parseTypedWorkEvent(ledgerEvent);
+		if (event.kind !== "work_requirement_transitioned")
+			throw new Error("Work progress batch only accepts Work progress events");
+		if (event.payload.status === "waived" || event.payload.waiver)
+			throw new Error(
+				"Work waivers require the canonical source publication API",
+			);
+		if (hasSourceReference(event.payload))
+			throw new Error(
+				"source-free Work progress event cannot contain source references",
+			);
+		return event;
+	});
+	const workIds = new Set(events.map((event) => event.payload.work_id));
+	if (workIds.size !== 1)
+		throw new Error("Work progress batch must target exactly one Work");
+	const eventIds = new Set(events.map((event) => event.event_id));
+	if (eventIds.size !== events.length)
+		throw new Error("Work progress batch repeats an event ID");
+	const stateRoot = secureStateRoot(input.stateRoot);
+	const ledgerPath = canonicalTypedWorkLedgerPath(
+		stateRoot,
+		input.ledgerPath,
+		events[0]!.payload.work_id,
+	);
+	return withWorkLedgerLock(ledgerPath, options, () => {
+		const current = readWorkLedger(ledgerPath);
+		const baseIndex = current.records.findIndex(
+			(record) => record.record_hash === input.expectedHead,
+		);
+		if (baseIndex < 0)
+			throw new Error(
+				`work ledger head conflict: expected ${input.expectedHead}, actual ${current.head ?? "null"}`,
+			);
+		const tail = current.records.slice(baseIndex + 1);
+		if (tail.length > events.length)
+			throw new Error(
+				`work ledger head conflict: expected ${input.expectedHead}, actual ${current.head ?? "null"}`,
+			);
+		for (const [index, record] of tail.entries()) {
+			const event = events[index]!;
+			if (
+				record.event_id !== event.event_id ||
+				record.occurred_at !== event.occurred_at ||
+				record.kind !== event.kind ||
+				canonicalJson(record.payload) !== canonicalJson(event.payload)
+			)
+				throw new Error(
+					`work ledger head conflict: expected ${input.expectedHead}, actual ${current.head ?? "null"}`,
+				);
+		}
+		const pending = events.slice(tail.length);
+		const committedIds = new Set(
+			current.records.map((record) => record.event_id),
+		);
+		for (const event of pending)
+			if (committedIds.has(event.event_id))
+				throw new Error(`work ledger event ID collision: ${event.event_id}`);
+		const chain = [...current.records];
+		const appended: WorkLedgerRecord[] = [];
+		for (const event of pending) {
+			assertCommittedEnvelopeBindings(stateRoot, chain, event);
+			validateWorkEventAppend(chain, event);
+			const unsigned = {
+				schema_version: WORK_LEDGER_SCHEMA_VERSION,
+				event_id: event.event_id,
+				occurred_at: event.occurred_at,
+				kind: event.kind,
+				payload: event.payload as unknown as Record<string, unknown>,
+				previous_hash: chain.at(-1)?.record_hash ?? null,
+			} as const;
+			const record: WorkLedgerRecord = {
+				...unsigned,
+				record_hash: sha256(Buffer.from(canonicalJson(unsigned), "utf8")),
+			};
+			chain.push(record);
+			appended.push(record);
+		}
+		if (appended.length > 0) {
+			// Preflight the exact candidate projection while the lock is held.
+			foldWorkProjection(chain);
+			const fd = fs.openSync(
+				path.resolve(ledgerPath),
+				fs.constants.O_WRONLY |
+					fs.constants.O_APPEND |
+					fs.constants.O_CREAT |
+					noFollowFlag(),
+				0o600,
+			);
+			try {
+				fs.fchmodSync(fd, 0o600);
+				writeAll(
+					fd,
+					Buffer.from(
+						appended.map((record) => `${canonicalJson(record)}\n`).join(""),
+						"utf8",
+					),
+				);
+				fs.fsyncSync(fd);
+			} finally {
+				fs.closeSync(fd);
+			}
+			fsyncDirectory(path.dirname(path.resolve(ledgerPath)));
+		}
+		return {
+			records: [...tail, ...appended],
+			head: chain.at(-1)!.record_hash,
+			idempotent_count: tail.length,
+		};
+	});
 }
 
 /** Official source-free boundary for the four runtime-neutral evidence kinds. */

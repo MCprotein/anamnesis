@@ -210,6 +210,8 @@ import {
   statusWork,
   switchWork,
   transitionWork,
+  transitionWorkBatch,
+  planWorkEvidence,
   type WorkBriefResult,
   type WorkCloseInput,
   type WorkEvidenceMutationInput,
@@ -601,6 +603,18 @@ Progress: a transition draft contains requirement_id, status and evidence_refs.
 Verified requires real evidence; tool completion alone is not verification.
   anamnesis work transition --work <id> --event-id <unique-id> --occurred-at <ISO>
     --expected-head <ledger_head> --draft <file>
+Several evidence-only transitions (no waivers) take one batch file, one lock and
+one expected head; one invalid transition rejects the whole batch:
+  anamnesis work transition --work <id> --batch <file> --expected-head <ledger_head>
+    --occurred-at <ISO>
+  batch file: schema_version: anamnesis.work-transition-batch.v1, work_id, and
+  transitions: [{event_id, requirement_id, status, evidence_refs}]
+A batch draft from PR JSON you fetched yourself (no network; open -> in_progress,
+merged -> implemented_unverified, closed -> skipped, never verified):
+  gh pr list --state all --json number,url,state,body,headRefOid,mergedAt,mergeCommit,isDraft > prs.json
+  anamnesis work evidence plan --work <id> --input prs.json [--marker Work-Requirements]
+    [--output batch.json]
+  PR body line: "Work-Requirements: r1, r2 — note". Review the draft before applying.
 
 Use anamnesis --help --all for other Work commands and source-input flags.
 `);
@@ -4212,6 +4226,7 @@ async function main(argv: string[]): Promise<number> {
         sub !== "create" &&
         sub !== "amend" &&
         sub !== "transition" &&
+        sub !== "evidence" &&
         sub !== "close" &&
 				sub !== "review" &&
 				sub !== "delegation" &&
@@ -4491,6 +4506,86 @@ async function main(argv: string[]): Promise<number> {
 					}
 					return result.allowed ? 0 : 1;
 				}
+
+        if (sub === "evidence") {
+          if (positional[1] !== "plan")
+            throw new Error("work evidence requires plan");
+          const projectRoot =
+            optionalWorkFlag(flags, "project-root") ?? process.cwd();
+          const plan = planWorkEvidence({
+            project_root: projectRoot,
+            state_root: optionalWorkFlag(flags, "state-root"),
+            work_id: requiredWorkFlag(flags, "work"),
+            pull_requests_json: fs.readFileSync(
+              path.resolve(projectRoot, requiredWorkFlag(flags, "input")),
+            ),
+            marker: optionalWorkFlag(flags, "marker"),
+          });
+          const output = optionalWorkFlag(flags, "output");
+          if (output && plan.batch) {
+            fs.writeFileSync(
+              path.resolve(projectRoot, output),
+              `${JSON.stringify(plan.batch, null, 2)}\n`,
+              { encoding: "utf8", flag: "wx" },
+            );
+          }
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(plan, null, 2)}\n`);
+          } else {
+            console.log(
+              `Work ${plan.work_id} evidence plan: ${plan.batch?.transitions.length ?? 0} transition(s), ${plan.skipped.length} skipped, ${plan.unknown_requirement_ids.length} unknown requirement ID(s)`,
+            );
+            for (const item of plan.batch?.transitions ?? [])
+              console.log(`  ${item.requirement_id} -> ${item.status} (${item.event_id})`);
+            console.log(`  expected_head: ${plan.expected_head ?? "null"}`);
+            if (output)
+              console.log(
+                plan.batch
+                  ? `  batch draft written: ${output}`
+                  : "  no transitions; no batch draft written",
+              );
+          }
+          return 0;
+        }
+
+        if (sub === "transition" && flags.batch !== undefined) {
+          for (const forbidden of [
+            "draft",
+            "event-id",
+            "source-file",
+            "source-stdin",
+            "source-event-id",
+          ]) {
+            if (flags[forbidden] !== undefined)
+              throw new Error(
+                `work transition --batch does not accept --${forbidden}`,
+              );
+          }
+          const projectRoot =
+            optionalWorkFlag(flags, "project-root") ?? process.cwd();
+          const result = transitionWorkBatch({
+            project_root: projectRoot,
+            state_root: optionalWorkFlag(flags, "state-root"),
+            work_id: requiredWorkFlag(flags, "work"),
+            occurred_at: workTimestamp(flags, true),
+            expected_head: requiredWorkFlag(flags, "expected-head"),
+            draft: fs.readFileSync(
+              path.resolve(projectRoot, requiredWorkFlag(flags, "batch")),
+            ),
+          });
+          if (flags.json === true) {
+            await writeStdoutFully(`${JSON.stringify(result, null, 2)}\n`);
+          } else {
+            console.log(
+              `Work ${result.work_id}: ${result.appended_count} transition(s) appended, ${result.idempotent_count} already committed`,
+            );
+            console.log(`  ledger_head: ${result.ledger_head}`);
+            console.log(
+              `  progress: ${result.projection.progress.percent}% (${result.projection.progress.verified}/${result.projection.progress.applicable} verified)`,
+            );
+          }
+          return 0;
+        }
 
         if (sub === "create" || sub === "amend" || sub === "transition") {
           const input = workMutationInput(flags, sub);

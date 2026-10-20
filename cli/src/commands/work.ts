@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { TextDecoder } from "node:util";
 import { z } from "zod";
 
 import { findAgentfile, readAgentfile } from "../core/agentfile.js";
@@ -7,8 +8,10 @@ import {
 	parseStagedWorkContractDraft,
 	parseWorkContractDraft,
 	parseWorkPromptRetainDraft,
+	refineWorkTransitionBatch,
 	type WorkContractDraft,
 	workCloseDraftSchema,
+	workTransitionBatchDraftObjectSchema,
 	workTransitionDraftSchema,
 } from "../core/work_command_draft.js";
 import {
@@ -48,6 +51,10 @@ import {
 	type WorkExecutionInputs,
 	workExecutionInputsSchema,
 } from "../core/work_execution_inputs.js";
+import {
+	buildWorkEvidencePlan,
+	type WorkEvidencePlan,
+} from "../core/work_evidence_plan.js";
 import { readWorkLedger } from "../core/work_ledger.js";
 import {
 	compareWorkPolicySnapshots,
@@ -86,6 +93,7 @@ import {
 	appendCanonicalTypedWorkEventWithPublishedSource,
 	appendCanonicalTypedWorkEvidenceEvent,
 	appendCanonicalTypedWorkProgressEvent,
+	appendCanonicalTypedWorkProgressEvents,
 	type PublishedWorkSourceAllocation,
 	publishAndAppendCanonicalTypedWorkSourceEvent,
 	publishWorkSourceEvent,
@@ -224,6 +232,10 @@ const delegationWaiveDraftSchema = z
 const transitionWithExecutionInputsSchema = workTransitionDraftSchema.extend({
 	execution_inputs: workExecutionInputsSchema.optional(),
 });
+const transitionBatchWithExecutionInputsSchema =
+	workTransitionBatchDraftObjectSchema
+		.extend({ execution_inputs: workExecutionInputsSchema.optional() })
+		.superRefine(refineWorkTransitionBatch);
 const closeWithExecutionInputsSchema = workCloseDraftSchema.extend({
 	execution_inputs: workExecutionInputsSchema.optional(),
 });
@@ -839,6 +851,171 @@ export function transitionWork(input: WorkMutationInput): WorkMutationResult {
 		projection: nextProjection,
 		...(readiness ? { readiness } : {}),
 	};
+}
+
+export interface WorkTransitionBatchInput {
+	project_root: string;
+	state_root?: string;
+	work_id: string;
+	occurred_at: string;
+	expected_head: string;
+	draft: Buffer;
+}
+
+export interface WorkTransitionBatchResult {
+	schema_version: "anamnesis.work-transition-batch-result.v1";
+	work_id: string;
+	ledger_path: string;
+	projection_path: string;
+	ledger_head: string;
+	appended_count: number;
+	idempotent_count: number;
+	transitions: Array<{
+		event_id: string;
+		requirement_id: string;
+		status: string;
+	}>;
+	projection: WorkProjection;
+	readiness?: WorkProtectedActionReadiness;
+}
+
+/**
+ * Apply several evidence-only transitions with one lock and one expected
+ * head. The whole batch is validated first; any invalid transition rejects
+ * every transition. Waivers stay single transitions with a user source.
+ */
+export function transitionWorkBatch(
+	input: WorkTransitionBatchInput,
+): WorkTransitionBatchResult {
+	if (!input.expected_head)
+		throw new Error("work transition --batch requires an explicit expected_head");
+	assertSafeId(input.work_id, "work ID");
+	const draft = parseSingleWorkDraft(
+		input.draft,
+		transitionBatchWithExecutionInputsSchema,
+	);
+	if (draft.work_id !== undefined && draft.work_id !== input.work_id)
+		throw new Error(
+			`transition batch targets Work ${draft.work_id}, not ${input.work_id}`,
+		);
+	for (const item of draft.transitions) {
+		assertSafeId(item.event_id, "event ID");
+		if (item.status === "verified" && item.evidence_refs.length === 0)
+			throw new Error(
+				`verified Work requirement transition requires evidence: ${item.requirement_id}`,
+			);
+	}
+	const locations = workLocations(input);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const baseIndex = ledger.records.findIndex(
+		(record) => record.record_hash === input.expected_head,
+	);
+	if (baseIndex < 0)
+		throw new Error(
+			`work ledger head conflict: expected ${input.expected_head}, actual ${ledger.head ?? "null"}`,
+		);
+	// Fold at the expected head so an exact retry after a partial crash
+	// rebuilds the same events against the same contract basis.
+	const basisRecords = ledger.records.slice(0, baseIndex + 1);
+	const projection = foldWorkProjection(basisRecords);
+	if (projection.work_id !== input.work_id || !projection.contract_hash)
+		throw new Error(
+			`Work ${input.work_id} has no typed contract to transition`,
+		);
+	if (currentBoundaryState(basisRecords) !== "accepted")
+		throw new Error("Work progress requires an accepted boundary");
+	let readiness: WorkProtectedActionReadiness | undefined;
+	if (
+		draft.transitions.some((item) =>
+			["in_progress", "implemented_unverified", "verified"].includes(
+				item.status,
+			),
+		)
+	) {
+		readiness = readinessForProjection(
+			input,
+			projection,
+			"implementation_entry",
+			draft.execution_inputs,
+		);
+		if (!readiness.allowed)
+			throw new Error(
+				`Work implementation entry is blocked: ${readiness.blockers.join(", ")}`,
+			);
+	}
+	const basisContractHash = projection.contract_hash;
+	const events = draft.transitions.map((item) =>
+		progressEvent(
+			{ ...input, event_id: item.event_id } as WorkMutationInput,
+			{
+				requirement_id: item.requirement_id,
+				status: item.status,
+				evidence_refs: item.evidence_refs,
+			},
+			basisContractHash,
+		),
+	);
+	const appended = appendCanonicalTypedWorkProgressEvents({
+		stateRoot: locations.stateRoot,
+		ledgerPath: locations.ledgerPath,
+		ledgerEvents: events,
+		expectedHead: input.expected_head,
+	});
+	const nextProjection = rebuildWorkProjection(
+		locations.ledgerPath,
+		locations.projectionPath,
+	);
+	return {
+		schema_version: "anamnesis.work-transition-batch-result.v1",
+		work_id: nextProjection.work_id,
+		ledger_path: locations.ledgerPath,
+		projection_path: locations.projectionPath,
+		ledger_head: appended.head,
+		appended_count: appended.records.length - appended.idempotent_count,
+		idempotent_count: appended.idempotent_count,
+		transitions: draft.transitions.map((item) => ({
+			event_id: item.event_id,
+			requirement_id: item.requirement_id,
+			status: item.status,
+		})),
+		projection: nextProjection,
+		...(readiness ? { readiness } : {}),
+	};
+}
+
+export interface WorkEvidencePlanInput extends WorkReadInput {
+	/** Bytes of `gh pr list --json ...` or `gh pr view --json ...` output. */
+	pull_requests_json: Buffer;
+	marker?: string;
+}
+
+/**
+ * Read-only: build a `transition --batch` draft from PR JSON the caller
+ * already fetched. No network access, no ledger write.
+ */
+export function planWorkEvidence(input: WorkEvidencePlanInput): WorkEvidencePlan {
+	assertSafeId(input.work_id, "work ID");
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(
+			new TextDecoder("utf-8", { fatal: true }).decode(input.pull_requests_json),
+		);
+	} catch (error) {
+		throw new Error("evidence plan input must be UTF-8 JSON from gh", {
+			cause: error,
+		});
+	}
+	const locations = workLocations(input);
+	const ledger = readWorkLedger(locations.ledgerPath);
+	const projection = foldWorkProjection(ledger.records);
+	if (projection.work_id !== input.work_id || !projection.contract_hash)
+		throw new Error(`Work ${input.work_id} has no typed contract`);
+	return buildWorkEvidencePlan({
+		projection,
+		committed_event_ids: new Set(ledger.records.map((item) => item.event_id)),
+		pull_requests: parsed,
+		marker: input.marker,
+	});
 }
 
 export function closeWork(input: WorkCloseInput): WorkMutationResult {

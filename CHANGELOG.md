@@ -7,6 +7,8 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- `work transition --batch <file>` applies several evidence-only requirement transitions with one lock and one expected head. The whole batch is validated before any write, and one invalid transition rejects all of them; an exact retry after a crash appends only the missing tail. `work evidence plan --input <gh-json>` builds that batch draft from PR JSON the agent fetched (open → `in_progress`, merged → `implemented_unverified`, closed → skipped) with no network access, no `verified` claims, no status downgrades, and deterministic event IDs so a repeated poll plans nothing new.
+
 - Work contracts accept an optional `constraints` list of must/never rules with user source provenance (`id`, `kind`, `text`, `source_event_ids`, optional `expires`, `promote_candidate`, `supersedes`). Constraints are append-only like requirements, never count toward progress, and appear in `work status`, `work brief`, and the hook briefing with a count, a hash, and the changed IDs. A contract with constraints uses `anamnesis.work-contract-event.v2`; contracts without constraints keep v1 and their existing hashes.
 
 ## [1.25.5] — 2026-10-11
