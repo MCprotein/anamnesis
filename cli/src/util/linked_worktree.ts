@@ -30,5 +30,8 @@ export function isLinkedGitWorktreeRoot(dir: string): boolean {
 	const gitdir = path.resolve(dir, match[1]!);
 	if (!/(?:^|[\\/])worktrees[\\/][^\\/]+[\\/]?$/u.test(gitdir)) return false;
 	// Only a linked worktree's private gitdir has `commondir`.
-	return fs.existsSync(path.join(gitdir, "commondir"));
+	return (
+		fs.statSync(path.join(gitdir, "commondir"), { throwIfNoEntry: false })
+			?.isFile() === true
+	);
 }

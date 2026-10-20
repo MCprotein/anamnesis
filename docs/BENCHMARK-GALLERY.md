@@ -18,8 +18,8 @@ This section is generated from runtime evidence. It separates README-ready
 claim candidates from evidence that still needs more repo shapes or manual
 review.
 
-Generated: 2026-10-20T16:47:32.507Z
-Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (173 valid, 0 invalid)
+Generated: 2026-10-20T16:52:01.686Z
+Source: `.anamnesis/evidence/events.jsonl; docs/benchmark-evidence/public-shapes.jsonl` (175 valid, 0 invalid)
 
 ## Evidence Entries
 

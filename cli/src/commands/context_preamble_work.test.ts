@@ -66,7 +66,7 @@ function setup(): { projectRoot: string; head: string } {
 	);
 	fs.writeFileSync(
 		path.join(projectRoot, "AGENTS.md"),
-		"# p\n\n<!-- anamnesis:region id=team fragment=team@1 -->\nrules\n<!-- /anamnesis:region -->\n",
+		"# p\n\n<!-- anamnesis:region id=teamcity fragment=ci@1 -->\nci\n<!-- /anamnesis:region -->\n\n<!-- anamnesis:region id=rules fragment=team@1 -->\nrules\n<!-- /anamnesis:region -->\n",
 	);
 	const created = createWork({
 		project_root: projectRoot,
@@ -169,7 +169,8 @@ describe("context subagent-preamble --work --lane", () => {
 		expect(text).toContain("  - (none allowed)");
 		expect(text).toContain("- depends_on: lane_api");
 		expect(text).toContain("other lanes (do not change their scope): lane_api");
-		expect(text).toContain("- AGENTS.md#team");
+		expect(text).toContain("- AGENTS.md#rules");
+		expect(text).not.toContain("AGENTS.md#teamcity");
 		expect(text).not.toContain("WARNING");
 		expect(text).not.toContain("PRIVATE-PROMPT-BODY");
 		expect(result.summary.workConstraints).toBe(1);

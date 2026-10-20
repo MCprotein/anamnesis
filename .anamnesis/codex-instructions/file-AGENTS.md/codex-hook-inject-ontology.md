@@ -36,7 +36,9 @@ SESSION_CONTEXT_MODE="${ANAMNESIS_SESSION_CONTEXT_MODE:-compact}"
 linked_worktree_roots=()
 while IFS= read -r marker; do
   gitdir_line=$(head -n 1 "$marker" 2>/dev/null || true)
-  if [[ "$gitdir_line" =~ ^gitdir:[[:space:]]*(.*/worktrees/[^/]+)/?[[:space:]]*$ ]]; then
+  # Trim like git: drop a trailing CR or spaces before matching.
+  gitdir_line="${gitdir_line%"${gitdir_line##*[![:space:]]}"}"
+  if [[ "$gitdir_line" =~ ^gitdir:[[:space:]]*(.*/worktrees/[^/]+)/?$ ]]; then
     gitdir="${BASH_REMATCH[1]}"
     case "$gitdir" in
       /*) ;;

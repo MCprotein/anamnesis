@@ -37,6 +37,16 @@ function fixture(): string {
 		"rules:\n  - copy\n",
 	);
 	write(".git/worktrees/agent-1/commondir", "../..\n");
+	// A relative gitdir with CRLF and trailing spaces, like a hand-edited file.
+	write(
+		".claude/worktrees/agent-2/.git",
+		"gitdir: ../../../.git/worktrees/agent-2  \r\n",
+	);
+	write(".git/worktrees/agent-2/commondir", "../..\n");
+	write(
+		".claude/worktrees/agent-2/.anamnesis/ontology/base.yaml",
+		"rules:\n  - copy\n",
+	);
 	write("packages/sub/.git", "gitdir: ../../.git/modules/sub\n");
 	// A submodule whose path contains worktrees/ is still a sub-scope.
 	write("worktrees/lib/.git", "gitdir: ../../.git/modules/worktrees/lib\n");
@@ -58,6 +68,11 @@ describe("linked worktree exclusion", () => {
 			false,
 		);
 		expect(isLinkedGitWorktreeRoot(projectRoot)).toBe(false);
+		expect(
+			isLinkedGitWorktreeRoot(
+				path.join(projectRoot, ".claude/worktrees/agent-2"),
+			),
+		).toBe(true);
 		expect(isLinkedGitWorktreeRoot(path.join(projectRoot, "worktrees/lib"))).toBe(
 			false,
 		);
