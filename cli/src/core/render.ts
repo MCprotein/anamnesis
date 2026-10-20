@@ -5,6 +5,11 @@
 // the actions to disk) is a separate concern implemented later.
 
 import type { ToolName } from "./agentfile.js";
+import {
+  ParamTemplateError,
+  renderParamTemplate,
+  type ResolvedParams,
+} from "./fragment_params.js";
 import type {
   Capability,
   CapabilitySideEffect,
@@ -99,7 +104,11 @@ export interface RenderContext {
    */
   scopePath?: string;
   settings: AgentfileSettings;
-  params: Record<string, unknown>;
+  /**
+   * Validated param values for this fragment (defaults applied). Callers
+   * resolve them with `resolveFragmentParams`; renderers only substitute.
+   */
+  params: ResolvedParams;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +119,28 @@ export class RenderError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "RenderError";
+  }
+}
+
+/**
+ * Apply fragment param substitution to a text source. Fragments that declare
+ * no params get the source back unchanged.
+ */
+export function renderFragmentText(
+  ctx: RenderContext,
+  source: string,
+  sourceLabel: string,
+): string {
+  try {
+    return renderParamTemplate({
+      source,
+      declarations: ctx.fragment.params,
+      values: ctx.params,
+      sourceLabel: `fragment '${ctx.fragment.id}' ${sourceLabel}`,
+    });
+  } catch (e) {
+    if (e instanceof ParamTemplateError) throw new RenderError(e.message);
+    throw e;
   }
 }
 

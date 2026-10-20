@@ -50,6 +50,10 @@ import {
   type FragmentRequirement,
 } from "../core/fragments.js";
 import { effectiveScopes } from "../core/scope.js";
+import {
+  resolveFragmentParams,
+  type FragmentParamProblem,
+} from "../core/fragment_params.js";
 import { ProjectContext } from "../core/triggers.js";
 import {
   RendererRegistry,
@@ -147,6 +151,11 @@ export interface UpdateResult {
   surfaceConflicts: SurfaceConflictResolution[];
   /** Single ontology lifecycle follow-up implied by the post-apply project state. */
   ontologyRecommendation: OntologyLifecycleRecommendation;
+  /**
+   * Non-blocking Agentfile params problems (undeclared keys that were
+   * ignored). Blocking problems raise UpdateError before any write.
+   */
+  paramWarnings: FragmentParamProblem[];
 }
 
 export class UpdateError extends Error {
@@ -600,15 +609,35 @@ export function update(opts: UpdateOptions): UpdateResult {
   if (allTools.has("cursor")) registerCursor(registry);
 
   const actions: RenderAction[] = [];
+  const paramWarnings: FragmentParamProblem[] = [];
+  const paramErrors: string[] = [];
+  const seenParamProblems = new Set<string>();
   for (const { scopePath, ordered: scopeOrdered, tools } of perScope) {
     for (const { entry, fragment, fragmentDir } of scopeOrdered) {
+      const params = resolveFragmentParams({
+        fragmentId: fragment.id,
+        declarations: fragment.params,
+        values: entry.params,
+      });
+      for (const problem of params.problems) {
+        // Child scopes inherit root entries; report each problem once.
+        const key = `${problem.code}|${problem.fragmentId}|${problem.key}|${problem.message}`;
+        if (seenParamProblems.has(key)) continue;
+        seenParamProblems.add(key);
+        if (problem.severity === "error") {
+          paramErrors.push(`scope '${scopePath}': ${problem.message}`);
+        } else {
+          paramWarnings.push(problem);
+        }
+      }
+      if (params.blocking) continue;
       const renderCtx: RenderContext = {
         fragment,
         fragmentDir,
         projectRoot,
         scopePath,
         settings: DEFAULT_SETTINGS,
-        params: {},
+        params: params.values,
       };
       for (const tool of tools) {
         if (!fragmentAdapterEnabled(entry, tool)) continue;
@@ -632,6 +661,13 @@ export function update(opts: UpdateOptions): UpdateResult {
         }),
       );
     }
+  }
+
+  if (paramErrors.length > 0) {
+    throw new UpdateError(
+      `Agentfile fragment params are invalid:\n${paramErrors.map((m) => `  - ${m}`).join("\n")}\n` +
+        `Fix fragments[].params in Agentfile, then re-run.`,
+    );
   }
 
   // Dedupe identical actions (e.g., when both `claude-code` and `codex`
@@ -776,6 +812,7 @@ export function update(opts: UpdateOptions): UpdateResult {
     evidencePath,
     surfaceConflicts,
     ontologyRecommendation,
+    paramWarnings,
   };
 }
 

@@ -1345,6 +1345,7 @@ function reportStatus(
 		fragmentProblems.length > 0 ||
 		suggested.length > 0 ||
 		result.partialAdoptions.length > 0 ||
+		!result.params.ok ||
 		!result.dependencies.ready ||
 		!result.continuity.ready ||
 		result.sessionContextBudget.capExceeded ||
@@ -1462,6 +1463,20 @@ function reportStatus(
 				`    ${item.fragmentId}@${item.installedVersion} -> ${item.libraryVersion}: ${item.reasons.join(", ")}`,
       );
     }
+  }
+  if (!result.params.ok) {
+		console.log(
+			ui.note(
+				`${result.params.problems.length} fragment param issue(s), ${result.params.renderDrift.length} pending param re-render(s)`,
+				"warning",
+			),
+		);
+		for (const problem of result.params.problems.slice(0, opts.verbose ? undefined : 5)) {
+			console.log(`    ${problem.severity} ${problem.message}`);
+		}
+		for (const drift of result.params.renderDrift.slice(0, opts.verbose ? undefined : 3)) {
+			console.log(`    re-render ${drift.target} (run anamnesis apply)`);
+		}
   }
   if (!result.dependencies.ready) {
 		console.log(
@@ -2915,6 +2930,9 @@ function reportUpdate(
     ]),
   ]);
 	if (opts.verbose) reportChangeDetails(ui, result.changes);
+  for (const warning of result.paramWarnings) {
+		printWrapped(ui, `param warning: ${warning.message}`, { tone: "warning" });
+  }
   if (result.suggested.length > 0) {
     const ids = result.suggested.map((r) => r.suggest).join(", ");
 		printLines(ui.section("Suggested"));

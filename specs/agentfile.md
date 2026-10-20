@@ -146,7 +146,7 @@ overrides:
 |---|---|---|---|
 | `id` | `string` | ✅ | 라이브러리의 fragment id (예: `prisma`) |
 | `version` | `int` | ✅ | 설치된 fragment 버전. `update` 가 참조 |
-| `params` | `object` | ⛔ | fragment 가 선언한 파라미터에 대한 값 |
+| `params` | `object` | ⛔ | fragment 가 `fragment.yaml` `params:` 로 선언한 파라미터에 대한 값. 렌더 시 `project_memory` 원문과 skill `*.md` 파일에 치환된다 |
 | `adapters` | partial `object<tool, bool>` | ⛔ | 어댑터별 활성/비활성 오버라이드. 필요한 도구만 적는다. 기본: `tools` 전부 활성 |
 | `pinned` | `bool` | ⛔ | `true` 면 `update` 가 자동 bump 하지 않고 `fragments/<id>/.versions/<version>/`(base 는 `base/.versions/<version>/`) 에서 해당 버전을 렌더링. `update --bump-pinned` 로만 명시적 bump |
 
@@ -266,6 +266,20 @@ manifest, filesystem 상태가 필요한 검증은 `status`, `doctor`, `init`,
 
 `status` 는 가능한 한 drift / update / stale 상태를 구조적으로
 보고하고, `doctor` 는 사용자가 실행할 수 있는 repair guidance 를 붙인다.
+
+`params` 진단 코드는 다음과 같다. 선언 문법과 치환 규칙은
+[FRAGMENT-AUTHORING.md](../docs/FRAGMENT-AUTHORING.md#params)를 따른다.
+
+| 코드 | 심각도 | 동작 |
+|---|---|---|
+| `fragment-param-unknown` | warning | fragment 가 선언하지 않은 키다. `apply` 는 값을 무시하고 렌더한다. |
+| `fragment-param-missing` | error | `required` 파라미터 값이 없다. `apply` 는 쓰기 전에 멈춘다. |
+| `fragment-param-invalid` | error | 값이 선언 타입·길이·항목 수와 맞지 않는다. `apply` 는 쓰기 전에 멈춘다. |
+| `fragment-param-render-drift` | warning | 깨끗한 관리 대상이 현재 params 렌더 결과와 다르다. `apply` 로 다시 쓴다. |
+
+선언하지 않은 키를 오류로 만들지 않는 이유: 기존 Agentfile 은 params 를
+렌더에 쓰지 않던 시기에 자유 입력으로 받아들였다. 오류로 바꾸면 기존
+프로젝트의 `apply` 가 멈춘다.
 
 ---
 

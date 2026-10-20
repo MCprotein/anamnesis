@@ -8,8 +8,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { capabilitySideEffects } from "../../core/capability_side_effects.js";
-import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
-import { RenderError } from "../../core/render.js";
+import type {
+  CapabilityRenderer,
+  RenderAction,
+  RenderContext,
+} from "../../core/render.js";
+import { RenderError, renderFragmentText } from "../../core/render.js";
+import { isParamTemplatedSkillFile } from "../../core/fragment_params.js";
 
 function walkFiles(
   rootDir: string,
@@ -29,6 +34,22 @@ function walkFiles(
     if (entry.isDirectory()) walkFiles(rootDir, childRel, out);
     else if (entry.isFile()) out.push(childRel);
   }
+}
+
+/**
+ * Read one skill file. Markdown files receive fragment param substitution;
+ * scripts and other files are copied verbatim so params never reach
+ * executable code.
+ */
+export function readSkillFile(
+  ctx: RenderContext,
+  sourceDir: string,
+  source: string,
+  rel: string,
+): string {
+  const raw = fs.readFileSync(path.join(sourceDir, rel), "utf8");
+  if (!isParamTemplatedSkillFile(rel)) return raw;
+  return renderFragmentText(ctx, raw, `skill source ${path.posix.join(source, rel)}`);
 }
 
 export const skillRenderer: CapabilityRenderer = {
@@ -68,7 +89,7 @@ export const skillRenderer: CapabilityRenderer = {
       path: path.posix.join(".claude/skills", capability.name, rel),
       fragmentId: ctx.fragment.id,
       fragmentVersion: ctx.fragment.version,
-      content: fs.readFileSync(path.join(sourceDir, rel), "utf8"),
+      content: readSkillFile(ctx, sourceDir, capability.source, rel),
       sideEffects,
     }));
   },

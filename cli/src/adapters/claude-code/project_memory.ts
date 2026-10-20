@@ -7,7 +7,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { CapabilityRenderer, RenderAction } from "../../core/render.js";
-import { RenderError } from "../../core/render.js";
+import { RenderError, renderFragmentText } from "../../core/render.js";
 
 export const projectMemoryRenderer: CapabilityRenderer = {
   type: "project_memory",
@@ -24,7 +24,11 @@ export const projectMemoryRenderer: CapabilityRenderer = {
         `fragment '${ctx.fragment.id}' project_memory source not found: ${sourcePath}`,
       );
     }
-    const content = fs.readFileSync(sourcePath, "utf8");
+    const content = renderFragmentText(
+      ctx,
+      fs.readFileSync(sourcePath, "utf8"),
+      `project_memory source ${capability.source}`,
+    );
     // Scope into the AGENTS.md belonging to this scope. Root scope (".")
     // or unset writes to the project-root AGENTS.md; sub-scopes write to
     // their own AGENTS.md (e.g. apps/api/AGENTS.md).

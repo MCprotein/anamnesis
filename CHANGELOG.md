@@ -7,6 +7,9 @@ could include breaking changes.
 
 ## [Unreleased]
 
+- Agentfile `fragments[].params` now reach rendering. A fragment declares its params in `fragment.yaml` (`string`, `integer`, `boolean`, `string[]`, `object[]`; `required`, `default`, `max_length`, `max_items`), and `apply`/`init`/`status`/`doctor` substitute the validated values into `project_memory` sources and skill Markdown files with a small built-in template syntax (`{{params.NAME}}`, one non-nested `{{#each}}` loop). Before this change every render path passed an empty object, so params had no effect. Fragments that declare no params render byte-for-byte as before.
+- `apply` stops before any write when a required param is missing or a value is invalid, and warns about undeclared keys without failing, so existing Agentfiles keep working. `status` adds a `params` section and `doctor` adds `fragment-param-unknown`, `fragment-param-missing`, `fragment-param-invalid`, and `fragment-param-render-drift` (a clean managed target that would change on the next `apply` because params changed).
+
 ## [1.25.5] — 2026-10-11
 
 - `apply` adopts a tracked managed file whose content already equals the new content, even when its manifest hash is out of date, instead of reporting it as user-modified; managed regions follow the same rule. A git checkout that restores a tracked `.anamnesis/manifest.json` while the file lives outside git (for example `.git/hooks/pre-commit`) made `projects apply` skip such projects on every run.
