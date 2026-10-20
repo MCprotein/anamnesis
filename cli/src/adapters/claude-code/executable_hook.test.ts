@@ -1270,6 +1270,32 @@ describe("executableHookRenderer (claude-code)", () => {
       expect(again.stdout).toBe("");
     }
 
+    // Tracked Work state shows one status line per file; nine modified
+    // ledgers pass the old 8-line threshold but are not uncommitted work.
+    const git = (args: string[]) =>
+      spawnSync("git", args, { cwd: projectRoot, encoding: "utf8" });
+    const ledgers = Array.from({ length: 9 }, (_, i) =>
+      path.join(projectRoot, `.anamnesis/work-units/wu_${i}/ledger.jsonl`),
+    );
+    for (const file of ledgers) {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "{}\n", "utf8");
+    }
+    expect(git(["add", "-f", ...ledgers]).status).toBe(0);
+    expect(
+      git([
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.invalid",
+        "commit",
+        "-q",
+        "--no-verify",
+        "-m",
+        "state",
+      ]).status,
+    ).toBe(0);
+    for (const file of ledgers) fs.appendFileSync(file, "{}\n", "utf8");
     const uncommitted = spawnSync(
       "bash",
       [path.resolve("base/adapters/claude-code/hooks/remind-uncommitted.sh")],

@@ -36,7 +36,12 @@ function fixture(): string {
 		".claude/worktrees/agent-1/.anamnesis/ontology/base.yaml",
 		"rules:\n  - copy\n",
 	);
+	write(".git/worktrees/agent-1/commondir", "../..\n");
 	write("packages/sub/.git", "gitdir: ../../.git/modules/sub\n");
+	// A submodule whose path contains worktrees/ is still a sub-scope.
+	write("worktrees/lib/.git", "gitdir: ../../.git/modules/worktrees/lib\n");
+	write(".git/modules/worktrees/lib/HEAD", "ref: refs/heads/main\n");
+	write("worktrees/lib/.anamnesis/ontology/lib.yaml", "rules:\n  - lib\n");
 	write("packages/sub/.anamnesis/ontology/sub.yaml", "rules:\n  - sub\n");
 	return projectRoot;
 }
@@ -53,6 +58,9 @@ describe("linked worktree exclusion", () => {
 			false,
 		);
 		expect(isLinkedGitWorktreeRoot(projectRoot)).toBe(false);
+		expect(isLinkedGitWorktreeRoot(path.join(projectRoot, "worktrees/lib"))).toBe(
+			false,
+		);
 	});
 
 	it("keeps worktree ontology copies out of startup and preamble pointers", () => {
@@ -62,10 +70,11 @@ describe("linked worktree exclusion", () => {
 		expect(paths).toEqual([
 			".anamnesis/ontology/base.yaml",
 			"packages/sub/.anamnesis/ontology/sub.yaml",
+			"worktrees/lib/.anamnesis/ontology/lib.yaml",
 		]);
 		const preamble = contextSubagentPreamble({ projectRoot });
 		expect(preamble.preamble).not.toContain(".claude/worktrees/");
-		expect(preamble.summary.startupSourcePointers).toBe(2);
+		expect(preamble.summary.startupSourcePointers).toBe(3);
 	});
 
 	it("keeps worktree ontology copies out of the Claude SessionStart hook", () => {
@@ -83,6 +92,7 @@ describe("linked worktree exclusion", () => {
 		expect(result.status, result.stderr).toBe(0);
 		expect(result.stdout).toContain(".anamnesis/ontology/base.yaml");
 		expect(result.stdout).toContain("packages/sub/.anamnesis/ontology/sub.yaml");
+		expect(result.stdout).toContain("worktrees/lib/.anamnesis/ontology/lib.yaml");
 		expect(result.stdout).not.toContain(".claude/worktrees/");
 	});
 
@@ -103,6 +113,7 @@ describe("linked worktree exclusion", () => {
 			.additionalContext as string;
 		expect(context).toContain(".anamnesis/ontology/base.yaml");
 		expect(context).toContain("packages/sub/.anamnesis/ontology/sub.yaml");
+		expect(context).toContain("worktrees/lib/.anamnesis/ontology/lib.yaml");
 		expect(context).not.toContain(".claude/worktrees/");
 	});
 });

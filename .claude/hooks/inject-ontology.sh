@@ -20,13 +20,20 @@ SESSION_CONTEXT_MODE="${ANAMNESIS_SESSION_CONTEXT_MODE:-compact}"
 
 # Linked worktrees inside the project (for example .claude/worktrees/<name>)
 # hold copies of another checkout's ontology, not sub-scopes. Their .git is a
-# file whose gitdir ends in .../worktrees/<name>; submodules point into
-# modules/ and stay included.
+# file whose gitdir ends in .../worktrees/<name> and holds a commondir file;
+# a submodule's gitdir (under modules/) has no commondir and stays included.
 linked_worktree_roots=()
 while IFS= read -r marker; do
   gitdir_line=$(head -n 1 "$marker" 2>/dev/null || true)
-  if [[ "$gitdir_line" =~ ^gitdir:[[:space:]]*.*/worktrees/[^/]+/?[[:space:]]*$ ]]; then
-    linked_worktree_roots+=("${marker%/.git}")
+  if [[ "$gitdir_line" =~ ^gitdir:[[:space:]]*(.*/worktrees/[^/]+)/?[[:space:]]*$ ]]; then
+    gitdir="${BASH_REMATCH[1]}"
+    case "$gitdir" in
+      /*) ;;
+      *) gitdir="${marker%/.git}/$gitdir" ;;
+    esac
+    if [[ -f "$gitdir/commondir" ]]; then
+      linked_worktree_roots+=("${marker%/.git}")
+    fi
   fi
 done < <(
   find "$PROJECT_ROOT" -mindepth 2 \

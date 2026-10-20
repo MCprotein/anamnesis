@@ -265,18 +265,21 @@ transitions:
 - The records are written with one write and one `fsync`. The ledger tail
   rule still recovers a torn final record, so a crash can leave a committed
   prefix of the batch. An exact retry with the same expected head finds that
-  prefix right after the head and appends only the rest.
+  prefix right after the head and appends only the rest. Unlike a single
+  transition, a batch retry is not idempotent once another event follows the
+  batch: it fails with a head conflict, and the caller rereads status.
 
 `anamnesis work evidence plan --work <id> --input <gh-json>` turns PR JSON
 that the agent already fetched (`gh pr list|view --json ...`) into a batch
-draft. It reads no network and writes no ledger record.
+draft. It reads no network and writes no ledger record. `gh pr list` returns
+30 PRs by default, so pass `--limit` (the plan accepts up to 500).
 
 - A PR links requirements with a body line `<marker>: <ids> — <note>`. The
   default marker is `Work-Requirements`; `--marker` selects another label.
   `-` alone means "no requirement". Unknown IDs are reported, not guessed.
 - Status rule: `OPEN` → `in_progress`, `MERGED` → `implemented_unverified`,
   `CLOSED` → skipped. The plan never proposes `verified`, never lowers a
-  status, and skips blocked or waived requirements.
+  status, and skips blocked, waived, or superseded requirements.
 - Event IDs derive from Work, requirement, PR URL, state, head, and merge
   commit. A repeated poll over the same PR state therefore plans nothing new.
 - The agent reviews the draft and applies it with `transition --batch`. A
@@ -312,10 +315,16 @@ constraints:
   hash. Existing ledgers therefore fold to byte-identical contract and
   projection hashes. A CLI older than this change rejects a v2 record with a
   schema-discriminator error instead of silently dropping constraints.
+  Because constraints cannot be removed, the first constraint makes that
+  Work unreadable to older CLIs; upgrade every CLI and hook that shares the
+  ledger first.
 - The projection and briefing carry `constraints` only when the Work has
   them. The briefing shows the active count, the superseded count, a hash of
   the active set, the active list within a fixed budget, and the added or
-  superseded constraint IDs since the confirmed baseline.
+  superseded constraint IDs since the confirmed baseline. The hook briefing
+  lists active constraints within a fixed budget in both `compact` and
+  `full` detail; when the list does not fit, it says how many were omitted
+  and points to `work status`, which is the complete list.
 
 Rules that apply to many Works still belong in project policy. A constraint
 with `promote_candidate: true` marks a rule that an agent may later propose

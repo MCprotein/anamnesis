@@ -611,7 +611,7 @@ one expected head; one invalid transition rejects the whole batch:
   transitions: [{event_id, requirement_id, status, evidence_refs}]
 A batch draft from PR JSON you fetched yourself (no network; open -> in_progress,
 merged -> implemented_unverified, closed -> skipped, never verified):
-  gh pr list --state all --json number,url,state,body,headRefOid,mergedAt,mergeCommit,isDraft > prs.json
+  gh pr list --state all --limit 500 --json number,url,state,body,headRefOid,mergedAt,mergeCommit,isDraft > prs.json
   anamnesis work evidence plan --work <id> --input prs.json [--marker Work-Requirements]
     [--output batch.json]
   PR body line: "Work-Requirements: r1, r2 — note". Review the draft before applying.

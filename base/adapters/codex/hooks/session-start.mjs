@@ -155,7 +155,16 @@ function isLinkedWorktreeRoot(dir) {
     return false;
   }
   const match = /^gitdir:\s*(.+?)\s*$/mu.exec(content);
-  return Boolean(match && /(?:^|[\\/])worktrees[\\/][^\\/]+[\\/]?$/u.test(match[1]));
+  if (!match) return false;
+  const gitdir = resolve(dir, match[1]);
+  if (!/(?:^|[\\/])worktrees[\\/][^\\/]+[\\/]?$/u.test(gitdir)) return false;
+  // Only a linked worktree's private gitdir has `commondir`; a submodule's
+  // gitdir under modules/ does not.
+  try {
+    return statSync(join(gitdir, "commondir")).isFile();
+  } catch {
+    return false;
+  }
 }
 
 function walkOntologyFiles(projectRoot) {

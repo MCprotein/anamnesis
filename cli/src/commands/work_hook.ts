@@ -1130,7 +1130,7 @@ function constraintLines(briefing: WorkBriefingSnapshot): string[] {
 			constraints.active,
 			900,
 			(item) =>
-				`${item.id}|${item.kind}|${JSON.stringify(boundedSemanticField(item.text, 300))}${item.expires ? `|expires ${JSON.stringify(boundedSemanticField(item.expires, 80))}` : ""}`,
+				`${boundedSemanticField(item.id, 128)}|${item.kind}|${JSON.stringify(boundedSemanticField(item.text, 300))}${item.expires ? `|expires ${JSON.stringify(boundedSemanticField(item.expires, 80))}` : ""}`,
 			" | ",
 		)}`,
 	];

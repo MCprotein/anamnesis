@@ -7,7 +7,8 @@ import * as path from "node:path";
  * runtimes create such checkouts inside the project (for example
  * `.claude/worktrees/<name>`); their `.anamnesis/` files are copies of
  * another checkout, not sub-scopes of this project. A submodule also has a
- * `.git` file, but its gitdir points into `modules/`, so it stays included.
+ * `.git` file, but its gitdir (under `modules/`) has no `commondir` file,
+ * so it stays included even when its path contains `worktrees/`.
  */
 export function isLinkedGitWorktreeRoot(dir: string): boolean {
 	const marker = path.join(dir, ".git");
@@ -26,5 +27,8 @@ export function isLinkedGitWorktreeRoot(dir: string): boolean {
 	}
 	const match = /^gitdir:\s*(.+?)\s*$/mu.exec(content);
 	if (!match) return false;
-	return /(?:^|[\\/])worktrees[\\/][^\\/]+[\\/]?$/u.test(match[1]!);
+	const gitdir = path.resolve(dir, match[1]!);
+	if (!/(?:^|[\\/])worktrees[\\/][^\\/]+[\\/]?$/u.test(gitdir)) return false;
+	// Only a linked worktree's private gitdir has `commondir`.
+	return fs.existsSync(path.join(gitdir, "commondir"));
 }

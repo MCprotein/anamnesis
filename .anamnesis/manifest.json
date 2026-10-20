@@ -154,8 +154,8 @@
       "path": ".claude/hooks/inject-ontology.sh",
       "fragment_id": "base",
       "fragment_version": 32,
-      "last_applied_hash": "sha256:46a12ed9151ce8e66326ea3a9007a41705a52904f6fc989ef1c467426bf43fdf",
-      "current_user_hash": "sha256:46a12ed9151ce8e66326ea3a9007a41705a52904f6fc989ef1c467426bf43fdf"
+      "last_applied_hash": "sha256:50b4feb915a72d3c8a2a3f18cfd09f5638b64338a2ae4c373afe233650b91971",
+      "current_user_hash": "sha256:50b4feb915a72d3c8a2a3f18cfd09f5638b64338a2ae4c373afe233650b91971"
     },
     {
       "path": ".claude/hooks/remind-uncommitted.sh",
@@ -238,8 +238,8 @@
       "path": ".anamnesis/codex-native-hooks/session-start.mjs",
       "fragment_id": "base",
       "fragment_version": 32,
-      "last_applied_hash": "sha256:ece636e20ab79d4985675c4a80668e2092425a5241926a1609096f103d5a2c9b",
-      "current_user_hash": "sha256:ece636e20ab79d4985675c4a80668e2092425a5241926a1609096f103d5a2c9b"
+      "last_applied_hash": "sha256:7a2dfc692bb193d8993b6bb5fdc40a51b790f703dbb868664472ce828b9d07b1",
+      "current_user_hash": "sha256:7a2dfc692bb193d8993b6bb5fdc40a51b790f703dbb868664472ce828b9d07b1"
     },
     {
       "path": ".anamnesis/codex-hooks/base-PostToolUse-Edit-remind-uncommitted.sh",
@@ -371,8 +371,8 @@
       "path": ".anamnesis/codex-instructions/file-AGENTS.md/codex-hook-inject-ontology.md",
       "fragment_id": "base",
       "fragment_version": 32,
-      "last_applied_hash": "sha256:ecaafb7efca1ac3e996cba2196fe8dd7d898757ce2edabeaca5f07715a46f1d2",
-      "current_user_hash": "sha256:ecaafb7efca1ac3e996cba2196fe8dd7d898757ce2edabeaca5f07715a46f1d2"
+      "last_applied_hash": "sha256:7ec3b692324978f208114cca29e5dc4cf28e5e21caf8bb0084d845778ecb88ab",
+      "current_user_hash": "sha256:7ec3b692324978f208114cca29e5dc4cf28e5e21caf8bb0084d845778ecb88ab"
     },
     {
       "path": ".anamnesis/codex-instructions/file-AGENTS.md/codex-hook-remind-uncommitted.md",

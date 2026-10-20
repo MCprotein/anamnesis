@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { readEvidenceSummary } from "../core/evidence.js";
+import { parseRegions } from "../core/regions.js";
 import {
   analyzeHandoffLifecycle,
   type HandoffLifecycleReport,
@@ -433,8 +434,11 @@ function teamRulesRegion(projectRoot: string): string | null {
   const agents = path.join(projectRoot, "AGENTS.md");
   try {
     const content = fs.readFileSync(agents, "utf8");
-    const match = /<!-- anamnesis:region id=(team[A-Za-z0-9_-]*) /u.exec(content);
-    return match ? `AGENTS.md#${match[1]}` : null;
+    // A region rendered by the team fragment, whatever its region ID.
+    const region = parseRegions(content).find(
+      (item) => item.fragmentId === "team",
+    );
+    return region ? `AGENTS.md#${region.id}` : null;
   } catch {
     return null;
   }

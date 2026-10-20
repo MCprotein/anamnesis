@@ -400,6 +400,18 @@ describe("work evidence plan", () => {
 		});
 		expect(downgrade.batch).toBeNull();
 		expect(downgrade.skipped[0]?.reason).toBe("already_at_or_beyond");
+		const superseded = buildWorkEvidencePlan({
+			projection: {
+				...projection,
+				requirements: projection.requirements.map((item) =>
+					item.id === "r2" ? { ...item, superseded_by: "r3" } : item,
+				),
+			},
+			committed_event_ids: new Set(),
+			pull_requests: pr({ body: "Work-Requirements: r2" }),
+		});
+		expect(superseded.batch).toBeNull();
+		expect(superseded.skipped[0]?.reason).toBe("requirement_superseded");
 	});
 
 	it("reads a custom marker and rejects input that is not gh PR JSON", () => {

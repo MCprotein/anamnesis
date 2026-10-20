@@ -49,7 +49,8 @@ export type WorkEvidencePlanSkipReason =
 	| "already_recorded"
 	| "already_at_or_beyond"
 	| "requirement_blocked"
-	| "requirement_waived";
+	| "requirement_waived"
+	| "requirement_superseded";
 
 export interface WorkEvidencePlan {
 	schema_version: typeof WORK_EVIDENCE_PLAN_SCHEMA_VERSION;
@@ -126,7 +127,7 @@ export function buildWorkEvidencePlan(
 
 	for (const pr of [...pullRequests].sort(
 		(left, right) =>
-			left.url.localeCompare(right.url) || left.number - right.number,
+			compareCodeUnits(left.url, right.url) || left.number - right.number,
 	)) {
 		const lines = markerLines(pr.body ?? "", marker);
 		if (lines.length === 0) {
@@ -154,6 +155,14 @@ export function buildWorkEvidencePlan(
 						pr: pr.url,
 						requirement_id: id,
 						reason: "already_recorded",
+					});
+					continue;
+				}
+				if (requirement.superseded_by !== undefined) {
+					skipped.push({
+						pr: pr.url,
+						requirement_id: id,
+						reason: "requirement_superseded",
 					});
 					continue;
 				}
@@ -207,7 +216,7 @@ export function buildWorkEvidencePlan(
 	}
 
 	const batchTransitions = [...transitions.values()].sort((left, right) =>
-		left.requirement_id.localeCompare(right.requirement_id),
+		compareCodeUnits(left.requirement_id, right.requirement_id),
 	);
 	return {
 		schema_version: WORK_EVIDENCE_PLAN_SCHEMA_VERSION,
@@ -310,6 +319,10 @@ function truncateUtf8(value: string, maxBytes: number): string {
 		out += character;
 	}
 	return `${out}…`;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+	return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function uniqueRefs(values: readonly string[]): string[] {
