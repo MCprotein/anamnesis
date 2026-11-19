@@ -79,6 +79,21 @@ describe("parseExportTranscript", () => {
 		]);
 	});
 
+	it.each([
+		[
+			"a tool output that opens a fence and is cut",
+			["⏺ Bash(cat notes.md)", "  ⎿  ```text", "     … +5 lines (ctrl+o to expand)", ""],
+		],
+		[
+			"a lead fence that stays open before a status line",
+			["⏺ 예시입니다.", "  ```ts", "  const x = 1;", "✻ Worked for 3m", ""],
+		],
+	])("keeps the next user input after %s", (_label, head) => {
+		const utterances = parseExportTranscript([...head, "❯ 다음 입력"].join("\n"));
+		const users = utterances.filter((u) => u.speaker === UserPainSpeaker.user);
+		expect(users.map((u) => u.startLine)).toEqual([head.length + 1]);
+	});
+
 	it("removes a leading byte order mark before parsing", () => {
 		const [first] = parseExportTranscript("\uFEFF❯ 첫 입력\n");
 		expect(first?.speaker).toBe(UserPainSpeaker.user);

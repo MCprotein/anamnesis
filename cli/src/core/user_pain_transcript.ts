@@ -46,9 +46,9 @@ export function parseExportTranscript(content: string): TranscriptUtterance[] {
 			continue;
 		}
 		const start = startOf(raw);
-		if (CODE_FENCE.test(start?.text ?? raw)) inFence = !inFence;
-		else if (start) inFence = false;
 		if (start) {
+			inFence =
+				start.speaker === UserPainSpeaker.lead && CODE_FENCE.test(start.text);
 			current = {
 				speaker: start.speaker,
 				startLine: line,
@@ -61,9 +61,13 @@ export function parseExportTranscript(content: string): TranscriptUtterance[] {
 		const continuation = CONTINUATION.exec(raw);
 		if (current && continuation) {
 			current.lines.push({ line, text: (continuation[1] ?? "").trimEnd() });
+			if (current.speaker === UserPainSpeaker.lead && CODE_FENCE.test(raw)) {
+				inFence = !inFence;
+			}
 			continue;
 		}
 		current = undefined;
+		inFence = false;
 	}
 	return utterances;
 }
