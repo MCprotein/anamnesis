@@ -5,8 +5,23 @@ import {
 	type WorkPromptResolutionResult,
 	type WorkStatusResult,
 } from "../commands/work.js";
-import { createTui } from "../core/tui.js";
-import { type HumanReportOptions, printLines, printWrapped } from "./common.js";
+import {
+	CHIP,
+	type Chip,
+	createTui,
+	LEVEL,
+	worstLevel,
+} from "../core/tui.js";
+import type { WorkRequirementState } from "../core/work_projection.js";
+import {
+	type Finding,
+	findingLevel,
+	findingLines,
+	type HumanReportOptions,
+	metric,
+	printFindingSection,
+	printLines,
+} from "./common.js";
 
 export function reportWorkMutation(result: WorkMutationResult): void {
 	const ui = createTui();
@@ -61,7 +76,9 @@ export function reportWorkExecutionMutation(result: WorkMutationResult): void {
 	}
 }
 
-export function reportWorkPromptResolution(result: WorkPromptResolutionResult): void {
+export function reportWorkPromptResolution(
+	result: WorkPromptResolutionResult,
+): void {
 	const ui = createTui();
 	printLines([
 		...ui.title("anamnesis work prompt", result.capture_id),
@@ -76,7 +93,7 @@ export function reportWorkPromptResolution(result: WorkPromptResolutionResult): 
 			...(result.work_id ? [{ label: "work", value: result.work_id }] : []),
 		]),
 	]);
-  if (result.projection) {
+	if (result.projection) {
 		printLines(
 			ui.statusRows([
 				{
@@ -90,128 +107,179 @@ export function reportWorkPromptResolution(result: WorkPromptResolutionResult): 
 				},
 			]),
 		);
-  }
+	}
 }
 
 export function reportWorkStatus(
 	result: WorkStatusResult,
 	opts: HumanReportOptions = {},
 ): void {
-  const projection = result.projection;
+	const projection = result.projection;
+	const verbose = opts.verbose === true;
 	const ui = createTui();
 	const complete = projection.lifecycle === "completed";
+	const blocked = projection.progress.blocked > 0;
+	const checks = workChecks(result, verbose);
+	const open = projection.requirements.filter(
+		(requirement) =>
+			requirement.status !== "verified" && requirement.status !== "waived",
+	);
+	const visible = verbose ? projection.requirements : open;
+	const requirements: Finding[] =
+		visible.length === 0
+			? [
+					{
+						chip: CHIP.ok,
+						topic: "verified",
+						detail: "all applicable requirements",
+					},
+				]
+			: visible.map((requirement) => ({
+					chip: requirementChip(requirement.status),
+					topic: requirement.id,
+					detail: requirement.summary,
+					more: requirement.status === "pending" ? [] : [requirement.status],
+				}));
+	const level = worstLevel([
+		complete ? LEVEL.ready : blocked ? LEVEL.attention : LEVEL.notice,
+		findingLevel(problems([...checks, ...requirements])),
+	]);
+	const progressDetail = projection.progress.weighted
+		? `${projection.progress.verified_weight ?? 0}/${projection.progress.applicable_weight ?? 0} verified weight`
+		: `${projection.progress.verified}/${projection.progress.applicable} verified requirements`;
 	printLines([
-		...ui.title(
-			"anamnesis work status",
-			projection.title ?? projection.work_id,
-		),
-		...ui.verdict({
-			label: complete
-				? "Work complete"
-				: projection.progress.blocked > 0
-					? "Work blocked"
-					: "Work active",
-			summary: `${projection.progress.percent}% · ${projection.work_id}`,
-			tone: complete
-				? "ready"
-				: projection.progress.blocked > 0
-					? "warning"
-					: "info",
-		}),
-		...ui.statusRows([
-			{ label: "revision", value: String(projection.contract_revision) },
-			{ label: "lifecycle", value: projection.lifecycle },
-			{
-				label: "progress",
-				value: `${projection.progress.percent}%`,
-				tone: complete ? "success" : "accent",
-			},
+		...ui.heading("anamnesis work status", projection.work_id),
+		...ui.level(level, projection.title ?? projection.work_id),
+		"",
+		...ui.table([
+			[
+				"progress",
+				`${metric(ui, `${projection.progress.percent}%`, !blocked)}  ${ui.style(progressDetail, "muted")}`,
+			],
+			["revision", String(projection.contract_revision)],
+			["lifecycle", projection.lifecycle],
+			...workStateRows(result, verbose),
+			...(verbose
+				? [
+						["contract", projection.completion_contract ?? "(none)"],
+						[
+							"gates",
+							projection.configured_required_gates.join(", ") || "none",
+						],
+					]
+				: []),
 		]),
 	]);
-	if (opts.verbose) {
-		printWrapped(
-			ui,
-			`completion contract: ${projection.completion_contract ?? "(none)"}`,
-		);
-		printWrapped(
-			ui,
-			`configured required gates: ${projection.configured_required_gates.join(", ") || "none"}`,
-		);
+	printFindingSection(ui, "Checks", checks);
+	printLines([
+		...ui.section(
+			"Requirements",
+			visible.length === 0 ? undefined : visible.length,
+		),
+		...findingLines(ui, requirements),
+	]);
+	if (!verbose) {
+		const next = open[0];
+		printLines([
+			...ui.section("Next"),
+			ui.note(
+				complete
+					? "no action required"
+					: next
+						? `${next.id}: ${next.summary}`
+						: "review readiness and close the Work",
+				complete ? "success" : blocked ? "warning" : "accent",
+			),
+		]);
 	}
-	for (const gate of projection.review_gates) {
-		if (gate.enforcement === "off") continue;
-		printWrapped(
-			ui,
-			opts.verbose
-				? `  review ${gate.gate}: ${gate.state}; next=${gate.next_provider ?? "none"}; reviewers=${gate.passing_reviewer_refs.map((item) => `${item.provider}:${item.ref}`).join(",") || "none"}; findings=${gate.finding_refs.join(",") || "none"}; failures=${gate.failure_refs.join(",") || "none"}`
-				: `review ${gate.gate}: ${gate.state}`,
-		);
-	}
-	if (projection.parallelism.mode !== "off") {
-		printWrapped(
-			ui,
-			opts.verbose
-				? `  delegation: ${projection.parallelism.recorded_state}; assessment=${projection.parallelism.assessment_id ?? "none"}; next=${projection.parallelism.next_provider ?? "none"}; failures=${projection.parallelism.failure_refs.join(",") || "none"}`
-				: `delegation: ${projection.parallelism.recorded_state}`,
-		);
-	}
-	if (result.readiness) console.log(`  readiness: ${result.readiness}`);
-  if (result.policy_drift?.drifted) {
-		console.log(
-			"  policy drift: current project policy differs; frozen Work policy retained",
-		);
-  }
-	const visibleRequirements = opts.verbose
-		? projection.requirements
-		: projection.requirements.filter(
-				(requirement) =>
-					requirement.status !== "verified" && requirement.status !== "waived",
-			);
-  console.log("  requirements:");
-	if (visibleRequirements.length === 0) console.log("    all applicable requirements verified");
-  for (const requirement of visibleRequirements) {
-		printWrapped(
-			ui,
-			`- ${requirement.id} [${requirement.status}] — ${requirement.summary}`,
-			{ indent: 4 },
-		);
-  }
-  const progressDetail = projection.progress.weighted
-    ? `${projection.progress.verified_weight ?? 0}/${projection.progress.applicable_weight ?? 0} verified weight`
-    : `${projection.progress.verified}/${projection.progress.applicable} verified requirements`;
-	console.log(
-		`  progress: ${projection.progress.percent}% (${progressDetail})`,
+}
+
+function requirementChip(status: WorkRequirementState): Chip {
+	if (status === "verified" || status === "waived") return CHIP.ok;
+	if (status === "blocked") return CHIP.fail;
+	if (status === "pending") return CHIP.todo;
+	return CHIP.work;
+}
+
+function problems(findings: Finding[]): Finding[] {
+	return findings.filter(
+		(finding) => finding.chip === CHIP.warn || finding.chip === CHIP.fail,
 	);
-	if (!opts.verbose) {
-		printLines(ui.section("Next"));
-		const next = projection.requirements.find(
-			(requirement) =>
-				requirement.status !== "verified" && requirement.status !== "waived",
-		);
-		const nextMessage = complete
-			? "no action required"
-			: next
-				? `${next.id}: ${next.summary}`
-				: "review readiness and close the Work";
-		printWrapped(ui, nextMessage, {
-			tone: complete
-				? "success"
-				: projection.progress.blocked > 0
-					? "warning"
-					: "accent",
+}
+
+function delegationBlocked(result: WorkStatusResult): boolean {
+	return (
+		result.projection.parallelism.mode !== "off" &&
+		result.projection.parallelism.recorded_state === "blocked_unavailable"
+	);
+}
+
+function delegationDetail(result: WorkStatusResult, verbose: boolean): string {
+	const parallelism = result.projection.parallelism;
+	return verbose
+		? `${parallelism.recorded_state}; assessment=${parallelism.assessment_id ?? "none"}; next=${parallelism.next_provider ?? "none"}; failures=${parallelism.failure_refs.join(",") || "none"}`
+		: parallelism.recorded_state;
+}
+
+function workStateRows(result: WorkStatusResult, verbose: boolean): string[][] {
+	const projection = result.projection;
+	return [
+		...projection.review_gates
+			.filter((gate) => gate.enforcement !== "off" && gate.state === "off")
+			.map((gate) => [`review ${gate.gate}`, gate.state]),
+		...(projection.parallelism.mode !== "off" && !delegationBlocked(result)
+			? [["delegation", delegationDetail(result, verbose)]]
+			: []),
+		...(result.readiness ? [["readiness", result.readiness]] : []),
+	];
+}
+
+function workChecks(result: WorkStatusResult, verbose: boolean): Finding[] {
+	const projection = result.projection;
+	const findings: Finding[] = [];
+	for (const gate of projection.review_gates) {
+		if (gate.enforcement === "off" || gate.state === "off") continue;
+		findings.push({
+			chip:
+				gate.state === "passed" || gate.state === "waived"
+					? CHIP.ok
+					: gate.state === "changes_requested" ||
+							gate.state === "blocked_unavailable"
+						? CHIP.warn
+						: CHIP.todo,
+			topic: `review ${gate.gate}`,
+			detail: gate.state,
+			more: verbose
+				? [
+						`next=${gate.next_provider ?? "none"}; reviewers=${gate.passing_reviewer_refs.map((item) => `${item.provider}:${item.ref}`).join(",") || "none"}; findings=${gate.finding_refs.join(",") || "none"}; failures=${gate.failure_refs.join(",") || "none"}`,
+					]
+				: [],
 		});
 	}
+	if (delegationBlocked(result))
+		findings.push({
+			chip: CHIP.warn,
+			topic: "delegation",
+			detail: delegationDetail(result, verbose),
+		});
+	if (result.policy_drift?.drifted)
+		findings.push({
+			chip: CHIP.warn,
+			topic: "policy drift",
+			detail: "current project policy differs; frozen Work policy retained",
+		});
+	return findings;
 }
 
 export function formatWorkBrief(result: WorkBriefResult): string {
 	const lines = [
 		`Work briefing — ${result.briefing.work.title ?? result.work_id}`,
 	];
-  for (const section of result.sections) {
-    lines.push("", `${section.label}:`);
-    if (section.values.length === 0) lines.push("  - none");
-    else lines.push(...section.values.map((value) => `  - ${value}`));
-  }
+	for (const section of result.sections) {
+		lines.push("", `${section.label}:`);
+		if (section.values.length === 0) lines.push("  - none");
+		else lines.push(...section.values.map((value) => `  - ${value}`));
+	}
 	for (const gate of result.projection.review_gates) {
 		if (gate.enforcement === "off") continue;
 		lines.push(
@@ -231,10 +299,10 @@ export function formatWorkBrief(result: WorkBriefResult): string {
 		);
 	}
 	if (result.readiness) lines.push("", `Readiness: ${result.readiness}`);
-  lines.push(
-    "",
-    `Delivery: pending (${result.delivery_token})`,
-    "Continue the active Work from the listed next requirements.",
-  );
-  return lines.join("\n");
+	lines.push(
+		"",
+		`Delivery: pending (${result.delivery_token})`,
+		"Continue the active Work from the listed next requirements.",
+	);
+	return lines.join("\n");
 }

@@ -4,9 +4,10 @@ import {
 	type CodexHookTrustInspection,
 	type TrustCodexHooksResult,
 } from "../core/codex_hook_trust.js";
-import { createTui } from "../core/tui.js";
+import { CHIP, createTui } from "../core/tui.js";
 import {
 	countTone,
+	type Finding,
 	type HumanReportOptions,
 	printLines,
 	printWrapped,
@@ -103,6 +104,73 @@ export function reportCodexHookTrustInspection(
 			tone: "warning",
 		});
   }
+}
+
+export interface HookTrustFindings {
+	attention: Finding[];
+	notes: Finding[];
+}
+
+export function codexHookTrustFindings(
+	inspection: CodexHookTrustInspection,
+): HookTrustFindings {
+	const s = inspection.summary;
+	const attention: Finding[] = [];
+	const notes: Finding[] = [];
+	const blocked = inspection.hooks.filter(
+		(item) =>
+			item.status === "untrusted" ||
+			item.status === "modified" ||
+			item.status === "unknown",
+	);
+	if (blocked.length > 0) {
+		const counts = [
+			s.untrusted > 0 ? `${s.untrusted} untrusted` : "",
+			s.modified > 0 ? `${s.modified} modified` : "",
+			s.unknown > 0 ? `${s.unknown} unknown` : "",
+		].filter(Boolean);
+		attention.push({
+			chip: CHIP.warn,
+			topic: "Codex hooks",
+			detail: `${counts.join(", ")} of ${s.registered}; these hooks may not execute`,
+			more: [uniqueEvents(blocked.map((item) => item.event))],
+		});
+	}
+	const sources = inspection.alternateProjectSources.map(
+		(alternate) => `runtime source: ${alternate.sourcePath}`,
+	);
+	inspection.warnings.forEach((warning, index) => {
+		attention.push({
+			chip: CHIP.warn,
+			topic: "hook discovery",
+			detail: warning,
+			more: index === 0 ? sources : [],
+		});
+	});
+	if (inspection.warnings.length === 0 && sources.length > 0) {
+		notes.push({
+			chip: CHIP.info,
+			topic: "hook source",
+			detail: "Codex reads hooks from another worktree",
+			more: sources,
+		});
+	}
+	if (!inspection.available && inspection.error) {
+		attention.push({
+			chip: CHIP.warn,
+			topic: "hook trust",
+			detail: `unavailable: ${inspection.error}`,
+		});
+	}
+	return { attention, notes };
+}
+
+function uniqueEvents(events: string[]): string {
+	const totals = new Map<string, number>();
+	for (const event of events) totals.set(event, (totals.get(event) ?? 0) + 1);
+	return [...totals]
+		.map(([event, total]) => (total > 1 ? `${event} x${total}` : event))
+		.join(", ");
 }
 
 export function reportCodexHookTrust(result: TrustCodexHooksResult): void {

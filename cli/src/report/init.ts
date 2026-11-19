@@ -1,171 +1,225 @@
 import { type InitResult, summarizeChanges } from "../commands/init.js";
-import { initNextSteps } from "../core/init_next_steps.js";
-import { createTui } from "../core/tui.js";
 import {
-	changeSummaryLine,
-	countTone,
+	INIT_BLOCKED_STEP_LABEL,
+	initNextSteps,
+} from "../core/init_next_steps.js";
+import { CHIP, createTui, LEVEL, type Tui } from "../core/tui.js";
+import {
+	type Finding,
 	type HumanReportOptions,
+	plural,
+	printFindingSection,
 	printLines,
-	printWrapped,
 	reportChangeDetails,
 	reportWorkspaceProfile,
 } from "./common.js";
 
 export function reportInit(
-  result: InitResult,
-  projectRoot: string,
-  execAdaptersEnabled: boolean,
-  opts: HumanReportOptions = {},
+	result: InitResult,
+	projectRoot: string,
+	execAdaptersEnabled: boolean,
+	opts: HumanReportOptions = {},
 ): void {
-  const ui = createTui();
-  const s = summarizeChanges(result.changes);
+	const ui = createTui();
+	const verbose = opts.verbose === true;
+	const s = summarizeChanges(result.changes);
 	const fragIds =
 		result.selectedFragments.map((f) => f.id).join(", ") || "(none)";
-  printLines([
-    ...ui.title("anamnesis init", result.agentfile.project.name),
-		...ui.verdict({
-			label: result.writtenToDisk ? "Initialized" : "Preview ready",
-			summary:
-				s.blocked > 0
-					? `${s.blocked} protected write(s) blocked`
-					: "project adoption plan is ready",
-			tone: s.blocked > 0 ? "warning" : result.writtenToDisk ? "ready" : "info",
-		}),
-		...ui.statusRows([
-      {
-				label: "mode",
-        value: result.writtenToDisk ? "applied" : "preview",
-        tone: result.writtenToDisk ? "success" : "accent",
-      },
-			{ label: "tools", value: result.agentfile.tools.join(", ") },
-			{ label: "fragments", value: fragIds },
-			{
-				label: "changes",
-				value: changeSummaryLine(s),
-				tone: countTone(s.blocked),
-			},
-    ]),
-  ]);
-	if (opts.verbose) reportChangeDetails(ui, result.changes);
-  if (result.monorepoDetection?.isMonorepo) {
-    const det = result.monorepoDetection;
-    printLines([
-      ...ui.section("Workspace Profile"),
-			ui.note(
-				`monorepo detected via ${det.declaredVia}: ${det.scopes.length} scope(s)`,
+	const steps = initNextSteps({
+		writtenToDisk: result.writtenToDisk,
+		blockedWrites: s.blocked,
+		tools: result.agentfile.tools,
+		execAdaptersEnabled,
+	});
+	const notes = initNotes(result, s.blocked, verbose, steps);
+	const level =
+		s.blocked > 0 || result.registrationError || result.bootstrapError
+			? LEVEL.attention
+			: result.writtenToDisk
+				? LEVEL.ready
+				: LEVEL.notice;
+	printLines([
+		...ui.heading("anamnesis init", result.agentfile.project.name),
+		...ui.level(
+			level,
+			`${result.writtenToDisk ? "initialized" : "preview ready"}${s.blocked > 0 ? `; ${s.blocked} protected writes blocked` : ""}`,
+		),
+		"",
+		...ui.table([
+			["mode", result.writtenToDisk ? "applied" : "preview"],
+			["tools", result.agentfile.tools.join(", ")],
+			["fragments", fragIds],
+			["changes", changeCounts(ui, s)],
+		]),
+	]);
+	if (verbose) reportChangeDetails(ui, result.changes);
+	const monorepo = result.monorepoDetection;
+	if (monorepo?.isMonorepo) {
+		printLines([
+			...ui.section("Workspace Profile", monorepo.scopes.length),
+			...ui.table(
+				verbose
+					? [
+							...monorepo.scopes.map((scope) => [
+								scope.path,
+								scope.matchedRules.map((r) => r.suggest).join(", ") || "(none)",
+							]),
+							...(monorepo.emptyScopes.length > 0
+								? [["(no rule match)", monorepo.emptyScopes.join(", ")]]
+								: []),
+						]
+					: [
+							[
+								"detected",
+								`monorepo via ${monorepo.declaredVia}: ${plural(monorepo.scopes.length, "scope")}`,
+							],
+						],
 			),
-    ]);
-    for (const scope of opts.verbose ? det.scopes : []) {
-			const ids =
-				scope.matchedRules.map((r) => r.suggest).join(", ") || "(none)";
-      console.log(`    ${scope.path.padEnd(20)} ${ids}`);
-    }
-    if (opts.verbose && det.emptyScopes.length > 0) {
-      console.log(
-        `  empty workspace dirs (no rule match): ${det.emptyScopes.join(", ")}`,
-      );
-    }
-  }
-  if (!result.writtenToDisk) {
-    console.log(ui.note("dry-run: no files written"));
-    if (opts.verbose) reportWorkspaceProfile(projectRoot);
-  }
-  if (s.blocked > 0) {
-		printWrapped(
-			ui,
-			"some writes blocked; re-run with --allow-exec-adapters to include hooks/commands/skills",
-			{ tone: "warning" },
-		);
-  }
-  if (result.bootstrapError) {
-    console.log(`  ontology bootstrap: failed — ${result.bootstrapError}`);
-  } else if (result.bootstrapResult) {
-    const wrote = result.bootstrapResult.entries.filter(
-      (e) => e.outcome === "written",
-    ).length;
-    const skipped = result.bootstrapResult.entries.filter((e) =>
-      e.outcome.startsWith("skipped"),
-    ).length;
-    console.log(
-      `  ontology bootstrap: ${wrote} fragment(s) populated, ${skipped} skipped`,
-    );
-  }
-  if (result.contextBootstrap) {
-    const ctx = result.contextBootstrap;
-    if (ctx.outcome === "written" || ctx.outcome === "planned") {
-      console.log(
-        `  context bootstrap: ${ctx.outcome} ${ctx.path} (${ctx.signals.length} signal(s))`,
-      );
-    } else {
-      console.log(`  context bootstrap: ${ctx.outcome}`);
-    }
-  }
-  if (result.projectDocs) {
-    const planned = result.projectDocs.targets.filter(
-      (target) => target.outcome !== "skipped-existing",
-    ).length;
-    const skipped = result.projectDocs.targets.length - planned;
-    console.log(
-      `  project docs: ${result.projectDocs.mode} ${planned} planned, ${skipped} skipped`,
-    );
-    for (const target of opts.verbose ? result.projectDocs.targets : []) {
-			printWrapped(ui, `${target.outcome.padEnd(16)} ${target.path}`, {
-				indent: 4,
-			});
-    }
-  }
-  if (result.surfaceConflicts.length > 0) {
-    console.log(
-      ui.note(
-        `${result.surfaceConflicts.length} existing surface(s) preserved`,
-        "warning",
-      ),
-    );
-  }
-  for (const conflict of opts.verbose ? result.surfaceConflicts : []) {
-    const label =
-      conflict.outcome === "planned-preserve"
-        ? "planned surface preserve"
-        : "preserved surface";
-		printWrapped(ui, `${label}: ${conflict.path} -> ${conflict.preservedAs}`);
-  }
-  if (opts.verbose && result.writtenToDisk && result.evidencePath) {
-    console.log(`  evidence: ${result.evidencePath}`);
-  }
-	if (opts.verbose && result.registration) {
-		console.log(
-			`  project registry: registered ${result.registration.canonical_root}`,
-		);
-	} else if (result.registrationError) {
-		console.log(
-			ui.note(
-				`project registry: registration failed — ${result.registrationError}`,
-				"warning",
-			),
-		);
+		]);
 	}
-  if (opts.verbose) {
-    console.log("  generation boundary:");
-    console.log(
-      "    cli-generated: AGENTS.md managed context, optional docs regions, static ontology slices, and any .bootstrap.yaml facts above",
-    );
-    console.log(
-      "    agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
-    );
-  }
-	printLines(ui.section("Next steps"));
-  for (const step of initNextSteps({
-    writtenToDisk: result.writtenToDisk,
-    blockedWrites: s.blocked,
-    tools: result.agentfile.tools,
-    execAdaptersEnabled,
-  })) {
-		if (step.command) {
-			printLines(
-				ui.commandRows([{ command: step.value, description: step.label }]),
-			);
-		} else {
-			printWrapped(ui, `${step.label}: ${step.value}`);
-		}
-  }
+	if (!result.writtenToDisk && verbose) reportWorkspaceProfile(projectRoot);
+	printFindingSection(ui, "Notes", notes);
+	const commands = new Map<string, string[]>();
+	for (const step of steps) {
+		if (!step.command) continue;
+		commands.set(step.value, [...(commands.get(step.value) ?? []), step.label]);
+	}
+	printLines([
+		...ui.section("Next steps"),
+		...ui.commandRows(
+			[...commands].map(([command, labels]) => ({
+				command,
+				description: labels.join("; "),
+			})),
+		),
+	]);
+}
+
+function changeCounts(ui: Tui, s: ReturnType<typeof summarizeChanges>): string {
+	return [
+		[s.create, "create", true],
+		[s.update, "update", true],
+		[s.noop, "noop", true],
+		[s.blocked, "blocked", s.blocked === 0],
+		[s.userModified, "user-modified", s.userModified === 0],
+	]
+		.map(
+			([value, label, ok]) =>
+				`${ui.style(String(value), ok ? "success" : "warning")} ${ui.style(String(label), "muted")}`,
+		)
+		.join(", ");
+}
+
+function initNotes(
+	result: InitResult,
+	blocked: number,
+	verbose: boolean,
+	steps: ReturnType<typeof initNextSteps>,
+): Finding[] {
+	const notes: Finding[] = [];
+	if (!result.writtenToDisk)
+		notes.push({
+			chip: CHIP.info,
+			topic: "dry-run",
+			detail: "no files written",
+		});
+	if (blocked > 0) {
+		const step = steps.find((item) => item.label === INIT_BLOCKED_STEP_LABEL);
+		notes.push({
+			chip: CHIP.warn,
+			topic: "blocked",
+			detail: `${plural(blocked, "executable write")}; ${step?.value ?? "review hooks/commands/skills"}`,
+		});
+	}
+	for (const step of steps) {
+		if (step.command || step.label === INIT_BLOCKED_STEP_LABEL) continue;
+		notes.push({ chip: CHIP.info, topic: step.label, detail: step.value });
+	}
+	if (result.bootstrapError) {
+		notes.push({
+			chip: CHIP.warn,
+			topic: "ontology bootstrap",
+			detail: `failed: ${result.bootstrapError}`,
+		});
+	} else if (result.bootstrapResult) {
+		const entries = result.bootstrapResult.entries;
+		const wrote = entries.filter((e) => e.outcome === "written").length;
+		const skipped = entries.filter((e) =>
+			e.outcome.startsWith("skipped"),
+		).length;
+		notes.push({
+			chip: CHIP.info,
+			topic: "ontology bootstrap",
+			detail: `${plural(wrote, "fragment")} populated, ${skipped} skipped`,
+		});
+	}
+	const ctx = result.contextBootstrap;
+	if (ctx) {
+		notes.push({
+			chip: CHIP.info,
+			topic: "context bootstrap",
+			detail:
+				ctx.outcome === "written" || ctx.outcome === "planned"
+					? `${ctx.outcome} ${ctx.path} (${plural(ctx.signals.length, "signal")})`
+					: ctx.outcome,
+		});
+	}
+	if (result.projectDocs) {
+		const targets = result.projectDocs.targets;
+		const planned = targets.filter(
+			(target) => target.outcome !== "skipped-existing",
+		).length;
+		notes.push({
+			chip: CHIP.info,
+			topic: "project docs",
+			detail: `${result.projectDocs.mode}: ${planned} planned, ${targets.length - planned} skipped`,
+			more: verbose
+				? targets.map((target) => `${target.outcome} ${target.path}`)
+				: [],
+		});
+	}
+	if (result.surfaceConflicts.length > 0) {
+		notes.push({
+			chip: CHIP.warn,
+			topic: "existing surfaces",
+			detail: `${result.surfaceConflicts.length} preserved`,
+			more: verbose
+				? result.surfaceConflicts.map(
+						(conflict) =>
+							`${conflict.outcome === "planned-preserve" ? "planned surface preserve" : "preserved surface"}: ${conflict.path} -> ${conflict.preservedAs}`,
+					)
+				: [],
+		});
+	}
+	if (verbose && result.writtenToDisk && result.evidencePath)
+		notes.push({
+			chip: CHIP.info,
+			topic: "evidence",
+			detail: result.evidencePath,
+		});
+	if (result.registrationError) {
+		notes.push({
+			chip: CHIP.warn,
+			topic: "project registry",
+			detail: `registration failed: ${result.registrationError}`,
+		});
+	} else if (verbose && result.registration) {
+		notes.push({
+			chip: CHIP.info,
+			topic: "project registry",
+			detail: `registered ${result.registration.canonical_root}`,
+		});
+	}
+	if (verbose) {
+		notes.push({
+			chip: CHIP.info,
+			topic: "generation boundary",
+			detail:
+				"cli-generated: AGENTS.md managed context, optional docs regions, static ontology slices, and any .bootstrap.yaml facts above",
+			more: [
+				"agent-required: run /ontology-enrich for semantic ontology; run /handoff-prepare before switching agents with in-progress work",
+			],
+		});
+	}
+	return notes;
 }

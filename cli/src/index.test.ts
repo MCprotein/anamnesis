@@ -292,11 +292,11 @@ describe("CLI entrypoint", () => {
 			"anamnesis init --tools all --allow-exec-adapters",
 		);
 		expect(result.stdout).toContain("apply reviewed plan");
-    expect(result.stdout).toContain(
-      "native automation: enabled via --allow-exec-adapters",
-    );
-		expect(result.stdout).toContain("/ontology-enrich  semantic ontology");
-		expect(result.stdout).toContain("/handoff-prepare  task handoff");
+		expect(result.stdout).toMatch(
+			/\[INFO\]\s+native automation\s+enabled via --allow-exec-adapters/,
+		);
+		expect(result.stdout).toMatch(/\/ontology-enrich\s+semantic ontology/);
+		expect(result.stdout).toMatch(/\/handoff-prepare\s+task handoff/);
   });
 
   it("probes prompt capture through the strict Agentfile parser", () => {
@@ -565,11 +565,11 @@ fragments:
 		const compact = run();
 		expect(compact.status).toBe(0);
 		expect(compact.stdout).toContain("anamnesis status");
-		expect(compact.stdout).toContain("Attention needed");
-		expect(compact.stdout).toContain("fragment update issue");
-		expect(compact.stdout).not.toContain("● Ready");
+		expect(compact.stdout).toContain("! Attention");
+		expect(compact.stdout).toMatch(/\[WARN\]\s+fragment\s+base@1/);
+		expect(compact.stdout).not.toContain("Ready");
 		expect(compact.stdout).toContain("managed");
-		expect(compact.stdout).toContain("use `--verbose`");
+		expect(compact.stdout).toContain("anamnesis status --verbose");
 		expect(compact.stdout).not.toContain("generation boundary:");
 
 		const verbose = run(["--verbose"]);
@@ -698,7 +698,7 @@ fragments:
 		);
 
 		expect(result.status).toBe(1);
-		expect(result.stdout).toContain("repair:");
+		expect(result.stdout).toContain("fix:");
 		for (const line of result.stdout.trimEnd().split("\n")) {
 			expect(visibleLengthForTest(line)).toBeLessThanOrEqual(48);
 		}
