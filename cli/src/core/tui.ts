@@ -410,6 +410,7 @@ function clusterWidth(cluster: string): number {
 		(/[\u200d\ufe0f]/u.test(cluster) || /\p{Emoji_Modifier}/u.test(cluster))
 	)
 		return 2;
+	if (/[\ufe0f\u20e3]/u.test(cluster) && /\p{Emoji}/u.test(cluster)) return 2;
 	if (/\p{Emoji_Presentation}/u.test(String.fromCodePoint(first))) return 2;
 	return [...cluster].reduce(
 		(total, character) => total + characterWidth(character),

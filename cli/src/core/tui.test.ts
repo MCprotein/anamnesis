@@ -416,6 +416,7 @@ describe("tui", () => {
 		expect(visibleLength("\u2705")).toBe(2);
 		expect(visibleLength("\u2764\ufe0f")).toBe(2);
 		expect(visibleLength("\u{1F44D}\u{1F3FD}")).toBe(2);
+		expect(visibleLength("1\ufe0f\u20e3")).toBe(2);
 		expect(visibleLength("\u2713 \u2717")).toBe(3);
 		expect(truncateText("\u{1F44D}\u{1F3FD}abcdef", 6)).toBe("\u{1F44D}\u{1F3FD}a...");
 	});

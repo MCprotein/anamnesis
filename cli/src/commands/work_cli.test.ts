@@ -241,7 +241,7 @@ describe("anamnesis work CLI", () => {
 		expect(status.status, status.stderr).toBe(0);
 		expect(status.stdout).toMatch(/\[ OK \]\s+review planning\s+passed/);
 		expect(status.stdout).toContain("reviewers=omx:reviewer:one");
-		expect(status.stdout).toMatch(/\[INFO\]\s+readiness\s+current_inputs_required/);
+		expect(status.stdout).toMatch(/^ {2}readiness\s+current_inputs_required$/m);
 		expect(status.stdout).not.toContain("review this bounded plan");
 		expect(status.stdout).not.toContain("private source body");
 

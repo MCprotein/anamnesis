@@ -142,8 +142,7 @@ export function reportWorkStatus(
 				}));
 	const level = worstLevel([
 		complete ? LEVEL.ready : blocked ? LEVEL.attention : LEVEL.notice,
-		findingLevel(checks),
-		findingLevel(requirements),
+		findingLevel(problems([...checks, ...requirements])),
 	]);
 	const progressDetail = projection.progress.weighted
 		? `${projection.progress.verified_weight ?? 0}/${projection.progress.applicable_weight ?? 0} verified weight`
@@ -159,6 +158,7 @@ export function reportWorkStatus(
 			],
 			["revision", String(projection.contract_revision)],
 			["lifecycle", projection.lifecycle],
+			...workStateRows(result, verbose),
 			...(verbose
 				? [
 						["contract", projection.completion_contract ?? "(none)"],
@@ -201,11 +201,44 @@ function requirementChip(status: WorkRequirementState): Chip {
 	return CHIP.work;
 }
 
+function problems(findings: Finding[]): Finding[] {
+	return findings.filter(
+		(finding) => finding.chip === CHIP.warn || finding.chip === CHIP.fail,
+	);
+}
+
+function delegationBlocked(result: WorkStatusResult): boolean {
+	return (
+		result.projection.parallelism.mode !== "off" &&
+		result.projection.parallelism.recorded_state === "blocked_unavailable"
+	);
+}
+
+function delegationDetail(result: WorkStatusResult, verbose: boolean): string {
+	const parallelism = result.projection.parallelism;
+	return verbose
+		? `${parallelism.recorded_state}; assessment=${parallelism.assessment_id ?? "none"}; next=${parallelism.next_provider ?? "none"}; failures=${parallelism.failure_refs.join(",") || "none"}`
+		: parallelism.recorded_state;
+}
+
+function workStateRows(result: WorkStatusResult, verbose: boolean): string[][] {
+	const projection = result.projection;
+	return [
+		...projection.review_gates
+			.filter((gate) => gate.enforcement !== "off" && gate.state === "off")
+			.map((gate) => [`review ${gate.gate}`, gate.state]),
+		...(projection.parallelism.mode !== "off" && !delegationBlocked(result)
+			? [["delegation", delegationDetail(result, verbose)]]
+			: []),
+		...(result.readiness ? [["readiness", result.readiness]] : []),
+	];
+}
+
 function workChecks(result: WorkStatusResult, verbose: boolean): Finding[] {
 	const projection = result.projection;
 	const findings: Finding[] = [];
 	for (const gate of projection.review_gates) {
-		if (gate.enforcement === "off") continue;
+		if (gate.enforcement === "off" || gate.state === "off") continue;
 		findings.push({
 			chip:
 				gate.state === "passed" || gate.state === "waived"
@@ -223,27 +256,11 @@ function workChecks(result: WorkStatusResult, verbose: boolean): Finding[] {
 				: [],
 		});
 	}
-	const parallelism = projection.parallelism;
-	if (parallelism.mode !== "off") {
+	if (delegationBlocked(result))
 		findings.push({
-			chip:
-				parallelism.recorded_state === "blocked_unavailable"
-					? CHIP.warn
-					: CHIP.info,
+			chip: CHIP.warn,
 			topic: "delegation",
-			detail: parallelism.recorded_state,
-			more: verbose
-				? [
-						`assessment=${parallelism.assessment_id ?? "none"}; next=${parallelism.next_provider ?? "none"}; failures=${parallelism.failure_refs.join(",") || "none"}`,
-					]
-				: [],
-		});
-	}
-	if (result.readiness)
-		findings.push({
-			chip: CHIP.info,
-			topic: "readiness",
-			detail: result.readiness,
+			detail: delegationDetail(result, verbose),
 		});
 	if (result.policy_drift?.drifted)
 		findings.push({

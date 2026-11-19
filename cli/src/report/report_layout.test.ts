@@ -162,7 +162,7 @@ describe("report layout", () => {
 			const output = captureWorkStatus(width);
 			const columns = textColumns(output);
 
-			expect(columns.length).toBeGreaterThanOrEqual(4);
+			expect(columns.length).toBeGreaterThanOrEqual(3);
 			expect(new Set(columns)).toEqual(new Set([2 + CHIP_WIDTH + 2]));
 			expect(output).toContain("[WORK]  req_form");
 			expect(output).toContain("[TODO]  req_docs");
@@ -182,6 +182,29 @@ describe("report layout", () => {
 		expect(output).toMatch(/^(\u2717|x) Failed {2}/m);
 		expect(output).toContain("[FAIL]  req_docs");
 		expect(output).not.toMatch(/^Requirements {2}0$/m);
+	});
+
+	it("keeps a completed Work without warnings Ready and moves state values to the table", () => {
+		const fixture = workFixture();
+		const projection = fixture.projection as unknown as {
+			lifecycle: string;
+			parallelism: { mode: string; recorded_state: string };
+			requirements: { status: string }[];
+		};
+		projection.lifecycle = "completed";
+		projection.parallelism = { mode: "auto", recorded_state: "assessed" } as never;
+		for (const requirement of projection.requirements) requirement.status = "verified";
+		const ready = stripAnsi(captureWorkStatus(80, false, fixture));
+
+		expect(ready).toMatch(/^(\u2713|OK) Ready {2}/m);
+		expect(ready).toMatch(/^ {2}readiness\s+current_inputs_required$/m);
+		expect(ready).toMatch(/^ {2}delegation\s+assessed$/m);
+		expect(ready).not.toContain("[INFO]");
+
+		fixture.policy_drift = { drifted: true } as never;
+		const attention = stripAnsi(captureWorkStatus(80, false, fixture));
+		expect(attention).toMatch(/^! Attention {2}/m);
+		expect(attention).toContain("[WARN]  policy drift");
 	});
 
 	it("aligns status and init dry-run chips and avoids repeated next commands", () => {

@@ -26,11 +26,15 @@ and stale evidence record. This made the result technically complete but gave
 normal state, exceptions, provenance, and remediation almost equal visual
 weight.
 
-Current implementation: `cli/src/core/tui.ts` provides verdicts, actions,
-sections and Unicode/ASCII fallback. Compact `status` output is implemented in
-`cli/src/index.ts`; `--verbose` exposes fragments, hashes, evidence and generation
-details. The principles and success signals below remain design guidance, not
-a claim that every reporter or proposed interaction has been implemented.
+Current implementation: `cli/src/core/tui.ts` provides a one-line heading,
+four verdict levels (Ready, Notice, Attention, Failed), fixed-width status chips
+(`[ OK ]`, `[WARN]`, `[FAIL]`, `[INFO]`, `[TODO]`, `[WORK]`), a block-wide table,
+command rows, sections, grapheme-aware width, and Unicode/ASCII fallback. The
+`status`, `doctor`, `work status`, and `init` reporters in `cli/src/report/` use
+these parts; `--verbose` exposes fragments, hashes, evidence and generation
+details. Other reporters still use the older rows. The principles and success
+signals below remain design guidance, not a claim that every reporter or
+proposed interaction has been implemented.
 
 ## Brand
 
@@ -247,7 +251,7 @@ group and must not create excessive gaps when a label is long.
 ### Shape and elevation
 
 Terminal output has no simulated elevation. Avoid enclosing the whole result in
-a border. A short marker (`●`, `!`, `×`, `○`) and indentation form the continuity
+a border. A short marker (`✓`, `i`, `!`, `✗`) and indentation form the continuity
 spine. Use thin dividers only in genuinely dense comparison output and omit
 them in narrow or non-TTY modes.
 
@@ -266,13 +270,17 @@ enhancement:
 
 | Meaning | Unicode | ASCII fallback |
 | --- | --- | --- |
-| ready/success | `●` or `✓` | `OK` |
-| warning/attention | `!` | `WARN` |
-| failure/blocked | `×` | `ERROR` |
-| unknown/inactive | `○` | `UNKNOWN` |
+| ready/success | `✓` | `OK` |
+| notice/info | `i` | `i` |
+| warning/attention | `!` | `!` |
+| failure/blocked | `✗` | `x` |
+| unknown/inactive | `◌` | `?` |
+| active/in progress | `◉` | `*` |
 | next action | `›` | `>` |
 
 Do not use emoji whose width or rendering varies materially across terminals.
+Do not use East Asian Width ambiguous symbols (for example `●`, `○`, `×`,
+`—`, `…`, `│`, `─`) in renderer output.
 
 ## Components
 
