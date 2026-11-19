@@ -168,6 +168,10 @@ Commands:
   benchmark subagent-injection
                                 Measure repeated subagent context injection
                                   and prompt-contract evidence
+  benchmark user-pain <export.txt...>
+                                Count status questions, repeated corrections,
+                                  complaints, and rule violations per speaker
+                                  in Claude Code /export text (no raw text)
   migrate agentfile            Plan or apply Agentfile schema migrations
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
@@ -424,6 +428,13 @@ Flags (benchmark trace):
   --append                      Append markdown to docs/BENCHMARK-TRACES.md
                                   and record runtime evidence
   --output <path>               Override trace rollup markdown path
+
+Flags (benchmark user-pain):
+  --json                        Print structured JSON
+  --rules <path>                Corrections YAML; counts banned_term
+                                  violations per speaker (skipped when absent)
+  --keywords <path>             YAML that appends to or replaces the keyword
+                                  list of each signal (mode: append|replace)
 
 Flags (benchmark upgrade):
   --project-root <path>         Target directory (default: cwd)

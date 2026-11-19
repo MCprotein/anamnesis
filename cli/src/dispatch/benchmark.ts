@@ -52,6 +52,10 @@ import {
 	UpgradeBenchmarkError,
 } from "../commands/benchmark_upgrade.js";
 import {
+	UserPainBenchmarkError,
+	userPainBenchmark,
+} from "../commands/benchmark_user_pain.js";
+import {
 	workContinuityBenchmark,
 	WorkContinuityBenchmarkError,
 } from "../commands/benchmark_work.js";
@@ -83,6 +87,7 @@ import {
 	reportWorkContinuityBenchmark,
 	reportWorkParallelAgentBenchmark,
 } from "../report/benchmark.js";
+import { reportUserPainBenchmark } from "../report/benchmark_user_pain.js";
 
 export async function runBenchmark({ positional, flags }: ParsedArgs): Promise<number> {
   const sub = positional[0];
@@ -105,7 +110,8 @@ sub !== "work-parallel-agent-ab" &&
     sub !== "prompt-gate" &&
     sub !== "retrieval" &&
     sub !== "session-context" &&
-    sub !== "subagent-injection"
+    sub !== "subagent-injection" &&
+    sub !== "user-pain"
   ) {
     console.error(
       `error: unknown 'benchmark' subcommand: ${sub ?? "(none)"}`,
@@ -156,9 +162,33 @@ console.error(
     console.error(
       `       anamnesis benchmark subagent-injection [--json] [--write] [--append] [--attempts=<n>] [--output=<dir>]`,
     );
+    console.error(
+      `       anamnesis benchmark user-pain <export.txt...> [--json] [--rules <corrections.yaml>] [--keywords <keywords.yaml>]`,
+    );
     return 1;
   }
   try {
+    if (sub === "user-pain") {
+      const pathFlag = (name: string): string | undefined => {
+        const value = flags[name];
+        if (value === true) {
+          throw new UserPainBenchmarkError(`--${name} requires a file path`);
+        }
+        return typeof value === "string" ? value : undefined;
+      };
+      const result = userPainBenchmark({
+        exportPaths: positional.slice(1),
+        rulesPath: pathFlag("rules"),
+        keywordsPath: pathFlag("keywords"),
+      });
+      if (flags["json"] === true) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        reportUserPainBenchmark(result);
+      }
+      return 0;
+    }
+
     if (sub === "subagent-injection") {
       const result = subagentInjectionBenchmark({
         projectRoot:
@@ -510,7 +540,8 @@ if (sub === "work-parallel-agent-ab") {
       e instanceof PromptDeltaGateError ||
       e instanceof SessionContextBenchmarkError ||
       e instanceof RetrievalBenchmarkError ||
-      e instanceof SubagentInjectionBenchmarkError
+      e instanceof SubagentInjectionBenchmarkError ||
+      e instanceof UserPainBenchmarkError
     ) {
       console.error(`error: ${e.message}`);
       return 1;

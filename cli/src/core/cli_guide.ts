@@ -293,6 +293,11 @@ function namespaceRows(namespace: HelpNamespace) {
 					description: "Measure repeated subagent context injection evidence.",
 				},
 				{
+					command: "benchmark user-pain <export.txt...>",
+					description:
+						"Count user pain signals and rule violations in /export text.",
+				},
+				{
 					command: "benchmark prompt-gate",
 					description:
 						"Decide whether prompt-time context injection is justified.",
