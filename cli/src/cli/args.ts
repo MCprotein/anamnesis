@@ -22,6 +22,8 @@ export interface ParsedArgs {
   flags: Record<string, string | boolean>;
 }
 
+const BOOLEAN_ONLY_FLAGS: ReadonlySet<string> = new Set(["json"]);
+
 export function parseArgs(argv: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
   const positional: string[] = [];
@@ -37,7 +39,11 @@ export function parseArgs(argv: string[]): ParsedArgs {
       } else {
         const key = arg.slice(2);
         const next = argv[i + 1];
-        if (next !== undefined && !next.startsWith("-")) {
+        if (
+          next !== undefined &&
+          !next.startsWith("-") &&
+          !BOOLEAN_ONLY_FLAGS.has(key)
+        ) {
           flags[key] = next;
           i++;
         } else {
