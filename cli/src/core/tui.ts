@@ -26,6 +26,48 @@ const STYLES: Record<TuiTone | "bold", string> = {
 	bold: "\x1b[1m",
 };
 
+export const CHIP = {
+	ok: { label: "OK", tone: "success" },
+	warn: { label: "WARN", tone: "warning" },
+	fail: { label: "FAIL", tone: "danger" },
+	info: { label: "INFO", tone: "accent" },
+	todo: { label: "TODO", tone: "muted" },
+	work: { label: "WORK", tone: "accent" },
+} as const satisfies Record<string, { label: string; tone: TuiTone }>;
+export type Chip = (typeof CHIP)[keyof typeof CHIP];
+export const CHIP_WIDTH = 6;
+
+export const LEVEL = {
+	ready: { label: "Ready", symbol: "\u2713", ascii: "OK", tone: "success" },
+	notice: { label: "Notice", symbol: "i", ascii: "i", tone: "accent" },
+	attention: { label: "Attention", symbol: "!", ascii: "!", tone: "warning" },
+	failed: { label: "Failed", symbol: "\u2717", ascii: "x", tone: "danger" },
+} as const satisfies Record<
+	string,
+	{ label: string; symbol: string; ascii: string; tone: TuiTone }
+>;
+export type Level = (typeof LEVEL)[keyof typeof LEVEL];
+
+const LEVEL_ORDER: readonly Level[] = [
+	LEVEL.ready,
+	LEVEL.notice,
+	LEVEL.attention,
+	LEVEL.failed,
+];
+
+export function worstLevel(levels: readonly Level[]): Level {
+	return levels.reduce(
+		(worst, level) =>
+			LEVEL_ORDER.indexOf(level) > LEVEL_ORDER.indexOf(worst) ? level : worst,
+		LEVEL.ready as Level,
+	);
+}
+
+export interface TableColumn {
+	right?: boolean;
+	width?: number;
+}
+
 export interface CommandRow {
 	command: string;
 	description: string;
@@ -62,6 +104,7 @@ export interface Tui {
 	readonly unicode: boolean;
 	readonly width: number;
 	title(title: string, subtitle?: string): string[];
+	heading(command: string, scope: string): string[];
 	verdict(options: VerdictOptions): string[];
 	section(label: string, count?: number): string[];
 	commandRows(rows: CommandRow[]): string[];
@@ -78,6 +121,9 @@ export interface Tui {
 		options?: DetailOptions,
 	): string[];
 	note(message: string, tone?: TuiTone): string;
+	chip(chip: Chip): string;
+	level(level: Level, summary?: string): string[];
+	table(rows: string[][], columns?: TableColumn[]): string[];
 	command(command: string): string;
 	style(value: string, tone: TuiTone | "bold"): string;
 	wrap(value: string, width?: number): string[];
@@ -88,12 +134,9 @@ export function createTui(opts: TuiOptions = {}): Tui {
 	const env = opts.env ?? process.env;
 	const color = opts.color ?? shouldUseColor(env, opts.isTTY);
 	const unicode = opts.unicode ?? shouldUseUnicode(env);
-	const environmentWidth = Number.parseInt(env.COLUMNS ?? "", 10);
 	const width = Math.max(
 		40,
-		opts.width ??
-			process.stdout.columns ??
-			(Number.isFinite(environmentWidth) ? environmentWidth : 100),
+		resolveWidth(opts.width, process.stdout.columns, env.COLUMNS),
 	);
 
 	function style(value: string, tone: TuiTone | "bold"): string {
@@ -107,21 +150,67 @@ export function createTui(opts: TuiOptions = {}): Tui {
 			? [style(main, "bold"), style(subtitle, "muted")]
 			: [style(main, "bold")];
 	}
+	function heading(main: string, scope: string): string[] {
+		return visibleLength(main) + 2 + visibleLength(scope) <= width
+			? [`${style(main, "bold")}  ${style(scope, "muted")}`]
+			: title(main, scope);
+	}
 	function verdict(options: VerdictOptions): string[] {
-		const semantics: Record<TuiVerdict, [string, string, TuiTone]> = {
-			ready: ["●", "OK", "success"],
-			info: ["●", "i", "accent"],
-			warning: ["!", "!", "warning"],
-			error: ["×", "x", "danger"],
+		const levels: Record<TuiVerdict, Level> = {
+			ready: LEVEL.ready,
+			info: LEVEL.notice,
+			warning: LEVEL.attention,
+			error: LEVEL.failed,
 		};
-		const [symbol, fallback, tone] = semantics[options.tone];
-		const prefix = `${style(unicode ? symbol : fallback, tone)} ${style(options.label, "bold")}`;
-		if (!options.summary) return [prefix];
-		const separator = ` ${style("—", "muted")} `;
-		const available = width - visibleLength(prefix) - visibleLength(separator);
-		return available >= 24 && visibleLength(options.summary) <= available
-			? [`${prefix}${separator}${options.summary}`]
-			: [prefix, ...indent(wrapText(options.summary, width - 2), 2)];
+		return headline(levels[options.tone], options.label, options.summary);
+	}
+	function level(value: Level, summary?: string): string[] {
+		return headline(value, value.label, summary);
+	}
+	function headline(value: Level, label: string, summary?: string): string[] {
+		const prefix = `${style(unicode ? value.symbol : value.ascii, value.tone)} ${style(label, "bold")}`;
+		if (!summary) return [prefix];
+		const separator = "  ";
+		const available = width - visibleLength(prefix) - separator.length;
+		return available >= 24 && visibleLength(summary) <= available
+			? [`${prefix}${separator}${summary}`]
+			: [prefix, ...indent(wrapText(summary, width - 2), 2)];
+	}
+	function chip(value: Chip): string {
+		const inner = CHIP_WIDTH - 2;
+		const left = Math.floor((inner - value.label.length) / 2);
+		const text = `${" ".repeat(left)}${value.label}${" ".repeat(inner - left - value.label.length)}`;
+		return `[${style(text, value.tone)}]`;
+	}
+	function table(rows: string[][], columns: TableColumn[] = []): string[] {
+		if (rows.length === 0) return [];
+		const count = Math.max(...rows.map((row) => row.length));
+		const widths = Array.from({ length: count - 1 }, (_, index) =>
+			Math.max(
+				columns[index]?.width ?? 0,
+				...rows.map((row) => visibleLength(row[index] ?? "")),
+			),
+		);
+		const used = widths.filter((value) => value > 0);
+		const fixed = used.reduce((total, value) => total + value + 2, 2);
+		const bodyWidth = width - fixed;
+		return rows.flatMap((row) => {
+			const cells = widths
+				.map((cellWidth, index) =>
+					cellWidth === 0
+						? undefined
+						: columns[index]?.right
+							? padStart(row[index] ?? "", cellWidth)
+							: pad(row[index] ?? "", cellWidth),
+				)
+				.filter((cell): cell is string => cell !== undefined);
+			const prefix = `  ${cells.join("  ")}`;
+			const last = row.length === count ? (row[count - 1] ?? "") : "";
+			if (!last) return [prefix.trimEnd()];
+			if (bodyWidth < 16)
+				return [prefix.trimEnd(), ...indent(wrapText(last, width - 4), 4)];
+			return hang(`${prefix}  `, last, bodyWidth);
+		});
 	}
 	function section(label: string, count?: number): string[] {
 		return [
@@ -131,15 +220,13 @@ export function createTui(opts: TuiOptions = {}): Tui {
 	}
 	function commandRows(rows: CommandRow[]): string[] {
 		if (rows.length === 0) return [];
-		const max = Math.max(
-			...rows.map((row) => visibleLength(row.command)),
-		);
-    const bodyWidth = width - max - 4;
-    if (bodyWidth < 24) {
-      return rows.flatMap((row) => [
-        ...wrapText(row.command, width - 2).map((line) => `  ${command(line)}`),
-        ...indent(wrapText(row.description, width - 4), 4),
-      ]);
+		const max = Math.max(...rows.map((row) => visibleLength(row.command)));
+		const bodyWidth = width - max - 4;
+		if (bodyWidth < 24) {
+			return rows.flatMap((row) => [
+				...wrapText(row.command, width - 2).map((line) => `  ${command(line)}`),
+				...indent(wrapText(row.description, width - 4), 4),
+			]);
 		}
 		return rows.flatMap((row) => {
 			const prefix = `  ${command(pad(row.command, max))}  `;
@@ -170,7 +257,7 @@ export function createTui(opts: TuiOptions = {}): Tui {
 			Math.max(...rows.map((row) => visibleLength(row.label))),
 		);
 		return rows.flatMap((row) => {
-			const plainBody = `${row.value}${row.summary ? ` · ${row.summary}` : ""}`;
+			const plainBody = `${row.value}${row.summary ? `, ${row.summary}` : ""}`;
 			const body = row.tone ? style(plainBody, row.tone) : plainBody;
 			const rendered = alignedRow(row.label, body, max);
 			if (options.detail && row.detail) {
@@ -206,7 +293,7 @@ export function createTui(opts: TuiOptions = {}): Tui {
 			style(label, tone),
 			...values.flatMap((line) =>
 				wrapText(line, width - 4).map(
-					(part) => `  ${style(unicode ? "│" : "|", tone)} ${part}`,
+					(part) => `  ${style("|", tone)} ${part}`,
 				),
 			),
 		];
@@ -235,6 +322,7 @@ export function createTui(opts: TuiOptions = {}): Tui {
 		unicode,
 		width,
 		title,
+		heading,
 		verdict,
 		section,
 		commandRows,
@@ -243,11 +331,27 @@ export function createTui(opts: TuiOptions = {}): Tui {
 		panel,
 		detail,
 		note,
+		chip,
+		level,
+		table,
 		command,
 		style,
 		wrap: (value, target = width) => wrapText(value, target),
 		truncate: (value, target = width) => truncateText(value, target),
 	};
+}
+
+export function resolveWidth(
+	explicit: number | undefined,
+	columns: number | undefined,
+	environment: string | undefined,
+): number {
+	const fromEnvironment = Number.parseInt(environment ?? "", 10);
+	for (const candidate of [explicit, columns, fromEnvironment]) {
+		if (candidate !== undefined && Number.isFinite(candidate) && candidate > 0)
+			return candidate;
+	}
+	return 80;
 }
 
 export function shouldUseColor(
@@ -291,18 +395,18 @@ export function visibleLength(value: string): number {
 }
 
 export function wrapText(value: string, width: number): string[] {
-  const usable = Math.max(1, Math.floor(width));
-  if (visibleLength(value) <= usable) return [value];
-  const outerStyle = value.match(/^(\x1b\[[0-9;]*m)([\s\S]*)\x1b\[0m$/);
-  if (outerStyle && !outerStyle[2]!.includes("\x1b[")) {
-    return wrapText(outerStyle[2]!, usable).map(
-      (line) => `${outerStyle[1]}${line}${RESET}`,
-    );
-  }
-  // Mixed nested styles are stripped before wrapping so an escape sequence can
-  // never be split into visible garbage. Reporters still encode state in text.
-  const safeValue = value.includes("\x1b[") ? stripAnsi(value) : value;
-  const words = safeValue.trim().split(/\s+/);
+	const usable = Math.max(1, Math.floor(width));
+	if (visibleLength(value) <= usable) return [value];
+	const outerStyle = value.match(/^(\x1b\[[0-9;]*m)([\s\S]*)\x1b\[0m$/);
+	if (outerStyle && !outerStyle[2]!.includes("\x1b[")) {
+		return wrapText(outerStyle[2]!, usable).map(
+			(line) => `${outerStyle[1]}${line}${RESET}`,
+		);
+	}
+	// Mixed nested styles are stripped before wrapping so an escape sequence can
+	// never be split into visible garbage. Reporters still encode state in text.
+	const safeValue = value.includes("\x1b[") ? stripAnsi(value) : value;
+	const words = safeValue.trim().split(/\s+/);
 	const lines: string[] = [];
 	let current = "";
 	for (const word of words) {
@@ -324,7 +428,8 @@ export function wrapText(value: string, width: number): string[] {
 export function truncateText(value: string, width: number): string {
 	const usable = Math.max(1, Math.floor(width));
 	if (visibleLength(value) <= usable) return value;
-	return `${splitByWidth(stripAnsi(value), Math.max(0, usable - 1))[0] ?? ""}…`;
+	if (usable <= 3) return splitByWidth(stripAnsi(value), usable)[0] ?? "";
+	return `${splitByWidth(stripAnsi(value), usable - 3)[0] ?? ""}...`;
 }
 
 function hang(prefix: string, body: string, width: number): string[] {
@@ -336,6 +441,9 @@ function hang(prefix: string, body: string, width: number): string[] {
 }
 function pad(value: string, width: number): string {
 	return `${value}${" ".repeat(Math.max(0, width - visibleLength(value)))}`;
+}
+function padStart(value: string, width: number): string {
+	return `${" ".repeat(Math.max(0, width - visibleLength(value)))}${value}`;
 }
 function indent(lines: string[], spaces: number): string[] {
 	return lines.map((line) => `${" ".repeat(spaces)}${line}`);
@@ -372,4 +480,50 @@ function characterWidth(character: string): number {
 	)
 		return 2;
 	return 1;
+}
+
+const AMBIGUOUS_WIDTH_RANGES: readonly (readonly [number, number])[] = [
+	[0x00a1, 0x00a1], [0x00a4, 0x00a4], [0x00a7, 0x00a8], [0x00aa, 0x00aa],
+	[0x00ad, 0x00ae], [0x00b0, 0x00b4], [0x00b6, 0x00ba], [0x00bc, 0x00bf],
+	[0x00c6, 0x00c6], [0x00d0, 0x00d0], [0x00d7, 0x00d8], [0x00de, 0x00e1],
+	[0x00e6, 0x00e6], [0x00e8, 0x00ea], [0x00ec, 0x00ed], [0x00f0, 0x00f0],
+	[0x00f2, 0x00f3], [0x00f7, 0x00fa], [0x00fc, 0x00fc], [0x00fe, 0x00fe],
+	[0x0391, 0x03a9], [0x03b1, 0x03c9], [0x0401, 0x0401], [0x0410, 0x044f],
+	[0x0451, 0x0451], [0x2010, 0x2010], [0x2013, 0x2016], [0x2018, 0x2019],
+	[0x201c, 0x201d], [0x2020, 0x2022], [0x2024, 0x2027], [0x2030, 0x2030],
+	[0x2032, 0x2033], [0x2035, 0x2035], [0x203b, 0x203b], [0x203e, 0x203e],
+	[0x2074, 0x2074], [0x207f, 0x207f], [0x2081, 0x2084], [0x20ac, 0x20ac],
+	[0x2103, 0x2103], [0x2105, 0x2105], [0x2109, 0x2109], [0x2113, 0x2113],
+	[0x2116, 0x2116], [0x2121, 0x2122], [0x2126, 0x2126], [0x212b, 0x212b],
+	[0x2153, 0x2154], [0x215b, 0x215e], [0x2160, 0x216b], [0x2170, 0x2179],
+	[0x2189, 0x2189], [0x2190, 0x2199], [0x21b8, 0x21b9], [0x21d2, 0x21d2],
+	[0x21d4, 0x21d4], [0x21e7, 0x21e7], [0x2200, 0x2200], [0x2202, 0x2203],
+	[0x2207, 0x2208], [0x220b, 0x220b], [0x220f, 0x220f], [0x2211, 0x2211],
+	[0x2215, 0x2215], [0x221a, 0x221a], [0x221d, 0x2220], [0x2223, 0x2223],
+	[0x2225, 0x2225], [0x2227, 0x222c], [0x222e, 0x222e], [0x2234, 0x2237],
+	[0x223c, 0x223d], [0x2248, 0x2248], [0x224c, 0x224c], [0x2252, 0x2252],
+	[0x2260, 0x2261], [0x2264, 0x2267], [0x226a, 0x226b], [0x226e, 0x226f],
+	[0x2282, 0x2283], [0x2286, 0x2287], [0x2295, 0x2295], [0x2299, 0x2299],
+	[0x22a5, 0x22a5], [0x22bf, 0x22bf], [0x2312, 0x2312], [0x2460, 0x24e9],
+	[0x24eb, 0x254b], [0x2550, 0x2573], [0x2580, 0x258f], [0x2592, 0x2595],
+	[0x25a0, 0x25a1], [0x25a3, 0x25a9], [0x25b2, 0x25b3], [0x25b6, 0x25b7],
+	[0x25bc, 0x25bd], [0x25c0, 0x25c1], [0x25c6, 0x25c8], [0x25cb, 0x25cb],
+	[0x25ce, 0x25d1], [0x25e2, 0x25e5], [0x25ef, 0x25ef], [0x2605, 0x2606],
+	[0x2609, 0x2609], [0x260e, 0x260f], [0x261c, 0x261c], [0x261e, 0x261e],
+	[0x2640, 0x2640], [0x2642, 0x2642], [0x2660, 0x2661], [0x2663, 0x2665],
+	[0x2667, 0x266a], [0x266c, 0x266d], [0x266f, 0x266f], [0x269e, 0x269f],
+	[0x26bf, 0x26bf], [0x26c6, 0x26cd], [0x26cf, 0x26d3], [0x26d5, 0x26e1],
+	[0x26e3, 0x26e3], [0x26e8, 0x26e9], [0x26eb, 0x26f1], [0x26f4, 0x26f4],
+	[0x26f6, 0x26f9], [0x26fb, 0x26fc], [0x26fe, 0x26ff], [0x273d, 0x273d],
+	[0x2776, 0x277f], [0x2b56, 0x2b59], [0x3248, 0x324f], [0xe000, 0xf8ff],
+	[0xfe00, 0xfe0f], [0xfffd, 0xfffd],
+];
+
+export function ambiguousWidthCharacters(value: string): string[] {
+	return [...stripAnsi(value)].filter((character) => {
+		const code = character.codePointAt(0) ?? 0;
+		return AMBIGUOUS_WIDTH_RANGES.some(
+			([start, end]) => code >= start && code <= end,
+		);
+	});
 }

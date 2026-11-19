@@ -1,4 +1,5 @@
 const ALL_AGENT_TOOLS = ["claude-code", "codex", "cursor"] as const;
+export const INIT_BLOCKED_STEP_LABEL = "blocked executable surfaces";
 
 export interface InitNextStepInput {
   writtenToDisk: boolean;
@@ -29,7 +30,7 @@ export function initNextSteps(input: InitNextStepInput): InitNextStep[] {
 
   if (input.blockedWrites > 0) {
     steps.push({
-      label: "blocked executable surfaces",
+      label: INIT_BLOCKED_STEP_LABEL,
       value:
         "review hooks/commands/skills, then re-run with --allow-exec-adapters",
     });

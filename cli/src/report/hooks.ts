@@ -4,9 +4,10 @@ import {
 	type CodexHookTrustInspection,
 	type TrustCodexHooksResult,
 } from "../core/codex_hook_trust.js";
-import { createTui } from "../core/tui.js";
+import { CHIP, createTui } from "../core/tui.js";
 import {
 	countTone,
+	type Finding,
 	type HumanReportOptions,
 	printLines,
 	printWrapped,
@@ -103,6 +104,59 @@ export function reportCodexHookTrustInspection(
 			tone: "warning",
 		});
   }
+}
+
+export function codexHookTrustFindings(
+	inspection: CodexHookTrustInspection,
+): Finding[] {
+	const s = inspection.summary;
+	const findings: Finding[] = [];
+	const blocked = inspection.hooks.filter(
+		(item) =>
+			item.status === "untrusted" ||
+			item.status === "modified" ||
+			item.status === "unknown",
+	);
+	if (blocked.length > 0) {
+		const counts = [
+			s.untrusted > 0 ? `${s.untrusted} untrusted` : "",
+			s.modified > 0 ? `${s.modified} modified` : "",
+			s.unknown > 0 ? `${s.unknown} unknown` : "",
+		].filter(Boolean);
+		findings.push({
+			chip: CHIP.warn,
+			topic: "Codex hooks",
+			detail: `${counts.join(", ")} of ${s.registered}; these hooks may not execute`,
+			more: [uniqueEvents(blocked.map((item) => item.event))],
+		});
+	}
+	for (const alternate of inspection.alternateProjectSources) {
+		findings.push({
+			chip: CHIP.info,
+			topic: "hook source",
+			detail: "Codex reads hooks from another worktree",
+			more: [alternate.sourcePath],
+		});
+	}
+	for (const warning of inspection.warnings) {
+		findings.push({ chip: CHIP.warn, topic: "Codex hooks", detail: warning });
+	}
+	if (!inspection.available && inspection.error) {
+		findings.push({
+			chip: CHIP.warn,
+			topic: "Codex hooks",
+			detail: `unavailable: ${inspection.error}`,
+		});
+	}
+	return findings;
+}
+
+function uniqueEvents(events: string[]): string {
+	const totals = new Map<string, number>();
+	for (const event of events) totals.set(event, (totals.get(event) ?? 0) + 1);
+	return [...totals]
+		.map(([event, total]) => (total > 1 ? `${event} x${total}` : event))
+		.join(", ");
 }
 
 export function reportCodexHookTrust(result: TrustCodexHooksResult): void {
