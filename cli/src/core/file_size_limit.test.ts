@@ -33,9 +33,7 @@ function isChecked(file: string): boolean {
 
 function lineCount(absPath: string): number {
   const text = fs.readFileSync(absPath, "utf8");
-  if (text.length === 0) return 0;
-  const breaks = text.split("\n").length - 1;
-  return text.endsWith("\n") ? breaks : breaks + 1;
+  return text.split("\n").length - 1;
 }
 
 function trackedFiles(): string[] {
@@ -64,5 +62,8 @@ describe("file size limit", () => {
     expect(isChecked("package-lock.json")).toBe(false);
     expect(isChecked("docs/benchmark-evidence/a/results.json")).toBe(false);
     expect(isChecked("cli/dist/index.js")).toBe(false);
+    expect(isChecked("base/.versions/x/AGENTS.md")).toBe(false);
+    expect(isChecked("_workspace/notes.md")).toBe(false);
+    expect(isChecked(".anamnesis/backups/a.md")).toBe(false);
   });
 });
