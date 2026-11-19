@@ -156,6 +156,8 @@ const DEFAULT_DOCS = [
   "docs/CONTEXT-INDEX-DESIGN.md",
 ] as const;
 
+const DEFAULT_DOC_DIRS = ["docs/roadmap", "docs/dogfood", "docs/changelog"] as const;
+
 const CONTEXT_KINDS = new Set<ContextIndexKind>([
   "agent-rule",
   "ontology-entity",
@@ -527,6 +529,11 @@ function discoverContextSources(projectRoot: string): ContextSource[] {
   add(".anamnesis/manifest.json");
   add(".anamnesis/evidence/events.jsonl");
   for (const doc of DEFAULT_DOCS) add(doc);
+  for (const dir of DEFAULT_DOC_DIRS) {
+    for (const relPath of walkFiles(projectRoot, dir)) {
+      if (relPath.endsWith(".md")) add(relPath);
+    }
+  }
   for (const relPath of walkFiles(projectRoot, ".anamnesis/ontology")) {
     if (relPath.endsWith(".yaml") || relPath.endsWith(".yml")) add(relPath);
   }

@@ -12,6 +12,8 @@ Older entries live in `docs/changelog/`:
 
 ## [Unreleased]
 
+- `context index` also indexes Markdown history under `docs/roadmap/`, `docs/dogfood/`, and `docs/changelog/` when those folders exist, so `context query` still finds roadmap, dogfood, and changelog entries moved out of the top-level files.
+
 ## [1.25.5] — 2026-10-11
 
 - `apply` adopts a tracked managed file whose content already equals the new content, even when its manifest hash is out of date, instead of reporting it as user-modified; managed regions follow the same rule. A git checkout that restores a tracked `.anamnesis/manifest.json` while the file lives outside git (for example `.git/hooks/pre-commit`) made `projects apply` skip such projects on every run.

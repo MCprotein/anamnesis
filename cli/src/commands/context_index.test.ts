@@ -600,6 +600,40 @@ describe("context index", () => {
     ).toBe(false);
   });
 
+  it("indexes moved roadmap, dogfood, and changelog history documents", () => {
+    const project = setupContextProject();
+    writeFile(
+      project,
+      "docs/roadmap/v0.1-v0.9.md",
+      ["# Roadmap history", "", "## Zephyrine Ledger", "Shipped roadmap history.", ""].join("\n"),
+    );
+    writeFile(
+      project,
+      "docs/dogfood/2026-05.md",
+      ["# Dogfood records", "", "## Quokkamere Baseline", "Archived self-check.", ""].join("\n"),
+    );
+    writeFile(
+      project,
+      "docs/changelog/0.x.md",
+      ["# Changelog", "", "## Marzipanite Release", "Older entry.", ""].join("\n"),
+    );
+    contextIndex({ projectRoot: project, write: true });
+
+    for (const [query, sourcePath] of [
+      ["zephyrine ledger", "docs/roadmap/v0.1-v0.9.md"],
+      ["quokkamere baseline", "docs/dogfood/2026-05.md"],
+      ["marzipanite release", "docs/changelog/0.x.md"],
+    ] as const) {
+      const result = contextQuery({
+        projectRoot: project,
+        query,
+        kind: "doc-heading",
+        limit: 1,
+      });
+      expect(result.matches[0]!.entry.source_path).toBe(sourcePath);
+    }
+  });
+
   it("rebuilds the default query index in memory when sources changed", () => {
     const project = setupContextProject();
     contextIndex({ projectRoot: project, write: true });
