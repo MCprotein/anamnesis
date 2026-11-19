@@ -12,6 +12,7 @@ Older entries live in `docs/changelog/`:
 
 ## [Unreleased]
 
+- A test now fails when a hand-written tracked file has more than 2,000 lines. Generated benchmark evidence, archived base versions, build output, and `package-lock.json` are excluded.
 - `context index` also indexes top-level Markdown files in `docs/roadmap/`, `docs/dogfood/`, and `docs/changelog/` when those folders exist, so `context query` still finds roadmap, dogfood, and changelog entries moved out of the top-level files. It skips subfolders, indexes at most 200 files per folder by name, and reports a warning when a folder has more.
 
 ## [1.25.5] — 2026-10-11
