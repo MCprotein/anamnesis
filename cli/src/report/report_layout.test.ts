@@ -65,7 +65,27 @@ function textColumns(output: string): number[] {
 		});
 }
 
-function captureWorkStatus(width: number, verbose = false): string {
+function detailColumnsByBlock(output: string): number[][] {
+	return stripAnsi(output)
+		.split(/\n\s*\n/)
+		.map((block) =>
+			block
+				.split("\n")
+				.filter((line) => CHIP_LINE.test(line))
+				.map((line) => {
+					const start = 2 + CHIP_WIDTH + 2;
+					const topic = line.slice(start).match(/^\S+(?: \S+)*\s{2,}/);
+					return topic ? visibleLength(line.slice(0, start + topic[0].length)) : -1;
+				}),
+		)
+		.filter((block) => block.length > 0);
+}
+
+function captureWorkStatus(
+	width: number,
+	verbose = false,
+	fixture: WorkStatusResult = workFixture(),
+): string {
 	vi.stubEnv("COLUMNS", String(width));
 	vi.stubEnv("NO_COLOR", "");
 	const columns = Object.getOwnPropertyDescriptor(process.stdout, "columns");
@@ -78,7 +98,7 @@ function captureWorkStatus(width: number, verbose = false): string {
 		lines.push(String(line ?? ""));
 	});
 	try {
-		reportWorkStatus(workFixture(), { verbose });
+		reportWorkStatus(fixture, { verbose });
 	} finally {
 		if (columns) Object.defineProperty(process.stdout, "columns", columns);
 		else Reflect.deleteProperty(process.stdout, "columns");
@@ -153,6 +173,17 @@ describe("report layout", () => {
 		},
 	);
 
+	it("lets a failed requirement chip decide the work verdict", () => {
+		const fixture = workFixture();
+		const requirement = fixture.projection.requirements[1];
+		if (requirement) requirement.status = "blocked";
+		const output = stripAnsi(captureWorkStatus(80, false, fixture));
+
+		expect(output).toMatch(/^(\u2717|x) Failed {2}/m);
+		expect(output).toContain("[FAIL]  req_docs");
+		expect(output).not.toMatch(/^Requirements {2}0$/m);
+	});
+
 	it("aligns status and init dry-run chips and avoids repeated next commands", () => {
 		const project = tempRoot("anamnesis-report-layout-");
 		spawnSync("git", ["init", "-q"], { cwd: project });
@@ -173,17 +204,39 @@ describe("report layout", () => {
 
 		const applied = runCli(project, ["init", "--yes"], env);
 		expect(applied.status, applied.stderr).toBe(0);
+		fs.rmSync(path.join(project, "CLAUDE.md"));
+		const events = path.join(project, ".anamnesis/evidence/events.jsonl");
+		fs.writeFileSync(
+			events,
+			fs
+				.readFileSync(events, "utf8")
+				.replace(/"generated_at":"[^"]+"/g, '"generated_at":"2020-01-01T00:00:00.000Z"'),
+		);
 		for (const args of [["status"], ["doctor"]]) {
-			const result = runCli(project, args, env);
-			expect(result.stderr).toBe("");
-			expect(ambiguousWidthCharacters(result.stdout)).toEqual([]);
-			const columns = textColumns(result.stdout);
-			if (columns.length > 0)
-				expect(new Set(columns)).toEqual(new Set([2 + CHIP_WIDTH + 2]));
-			for (const line of result.stdout.split("\n"))
-				expect(visibleLength(line)).toBeLessThanOrEqual(80);
+			for (const columns of ["80", "120"]) {
+				const result = runCli(project, args, { ...env, COLUMNS: columns });
+				expect(result.stderr).toBe("");
+				expect(ambiguousWidthCharacters(result.stdout)).toEqual([]);
+				const chipColumns = textColumns(result.stdout);
+				expect(chipColumns.length).toBeGreaterThanOrEqual(3);
+				expect(new Set(chipColumns)).toEqual(new Set([2 + CHIP_WIDTH + 2]));
+				for (const line of result.stdout.split("\n"))
+					expect(visibleLength(line)).toBeLessThanOrEqual(Number(columns));
+			}
+			const wide = runCli(project, args, { ...env, COLUMNS: "120" });
+			const blocks = detailColumnsByBlock(wide.stdout).filter(
+				(block) => block.length >= 2,
+			);
+			expect(blocks.length).toBeGreaterThanOrEqual(1);
+			for (const block of blocks) expect(new Set(block).size).toBe(1);
 		}
-	}, 60_000);
+		const status = stripAnsi(runCli(project, ["status"], env).stdout);
+		expect(status).toMatch(/\[WARN\]/);
+		expect(status).toMatch(/\[INFO\]\s+evidence\s+latest record is stale/);
+		const attention = Number(status.match(/Attention {2}(\d+)/)?.[1]);
+		expect(status).toContain(`! Attention  ${attention} item`);
+		expect(status.split("Notes")[0]?.match(/\[WARN\]/g)).toHaveLength(attention);
+	}, 90_000);
 
 	it("keeps hook subcommand and JSON output free of ANSI under FORCE_COLOR", () => {
 		const project = tempRoot("anamnesis-hook-ansi-");

@@ -106,11 +106,17 @@ export function reportCodexHookTrustInspection(
   }
 }
 
+export interface HookTrustFindings {
+	attention: Finding[];
+	notes: Finding[];
+}
+
 export function codexHookTrustFindings(
 	inspection: CodexHookTrustInspection,
-): Finding[] {
+): HookTrustFindings {
 	const s = inspection.summary;
-	const findings: Finding[] = [];
+	const attention: Finding[] = [];
+	const notes: Finding[] = [];
 	const blocked = inspection.hooks.filter(
 		(item) =>
 			item.status === "untrusted" ||
@@ -123,32 +129,40 @@ export function codexHookTrustFindings(
 			s.modified > 0 ? `${s.modified} modified` : "",
 			s.unknown > 0 ? `${s.unknown} unknown` : "",
 		].filter(Boolean);
-		findings.push({
+		attention.push({
 			chip: CHIP.warn,
 			topic: "Codex hooks",
 			detail: `${counts.join(", ")} of ${s.registered}; these hooks may not execute`,
 			more: [uniqueEvents(blocked.map((item) => item.event))],
 		});
 	}
-	for (const alternate of inspection.alternateProjectSources) {
-		findings.push({
+	const sources = inspection.alternateProjectSources.map(
+		(alternate) => `runtime source: ${alternate.sourcePath}`,
+	);
+	inspection.warnings.forEach((warning, index) => {
+		attention.push({
+			chip: CHIP.warn,
+			topic: "hook discovery",
+			detail: warning,
+			more: index === 0 ? sources : [],
+		});
+	});
+	if (inspection.warnings.length === 0 && sources.length > 0) {
+		notes.push({
 			chip: CHIP.info,
 			topic: "hook source",
 			detail: "Codex reads hooks from another worktree",
-			more: [alternate.sourcePath],
+			more: sources,
 		});
 	}
-	for (const warning of inspection.warnings) {
-		findings.push({ chip: CHIP.warn, topic: "Codex hooks", detail: warning });
-	}
 	if (!inspection.available && inspection.error) {
-		findings.push({
+		attention.push({
 			chip: CHIP.warn,
-			topic: "Codex hooks",
+			topic: "hook trust",
 			detail: `unavailable: ${inspection.error}`,
 		});
 	}
-	return findings;
+	return { attention, notes };
 }
 
 function uniqueEvents(events: string[]): string {

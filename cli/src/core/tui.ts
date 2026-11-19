@@ -31,9 +31,9 @@ export const CHIP = {
 	warn: { label: "WARN", tone: "warning" },
 	fail: { label: "FAIL", tone: "danger" },
 	info: { label: "INFO", tone: "accent" },
-	todo: { label: "TODO", tone: "muted" },
+	todo: { label: "TODO", tone: "bold" },
 	work: { label: "WORK", tone: "accent" },
-} as const satisfies Record<string, { label: string; tone: TuiTone }>;
+} as const satisfies Record<string, { label: string; tone: TuiTone | "bold" }>;
 export type Chip = (typeof CHIP)[keyof typeof CHIP];
 export const CHIP_WIDTH = 6;
 
@@ -106,7 +106,7 @@ export interface Tui {
 	title(title: string, subtitle?: string): string[];
 	heading(command: string, scope: string): string[];
 	verdict(options: VerdictOptions): string[];
-	section(label: string, count?: number): string[];
+	section(label: string, count?: number | string): string[];
 	commandRows(rows: CommandRow[]): string[];
 	keyValues(rows: KeyValueRow[]): string[];
 	statusRows(rows: StatusRow[], options?: StatusRowsOptions): string[];
@@ -212,7 +212,7 @@ export function createTui(opts: TuiOptions = {}): Tui {
 			return hang(`${prefix}  `, last, bodyWidth);
 		});
 	}
-	function section(label: string, count?: number): string[] {
+	function section(label: string, count?: number | string): string[] {
 		return [
 			"",
 			`${style(label, "accent")}${count === undefined ? "" : `  ${style(String(count), "muted")}`}`,
@@ -388,7 +388,30 @@ export function stripAnsi(value: string): string {
 }
 
 export function visibleLength(value: string): number {
-	return [...stripAnsi(value)].reduce(
+	return graphemes(stripAnsi(value)).reduce(
+		(total, cluster) => total + clusterWidth(cluster),
+		0,
+	);
+}
+
+const GRAPHEME_SEGMENTER = new Intl.Segmenter(undefined, {
+	granularity: "grapheme",
+});
+
+function graphemes(value: string): string[] {
+	return Array.from(GRAPHEME_SEGMENTER.segment(value), (part) => part.segment);
+}
+
+function clusterWidth(cluster: string): number {
+	const first = cluster.codePointAt(0) ?? 0;
+	const pictographic = /\p{Extended_Pictographic}/u.test(cluster);
+	if (
+		pictographic &&
+		(/[\u200d\ufe0f]/u.test(cluster) || /\p{Emoji_Modifier}/u.test(cluster))
+	)
+		return 2;
+	if (/\p{Emoji_Presentation}/u.test(String.fromCodePoint(first))) return 2;
+	return [...cluster].reduce(
 		(total, character) => total + characterWidth(character),
 		0,
 	);
@@ -453,8 +476,8 @@ function splitByWidth(value: string, width: number): string[] {
 	const chunks: string[] = [];
 	let current = "";
 	let currentWidth = 0;
-	for (const character of value) {
-		const characterSize = characterWidth(character);
+	for (const character of graphemes(value)) {
+		const characterSize = clusterWidth(character);
 		if (current && currentWidth + characterSize > width) {
 			chunks.push(current);
 			current = "";
@@ -469,6 +492,8 @@ function splitByWidth(value: string, width: number): string[] {
 function characterWidth(character: string): number {
 	const code = character.codePointAt(0) ?? 0;
 	if (/\p{Mark}/u.test(character)) return 0;
+	if ((code >= 0x1160 && code <= 0x11ff) || (code >= 0xd7b0 && code <= 0xd7ff))
+		return 0;
 	if (
 		code >= 0x1100 &&
 		(code <= 0x115f ||

@@ -89,7 +89,7 @@ export function reportStatus(
 					: []),
 				[
 					"documents",
-					metric(ui, result.documents.summary.pages, true),
+					String(result.documents.summary.pages),
 					ui.style("pages", "muted"),
 					`${metric(ui, result.documents.summary.brokenLinks, result.documents.summary.brokenLinks === 0)} ${ui.style("broken links", "muted")}`,
 				],
@@ -273,12 +273,8 @@ function statusAttention(
 				detail: `${warning.kind}: ${warning.detail}`,
 			});
 	}
-	const trust = result.codexHookTrust;
-	if (
-		trust &&
-		trust.summary.untrusted + trust.summary.modified + trust.summary.unknown > 0
-	)
-		findings.push(...codexHookTrustFindings(trust));
+	if (result.codexHookTrust)
+		findings.push(...codexHookTrustFindings(result.codexHookTrust).attention);
 	for (const gap of result.ontology.gaps.filter(
 		(item) => item.severity === "warning",
 	)) {
@@ -293,7 +289,7 @@ function statusAttention(
 		findings.push({
 			chip: CHIP.warn,
 			topic: "evidence",
-			detail: `${plural(result.evidence.invalid, "invalid line")}`,
+			detail: `${plural(result.evidence.invalid, "invalid line")}${result.evidence.latest_stale ? `; ${staleEvidence(result)}` : ""}`,
 		});
 	}
 	if (
@@ -330,16 +326,21 @@ function statusAttention(
 }
 
 function statusNotes(result: StatusResult): Finding[] {
-	if (!result.evidence.latest_stale || result.evidence.invalid > 0) return [];
-	const age = result.evidence.latest_age_ms;
-	return [
-		{
+	const notes: Finding[] = result.codexHookTrust
+		? codexHookTrustFindings(result.codexHookTrust).notes
+		: [];
+	if (result.evidence.latest_stale && result.evidence.invalid === 0)
+		notes.push({
 			chip: CHIP.info,
 			topic: "evidence",
-			detail:
-				age === undefined
-					? "latest record is stale"
-					: `latest record is ${formatAge(age)} old`,
-		},
-	];
+			detail: staleEvidence(result),
+		});
+	return notes;
+}
+
+function staleEvidence(result: StatusResult): string {
+	const age = result.evidence.latest_age_ms;
+	return age === undefined
+		? "latest record is stale"
+		: `latest record is stale (${formatAge(age)} old)`;
 }

@@ -170,42 +170,53 @@ export interface Finding {
 
 export const FINDING_TEXT_COLUMN = 2 + CHIP_WIDTH + 2;
 
+export const FINDING_MIN_DETAIL_WIDTH = 40;
+
 export function findingLines(ui: Tui, findings: Finding[]): string[] {
+	if (findings.length === 0) return [];
 	const topicWidth = Math.max(
 		...findings.map((finding) => visibleLength(finding.topic)),
 	);
-	const stacked = FINDING_TEXT_COLUMN + topicWidth + 2 + 16 > ui.width;
-	const indent = " ".repeat(FINDING_TEXT_COLUMN);
-	const hanging = (line: string) =>
-		ui
-			.wrap(line, ui.width - FINDING_TEXT_COLUMN)
-			.map((part) => `${indent}${part}`);
-	return findings.flatMap((finding) => [
-		...(stacked
+	const detailColumn = FINDING_TEXT_COLUMN + topicWidth + 2;
+	const stacked = ui.width - detailColumn < FINDING_MIN_DETAIL_WIDTH;
+	const bodyColumn = stacked ? FINDING_TEXT_COLUMN : detailColumn;
+	const hanging = (line: string, column: number) =>
+		ui.wrap(line, ui.width - column).map((part) => `${" ".repeat(column)}${part}`);
+	return findings.flatMap((finding) => {
+		const chip = `  ${ui.chip(finding.chip)}  `;
+		const head = stacked
 			? [
-					`  ${ui.chip(finding.chip)}  ${finding.topic}`,
-					...hanging(finding.detail),
+					...ui
+						.wrap(finding.topic, ui.width - FINDING_TEXT_COLUMN)
+						.map((part, index) =>
+							index === 0 ? `${chip}${part}` : `${" ".repeat(FINDING_TEXT_COLUMN)}${part}`,
+						),
+					...hanging(finding.detail, bodyColumn),
 				]
-			: ui.table(
-					[[ui.chip(finding.chip), finding.topic, finding.detail]],
-					[{}, { width: topicWidth }],
-				)),
-		...(finding.more ?? []).flatMap((line) =>
-			hanging(ui.style(line, "muted")),
-		),
-	]);
+			: ui
+					.wrap(finding.detail, ui.width - detailColumn)
+					.map((part, index) =>
+						index === 0
+							? `${chip}${finding.topic}${" ".repeat(topicWidth - visibleLength(finding.topic) + 2)}${part}`
+							: `${" ".repeat(detailColumn)}${part}`,
+					);
+		return [
+			...head,
+			...(finding.more ?? []).flatMap((line) =>
+				hanging(ui.style(line, "muted"), bodyColumn),
+			),
+		];
+	});
 }
 
 export function printFindingSection(
 	ui: Tui,
 	label: string,
 	findings: Finding[],
+	count: number | string = findings.length,
 ): void {
 	if (findings.length === 0) return;
-	printLines([
-		...ui.section(label, findings.length),
-		...findingLines(ui, findings),
-	]);
+	printLines([...ui.section(label, count), ...findingLines(ui, findings)]);
 }
 
 export function findingLevel(findings: Finding[]): Level {
@@ -222,8 +233,13 @@ export function findingLevel(findings: Finding[]): Level {
 	);
 }
 
-export function metric(ui: Tui, value: number | string, ok: boolean): string {
-	return ui.style(String(value), ok ? "success" : "warning");
+export function metric(
+	ui: Tui,
+	value: number | string,
+	ok: boolean,
+	problemTone: TuiTone = "warning",
+): string {
+	return ui.style(String(value), ok ? "success" : problemTone);
 }
 
 export function plural(

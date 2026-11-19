@@ -43,7 +43,7 @@ export function reportDoctor(
 		"",
 		...ui.table(
 			[
-				["errors", metric(ui, errors, errors === 0), ""],
+				["errors", metric(ui, errors, errors === 0, "danger"), ""],
 				["warnings", metric(ui, warnings, warnings === 0), ""],
 				[
 					"info",
@@ -73,10 +73,14 @@ export function reportDoctor(
 		),
 	]);
 	const ontology = ontologyFinding(result.ontologyRecommendation);
+	const issueGroups = doctorFindings(presentation.issues, verbose);
 	printFindingSection(
 		ui,
 		"Issues",
-		doctorFindings(presentation.issues, verbose),
+		issueGroups,
+		issueGroups.length === presentation.issues.length
+			? issueGroups.length
+			: `${plural(issueGroups.length, "group")}, ${plural(presentation.issues.length, "finding")}`,
 	);
 	printFindingSection(ui, "Notes", ontology ? [ontology] : []);
 	if (verbose && result.codexHookTrust) {
@@ -140,7 +144,11 @@ function doctorFindings(issues: DoctorIssue[], verbose: boolean): Finding[] {
 			topic: first.code,
 			detail: plural(group.length, "finding"),
 			more: [
-				...shown.map((issue) => issueTarget(issue) || issue.message),
+				...shown.map((issue) =>
+					verbose && issueTarget(issue)
+						? `${issueTarget(issue)}: ${issue.message}`
+						: issueTarget(issue) || issue.message,
+				),
 				...moreLine(group.length - shown.length),
 				...repair,
 			],

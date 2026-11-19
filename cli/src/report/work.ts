@@ -5,10 +5,17 @@ import {
 	type WorkPromptResolutionResult,
 	type WorkStatusResult,
 } from "../commands/work.js";
-import { CHIP, type Chip, createTui, LEVEL } from "../core/tui.js";
+import {
+	CHIP,
+	type Chip,
+	createTui,
+	LEVEL,
+	worstLevel,
+} from "../core/tui.js";
 import type { WorkRequirementState } from "../core/work_projection.js";
 import {
 	type Finding,
+	findingLevel,
 	findingLines,
 	type HumanReportOptions,
 	metric,
@@ -112,11 +119,32 @@ export function reportWorkStatus(
 	const ui = createTui();
 	const complete = projection.lifecycle === "completed";
 	const blocked = projection.progress.blocked > 0;
-	const level = complete
-		? LEVEL.ready
-		: blocked
-			? LEVEL.attention
-			: LEVEL.notice;
+	const checks = workChecks(result, verbose);
+	const open = projection.requirements.filter(
+		(requirement) =>
+			requirement.status !== "verified" && requirement.status !== "waived",
+	);
+	const visible = verbose ? projection.requirements : open;
+	const requirements: Finding[] =
+		visible.length === 0
+			? [
+					{
+						chip: CHIP.ok,
+						topic: "verified",
+						detail: "all applicable requirements",
+					},
+				]
+			: visible.map((requirement) => ({
+					chip: requirementChip(requirement.status),
+					topic: requirement.id,
+					detail: requirement.summary,
+					more: requirement.status === "pending" ? [] : [requirement.status],
+				}));
+	const level = worstLevel([
+		complete ? LEVEL.ready : blocked ? LEVEL.attention : LEVEL.notice,
+		findingLevel(checks),
+		findingLevel(requirements),
+	]);
 	const progressDetail = projection.progress.weighted
 		? `${projection.progress.verified_weight ?? 0}/${projection.progress.applicable_weight ?? 0} verified weight`
 		: `${projection.progress.verified}/${projection.progress.applicable} verified requirements`;
@@ -142,32 +170,14 @@ export function reportWorkStatus(
 				: []),
 		]),
 	]);
-	printFindingSection(ui, "Checks", workChecks(result, verbose));
-	const open = projection.requirements.filter(
-		(requirement) =>
-			requirement.status !== "verified" && requirement.status !== "waived",
-	);
-	const visible = verbose ? projection.requirements : open;
-	printLines(ui.section("Requirements", visible.length));
-	printLines(
-		findingLines(
-			ui,
-			visible.length === 0
-				? [
-						{
-							chip: CHIP.ok,
-							topic: "verified",
-							detail: "all applicable requirements",
-						},
-					]
-				: visible.map((requirement) => ({
-						chip: requirementChip(requirement.status),
-						topic: requirement.id,
-						detail: requirement.summary,
-						more: requirement.status === "pending" ? [] : [requirement.status],
-					})),
+	printFindingSection(ui, "Checks", checks);
+	printLines([
+		...ui.section(
+			"Requirements",
+			visible.length === 0 ? undefined : visible.length,
 		),
-	);
+		...findingLines(ui, requirements),
+	]);
 	if (!verbose) {
 		const next = open[0];
 		printLines([

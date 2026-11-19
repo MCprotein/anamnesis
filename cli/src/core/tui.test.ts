@@ -408,4 +408,15 @@ describe("tui", () => {
 			false,
 		);
 	});
+
+	it("counts display width by grapheme cluster", () => {
+		expect(visibleLength("한국어".normalize("NFD"))).toBe(6);
+		expect(visibleLength("한국어")).toBe(6);
+		expect(visibleLength("\u{1F468}\u200d\u{1F469}\u200d\u{1F467}")).toBe(2);
+		expect(visibleLength("\u2705")).toBe(2);
+		expect(visibleLength("\u2764\ufe0f")).toBe(2);
+		expect(visibleLength("\u{1F44D}\u{1F3FD}")).toBe(2);
+		expect(visibleLength("\u2713 \u2717")).toBe(3);
+		expect(truncateText("\u{1F44D}\u{1F3FD}abcdef", 6)).toBe("\u{1F44D}\u{1F3FD}a...");
+	});
 });
