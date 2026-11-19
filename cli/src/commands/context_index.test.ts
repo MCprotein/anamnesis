@@ -627,11 +627,60 @@ describe("context index", () => {
       const result = contextQuery({
         projectRoot: project,
         query,
-        kind: "doc-heading",
+        kind: "doc-section",
         limit: 1,
       });
       expect(result.matches[0]!.entry.source_path).toBe(sourcePath);
     }
+  });
+
+  it("ignores subfolders under moved history document folders", () => {
+    const project = setupContextProject();
+    writeFile(
+      project,
+      "docs/roadmap/nested/deep.md",
+      ["# Nested", "", "## Thistlewick Nested", "Must not be indexed.", ""].join("\n"),
+    );
+    const result = contextIndex({ projectRoot: project });
+
+    expect(
+      result.entries.some(
+        (entry) =>
+          entry.kind === "doc-section" && entry.source_path === "docs/roadmap/nested/deep.md",
+      ),
+    ).toBe(false);
+  });
+
+  it("caps each moved history document folder and reports a warning", () => {
+    const project = setupContextProject();
+    for (let i = 0; i < 201; i++) {
+      const name = String(i).padStart(3, "0");
+      writeFile(project, `docs/dogfood/${name}.md`, `# Record ${name}\n`);
+    }
+    const result = contextIndex({ projectRoot: project });
+    const sources = new Set(
+      result.entries
+        .filter((entry) => entry.kind === "doc-section")
+        .map((entry) => entry.source_path),
+    );
+
+    expect(sources.has("docs/dogfood/199.md")).toBe(true);
+    expect(sources.has("docs/dogfood/200.md")).toBe(false);
+    expect(result.warnings).toContain(
+      "docs/dogfood: 201 Markdown files found; indexed the first 200 by name",
+    );
+  });
+
+  it("skips a moved history document path that is a file, not a folder", () => {
+    const project = setupContextProject();
+    writeFile(project, "docs/changelog", "not a folder\n");
+
+    const result = contextIndex({ projectRoot: project });
+
+    expect(result.entries.some((entry) => entry.source_path.startsWith("docs/changelog"))).toBe(
+      false,
+    );
+    expect(result.warnings).toEqual([]);
   });
 
   it("rebuilds the default query index in memory when sources changed", () => {

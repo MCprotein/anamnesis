@@ -157,6 +157,7 @@ const DEFAULT_DOCS = [
 ] as const;
 
 const DEFAULT_DOC_DIRS = ["docs/roadmap", "docs/dogfood", "docs/changelog"] as const;
+const DEFAULT_DOC_DIR_FILE_LIMIT = 200;
 
 const CONTEXT_KINDS = new Set<ContextIndexKind>([
   "agent-rule",
@@ -183,8 +184,8 @@ export function contextIndex(opts: ContextIndexOptions): ContextIndexResult {
   const projectRoot = path.resolve(opts.projectRoot);
   const generatedAt = (opts.now ?? (() => new Date()))().toISOString();
   const indexPath = opts.outputPath ?? CONTEXT_INDEX_PATH;
-  const sources = discoverContextSources(projectRoot);
   const warnings: string[] = [];
+  const sources = discoverContextSources(projectRoot, warnings);
   const entries = sources.flatMap((source) => {
     try {
       return entriesForSource(projectRoot, source);
@@ -509,7 +510,10 @@ function formatFreshnessWarning(
   return `${indexPath} is stale (${parts.join(", ")})`;
 }
 
-function discoverContextSources(projectRoot: string): ContextSource[] {
+function discoverContextSources(
+  projectRoot: string,
+  warnings: string[] = [],
+): ContextSource[] {
   const sources = new Map<string, ContextSource>();
   const add = (relPath: string): void => {
     const normalized = normalizeRelPath(relPath);
@@ -530,9 +534,13 @@ function discoverContextSources(projectRoot: string): ContextSource[] {
   add(".anamnesis/evidence/events.jsonl");
   for (const doc of DEFAULT_DOCS) add(doc);
   for (const dir of DEFAULT_DOC_DIRS) {
-    for (const relPath of walkFiles(projectRoot, dir)) {
-      if (relPath.endsWith(".md")) add(relPath);
+    const files = topLevelMarkdownFiles(projectRoot, dir);
+    if (files.length > DEFAULT_DOC_DIR_FILE_LIMIT) {
+      warnings.push(
+        `${dir}: ${files.length} Markdown files found; indexed the first ${DEFAULT_DOC_DIR_FILE_LIMIT} by name`,
+      );
     }
+    for (const relPath of files.slice(0, DEFAULT_DOC_DIR_FILE_LIMIT)) add(relPath);
   }
   for (const relPath of walkFiles(projectRoot, ".anamnesis/ontology")) {
     if (relPath.endsWith(".yaml") || relPath.endsWith(".yml")) add(relPath);
@@ -558,9 +566,24 @@ function discoverContextSources(projectRoot: string): ContextSource[] {
   return [...sources.values()].sort((a, b) => a.relPath.localeCompare(b.relPath));
 }
 
+function isDirectory(absPath: string): boolean {
+  return fs.existsSync(absPath) && fs.statSync(absPath).isDirectory();
+}
+
+function topLevelMarkdownFiles(projectRoot: string, relDir: string): string[] {
+  const absDir = path.join(projectRoot, relDir);
+  if (!isDirectory(absDir)) return [];
+  return fs
+    .readdirSync(absDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry) => displayPathFromProject(projectRoot, path.join(absDir, entry.name)))
+    .filter((relPath) => !shouldExcludePath(relPath))
+    .sort();
+}
+
 function walkFiles(projectRoot: string, relDir: string): string[] {
   const absDir = path.join(projectRoot, relDir);
-  if (!fs.existsSync(absDir)) return [];
+  if (!isDirectory(absDir)) return [];
   const result: string[] = [];
   const stack = [absDir];
   while (stack.length > 0) {
