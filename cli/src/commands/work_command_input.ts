@@ -1,9 +1,10 @@
 import * as path from "node:path";
 import type { WorkDurabilityOptions } from "../core/work_durability.js";
 import {
-	resolveWorkStateRoot,
-	type WorkSourceEventInput,
-} from "../core/work_storage.js";
+	resolveStateRootFor,
+	type WorkStateRootOptions,
+} from "../core/work_state_root_resolver.js";
+import type { WorkSourceEventInput } from "../core/work_storage.js";
 import type {
 	WorkCommandSourceSelection,
 	WorkReadInput,
@@ -12,7 +13,7 @@ import type {
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export function selectedSource(
-	input: WorkReadInput & WorkCommandSourceSelection,
+	input: WorkReadInput & WorkCommandSourceSelection & WorkStateRootOptions,
 ): {
 	eventId: string;
 	value: WorkSourceEventInput;
@@ -23,7 +24,7 @@ export function selectedSource(
 	if (selected.length !== 1) {
 		throw new Error("exactly one of source_file or source_stdin is required");
 	}
-	const state = resolveWorkStateRoot(input.project_root, input.state_root);
+	const state = resolveStateRootFor(input);
 	const value = selected[0]!;
 	if ("body" in value && !(value.body instanceof Buffer)) {
 		throw new Error("raw Work source body must be a Buffer");
@@ -50,10 +51,10 @@ export interface WorkLocations extends WorkDurabilityOptions {
 }
 
 export function workLocations(
-	input: WorkReadInput & WorkDurabilityOptions,
+	input: WorkReadInput & WorkDurabilityOptions & WorkStateRootOptions,
 ): WorkLocations {
 	assertSafeId(input.work_id, "work ID");
-	const state = resolveWorkStateRoot(input.project_root, input.state_root);
+	const state = resolveStateRootFor(input);
 	const directory = path.join(state.state_root, "work-units", input.work_id);
 	return {
 		stateRoot: state.state_root,

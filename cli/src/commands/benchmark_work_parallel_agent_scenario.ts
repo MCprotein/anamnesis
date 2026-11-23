@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import YAML from "yaml";
 import { WorkDurability } from "../core/work_durability.js";
+import { createScopedWorkStateRootResolver } from "../core/work_state_root_resolver.js";
 import { briefWork, createWork, transitionWork } from "./work.js";
 import { renderWorkExecutionPacket } from "./work_hook.js";
 import type {
@@ -74,9 +75,11 @@ export function materializeWorkContext(
 			},
 		}),
 	);
+	const stateRootResolver = createScopedWorkStateRootResolver();
 	let mutation = createWork({
 		project_root: projectRoot,
 		durability: WorkDurability.ephemeral,
+		state_root_resolver: stateRootResolver,
 		work_id: "wu_parallel_sanitized",
 		event_id: "evt_parallel_create",
 		occurred_at: "2026-08-20T00:00:00.000Z",
@@ -117,6 +120,7 @@ export function materializeWorkContext(
 		mutation = transitionWork({
 			project_root: projectRoot,
 			durability: WorkDurability.ephemeral,
+			state_root_resolver: stateRootResolver,
 			work_id: "wu_parallel_sanitized",
 			event_id: `evt_parallel_verify_${index}`,
 			occurred_at: new Date(
@@ -135,6 +139,7 @@ export function materializeWorkContext(
 	const brief = briefWork({
 		project_root: projectRoot,
 		durability: WorkDurability.ephemeral,
+		state_root_resolver: stateRootResolver,
 		work_id: "wu_parallel_sanitized",
 		cursor_id: "parallel-benchmark",
 		client_session_ref: "sanitized-session",

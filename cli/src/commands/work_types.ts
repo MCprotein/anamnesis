@@ -6,6 +6,7 @@ import type {
 import type { WorkProtectedActionReadiness } from "../core/work_execution_contract.js";
 import type { WorkDurabilityOptions } from "../core/work_durability.js";
 import type { WorkExecutionInputs } from "../core/work_execution_inputs.js";
+import type { WorkStateRootOptions } from "../core/work_state_root_resolver.js";
 import type { WorkPolicySnapshotComparison } from "../core/work_policy.js";
 import type {
 	ProjectedParallelism,
@@ -41,7 +42,8 @@ export interface WorkCommandSourceSelection {
 
 export interface WorkMutationInput
 	extends WorkCommandSourceSelection,
-		WorkDurabilityOptions {
+		WorkDurabilityOptions,
+		WorkStateRootOptions {
 	project_root: string;
 	state_root?: string;
 	work_id: string;
@@ -243,7 +245,10 @@ export interface WorkBriefResult
 	delivery_state: "pending";
 }
 
-export interface WorkBriefInput extends WorkReadInput, WorkDurabilityOptions {
+export interface WorkBriefInput
+	extends WorkReadInput,
+		WorkDurabilityOptions,
+		WorkStateRootOptions {
 	last_reconciled_head?: string | null;
 	cursor_id?: string;
 	client_session_ref?: string | null;
