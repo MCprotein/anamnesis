@@ -122,6 +122,16 @@ describe("Work durability", () => {
 		expect(fsyncCalls()).toBeGreaterThan(0);
 	});
 
+	it("calls fsync equally often on the default and explicit durable paths", () => {
+		const defaultCalls = countFsyncCalls();
+		mutateWork();
+		const defaultCount = defaultCalls();
+		vi.restoreAllMocks();
+		const durableCalls = countFsyncCalls();
+		mutateWork(WorkDurability.durable);
+		expect(durableCalls()).toBe(defaultCount);
+	});
+
 	it("does not call fsync on the ephemeral path", () => {
 		const fsyncCalls = countFsyncCalls();
 		mutateWork(WorkDurability.ephemeral);
