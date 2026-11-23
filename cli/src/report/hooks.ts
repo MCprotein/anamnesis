@@ -117,6 +117,8 @@ export function codexHookTrustFindings(
 	const s = inspection.summary;
 	const attention: Finding[] = [];
 	const notes: Finding[] = [];
+	// comment: same rule as doctor; no registered hooks and no Codex is not a finding
+	if (!inspection.available && s.registered === 0) return { attention, notes };
 	const blocked = inspection.hooks.filter(
 		(item) =>
 			item.status === "untrusted" ||
