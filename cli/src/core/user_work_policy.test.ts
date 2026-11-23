@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	anamnesisHome,
 	isUserHomeProjectRoot,
@@ -25,9 +25,13 @@ let env: NodeJS.ProcessEnv;
 beforeEach(() => {
 	root = fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-user-policy-"));
 	env = { ANAMNESIS_HOME: path.join(root, ".anamnesis") };
+	vi.stubEnv("HOME", path.join(root, "os-home"));
+	vi.stubEnv("ANAMNESIS_HOME", env.ANAMNESIS_HOME);
+	vi.stubEnv("ANAMNESIS_STATE_HOME", path.join(root, "state"));
 });
 
 afterEach(() => {
+	vi.unstubAllEnvs();
 	fs.rmSync(root, { recursive: true, force: true });
 });
 
@@ -45,7 +49,7 @@ describe("anamnesis home", () => {
 	});
 
 	it("defaults to ~/.anamnesis without the override", () => {
-		expect(anamnesisHome({})).toBe(path.join(os.homedir(), ".anamnesis"));
+		expect(anamnesisHome({})).toBe(path.join(root, "os-home", ".anamnesis"));
 	});
 
 	it("detects a project root that would share the user settings folder", () => {
@@ -54,6 +58,21 @@ describe("anamnesis home", () => {
 		const project = path.join(root, "project");
 		fs.mkdirSync(project);
 		expect(isUserHomeProjectRoot(project, env)).toBe(false);
+	});
+});
+
+describe("home folder case", () => {
+	const project = () => path.join(root, "Projects");
+	const caseInsensitive = () => {
+		fs.mkdirSync(project(), { recursive: true });
+		return fs.existsSync(path.join(root, "PROJECTS"));
+	};
+
+	it("rejects a home path written with other letter case", (context) => {
+		if (!caseInsensitive()) context.skip();
+		const caseEnv = { ANAMNESIS_HOME: path.join(project(), ".anamnesis") };
+		expect(isUserHomeProjectRoot(path.join(root, "PROJECTS"), caseEnv)).toBe(true);
+		expect(isUserHomeProjectRoot(path.join(root, "projects"), caseEnv)).toBe(true);
 	});
 });
 
@@ -136,7 +155,8 @@ describe("user work policy", () => {
 	it("rejects an invalid policy.yaml with its path", () => {
 		writePolicy("review:\n  preset: loud\n");
 		expect(() => readUserWorkPolicy(env)).toThrow(/policy\.yaml.*review\.preset/);
-		writePolicy("review: [\n");
-		expect(() => readUserWorkPolicy(env)).toThrow(UserWorkPolicyError);
+		writePolicy("review: [\n  secret-line-text\n");
+		expect(() => readUserWorkPolicy(env)).toThrow(/line \d+, column \d+$/);
+		expect(() => readUserWorkPolicy(env)).not.toThrow(/secret-line-text/);
 	});
 });

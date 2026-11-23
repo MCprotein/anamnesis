@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { userPolicyPath } from "../core/anamnesis_home.js";
+import { anamnesisHome, userPolicyPath } from "../core/anamnesis_home.js";
 import {
 	parseUserWorkPolicy,
 	stringifyUserWorkPolicy,
@@ -39,6 +39,7 @@ export interface ConfigurePolicyOptions {
 	dryRun: boolean;
 	force: boolean;
 	env?: NodeJS.ProcessEnv;
+	now?: Date;
 }
 
 export interface ConfigurePolicyResult {
@@ -47,6 +48,7 @@ export interface ConfigurePolicyResult {
 	path: string;
 	status: PolicyWriteStatus;
 	written: boolean;
+	backupPath: string | null;
 	content: string;
 	reason?: string;
 }
@@ -57,7 +59,13 @@ export function configurePolicy(
 	const filePath = userPolicyPath(opts.env);
 	const config = workPolicyBundle(opts.preset);
 	const content = stringifyUserWorkPolicy(config);
-	const base = { scope: opts.scope, preset: opts.preset, path: filePath, content };
+	const base = {
+		scope: opts.scope,
+		preset: opts.preset,
+		path: filePath,
+		content,
+		backupPath: null,
+	};
 	const status = plannedStatus(filePath, hashWorkPolicyValue(config), opts.force);
 	if (status === PolicyWriteStatus.Blocked) {
 		return {
@@ -68,11 +76,31 @@ export function configurePolicy(
 		};
 	}
 	const shouldWrite = !opts.dryRun && status !== PolicyWriteStatus.Unchanged;
+	const backupPath =
+		shouldWrite && status === PolicyWriteStatus.Updated
+			? backupUserPolicy(filePath, opts.env, opts.now ?? new Date())
+			: null;
 	if (shouldWrite) {
 		fs.mkdirSync(path.dirname(filePath), { recursive: true });
 		fs.writeFileSync(filePath, content, "utf8");
 	}
-	return { ...base, status, written: shouldWrite };
+	return { ...base, status, written: shouldWrite, backupPath };
+}
+
+function backupUserPolicy(
+	filePath: string,
+	env: NodeJS.ProcessEnv | undefined,
+	now: Date,
+): string {
+	const backupPath = path.join(
+		anamnesisHome(env),
+		"backups",
+		now.toISOString().replace(/[:.]/g, "-"),
+		path.basename(filePath),
+	);
+	fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+	fs.copyFileSync(filePath, backupPath);
+	return backupPath;
 }
 
 function plannedStatus(

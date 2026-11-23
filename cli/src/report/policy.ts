@@ -34,6 +34,7 @@ export function reportConfigurePolicy(result: ConfigurePolicyResult): void {
 		...ui.table([
 			["preset", result.preset],
 			["file", result.path],
+			...(result.backupPath ? [["backup", result.backupPath]] : []),
 		]),
 		...ui.section("Policy"),
 		...result.content

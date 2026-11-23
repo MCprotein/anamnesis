@@ -32,7 +32,7 @@ export function isUserHomeProjectRoot(
 function canonicalPath(target: string): string {
 	const absolute = path.resolve(target);
 	try {
-		return fs.realpathSync(absolute);
+		return fs.realpathSync.native(absolute);
 	} catch {
 		return absolute;
 	}

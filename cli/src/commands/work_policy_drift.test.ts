@@ -7,6 +7,7 @@ import { userPolicyPath } from "../core/anamnesis_home.js";
 import { stripAnsi } from "../core/tui.js";
 import { reportWorkStatus } from "../report/work.js";
 import { workPolicyDoctorIssues, WorkPolicyDoctorCode } from "./doctor_work_policy.js";
+import { deriveWorkHookCursorId, handleWorkUserPromptSubmit } from "./work_hook.js";
 import { amendWork, createWork, statusWork, type WorkMutationInput } from "./work.js";
 import {
 	driftReport,
@@ -23,8 +24,10 @@ beforeEach(() => {
 	root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-policy-drift-")));
 	project = path.join(root, "project");
 	fs.mkdirSync(project);
-	env = { ANAMNESIS_HOME: path.join(root, "home") };
+	env = { ANAMNESIS_HOME: path.join(root, "home", ".anamnesis") };
+	vi.stubEnv("HOME", path.join(root, "home"));
 	vi.stubEnv("ANAMNESIS_HOME", env.ANAMNESIS_HOME);
+	vi.stubEnv("ANAMNESIS_STATE_HOME", path.join(root, "state"));
 });
 
 afterEach(() => {
@@ -117,6 +120,36 @@ const RECOMMENDED = {
 	review: { preset: "advisory" },
 	delegation: { parallelism: "auto", max_agents: 4 },
 };
+
+describe("unlinked session hook with a user-only policy", () => {
+	function unlinkedContext(): string | null {
+		return handleWorkUserPromptSubmit({
+			project_root: project,
+			client: "claude",
+			payload: { session_id: "claude-unlinked", prompt_id: "prompt-1", prompt: "continue" },
+		}).context;
+	}
+
+	it("injects the work switch guidance when reconciliation comes from policy.yaml", () => {
+		writeProjectPolicy(null);
+		expect(unlinkedContext()).toBeNull();
+		writeUserPolicy(YAML.stringify(RECOMMENDED));
+		expect(unlinkedContext()).toContain(
+			`anamnesis work switch --work <id> --session ${deriveWorkHookCursorId("claude", "claude-unlinked")}`,
+		);
+	});
+
+	it("applies the user layer to a v1 Agentfile and stays off for an invalid policy.yaml", () => {
+		fs.writeFileSync(
+			path.join(project, "Agentfile"),
+			"version: 1\nproject:\n  name: drift\ntools: [claude-code]\nfragments: []\n",
+		);
+		writeUserPolicy(YAML.stringify(RECOMMENDED));
+		expect(unlinkedContext()).toContain("anamnesis work switch");
+		writeUserPolicy("review: { preset: loud }\n");
+		expect(unlinkedContext()).toBeNull();
+	});
+});
 
 describe("Work policy drift", () => {
 	it("does not report drift when only the policy source changes", () => {

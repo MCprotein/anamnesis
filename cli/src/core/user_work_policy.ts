@@ -72,8 +72,12 @@ export function parseUserWorkPolicy(
 	try {
 		raw = parseYaml(content);
 	} catch (error) {
+		const position = (error as { linePos?: Array<{ line: number; col: number }> })
+			.linePos?.[0];
 		throw new UserWorkPolicyError(
-			`${filePath}: YAML parse error: ${(error as Error).message}`,
+			position
+				? `${filePath}: YAML parse error at line ${position.line}, column ${position.col}`
+				: `${filePath}: YAML parse error`,
 		);
 	}
 	const parsed = workPolicyConfigSchema.safeParse(raw ?? {});

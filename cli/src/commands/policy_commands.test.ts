@@ -26,7 +26,9 @@ beforeEach(() => {
 		fs.mkdtempSync(path.join(os.tmpdir(), "anamnesis-policy-cmd-")),
 	);
 	env = { ANAMNESIS_HOME: path.join(root, "home", ".anamnesis") };
+	vi.stubEnv("HOME", path.join(root, "home"));
 	vi.stubEnv("ANAMNESIS_HOME", env.ANAMNESIS_HOME);
+	vi.stubEnv("ANAMNESIS_STATE_HOME", path.join(root, "state"));
 });
 
 afterEach(() => {
@@ -84,8 +86,21 @@ describe("context policy configure", () => {
 		const blocked = configure();
 		expect(blocked.status).toBe(PolicyWriteStatus.Blocked);
 		expect(fs.readFileSync(userPolicyPath(env), "utf8")).toContain("strict");
-		expect(configure({ force: true }).status).toBe(PolicyWriteStatus.Updated);
+		const forced = configurePolicy({
+			scope: PolicyScope.User,
+			preset: WorkPolicyBundlePreset.Recommended,
+			dryRun: false,
+			force: true,
+			env,
+			now: new Date("2026-11-24T01:02:03.004Z"),
+		});
+		expect(forced.status).toBe(PolicyWriteStatus.Updated);
+		expect(forced.backupPath).toBe(
+			path.join(env.ANAMNESIS_HOME!, "backups", "2026-11-24T01-02-03-004Z", "policy.yaml"),
+		);
+		expect(fs.readFileSync(forced.backupPath!, "utf8")).toBe("review:\n  preset: strict\n");
 		expect(fs.readFileSync(userPolicyPath(env), "utf8")).toContain("advisory");
+		expect(configure().backupPath).toBeNull();
 	});
 });
 

@@ -27,6 +27,9 @@ beforeEach(() => {
 	project = path.join(root, "project");
 	fs.mkdirSync(project);
 	env = { ANAMNESIS_HOME: path.join(root, "home") };
+	vi.stubEnv("HOME", path.join(root, "os-home"));
+	vi.stubEnv("ANAMNESIS_HOME", env.ANAMNESIS_HOME);
+	vi.stubEnv("ANAMNESIS_STATE_HOME", path.join(root, "state"));
 });
 
 afterEach(() => {
