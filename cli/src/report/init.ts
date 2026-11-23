@@ -1,4 +1,5 @@
 import { type InitResult, summarizeChanges } from "../commands/init.js";
+import { InitWorkPolicyPlacement } from "../commands/init_work_policy.js";
 import {
 	INIT_BLOCKED_STEP_LABEL,
 	initNextSteps,
@@ -153,6 +154,7 @@ function initNotes(
 			detail: `${plural(wrote, "fragment")} populated, ${skipped} skipped`,
 		});
 	}
+	notes.push(workPolicyNote(result.workPolicyPlacement));
 	const ctx = result.contextBootstrap;
 	if (ctx) {
 		notes.push({
@@ -222,4 +224,21 @@ function initNotes(
 		});
 	}
 	return notes;
+}
+
+const WORK_POLICY_NOTE_DETAIL: Record<InitWorkPolicyPlacement, string> = {
+	[InitWorkPolicyPlacement.ProjectDefault]:
+		"Agentfile init default; set a user policy with anamnesis context policy configure --scope user --preset recommended",
+	[InitWorkPolicyPlacement.ProjectFromUser]:
+		"Agentfile copy of the user policy.yaml (--project-policy)",
+	[InitWorkPolicyPlacement.UserLayer]:
+		"user policy.yaml; Agentfile has no work_policy (add --project-policy to keep one in the project)",
+};
+
+function workPolicyNote(placement: InitWorkPolicyPlacement): Finding {
+	return {
+		chip: CHIP.info,
+		topic: "work policy",
+		detail: WORK_POLICY_NOTE_DETAIL[placement],
+	};
 }

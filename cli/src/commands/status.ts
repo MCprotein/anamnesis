@@ -10,6 +10,12 @@
 //
 // No writes. No side effects. Safe to run anytime.
 
+import { UserWorkPolicyError } from "../core/user_work_policy.js";
+import {
+  collectWorkPolicyLayers,
+  type WorkPolicySectionSources,
+  workPolicySectionSources,
+} from "../core/work_policy_layers.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
@@ -208,6 +214,7 @@ export interface DocumentGraphStatus {
 
 export interface StatusResult {
   agentfile: Agentfile;
+  workPolicySources?: WorkPolicySectionSources;
   /** Flat union across all scopes — preserved for back-compat and quick overview. */
   fragments: FragmentStatus[];
   /** Flat union of manifest entries — preserved for back-compat. */
@@ -627,7 +634,23 @@ export function status(opts: StatusOptions): StatusResult {
     suggested,
     declined,
     summary,
+    ...workPolicySourcesField(projectRoot),
   };
+}
+
+function workPolicySourcesField(
+  projectRoot: string,
+): Pick<StatusResult, "workPolicySources"> {
+  try {
+    return {
+      workPolicySources: workPolicySectionSources(
+        collectWorkPolicyLayers(projectRoot),
+      ),
+    };
+  } catch (error) {
+    if (error instanceof UserWorkPolicyError) return {};
+    throw error;
+  }
 }
 
 function collectPartialAdoptions(input: {

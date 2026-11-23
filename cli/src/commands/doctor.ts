@@ -64,6 +64,10 @@ import {
   type AgentConfigDamageIssue,
 } from "../core/agent_config_damage.js";
 import {
+  type WorkPolicyDoctorCode,
+  workPolicyDoctorIssues,
+} from "./doctor_work_policy.js";
+import {
   collectInstalledRenderActions,
   type InstalledRenderPlanProblem,
 } from "./render_plan.js";
@@ -115,6 +119,7 @@ export type DoctorIssueCode =
   | "ontology-bootstrap-missing"
   | "ontology-bootstrap-stale"
   | "ontology-enrichment-missing"
+  | WorkPolicyDoctorCode
   | ExecutableSecurityIssue["code"]
   | AgentConfigDamageIssue["code"]
   | ContextDiagnosticIssue["code"];
@@ -292,6 +297,7 @@ export function doctor(opts: DoctorOptions): DoctorResult {
   if (opts.codexHookTrust) {
     addCodexHookTrustIssues(opts.codexHookTrust, issues);
   }
+  issues.push(...workPolicyDoctorIssues(projectRoot));
 
   const errors = issues.filter((i) => i.severity === "error").length;
   const warnings = issues.filter((i) => i.severity === "warning").length;

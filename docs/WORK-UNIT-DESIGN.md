@@ -392,23 +392,63 @@ The resolved policy, all contributing source refs, and its hash are frozen into
 each accepted contract revision. Lowering an already-required gate is a waiver and must be
 explicit; making it stricter is safe and append-only.
 
-Proposed guided configuration (not implemented CLI commands or flags):
+User-level policy (implemented):
+
+```text
+anamnesis context policy configure --scope user --preset recommended [--dry-run] [--force]
+anamnesis init --project-policy
+anamnesis migrate policy [--all] [--dry-run]
+```
+
+`context policy configure` writes `policy.yaml` under `ANAMNESIS_HOME`
+(default `~/.anamnesis/`). The file uses the same schema as Agentfile
+`settings.work_policy`. Machine state such as the project registry stays under
+`ANAMNESIS_STATE_HOME`; the two folders are never mixed. The `recommended`
+bundle sets all three policies at once:
+
+```yaml
+reconciliation:
+  preset: custom
+  triggers: [work_resume, compaction_resume, contract_revision, before_work_close]
+review:
+  preset: advisory
+delegation:
+  parallelism: auto
+  max_agents: 4
+```
+
+The user layer applies to v1 and v2 Agentfiles. Contract snapshots record it as
+source `user:policy.yaml` with a content hash, never as a home path. Merge
+selects each policy section wholesale, so a project `work_policy` section hides
+the same user section. To keep the user layer visible:
+
+1. When `policy.yaml` exists, `init` does not write `work_policy` into the
+   Agentfile. Other machines that use the same repository then resolve the
+   product fallback `off`. `init --project-policy` copies the user values into
+   the Agentfile instead.
+2. `migrate policy` removes a project block only when its normalized policy
+   hash equals an earlier `init` default. It keeps customized blocks and keeps
+   every block while no `policy.yaml` exists. It writes a backup under
+   `.anamnesis/backups/` first. `--all` visits every registered project.
+3. `doctor` reports `work-policy-user-shadowed` for an init-default block that
+   hides the user layer, `work-policy-project-overrides-user` for a customized
+   block, and `work-policy-sources` for the source of each section. `status`
+   shows the same sources.
+
+Open Works keep their frozen snapshot, also across contract revisions. A
+changed `policy.yaml` shows as policy drift in `work status` and applies to new
+Works.
+
+Still proposed (not implemented):
 
 ```text
 anamnesis init --review-preset off|advisory|strict
-anamnesis context policy configure --scope user --review-preset strict
 anamnesis context policy configure --scope project --review-preset advisory
 anamnesis context policy show --resolved
 ```
 
-The proposed guided UX would ask one short preset question and explain the
-trade-off. Current `init` is noninteractive and writes the fresh-init defaults.
-Project defaults live in Agentfile v2 `settings.work_policy`; existing v1 files
-require explicit migration before those settings can be added. The commands
-above and interactive preset selection remain future UX, not available entrypoints. Task-specific custom detail may live in a
-referenced project policy file and reusable task harnesses. `status` and
-`doctor` show the resolved preset, source precedence, unavailable providers,
-and any policy drift. Per-unit natural-language changes such as “이 작업은
+Task-specific custom detail may live in a referenced project policy file and
+reusable task harnesses. Per-unit natural-language changes such as “이 작업은
 리뷰 없이 진행” are captured as explicit overrides or waivers with source
 event refs.
 

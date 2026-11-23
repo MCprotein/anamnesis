@@ -240,6 +240,10 @@ function namespaceRows(namespace: HelpNamespace) {
 						"Report stale handoff, ontology, docs, and evidence issues.",
 				},
 				{
+					command: "context policy configure --scope user",
+					description: "Write the user Work policy file.",
+				},
+				{
 					command: "context resume",
 					description: "Print or write a compact resume bundle.",
 				},

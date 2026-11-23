@@ -22,6 +22,7 @@ export async function runInit({ flags }: ParsedArgs): Promise<number> {
       scaffoldDocs: flags["scaffold-docs"] === true,
       enhanceDocs: flags["enhance-docs"] === true,
 			projectRegistryPath: defaultProjectRegistryPath(),
+      projectPolicy: flags["project-policy"] === true,
     });
 		reportInit(result, projectRoot, flags["allow-exec-adapters"] === true, {
 			verbose: isVerbose(flags),

@@ -98,6 +98,13 @@ import {
   registerProject,
   type RegisteredProject,
 } from "../core/project_registry.js";
+import { isUserHomeProjectRoot } from "../core/anamnesis_home.js";
+import { UserWorkPolicyError } from "../core/user_work_policy.js";
+import {
+  type InitWorkPolicyPlacement,
+  type InitWorkPolicyPlan,
+  planInitWorkPolicy,
+} from "./init_work_policy.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -148,6 +155,8 @@ export interface InitOptions {
   enhanceDocs?: boolean;
   /** Override the user-level project registry path (primarily for tests). */
   projectRegistryPath?: string;
+  projectPolicy?: boolean;
+  env?: NodeJS.ProcessEnv;
   now?: () => Date;
 }
 
@@ -193,6 +202,7 @@ export interface InitResult {
   registration?: RegisteredProject;
   /** Registration failure does not roll back an otherwise successful init. */
   registrationError?: string;
+  workPolicyPlacement: InitWorkPolicyPlacement;
 }
 
 export class InitError extends Error {
@@ -206,15 +216,25 @@ export class InitError extends Error {
 // Defaults
 // ---------------------------------------------------------------------------
 
-const DEFAULT_SETTINGS = {
-  ...AGENTFILE_SETTING_DEFAULTS,
-  work_policy: {
-    reconciliation: { preset: "adaptive" },
-    review: { preset: "advisory" },
-    delegation: { parallelism: "auto" },
-  },
-  work_prompt_capture: { preset: "bounded" },
-} as const;
+function initSettings(workPolicy: InitWorkPolicyPlan) {
+  return {
+    ...AGENTFILE_SETTING_DEFAULTS,
+    ...(workPolicy.projectConfig ? { work_policy: workPolicy.projectConfig } : {}),
+    work_prompt_capture: { preset: "bounded" as const },
+  };
+}
+
+function resolveInitWorkPolicy(opts: InitOptions): InitWorkPolicyPlan {
+  try {
+    return planInitWorkPolicy({
+      projectPolicy: opts.projectPolicy === true,
+      env: opts.env,
+    });
+  } catch (error) {
+    if (error instanceof UserWorkPolicyError) throw new InitError(error.message);
+    throw error;
+  }
+}
 
 /**
  * Resolve the on-disk directory for a fragment in the library.
@@ -243,6 +263,13 @@ export function init(opts: InitOptions): InitResult {
       `Agentfile already present at ${existing}. Use \`anamnesis apply --dry-run\` to preview project-managed changes.`,
     );
   }
+  if (isUserHomeProjectRoot(projectRoot, opts.env)) {
+    throw new InitError(
+      `refusing to init the home directory ${projectRoot}: its .anamnesis/ folder holds user settings (ANAMNESIS_HOME). Run init inside a project folder.`,
+    );
+  }
+  const workPolicy = resolveInitWorkPolicy(opts);
+  const agentfileSettings = initSettings(workPolicy);
 
   // 2. Load library.
   const rules = loadRulebook(libraryRoot);
@@ -367,7 +394,7 @@ export function init(opts: InitOptions): InitResult {
       : { name: projectName },
     tools,
     fragments: rootOrdered.map((f) => ({ id: f.id, version: f.version })),
-    settings: DEFAULT_SETTINGS,
+    settings: agentfileSettings,
   };
 
   const privacyChanges = planWorkPromptPrivacy(
@@ -404,7 +431,7 @@ export function init(opts: InitOptions): InitResult {
         fragmentDir,
         projectRoot,
         scopePath,
-        settings: DEFAULT_SETTINGS,
+        settings: agentfileSettings,
         params: {},
       };
       for (const tool of tools) {
@@ -415,7 +442,7 @@ export function init(opts: InitOptions): InitResult {
       actions.push(
         planClaudeMdEntrypoint({
           scopePath,
-          settings: DEFAULT_SETTINGS,
+          settings: agentfileSettings,
           codex: tools.includes("codex"),
           workPromptCapture: normalizeWorkPromptCapturePolicy(
             agentfile.settings?.work_prompt_capture,
@@ -580,6 +607,7 @@ export function init(opts: InitOptions): InitResult {
     surfaceConflicts,
     registration,
     registrationError,
+    workPolicyPlacement: workPolicy.placement,
   };
 }
 
