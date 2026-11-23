@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { isHash, sha256 } from "../util/hash.js";
+import { syncsToDisk, type WorkDurabilityOptions } from "./work_durability.js";
 import { reclaimWorkLock } from "./work_lock_reclaim.js";
 
 export const WORK_LEDGER_SCHEMA_VERSION = "anamnesis.work-ledger.v1";
@@ -73,7 +74,7 @@ export interface AppendWorkLedgerOptions {
   onBeforeLedgerSync?: (record: WorkLedgerRecord) => void;
 }
 
-export interface WorkLedgerLockOptions {
+export interface WorkLedgerLockOptions extends WorkDurabilityOptions {
   lockTimeoutMs?: number;
   lockRetryMs?: number;
 }
@@ -407,7 +408,7 @@ export function withWorkLedgerLock<T>(
   const deadline = Date.now() + (options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS);
   const retry = options.lockRetryMs ?? DEFAULT_LOCK_RETRY_MS;
   while (true) {
-    if (tryAcquireDurableLock(lockPath, owner)) break;
+    if (tryAcquireDurableLock(lockPath, owner, options)) break;
     reclaimDeadLock(lockPath);
     if (Date.now() >= deadline) {
       throw new Error(`timed out acquiring work ledger lock: ${lockPath}`);
@@ -417,7 +418,7 @@ export function withWorkLedgerLock<T>(
   try {
     return operation();
   } finally {
-    releaseDurableLock(lockPath, owner);
+    releaseDurableLock(lockPath, owner, options);
   }
 }
 
@@ -446,7 +447,11 @@ function writeAll(fd: number, content: Buffer): void {
   }
 }
 
-function fsyncDirectory(directory: string): void {
+function fsyncDirectory(
+  directory: string,
+  options: WorkDurabilityOptions = {},
+): void {
+  if (!syncsToDisk(options.durability)) return;
   const fd = fs.openSync(directory, fs.constants.O_RDONLY | noFollowFlag());
   try {
     fs.fsyncSync(fd);
@@ -535,7 +540,11 @@ function processStartIdentity(pid: number): string {
   }
 }
 
-function tryAcquireDurableLock(lockPath: string, owner: WorkLockOwner): boolean {
+function tryAcquireDurableLock(
+  lockPath: string,
+  owner: WorkLockOwner,
+  options: WorkDurabilityOptions,
+): boolean {
   try {
     fs.mkdirSync(lockPath, 0o700);
   } catch (error) {
@@ -554,12 +563,12 @@ function tryAcquireDurableLock(lockPath: string, owner: WorkLockOwner): boolean 
     );
     try {
       writeAll(fd, Buffer.from(`${JSON.stringify(owner)}\n`, "utf8"));
-      fs.fsyncSync(fd);
+      if (syncsToDisk(options.durability)) fs.fsyncSync(fd);
     } finally {
       fs.closeSync(fd);
     }
-    fsyncDirectory(lockPath);
-    fsyncDirectory(path.dirname(lockPath));
+    fsyncDirectory(lockPath, options);
+    fsyncDirectory(path.dirname(lockPath), options);
     return true;
   } catch (error) {
     try {
@@ -587,7 +596,11 @@ function reclaimDeadLock(lockPath: string): void {
   }, () => fsyncDirectory(path.dirname(lockPath)));
 }
 
-function releaseDurableLock(lockPath: string, owner: WorkLockOwner): void {
+function releaseDurableLock(
+  lockPath: string,
+  owner: WorkLockOwner,
+  options: WorkDurabilityOptions,
+): void {
   let current: WorkLockOwner;
   try {
     current = JSON.parse(
@@ -601,7 +614,7 @@ function releaseDurableLock(lockPath: string, owner: WorkLockOwner): void {
   }
   fs.unlinkSync(path.join(lockPath, "owner.json"));
   fs.rmdirSync(lockPath);
-  fsyncDirectory(path.dirname(lockPath));
+  fsyncDirectory(path.dirname(lockPath), options);
 }
 
 function isLockOwner(value: unknown): value is WorkLockOwner {

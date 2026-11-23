@@ -17,6 +17,7 @@ import {
 	worktreeFingerprint,
 	writeWorkCursorAtomic,
 } from "./work_cursor.js";
+import { WorkDurability } from "./work_durability.js";
 import { resolveWorkStateRoot } from "./work_storage.js";
 
 const roots: string[] = [];
@@ -266,6 +267,27 @@ describe("Work cursor", () => {
 		expect(fs.statSync(workCursorPath(root, "cur_test")).mode & 0o777).toBe(
 			0o600,
 		);
+	});
+
+	it("publishes an ephemeral cursor without file or directory fsync", () => {
+		const root = temp();
+		let fsyncCalls = 0;
+		const io = {
+			openSync: fs.openSync,
+			writeFileSync: fs.writeFileSync,
+			fsyncSync: ((fd: number) => {
+				fsyncCalls += 1;
+				fs.fsyncSync(fd);
+			}) as typeof fs.fsyncSync,
+			closeSync: fs.closeSync,
+			renameSync: fs.renameSync,
+			mkdirSync: fs.mkdirSync,
+		};
+		writeWorkCursorAtomic(root, cursor(), io, {
+			durability: WorkDurability.ephemeral,
+		});
+		expect(fsyncCalls).toBe(0);
+		expect(fs.existsSync(workCursorPath(root, "cur_test"))).toBe(true);
 	});
 
 	it("round-trips optional reconciliation state while accepting legacy cursors", () => {

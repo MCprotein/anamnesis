@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { isHash } from "../util/hash.js";
+import { syncsToDisk, type WorkDurabilityOptions } from "./work_durability.js";
 import { withWorkLedgerLock } from "./work_ledger.js";
 import { emptyWorkCursorReconciliationState } from "./work_reconciliation.js";
 import { worktreeFingerprint as storageWorktreeFingerprint } from "./work_storage.js";
@@ -22,7 +23,7 @@ export interface WorkCursor {
 	reconciliation?: WorkCursorReconciliationState;
 }
 
-export interface WorkCursorWriteOptions {
+export interface WorkCursorWriteOptions extends WorkDurabilityOptions {
 	/** Undefined preserves the legacy unconditional-write behavior; null requires no prior cursor. */
 	expectedCursorRevision?: number | null;
 	lockTimeoutMs?: number;
@@ -459,7 +460,14 @@ export function writeWorkCursorAtomic(
 				`stale Work cursor write: expected revision ${String(options.expectedCursorRevision)}, found ${String(priorRevision)}`,
 			);
 		}
-		writeWorkCursorUnlocked(stateRoot, target, cursor, priorRevision, io);
+		writeWorkCursorUnlocked(
+			stateRoot,
+			target,
+			cursor,
+			priorRevision,
+			io,
+			options,
+		);
 		return target;
 	});
 }
@@ -502,6 +510,7 @@ function writeWorkCursorUnlocked(
 	cursor: WorkCursor,
 	priorRevision: number | null,
 	io: WorkCursorFs,
+	durability: WorkDurabilityOptions = {},
 ): WorkCursor {
 	const nextRevision = (priorRevision ?? 0) + 1;
 	if (
@@ -530,15 +539,17 @@ function writeWorkCursorUnlocked(
 			0o600,
 		);
 		io.writeFileSync(file, YAML.stringify(normalized), "utf8");
-		io.fsyncSync(file);
+		if (syncsToDisk(durability.durability)) io.fsyncSync(file);
 		io.closeSync(file);
 		file = undefined;
 		io.renameSync(temporary, target);
-		const dir = io.openSync(directory, "r");
-		try {
-			io.fsyncSync(dir);
-		} finally {
-			io.closeSync(dir);
+		if (syncsToDisk(durability.durability)) {
+			const dir = io.openSync(directory, "r");
+			try {
+				io.fsyncSync(dir);
+			} finally {
+				io.closeSync(dir);
+			}
 		}
 	} catch (error) {
 		if (file !== undefined) io.closeSync(file);

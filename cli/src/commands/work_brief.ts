@@ -15,6 +15,7 @@ import {
 	type ReconciliationDeliveryBinding,
 	type WorkBriefingSnapshot,
 } from "../core/work_reconciliation.js";
+import { resolveStateRootFor } from "../core/work_state_root_resolver.js";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { workLocations } from "./work_command_input.js";
 import {
@@ -42,9 +43,7 @@ export function briefWork(input: WorkBriefInput): WorkBriefResult {
 		projection,
 	);
 	let previousConfirmed: WorkBriefingSnapshot | null = null;
-	const state = input.cursor_id
-		? resolveWorkStateRoot(input.project_root, input.state_root)
-		: null;
+	const state = input.cursor_id ? resolveStateRootFor(input) : null;
 	let cursor: WorkCursor | null = null;
 	if (input.cursor_id) {
 		const read = readWorkCursor(
@@ -119,6 +118,7 @@ export function briefWork(input: WorkBriefInput): WorkBriefResult {
 			);
 			writeWorkCursorAtomic(state!.state_root, fresh, {
 				expectedCursorRevision: null,
+				durability: input.durability,
 			});
 		}
 	}
