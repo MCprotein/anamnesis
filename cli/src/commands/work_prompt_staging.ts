@@ -34,7 +34,10 @@ import {
 	assertCurrentSourceReferenced,
 	assertIdempotentMutationCandidate,
 } from "./work_mutation.js";
-import { resolveCommandPolicy } from "./work_policy_resolution.js";
+import {
+	nextRevisionPolicy,
+	resolveCommandPolicy,
+} from "./work_policy_resolution.js";
 import type {
 	DiscardStagedWorkPromptInput,
 	GcStagedWorkPromptInput,
@@ -258,7 +261,7 @@ function allocateStagedPrompt(
 		previousHash = projection.contract_hash;
 		policy = createWorkPolicySnapshot(
 			revision,
-			projection.policy_snapshot.policy,
+			nextRevisionPolicy(input.project_root, projection.policy_snapshot.policy),
 		);
 	}
 

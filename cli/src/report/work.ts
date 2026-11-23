@@ -5,6 +5,7 @@ import {
 	type WorkPromptResolutionResult,
 	type WorkStatusResult,
 } from "../commands/work.js";
+import { WorkPolicyDriftState } from "../commands/work_policy_resolution.js";
 import {
 	CHIP,
 	type Chip,
@@ -182,6 +183,14 @@ export function reportWorkStatus(
 		const next = open[0];
 		printLines([
 			...ui.section("Next"),
+			...(result.policy_drift_resolve_command
+				? ui.commandRows([
+						{
+							command: result.policy_drift_resolve_command,
+							description: "apply the current policy",
+						},
+					])
+				: []),
 			ui.note(
 				complete
 					? "no action required"
@@ -262,11 +271,21 @@ function workChecks(result: WorkStatusResult, verbose: boolean): Finding[] {
 			topic: "delegation",
 			detail: delegationDetail(result, verbose),
 		});
-	if (result.policy_drift?.drifted)
+	if (
+		result.policy_drift_state === WorkPolicyDriftState.Drifted ||
+		(result.policy_drift_state === undefined && result.policy_drift?.drifted)
+	)
 		findings.push({
 			chip: CHIP.warn,
 			topic: "policy drift",
-			detail: "current project policy differs; frozen Work policy retained",
+			detail:
+				"current policy values differ; the next contract revision applies them",
+		});
+	if (result.policy_drift_state === WorkPolicyDriftState.UserPolicyInvalid)
+		findings.push({
+			chip: CHIP.warn,
+			topic: "policy drift",
+			detail: "unknown: user policy.yaml is invalid; run anamnesis doctor",
 		});
 	return findings;
 }

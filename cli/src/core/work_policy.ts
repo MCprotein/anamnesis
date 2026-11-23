@@ -626,7 +626,7 @@ export function compareWorkPolicySnapshots(
 		});
 	const revisionChanged = before.revision !== after.revision;
 	return {
-		drifted: policyChanged || provenanceChanged,
+		drifted: policyChanged,
 		policy_changed: policyChanged,
 		provenance_changed: provenanceChanged,
 		revision_changed: revisionChanged,

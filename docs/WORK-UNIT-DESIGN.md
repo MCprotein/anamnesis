@@ -436,9 +436,15 @@ the same user section. To keep the user layer visible:
    block, and `work-policy-sources` for the source of each section. `status`
    shows the same sources.
 
-Open Works keep their frozen snapshot, also across contract revisions. A
-changed `policy.yaml` shows as policy drift in `work status` and applies to new
-Works.
+Open Works keep their frozen snapshot until the next contract revision
+(`work amend` or a same-Work prompt allocation). That revision takes the
+current policy, unless the current policy would lower a required review gate or
+the frozen policy holds a waiver; then the frozen policy stays. Policy drift
+compares only the policy values. A source change with the same values is not
+drift. `work status` reports `policy_drift_state` (`current`, `drifted`,
+`no-snapshot`, `user-policy-invalid`). `work status` Next and `doctor`
+(`work-policy-drift`) show the `work amend` command that resolves drift. Closed
+Works keep their records.
 
 Still proposed (not implemented):
 

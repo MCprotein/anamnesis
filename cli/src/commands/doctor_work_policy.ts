@@ -1,4 +1,9 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { resolveWorkStateRoot } from "../core/work_storage.js";
 import type { DoctorIssue } from "./doctor.js";
+import { WorkPolicyDriftState } from "./work_policy_resolution.js";
+import { statusWork } from "./work_status.js";
 import {
 	readUserWorkPolicy,
 	type UserWorkPolicy,
@@ -19,6 +24,7 @@ export const WorkPolicyDoctorCode = {
 	UserPolicyShadowedByDefault: "work-policy-user-shadowed",
 	UserPolicyOverriddenByProject: "work-policy-project-overrides-user",
 	Sources: "work-policy-sources",
+	WorkDrift: "work-policy-drift",
 } as const;
 export type WorkPolicyDoctorCode =
 	(typeof WorkPolicyDoctorCode)[keyof typeof WorkPolicyDoctorCode];
@@ -68,6 +74,7 @@ export function workPolicyDoctorIssues(
 	const sources = workPolicySectionSources(
 		collectWorkPolicyLayers(projectRoot, env),
 	);
+	issues.push(...openWorkDriftIssues(projectRoot));
 	issues.push({
 		severity: "info",
 		code: WorkPolicyDoctorCode.Sources,
@@ -76,4 +83,47 @@ export function workPolicyDoctorIssues(
 		).join(" "),
 	});
 	return issues;
+}
+
+function openWorkDriftIssues(projectRoot: string): DoctorIssue[] {
+	let unitsDir: string;
+	try {
+		unitsDir = path.join(
+			resolveWorkStateRoot(projectRoot).state_root,
+			"work-units",
+		);
+	} catch {
+		return [];
+	}
+	if (!fs.existsSync(unitsDir)) return [];
+	return fs
+		.readdirSync(unitsDir, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.flatMap((entry) => {
+			try {
+				const result = statusWork({
+					project_root: projectRoot,
+					work_id: entry.name,
+				});
+				if (
+					result.projection.lifecycle !== "open" ||
+					result.policy_drift_state !== WorkPolicyDriftState.Drifted
+				)
+					return [];
+				return [
+					{
+						severity: "warning" as const,
+						code: WorkPolicyDoctorCode.WorkDrift,
+						message:
+							"open Work uses a frozen policy that differs from the current policy; the next contract revision applies the current policy",
+						target: entry.name,
+						...(result.policy_drift_resolve_command
+							? { repair: result.policy_drift_resolve_command }
+							: {}),
+					},
+				];
+			} catch {
+				return [];
+			}
+		});
 }

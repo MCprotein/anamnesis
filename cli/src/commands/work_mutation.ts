@@ -40,7 +40,10 @@ import {
 	executionMutationContext,
 	resolveCanonicalInputs,
 } from "./work_execution_mutation.js";
-import { resolveCommandPolicy } from "./work_policy_resolution.js";
+import {
+	nextRevisionPolicy,
+	resolveCommandPolicy,
+} from "./work_policy_resolution.js";
 import { readinessForProjection } from "./work_status.js";
 import type {
 	PublicWorkExecutionMutationResult,
@@ -448,7 +451,10 @@ function appendContract(
 	}
 	const policy = createWorkPolicySnapshot(
 		revision,
-		priorPolicy?.policy ?? resolveCommandPolicy(input),
+		storedPolicy?.policy ??
+			(priorPolicy
+				? nextRevisionPolicy(input.project_root, priorPolicy.policy)
+				: resolveCommandPolicy(input)),
 	);
 	const contract: WorkContractDefinition = {
 		...draft,
