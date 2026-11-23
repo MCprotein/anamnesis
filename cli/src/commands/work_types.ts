@@ -1,3 +1,4 @@
+import type { WorkPolicyDriftState } from "./work_policy_resolution.js";
 import type {
 	WorkDelegationOutcomePayload,
 	WorkInstanceRef,
@@ -198,6 +199,8 @@ export interface WorkStatusResult {
 	ledger_path: string;
 	projection: WorkProjection;
 	policy_drift: WorkPolicySnapshotComparison | null;
+	policy_drift_state: WorkPolicyDriftState;
+	policy_drift_resolve_command: string | null;
 	readiness?: "current_inputs_required";
 }
 

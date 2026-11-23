@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { resolveWorkPolicy } from "../core/work_policy.js";
+import { collectWorkPolicyLayers } from "../core/work_policy_layers.js";
 import { findAgentfile, readAgentfile } from "../core/agentfile.js";
 import {
 	mutateWorkCursorAtomic,
@@ -673,11 +675,9 @@ export function handleWorkPostToolBoundary(
 function projectReconciliationEnabled(projectRoot: string): boolean {
 	try {
 		if (!findAgentfile(projectRoot)) return false;
-		const agentfile = readAgentfile(projectRoot);
 		return (
-			agentfile.version === 2 &&
-			agentfile.settings?.work_policy?.reconciliation?.preset !== undefined &&
-			agentfile.settings.work_policy.reconciliation.preset !== "off"
+			resolveWorkPolicy(collectWorkPolicyLayers(projectRoot)).reconciliation
+				.preset !== "off"
 		);
 	} catch {
 		return false;

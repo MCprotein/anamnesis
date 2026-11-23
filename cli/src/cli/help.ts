@@ -124,6 +124,8 @@ Commands:
   context audit-instructions    Read-only instruction ownership and duplication audit.
   context diagnose              Report stale handoff pointers, ontology
                                   conflicts, and missing evidence artifacts
+  context policy configure      Write the user Work policy file
+                                  (ANAMNESIS_HOME/policy.yaml, default ~/.anamnesis)
   context resume                Print a compact resume bundle for current
                                   handoff, touched files, evidence, warnings
   context subagent-preamble     Print launcher-wrapper preamble for external
@@ -173,6 +175,8 @@ Commands:
                                   complaints, and rule violations per speaker
                                   in Claude Code /export text (no raw text)
   migrate agentfile            Plan or apply Agentfile schema migrations
+  migrate policy                Remove Agentfile work_policy blocks equal to an
+                                  old init default so the user policy applies
   promote <source>              Lift a project file into the library as a fragment
   ontology bootstrap            Generate .anamnesis/ontology/<id>.bootstrap.yaml
                                   from project files (Layer A — deterministic)
@@ -213,6 +217,8 @@ Flags (init):
                                   docs/PROJECT-CONTEXT.md starter docs
   --enhance-docs                Add/refresh managed context-review regions in
                                   existing README/docs files
+  --project-policy              Write work_policy into the Agentfile even when
+                                  a user policy.yaml exists (copies its values)
 
 Flags (apply / deprecated update):
   --project-root <path>         Target directory (default: cwd)
@@ -540,6 +546,19 @@ Flags (benchmark subagent-injection):
                                   charts under docs/benchmark-evidence
   --append                      Record runtime evidence
   --output <path>               Override artifact output directory
+
+Flags (context policy configure):
+  --scope user                  Write the user layer (required)
+  --preset recommended          Policy bundle (default: recommended)
+  --dry-run                     Show the file without writing
+  --force                       Replace a policy.yaml that has other values
+  --json                        Print structured JSON
+
+Flags (migrate policy):
+  --project-root <path>         Target directory (default: cwd)
+  --all                         Visit every registered project
+  --dry-run                     Show outcomes without writing
+  --json                        Print structured JSON
 
 Flags (migrate agentfile):
   --project-root <path>         Target directory (default: cwd)

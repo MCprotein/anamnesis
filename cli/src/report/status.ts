@@ -1,4 +1,5 @@
 import type { StatusResult } from "../commands/status.js";
+import { WORK_POLICY_SECTIONS } from "../core/work_policy_layers.js";
 import {
 	collectGenerationBoundaryStatus,
 	formatGenerationBoundaryLines,
@@ -93,6 +94,22 @@ export function reportStatus(
 					ui.style("pages", "muted"),
 					`${metric(ui, result.documents.summary.brokenLinks, result.documents.summary.brokenLinks === 0)} ${ui.style("broken links", "muted")}`,
 				],
+				...(result.workPolicySources
+					? [
+							[
+								"work policy",
+								"",
+								ui.style("sources", "muted"),
+								ui.style(
+									WORK_POLICY_SECTIONS.map(
+										(section) =>
+											`${section}=${result.workPolicySources?.[section]}`,
+									).join(" "),
+									"muted",
+								),
+							],
+						]
+					: []),
 			],
 			[{}, { right: true }],
 		),

@@ -16,7 +16,18 @@ import {
 	contextResume,
 	contextSubagentPreamble,
 } from "../commands/context_resume.js";
+import {
+	configurePolicy,
+	parsePolicyScope,
+	PolicyWriteStatus,
+} from "../commands/context_policy.js";
 import { formatNamespaceHelp } from "../core/cli_guide.js";
+import {
+	parseWorkPolicyBundlePreset,
+	UserWorkPolicyError,
+	WorkPolicyBundlePreset,
+} from "../core/user_work_policy.js";
+import { reportConfigurePolicy } from "../report/policy.js";
 import {
 	reportContextDiagnostics,
 	reportContextDocs,
@@ -32,6 +43,7 @@ export async function runContext({ positional, flags }: ParsedArgs): Promise<num
     console.log(formatNamespaceHelp("context"));
     return 0;
   }
+  if (sub === "policy") return runContextPolicy(positional, flags);
   if (
     sub !== "index" &&
     sub !== "docs" &&
@@ -54,6 +66,9 @@ export async function runContext({ positional, flags }: ParsedArgs): Promise<num
       `       anamnesis context query [--kind=<kind>] [--limit=<n>] [--index=<path>] <query>`,
     );
 		console.error(`       anamnesis context diagnose [--json]`);
+		console.error(
+			`       anamnesis context policy configure --scope user [--preset recommended] [--dry-run] [--force] [--json]`,
+		);
     console.error(
       `       anamnesis context resume [--json] [--write] [--output=<path>]`,
     );
@@ -170,4 +185,38 @@ export async function runContext({ positional, flags }: ParsedArgs): Promise<num
     }
     throw e;
   }
+}
+
+function runContextPolicy(
+	positional: string[],
+	flags: ParsedArgs["flags"],
+): number {
+	if (positional[1] !== "configure") {
+		console.error(
+			`usage: anamnesis context policy configure --scope user [--preset recommended] [--dry-run] [--force] [--json]`,
+		);
+		return 1;
+	}
+	try {
+		const result = configurePolicy({
+			scope: parsePolicyScope(flags["scope"]),
+			preset: parseWorkPolicyBundlePreset(
+				flags["preset"] ?? WorkPolicyBundlePreset.Recommended,
+			),
+			dryRun: flags["dry-run"] === true,
+			force: flags["force"] === true,
+		});
+		if (flags["json"] === true) {
+			console.log(JSON.stringify(result, null, 2));
+		} else {
+			reportConfigurePolicy(result);
+		}
+		return result.status === PolicyWriteStatus.Blocked ? 1 : 0;
+	} catch (e) {
+		if (e instanceof UserWorkPolicyError) {
+			console.error(`error: ${e.message}`);
+			return 1;
+		}
+		throw e;
+	}
 }

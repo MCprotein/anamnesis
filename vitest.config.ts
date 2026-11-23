@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     include: ["cli/src/**/*.test.ts"],
     reporters: ["default"],
+    setupFiles: ["./vitest.setup.ts"],
     testTimeout: 30_000,
   },
 });

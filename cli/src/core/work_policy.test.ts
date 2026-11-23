@@ -513,7 +513,7 @@ describe("work policy snapshots", () => {
 		);
 		expect(reordered.policy_hash).not.toBe(first.policy_hash);
 		expect(compareWorkPolicySnapshots(first, reordered)).toMatchObject({
-			drifted: true,
+			drifted: false,
 			policy_changed: false,
 			provenance_changed: true,
 			revision_changed: false,

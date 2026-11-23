@@ -254,7 +254,7 @@ function rawVersion(raw: unknown, filepath: string): number {
   return version as number;
 }
 
-function writeAgentfileBackup(opts: {
+export function writeAgentfileBackup(opts: {
   projectRoot: string;
   agentfilePath: string;
   content: string;

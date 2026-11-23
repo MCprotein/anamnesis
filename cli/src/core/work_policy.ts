@@ -433,6 +433,10 @@ export function normalizeWorkPolicyConfig(
 	};
 }
 
+export function hashWorkPolicyValue(value: unknown): string {
+	return sha256(canonicalJson(value));
+}
+
 /** Resolve six policy layers. Input order is irrelevant; duplicate layer kinds fail closed. */
 export function resolveWorkPolicy(
 	input:
@@ -622,7 +626,7 @@ export function compareWorkPolicySnapshots(
 		});
 	const revisionChanged = before.revision !== after.revision;
 	return {
-		drifted: policyChanged || provenanceChanged,
+		drifted: policyChanged,
 		policy_changed: policyChanged,
 		provenance_changed: provenanceChanged,
 		revision_changed: revisionChanged,

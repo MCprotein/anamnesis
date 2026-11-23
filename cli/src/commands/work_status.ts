@@ -15,7 +15,7 @@ import {
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import { workLocations } from "./work_command_input.js";
 import { resolveCanonicalInputs } from "./work_execution_mutation.js";
-import { detectPolicyDrift } from "./work_policy_resolution.js";
+import { inspectPolicyDrift } from "./work_policy_resolution.js";
 import type {
 	WorkReadinessInput,
 	WorkReadInput,
@@ -60,12 +60,15 @@ export function statusResultFromProjection(
 		projection.policy_snapshot?.policy.review.gates.some(
 			(gate) => gate.enforcement !== "off",
 		) === true || projection.parallelism.mode !== "off";
+	const drift = inspectPolicyDrift(input.project_root, projection);
 	return {
 		schema_version: "anamnesis.work-status.v1",
 		work_id: input.work_id,
 		ledger_path: ledgerPath,
 		projection,
-		policy_drift: detectPolicyDrift(input.project_root, projection),
+		policy_drift: drift.comparison,
+		policy_drift_state: drift.state,
+		policy_drift_resolve_command: drift.resolve_command,
 		...(currentInputsRequired
 			? { readiness: "current_inputs_required" as const }
 			: {}),

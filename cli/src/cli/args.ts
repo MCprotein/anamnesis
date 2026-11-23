@@ -22,7 +22,10 @@ export interface ParsedArgs {
   flags: Record<string, string | boolean>;
 }
 
-const BOOLEAN_ONLY_FLAGS: ReadonlySet<string> = new Set(["json"]);
+const BOOLEAN_ONLY_FLAGS: ReadonlySet<string> = new Set([
+	"json",
+	"project-policy",
+]);
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const flags: Record<string, string | boolean> = {};
