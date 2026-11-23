@@ -2,8 +2,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveWorkStateRoot } from "../core/work_storage.js";
 import type { DoctorIssue } from "./doctor.js";
-import { WorkPolicyDriftState } from "./work_policy_resolution.js";
-import { statusWork } from "./work_status.js";
+import { readWorkLedger } from "../core/work_ledger.js";
+import { resolveWorkPolicy } from "../core/work_policy.js";
+import {
+	foldWorkProjection,
+	type WorkProjection,
+} from "../core/work_projection.js";
+import { driftReport, WorkPolicyDriftState } from "./work_policy_resolution.js";
 import {
 	readUserWorkPolicy,
 	type UserWorkPolicy,
@@ -25,6 +30,7 @@ export const WorkPolicyDoctorCode = {
 	UserPolicyOverriddenByProject: "work-policy-project-overrides-user",
 	Sources: "work-policy-sources",
 	WorkDrift: "work-policy-drift",
+	WorkDriftUnchecked: "work-policy-drift-unchecked",
 } as const;
 export type WorkPolicyDoctorCode =
 	(typeof WorkPolicyDoctorCode)[keyof typeof WorkPolicyDoctorCode];
@@ -74,7 +80,7 @@ export function workPolicyDoctorIssues(
 	const sources = workPolicySectionSources(
 		collectWorkPolicyLayers(projectRoot, env),
 	);
-	issues.push(...openWorkDriftIssues(projectRoot));
+	issues.push(...openWorkDriftIssues(projectRoot, env));
 	issues.push({
 		severity: "info",
 		code: WorkPolicyDoctorCode.Sources,
@@ -85,45 +91,66 @@ export function workPolicyDoctorIssues(
 	return issues;
 }
 
-function openWorkDriftIssues(projectRoot: string): DoctorIssue[] {
-	let unitsDir: string;
+function openWorkDriftIssues(
+	projectRoot: string,
+	env: NodeJS.ProcessEnv,
+): DoctorIssue[] {
+	let stateRoot: string;
 	try {
-		unitsDir = path.join(
-			resolveWorkStateRoot(projectRoot).state_root,
-			"work-units",
-		);
+		stateRoot = resolveWorkStateRoot(projectRoot).state_root;
 	} catch {
 		return [];
 	}
+	const unitsDir = path.join(stateRoot, "work-units");
 	if (!fs.existsSync(unitsDir)) return [];
+	const currentPolicy = resolveWorkPolicy(
+		collectWorkPolicyLayers(projectRoot, env),
+	);
 	return fs
 		.readdirSync(unitsDir, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory())
-		.flatMap((entry) => {
+		.filter((entry) =>
+			fs.existsSync(path.join(unitsDir, entry.name, "ledger.jsonl")),
+		)
+		.flatMap((entry): DoctorIssue[] => {
+			let projection: WorkProjection;
 			try {
-				const result = statusWork({
-					project_root: projectRoot,
-					work_id: entry.name,
-				});
-				if (
-					result.projection.lifecycle !== "open" ||
-					result.policy_drift_state !== WorkPolicyDriftState.Drifted
-				)
-					return [];
+				projection = foldWorkProjection(
+					readWorkLedger(path.join(unitsDir, entry.name, "ledger.jsonl"))
+						.records,
+				);
+			} catch (error) {
 				return [
 					{
-						severity: "warning" as const,
+						severity: "warning",
+						code: WorkPolicyDoctorCode.WorkDriftUnchecked,
+						message: `cannot read the Work ledger: ${(error as Error).message}`,
+						target: entry.name,
+					},
+				];
+			}
+			const report = driftReport(projection, currentPolicy);
+			if (report.state === WorkPolicyDriftState.Drifted)
+				return [
+					{
+						severity: "warning",
 						code: WorkPolicyDoctorCode.WorkDrift,
 						message:
 							"open Work uses a frozen policy that differs from the current policy; the next contract revision applies the current policy",
 						target: entry.name,
-						...(result.policy_drift_resolve_command
-							? { repair: result.policy_drift_resolve_command }
-							: {}),
+						...(report.resolve_command ? { repair: report.resolve_command } : {}),
 					},
 				];
-			} catch {
-				return [];
-			}
+			if (report.state === WorkPolicyDriftState.DriftedHeld)
+				return [
+					{
+						severity: "warning",
+						code: WorkPolicyDoctorCode.WorkDrift,
+						message:
+							"open Work keeps a required review gate that the current policy lowers; a revision does not lower it",
+						target: entry.name,
+						repair: "record a review waiver for the gate, or restore the required gate in the policy",
+					},
+				];
+			return [];
 		});
 }

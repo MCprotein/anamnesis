@@ -281,6 +281,13 @@ function workChecks(result: WorkStatusResult, verbose: boolean): Finding[] {
 			detail:
 				"current policy values differ; the next contract revision applies them",
 		});
+	if (result.policy_drift_state === WorkPolicyDriftState.DriftedHeld)
+		findings.push({
+			chip: CHIP.warn,
+			topic: "policy drift",
+			detail:
+				"held: the current policy lowers a required review gate; record a waiver to lower it",
+		});
 	if (result.policy_drift_state === WorkPolicyDriftState.UserPolicyInvalid)
 		findings.push({
 			chip: CHIP.warn,

@@ -13,6 +13,8 @@ import type { WorkMutationInput } from "./work_types.js";
 export const WorkPolicyDriftState = {
 	Current: "current",
 	Drifted: "drifted",
+	DriftedHeld: "drifted-held",
+	DriftedClosed: "drifted-closed",
 	NoSnapshot: "no-snapshot",
 	UserPolicyInvalid: "user-policy-invalid",
 } as const;
@@ -39,16 +41,12 @@ export function inspectPolicyDrift(
 	projectRoot: string,
 	projection: WorkProjection,
 ): WorkPolicyDriftReport {
-	const frozen = projection.policy_snapshot;
-	if (!frozen)
-		return {
-			state: WorkPolicyDriftState.NoSnapshot,
-			comparison: null,
-			resolve_command: null,
-		};
-	let currentPolicy: ResolvedWorkPolicy;
+	if (!projection.policy_snapshot) return driftReport(projection, null);
 	try {
-		currentPolicy = resolveCommandPolicy({ project_root: projectRoot });
+		return driftReport(
+			projection,
+			resolveCommandPolicy({ project_root: projectRoot }),
+		);
 	} catch (error) {
 		if (!(error instanceof UserWorkPolicyError)) throw error;
 		return {
@@ -57,17 +55,38 @@ export function inspectPolicyDrift(
 			resolve_command: null,
 		};
 	}
+}
+
+export function driftReport(
+	projection: WorkProjection,
+	currentPolicy: ResolvedWorkPolicy | null,
+): WorkPolicyDriftReport {
+	const frozen = projection.policy_snapshot;
+	if (!frozen || !currentPolicy)
+		return {
+			state: WorkPolicyDriftState.NoSnapshot,
+			comparison: null,
+			resolve_command: null,
+		};
 	const comparison = compareWorkPolicySnapshots(
 		frozen,
 		createWorkPolicySnapshot(frozen.revision, currentPolicy),
 	);
-	return comparison.drifted
-		? {
-				state: WorkPolicyDriftState.Drifted,
-				comparison,
-				resolve_command: workPolicyDriftResolveCommand(projection.work_id),
-			}
-		: { state: WorkPolicyDriftState.Current, comparison, resolve_command: null };
+	const state = !comparison.drifted
+		? WorkPolicyDriftState.Current
+		: projection.lifecycle !== "open"
+			? WorkPolicyDriftState.DriftedClosed
+			: lowersRequiredGate(frozen.policy, currentPolicy)
+				? WorkPolicyDriftState.DriftedHeld
+				: WorkPolicyDriftState.Drifted;
+	return {
+		state,
+		comparison,
+		resolve_command:
+			state === WorkPolicyDriftState.Drifted
+				? workPolicyDriftResolveCommand(projection.work_id)
+				: null,
+	};
 }
 
 export function detectPolicyDrift(
@@ -88,7 +107,7 @@ export function nextRevisionPolicy(
 		if (error instanceof UserWorkPolicyError) return prior;
 		throw error;
 	}
-	return lowersRequiredGate(prior, current) || hasWaiver(prior) ? prior : current;
+	return lowersRequiredGate(prior, current) ? prior : current;
 }
 
 function lowersRequiredGate(
@@ -101,8 +120,4 @@ function lowersRequiredGate(
 			current.review.gates.find((item) => item.gate === gate.gate)
 				?.enforcement !== "required",
 	);
-}
-
-function hasWaiver(policy: ResolvedWorkPolicy): boolean {
-	return policy.review.gates.some((gate) => gate.waived_by !== null);
 }

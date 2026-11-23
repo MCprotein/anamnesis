@@ -8,7 +8,12 @@ import { stripAnsi } from "../core/tui.js";
 import { reportWorkStatus } from "../report/work.js";
 import { workPolicyDoctorIssues, WorkPolicyDoctorCode } from "./doctor_work_policy.js";
 import { amendWork, createWork, statusWork, type WorkMutationInput } from "./work.js";
-import { inspectPolicyDrift, WorkPolicyDriftState } from "./work_policy_resolution.js";
+import {
+	driftReport,
+	inspectPolicyDrift,
+	resolveCommandPolicy,
+	WorkPolicyDriftState,
+} from "./work_policy_resolution.js";
 
 let root: string;
 let project: string;
@@ -162,7 +167,37 @@ describe("Work policy drift", () => {
 		amend();
 		const result = status();
 		expect(result.projection.policy_snapshot?.policy.review.preset).toBe("strict");
-		expect(result.policy_drift_state).toBe(WorkPolicyDriftState.Drifted);
+		expect(result.policy_drift_state).toBe(WorkPolicyDriftState.DriftedHeld);
+		expect(result.policy_drift_resolve_command).toBeNull();
+		expect(workPolicyDoctorIssues(project, env)).toContainEqual(
+			expect.objectContaining({
+				code: WorkPolicyDoctorCode.WorkDrift,
+				repair: expect.stringContaining("waiver"),
+			}),
+		);
+	});
+
+	it("does not offer amend for a drifted Work that is no longer open", () => {
+		writeProjectPolicy({ review: { preset: "off" } });
+		createWork(mutation());
+		writeProjectPolicy({ review: { preset: "advisory" } });
+		const closed = { ...status().projection, lifecycle: "completed" as const };
+		const report = driftReport(closed, resolveCommandPolicy({ project_root: project }));
+		expect(report.state).toBe(WorkPolicyDriftState.DriftedClosed);
+		expect(report.resolve_command).toBeNull();
+	});
+
+	it("reports an unreadable Work ledger in doctor", () => {
+		writeProjectPolicy(null);
+		createWork(mutation());
+		const ledger = status().ledger_path;
+		fs.writeFileSync(ledger, "not json\n");
+		expect(workPolicyDoctorIssues(project, env)).toContainEqual(
+			expect.objectContaining({
+				code: WorkPolicyDoctorCode.WorkDriftUnchecked,
+				target: "wu_drift",
+			}),
+		);
 	});
 
 	it("separates an invalid user policy from a missing snapshot", () => {
