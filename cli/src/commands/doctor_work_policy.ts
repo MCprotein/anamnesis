@@ -103,9 +103,19 @@ function openWorkDriftIssues(
 	}
 	const unitsDir = path.join(stateRoot, "work-units");
 	if (!fs.existsSync(unitsDir)) return [];
-	const currentPolicy = resolveWorkPolicy(
-		collectWorkPolicyLayers(projectRoot, env),
-	);
+	let currentPolicy: ReturnType<typeof resolveWorkPolicy>;
+	try {
+		currentPolicy = resolveWorkPolicy(collectWorkPolicyLayers(projectRoot, env));
+	} catch (error) {
+		return [
+			{
+				severity: "warning",
+				code: WorkPolicyDoctorCode.WorkDriftUnchecked,
+				message: `cannot resolve the current Work policy: ${(error as Error).message}`,
+				target: "Agentfile settings.work_policy",
+			},
+		];
+	}
 	return fs
 		.readdirSync(unitsDir, { withFileTypes: true })
 		.filter((entry) =>
@@ -148,7 +158,7 @@ function openWorkDriftIssues(
 						message:
 							"open Work keeps a required review gate that the current policy lowers; a revision does not lower it",
 						target: entry.name,
-						repair: "record a review waiver for the gate, or restore the required gate in the policy",
+						repair: "restore the required review gate in the project or user policy; a revision keeps the frozen gate until then",
 					},
 				];
 			return [];

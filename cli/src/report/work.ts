@@ -286,7 +286,7 @@ function workChecks(result: WorkStatusResult, verbose: boolean): Finding[] {
 			chip: CHIP.warn,
 			topic: "policy drift",
 			detail:
-				"held: the current policy lowers a required review gate; record a waiver to lower it",
+				"held: the current policy lowers a required review gate, so a revision keeps the frozen gate",
 		});
 	if (result.policy_drift_state === WorkPolicyDriftState.UserPolicyInvalid)
 		findings.push({

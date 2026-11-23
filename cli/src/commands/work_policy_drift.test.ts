@@ -172,7 +172,7 @@ describe("Work policy drift", () => {
 		expect(workPolicyDoctorIssues(project, env)).toContainEqual(
 			expect.objectContaining({
 				code: WorkPolicyDoctorCode.WorkDrift,
-				repair: expect.stringContaining("waiver"),
+				repair: expect.stringContaining("restore the required review gate"),
 			}),
 		);
 	});
