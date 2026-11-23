@@ -4,10 +4,7 @@ import { resolveWorkStateRoot } from "../core/work_storage.js";
 import type { DoctorIssue } from "./doctor.js";
 import { readWorkLedger } from "../core/work_ledger.js";
 import { resolveWorkPolicy } from "../core/work_policy.js";
-import {
-	foldWorkProjection,
-	type WorkProjection,
-} from "../core/work_projection.js";
+import { foldWorkProjection } from "../core/work_projection.js";
 import { driftReport, WorkPolicyDriftState } from "./work_policy_resolution.js";
 import {
 	readUserWorkPolicy,
@@ -122,23 +119,25 @@ function openWorkDriftIssues(
 			fs.existsSync(path.join(unitsDir, entry.name, "ledger.jsonl")),
 		)
 		.flatMap((entry): DoctorIssue[] => {
-			let projection: WorkProjection;
+			let report: ReturnType<typeof driftReport>;
 			try {
-				projection = foldWorkProjection(
-					readWorkLedger(path.join(unitsDir, entry.name, "ledger.jsonl"))
-						.records,
+				report = driftReport(
+					foldWorkProjection(
+						readWorkLedger(path.join(unitsDir, entry.name, "ledger.jsonl"))
+							.records,
+					),
+					currentPolicy,
 				);
 			} catch (error) {
 				return [
 					{
 						severity: "warning",
 						code: WorkPolicyDoctorCode.WorkDriftUnchecked,
-						message: `cannot read the Work ledger: ${(error as Error).message}`,
+						message: `cannot check the Work policy: ${(error as Error).message}`,
 						target: entry.name,
 					},
 				];
 			}
-			const report = driftReport(projection, currentPolicy);
 			if (report.state === WorkPolicyDriftState.Drifted)
 				return [
 					{
