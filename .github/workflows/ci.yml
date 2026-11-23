@@ -22,8 +22,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 20 is the lower bound of package.json engines; 24 matches publish.yml.
-        node-version: ["20", "24"]
+        # 20 is the lower bound of package.json engines; 26 is the newest stable
+        # major on nodejs.org/dist (checked 2026-11-24). publish.yml stays on 24.
+        node-version: ["20", "26"]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
