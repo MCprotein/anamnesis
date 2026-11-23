@@ -5,7 +5,11 @@ import { findAgentfile, parseAgentfile } from "../core/agentfile.js";
 import { userPolicyPath } from "../core/anamnesis_home.js";
 import { readProjectRegistry } from "../core/project_registry.js";
 import { readUserWorkPolicy } from "../core/user_work_policy.js";
-import { matchingInitWorkPolicyDefault } from "../core/work_policy_layers.js";
+import type { WorkPolicyConfig } from "../core/work_policy.js";
+import {
+	matchingInitWorkPolicyDefault,
+	WORK_POLICY_SECTIONS,
+} from "../core/work_policy_layers.js";
 import { writeAgentfileBackup } from "./migrate.js";
 
 export const PolicyMigrationOutcome = {
@@ -13,6 +17,7 @@ export const PolicyMigrationOutcome = {
 	WouldRemove: "would-remove",
 	KeptCustomized: "kept-customized",
 	KeptNoUserPolicy: "kept-no-user-policy",
+	KeptUserPolicyIncomplete: "kept-user-policy-incomplete",
 	NoProjectPolicy: "no-project-policy",
 	NoAgentfile: "no-agentfile",
 	Failed: "failed",
@@ -47,7 +52,8 @@ export interface MigratePolicyResult {
 
 export function migratePolicy(opts: MigratePolicyOptions): MigratePolicyResult {
 	const env = opts.env ?? process.env;
-	const userPolicyPresent = readUserWorkPolicy(env) !== null;
+	const userConfig = readUserWorkPolicy(env)?.config ?? null;
+	const userPolicyPresent = userConfig !== null;
 	const roots = opts.all
 		? readProjectRegistry({ registryPath: opts.registryPath }).projects.map(
 				(project) => project.canonical_root,
@@ -62,7 +68,7 @@ export function migratePolicy(opts: MigratePolicyOptions): MigratePolicyResult {
 			migrateProjectPolicySafely({
 				projectRoot,
 				dryRun: opts.dryRun,
-				userPolicyPresent,
+				userConfig,
 				now,
 			}),
 		),
@@ -72,7 +78,7 @@ export function migratePolicy(opts: MigratePolicyOptions): MigratePolicyResult {
 interface ProjectPolicyMigrationInput {
 	projectRoot: string;
 	dryRun: boolean;
-	userPolicyPresent: boolean;
+	userConfig: WorkPolicyConfig | null;
 	now: Date;
 }
 
@@ -117,9 +123,18 @@ export function migrateProjectPolicy(
 	const matched = matchingInitWorkPolicyDefault(config);
 	if (!matched) return result(PolicyMigrationOutcome.KeptCustomized);
 	const matchedDefaultSince = matched.since;
-	if (!input.userPolicyPresent)
+	if (!input.userConfig)
 		return result(PolicyMigrationOutcome.KeptNoUserPolicy, {
 			matchedDefaultSince,
+		});
+	const userConfig = input.userConfig;
+	const missing = WORK_POLICY_SECTIONS.filter(
+		(section) => config[section] !== undefined && userConfig[section] === undefined,
+	);
+	if (missing.length > 0)
+		return result(PolicyMigrationOutcome.KeptUserPolicyIncomplete, {
+			matchedDefaultSince,
+			reason: `policy.yaml has no ${missing.join(", ")}`,
 		});
 	if (input.dryRun)
 		return result(PolicyMigrationOutcome.WouldRemove, { matchedDefaultSince });

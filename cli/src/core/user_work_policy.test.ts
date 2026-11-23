@@ -128,6 +128,11 @@ describe("user work policy", () => {
 		expect(readUserWorkPolicy(env)!.content_hash).toBe(first);
 	});
 
+	it("reports an unreadable policy.yaml as a policy error", () => {
+		fs.mkdirSync(userPolicyPath(env), { recursive: true });
+		expect(() => readUserWorkPolicy(env)).toThrow(UserWorkPolicyError);
+	});
+
 	it("rejects an invalid policy.yaml with its path", () => {
 		writePolicy("review:\n  preset: loud\n");
 		expect(() => readUserWorkPolicy(env)).toThrow(/policy\.yaml.*review\.preset/);

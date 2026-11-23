@@ -1,3 +1,4 @@
+import { UserWorkPolicyError } from "../core/user_work_policy.js";
 import { collectWorkPolicyLayers } from "../core/work_policy_layers.js";
 import {
 	compareWorkPolicySnapshots,
@@ -20,9 +21,15 @@ export function detectPolicyDrift(
 ): WorkPolicySnapshotComparison | null {
 	const frozen = projection.policy_snapshot;
 	if (!frozen) return null;
-	const current = createWorkPolicySnapshot(
-		frozen.revision,
-		resolveCommandPolicy({ project_root: projectRoot }),
+	let currentPolicy: ReturnType<typeof resolveCommandPolicy>;
+	try {
+		currentPolicy = resolveCommandPolicy({ project_root: projectRoot });
+	} catch (error) {
+		if (error instanceof UserWorkPolicyError) return null;
+		throw error;
+	}
+	return compareWorkPolicySnapshots(
+		frozen,
+		createWorkPolicySnapshot(frozen.revision, currentPolicy),
 	);
-	return compareWorkPolicySnapshots(frozen, current);
 }

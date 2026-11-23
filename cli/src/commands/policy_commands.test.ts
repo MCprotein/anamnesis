@@ -123,6 +123,18 @@ describe("migrate policy", () => {
 		expect(after).not.toContain("work_policy");
 	});
 
+	it("keeps the block when policy.yaml does not cover every section", () => {
+		fs.mkdirSync(path.dirname(userPolicyPath(env)), { recursive: true });
+		fs.writeFileSync(userPolicyPath(env), "review:\n  preset: advisory\n");
+		const project = makeProject("alpha", INIT_DEFAULT_BLOCK);
+		const result = migratePolicy({ projectRoot: project, all: false, dryRun: false, env });
+		expect(result.projects[0]).toMatchObject({
+			outcome: PolicyMigrationOutcome.KeptUserPolicyIncomplete,
+			reason: "policy.yaml has no reconciliation, delegation",
+		});
+		expect(fs.readFileSync(path.join(project, "Agentfile"), "utf8")).toContain("work_policy");
+	});
+
 	it("keeps a customized block and reports it", () => {
 		configure();
 		const project = makeProject(

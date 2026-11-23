@@ -90,8 +90,16 @@ export function readUserWorkPolicy(
 	env: NodeJS.ProcessEnv = process.env,
 ): UserWorkPolicy | null {
 	const filePath = userPolicyPath(env);
-	if (!fs.existsSync(filePath)) return null;
-	const config = parseUserWorkPolicy(fs.readFileSync(filePath, "utf8"), filePath);
+	let content: string;
+	try {
+		content = fs.readFileSync(filePath, "utf8");
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+		throw new UserWorkPolicyError(
+			`${filePath}: cannot read: ${(error as Error).message}`,
+		);
+	}
+	const config = parseUserWorkPolicy(content, filePath);
 	return {
 		path: filePath,
 		config,

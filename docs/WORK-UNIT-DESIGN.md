@@ -427,8 +427,9 @@ the same user section. To keep the user layer visible:
    product fallback `off`. `init --project-policy` copies the user values into
    the Agentfile instead.
 2. `migrate policy` removes a project block only when its normalized policy
-   hash equals an earlier `init` default. It keeps customized blocks and keeps
-   every block while no `policy.yaml` exists. It writes a backup under
+   hash equals an earlier `init` default. It keeps customized blocks, and keeps
+   every block while `policy.yaml` is missing or lacks a section that the
+   block sets. It writes a backup under
    `.anamnesis/backups/` first. `--all` visits every registered project.
 3. `doctor` reports `work-policy-user-shadowed` for an init-default block that
    hides the user layer, `work-policy-project-overrides-user` for a customized

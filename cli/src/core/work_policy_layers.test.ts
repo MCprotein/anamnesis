@@ -2,10 +2,14 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resolveCommandPolicy } from "../commands/work_policy_resolution.js";
+import {
+	detectPolicyDrift,
+	resolveCommandPolicy,
+} from "../commands/work_policy_resolution.js";
+import type { WorkProjection } from "./work_projection.js";
 import { userPolicyPath } from "./anamnesis_home.js";
 import { USER_POLICY_SOURCE } from "./user_work_policy.js";
-import { resolveWorkPolicy } from "./work_policy.js";
+import { createWorkPolicySnapshot, resolveWorkPolicy } from "./work_policy.js";
 import {
 	collectWorkPolicyLayers,
 	currentInitWorkPolicy,
@@ -106,6 +110,20 @@ describe("user work policy layer", () => {
 		const resolved = resolveCommandPolicy({ project_root: project });
 		expect(resolved.contributing_layers).toEqual(["user"]);
 		expect(JSON.stringify(resolved.source_refs)).not.toContain(root);
+	});
+});
+
+describe("policy drift with an invalid user policy", () => {
+	it("returns null instead of failing work status", () => {
+		writeAgentfile(2);
+		vi.stubEnv("ANAMNESIS_HOME", env.ANAMNESIS_HOME);
+		const projection = {
+			policy_snapshot: createWorkPolicySnapshot(1, resolveWorkPolicy([])),
+		} as unknown as WorkProjection;
+		writeUserPolicy("review: { preset: loud }\n");
+		expect(detectPolicyDrift(project, projection)).toBeNull();
+		writeUserPolicy(USER_RECOMMENDED);
+		expect(detectPolicyDrift(project, projection)?.drifted).toBe(true);
 	});
 });
 

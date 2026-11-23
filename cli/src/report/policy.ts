@@ -63,6 +63,10 @@ const MIGRATION_VIEW: Record<
 		chip: CHIP.warn,
 		detail: "kept: no user policy.yaml; removal would turn Work policies off",
 	},
+	[PolicyMigrationOutcome.KeptUserPolicyIncomplete]: {
+		chip: CHIP.warn,
+		detail: "kept: removal would turn uncovered sections off",
+	},
 	[PolicyMigrationOutcome.NoProjectPolicy]: {
 		chip: CHIP.info,
 		detail: "no project work_policy",
