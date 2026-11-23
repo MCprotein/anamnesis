@@ -119,6 +119,7 @@ export function briefWork(input: WorkBriefInput): WorkBriefResult {
 			);
 			writeWorkCursorAtomic(state!.state_root, fresh, {
 				expectedCursorRevision: null,
+				durability: input.durability,
 			});
 		}
 	}

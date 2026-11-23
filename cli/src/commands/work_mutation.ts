@@ -272,15 +272,20 @@ export function transitionWork(input: WorkMutationInput): WorkMutationResult {
 	}
 	const basisContractHash = projection.contract_hash;
 	const event = progressEvent(input, draft, basisContractHash);
-	appendCanonicalTypedWorkProgressEvent({
-		stateRoot: locations.stateRoot,
-		ledgerPath: locations.ledgerPath,
-		ledgerEvent: event,
-		expectedHead: input.expected_head,
-	});
+	appendCanonicalTypedWorkProgressEvent(
+		{
+			stateRoot: locations.stateRoot,
+			ledgerPath: locations.ledgerPath,
+			ledgerEvent: event,
+			expectedHead: input.expected_head,
+		},
+		{ durability: locations.durability },
+	);
 	const nextProjection = rebuildWorkProjection(
 		locations.ledgerPath,
 		locations.projectionPath,
+		{},
+		{ durability: locations.durability },
 	);
 	return {
 		schema_version: "anamnesis.work-command-result.v1",
@@ -518,15 +523,20 @@ function publishMutation(
 	);
 	if (existing)
 		assertIdempotentMutationCandidate(existing, event, source.eventId);
-	const allocation = publishAndAppendCanonicalTypedWorkSourceEvent({
-		source,
-		ledgerPath: locations.ledgerPath,
-		ledgerEvent: event,
-		expectedHead,
-	});
+	const allocation = publishAndAppendCanonicalTypedWorkSourceEvent(
+		{
+			source,
+			ledgerPath: locations.ledgerPath,
+			ledgerEvent: event,
+			expectedHead,
+		},
+		{ durability: locations.durability },
+	);
 	const projection = rebuildWorkProjection(
 		locations.ledgerPath,
 		locations.projectionPath,
+		{},
+		{ durability: locations.durability },
 	);
 	return {
 		schema_version: "anamnesis.work-command-result.v1",

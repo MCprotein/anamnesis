@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { sha256 } from "../util/hash.js";
+import { syncsToDisk, type WorkDurabilityOptions } from "./work_durability.js";
 import { reclaimWorkLock } from "./work_lock_reclaim.js";
 import {
 	parseTypedWorkEvent,
@@ -84,7 +85,7 @@ export type WorkStoragePublicationPhase =
   | "envelope-renamed"
   | "envelope-directory-synced";
 
-export interface WorkStorageOptions {
+export interface WorkStorageOptions extends WorkDurabilityOptions {
   lockTimeoutMs?: number;
   lockRetryMs?: number;
   onSourceLockAcquired?: () => void;
@@ -255,14 +256,14 @@ function publishWorkSourceEventUnlocked(
         throw new Error(`source event ID collision for ${input.eventId}`);
       }
       fs.chmodSync(objectPath, 0o600);
-      fsyncDirectory(path.dirname(objectPath));
+      fsyncDirectory(path.dirname(objectPath), options);
     }
     if (envelopeExists) {
       if (!readFileNoFollow(envelopePath).equals(envelopeBytes)) {
         throw new Error(`source event envelope collision for ${input.eventId}`);
       }
       fs.chmodSync(envelopePath, 0o600);
-      fsyncDirectory(path.dirname(envelopePath));
+      fsyncDirectory(path.dirname(envelopePath), options);
       return {
         envelope,
         envelope_path: envelopePath,
@@ -277,6 +278,7 @@ function publishWorkSourceEventUnlocked(
         body,
         "body",
         options.onPublicationPhase,
+        options,
       );
     }
     durablePublish(
@@ -284,6 +286,7 @@ function publishWorkSourceEventUnlocked(
       envelopeBytes,
       "envelope",
       options.onPublicationPhase,
+      options,
     );
     return {
       envelope,
@@ -341,6 +344,7 @@ export function appendCanonicalTypedWorkProgressEvent(
 				expectedHead: input.expectedHead,
 			},
 			stateRoot,
+			options,
 		),
 	);
 }
@@ -382,6 +386,7 @@ export function appendCanonicalTypedWorkEvidenceEvent(
 				expectedHead: input.expectedHead,
 			},
 			stateRoot,
+			options,
 		),
 	);
 }
@@ -576,6 +581,7 @@ function publishAndAppendWorkSourceEventInternal(
 				{
 					lockTimeoutMs: options.ledgerLockTimeoutMs,
 					lockRetryMs: options.ledgerLockRetryMs,
+					durability: options.durability,
 				},
 				() => {
 					assertPublishedWorkSourceEvent(source);
@@ -602,6 +608,7 @@ function publishAndAppendWorkSourceEventInternal(
 							onBeforeLedgerSync: options.onBeforeLedgerSync,
 						},
 						stateRoot,
+						options,
 					);
 				},
 			);
@@ -776,6 +783,7 @@ function hasSourceReference(value: unknown): boolean {
 function appendPublishedLedgerUnlocked(
   options: AppendParameters,
 	stateRoot: string,
+	durability: WorkDurabilityOptions = {},
 ): AppendWorkLedgerResult {
   const current = readWorkLedger(options.ledgerPath);
 	assertCommittedEnvelopeBindings(stateRoot, current.records, options.event);
@@ -888,11 +896,11 @@ function appendPublishedLedgerUnlocked(
 		fs.fchmodSync(fd, 0o600);
 		options.onBeforeLedgerSync?.(record);
 		writeAll(fd, Buffer.from(`${canonicalJson(record)}\n`, "utf8"));
-		fs.fsyncSync(fd);
+		if (syncsToDisk(durability.durability)) fs.fsyncSync(fd);
 	} finally {
 		fs.closeSync(fd);
 	}
-	fsyncDirectory(path.dirname(path.resolve(options.ledgerPath)));
+	fsyncDirectory(path.dirname(path.resolve(options.ledgerPath)), durability);
 	return { record, head: record.record_hash, idempotent: false };
 }
 
@@ -1270,6 +1278,7 @@ function durablePublish(
   content: Buffer,
   kind: "body" | "envelope",
   hook?: (phase: WorkStoragePublicationPhase) => void,
+  durability: WorkDurabilityOptions = {},
 ): void {
   const directory = path.dirname(destination);
   ensurePrivateDirectories(directory);
@@ -1283,14 +1292,14 @@ function durablePublish(
     fd = fs.openSync(temporary, "wx", 0o600);
     writeAll(fd, content);
     hook?.(`${kind}-temp-written`);
-    fs.fsyncSync(fd);
+    if (syncsToDisk(durability.durability)) fs.fsyncSync(fd);
     hook?.(`${kind}-temp-synced`);
     fs.closeSync(fd);
     fd = undefined;
     if (fs.existsSync(destination)) throw new Error(`immutable Work file already exists: ${destination}`);
     fs.renameSync(temporary, destination);
     hook?.(`${kind}-renamed`);
-    fsyncDirectory(directory);
+    fsyncDirectory(directory, durability);
     hook?.(`${kind}-directory-synced`);
   } finally {
     if (fd !== undefined) fs.closeSync(fd);
@@ -1309,7 +1318,11 @@ function writeAll(fd: number, content: Buffer): void {
   }
 }
 
-function fsyncDirectory(directory: string): void {
+function fsyncDirectory(
+  directory: string,
+  durability: WorkDurabilityOptions = {},
+): void {
+  if (!syncsToDisk(durability.durability)) return;
   const fd = fs.openSync(directory, fs.constants.O_RDONLY | noFollowFlag());
   try {
     fs.fsyncSync(fd);
@@ -1330,7 +1343,7 @@ export function withWorkSourceEventLock<T>(
   const deadline = Date.now() + timeout;
   const owner = currentSourceLockOwner();
   while (true) {
-    if (tryAcquireSourceLock(lockPath, owner)) break;
+    if (tryAcquireSourceLock(lockPath, owner, options)) break;
     reclaimDeadSourceLock(lockPath);
     if (Date.now() >= deadline) {
       throw new Error(`timed out acquiring source-event lock: ${lockPath}`);
@@ -1341,7 +1354,7 @@ export function withWorkSourceEventLock<T>(
     options.onSourceLockAcquired?.();
     return operation();
   } finally {
-    releaseSourceLock(lockPath, owner);
+    releaseSourceLock(lockPath, owner, options);
   }
 }
 
@@ -1433,7 +1446,11 @@ function processStartIdentity(pid: number): string {
   }).trim();
 }
 
-function tryAcquireSourceLock(lockPath: string, owner: SourceLockOwner): boolean {
+function tryAcquireSourceLock(
+  lockPath: string,
+  owner: SourceLockOwner,
+  durability: WorkDurabilityOptions,
+): boolean {
   try {
     fs.mkdirSync(lockPath, 0o700);
   } catch (error) {
@@ -1449,12 +1466,12 @@ function tryAcquireSourceLock(lockPath: string, owner: SourceLockOwner): boolean
     );
     try {
       writeAll(fd, Buffer.from(`${JSON.stringify(owner)}\n`, "utf8"));
-      fs.fsyncSync(fd);
+      if (syncsToDisk(durability.durability)) fs.fsyncSync(fd);
     } finally {
       fs.closeSync(fd);
     }
-    fsyncDirectory(lockPath);
-    fsyncDirectory(path.dirname(lockPath));
+    fsyncDirectory(lockPath, durability);
+    fsyncDirectory(path.dirname(lockPath), durability);
     return true;
   } catch (error) {
     fs.rmSync(lockPath, { recursive: true, force: true });
@@ -1478,7 +1495,11 @@ function reclaimDeadSourceLock(lockPath: string): void {
   }, () => fsyncDirectory(path.dirname(lockPath)));
 }
 
-function releaseSourceLock(lockPath: string, owner: SourceLockOwner): void {
+function releaseSourceLock(
+  lockPath: string,
+  owner: SourceLockOwner,
+  durability: WorkDurabilityOptions,
+): void {
   const ownerPath = path.join(lockPath, "owner.json");
   let current: unknown;
   try {
@@ -1491,7 +1512,7 @@ function releaseSourceLock(lockPath: string, owner: SourceLockOwner): void {
   }
   fs.unlinkSync(ownerPath);
   fs.rmdirSync(lockPath);
-  fsyncDirectory(path.dirname(lockPath));
+  fsyncDirectory(path.dirname(lockPath), durability);
 }
 
 function isSourceLockOwner(value: unknown): value is SourceLockOwner {

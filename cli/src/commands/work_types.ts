@@ -4,6 +4,7 @@ import type {
 	WorkReviewAttemptPayload,
 } from "../core/work_contract.js";
 import type { WorkProtectedActionReadiness } from "../core/work_execution_contract.js";
+import type { WorkDurabilityOptions } from "../core/work_durability.js";
 import type { WorkExecutionInputs } from "../core/work_execution_inputs.js";
 import type { WorkPolicySnapshotComparison } from "../core/work_policy.js";
 import type {
@@ -38,7 +39,9 @@ export interface WorkCommandSourceSelection {
 	source_stdin?: WorkRawSource;
 }
 
-export interface WorkMutationInput extends WorkCommandSourceSelection {
+export interface WorkMutationInput
+	extends WorkCommandSourceSelection,
+		WorkDurabilityOptions {
 	project_root: string;
 	state_root?: string;
 	work_id: string;
@@ -240,7 +243,7 @@ export interface WorkBriefResult
 	delivery_state: "pending";
 }
 
-export interface WorkBriefInput extends WorkReadInput {
+export interface WorkBriefInput extends WorkReadInput, WorkDurabilityOptions {
 	last_reconciled_head?: string | null;
 	cursor_id?: string;
 	client_session_ref?: string | null;

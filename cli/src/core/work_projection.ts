@@ -16,6 +16,7 @@ import {
 	type WorkLedgerRecord,
 	withWorkLedgerLock,
 } from "./work_ledger.js";
+import { syncsToDisk, type WorkDurabilityOptions } from "./work_durability.js";
 import type { ReviewGateName, WorkPolicySnapshot } from "./work_policy.js";
 
 export const WORK_PROJECTION_SCHEMA_VERSION =
@@ -147,7 +148,7 @@ export interface WorkProjectionLimits {
 	maxReferencesPerRequirement?: number;
 }
 
-export interface RebuildWorkProjectionOptions {
+export interface RebuildWorkProjectionOptions extends WorkDurabilityOptions {
 	lockTimeoutMs?: number;
 	lockRetryMs?: number;
 	onProjectionFolded?: (projection: WorkProjection) => void;
@@ -1125,7 +1126,7 @@ export function rebuildWorkProjection(
 			limits,
 		);
 		options.onProjectionFolded?.(projection);
-		writeWorkProjectionAtomic(projectionPath, projection);
+		writeWorkProjectionAtomic(projectionPath, projection, options);
 		return projection;
 	});
 }
@@ -1133,6 +1134,7 @@ export function rebuildWorkProjection(
 export function writeWorkProjectionAtomic(
 	projectionPath: string,
 	projection: WorkProjection,
+	durability: WorkDurabilityOptions = {},
 ): void {
 	assertNoSymlinkAncestors(path.resolve(projectionPath));
 	const directory = path.dirname(projectionPath);
@@ -1150,15 +1152,17 @@ export function writeWorkProjectionAtomic(
 			0o600,
 		);
 		fs.writeFileSync(file, YAML.stringify(projection), "utf8");
-		fs.fsyncSync(file);
+		if (syncsToDisk(durability.durability)) fs.fsyncSync(file);
 		fs.closeSync(file);
 		file = undefined;
 		fs.renameSync(temporary, projectionPath);
-		const dir = fs.openSync(directory, "r");
-		try {
-			fs.fsyncSync(dir);
-		} finally {
-			fs.closeSync(dir);
+		if (syncsToDisk(durability.durability)) {
+			const dir = fs.openSync(directory, "r");
+			try {
+				fs.fsyncSync(dir);
+			} finally {
+				fs.closeSync(dir);
+			}
 		}
 	} catch (error) {
 		if (file !== undefined) fs.closeSync(file);

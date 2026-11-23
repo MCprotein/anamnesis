@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import type { WorkDurabilityOptions } from "../core/work_durability.js";
 import {
 	resolveWorkStateRoot,
 	type WorkSourceEventInput,
@@ -42,13 +43,15 @@ export function selectedSource(
 	return { eventId: source.eventId, value: source };
 }
 
-export interface WorkLocations {
+export interface WorkLocations extends WorkDurabilityOptions {
 	stateRoot: string;
 	ledgerPath: string;
 	projectionPath: string;
 }
 
-export function workLocations(input: WorkReadInput): WorkLocations {
+export function workLocations(
+	input: WorkReadInput & WorkDurabilityOptions,
+): WorkLocations {
 	assertSafeId(input.work_id, "work ID");
 	const state = resolveWorkStateRoot(input.project_root, input.state_root);
 	const directory = path.join(state.state_root, "work-units", input.work_id);
@@ -56,6 +59,7 @@ export function workLocations(input: WorkReadInput): WorkLocations {
 		stateRoot: state.state_root,
 		ledgerPath: path.join(directory, "ledger.jsonl"),
 		projectionPath: path.join(directory, "projection.yaml"),
+		...(input.durability ? { durability: input.durability } : {}),
 	};
 }
 
