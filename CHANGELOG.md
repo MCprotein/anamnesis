@@ -12,6 +12,8 @@ Older entries live in `docs/changelog/`:
 
 ## [Unreleased]
 
+## [1.26.0] — 2026-11-25
+
 - The `handoff-reminder.sh` Stop hook no longer reads untracked file contents. It fingerprints untracked files by path, size, and mtime (seconds) with batched `stat` calls through `xargs`, instead of one `git hash-object` and two `stat` processes per file. In a project with 2,547 untracked files (33 GB), the hook took several minutes per Stop and now takes about 0.6 s. A content-only change that keeps the same size and mtime no longer triggers a new reminder. `base` fragment version is now 32.
 - A GitHub Actions CI workflow (`.github/workflows/ci.yml`) runs lint, typecheck, tests, and build on Node 20 and 26 for pull requests to `main` and pushes to `main`.
 - `status` no longer reports Attention when Codex is not installed and no Anamnesis Codex hooks are registered (for example, a Claude-only project). `doctor` already followed this rule.
