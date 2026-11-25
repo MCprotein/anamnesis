@@ -104,6 +104,14 @@ stat_paths() {
   fi
 }
 
+stat_mtimes() {
+  if stat -f '%m' . >/dev/null 2>&1; then
+    xargs -0 stat -f '%m' 2>/dev/null || true # BSD stat (macOS)
+  else
+    xargs -0 stat -c '%Y' 2>/dev/null || true # GNU stat (Linux)
+  fi
+}
+
 dirty_status=$(git status --porcelain=v1 --untracked-files=all 2>/dev/null || true)
 dirty_count=$(printf '%s\n' "$dirty_status" | sed '/^$/d' | wc -l | tr -d ' ')
 if (( dirty_count == 0 )); then
@@ -136,7 +144,7 @@ latest_dirty_mtime=$(
     git diff --name-only -z --diff-filter=ACMRTUXB 2>/dev/null || true
     git diff --cached --name-only -z --diff-filter=ACMRTUXB 2>/dev/null || true
     git ls-files --others --exclude-standard -z 2>/dev/null || true
-  } | sort -zu | stat_paths | awk '$2 ~ /^[0-9]+$/ && $2 + 0 > max + 0 { max = $2 } END { print max + 0 }'
+  } | sort -zu | stat_mtimes | awk '$1 ~ /^[0-9]+$/ && $1 + 0 > max + 0 { max = $1 } END { print max + 0 }'
 ) || true
 
 if (( latest_dirty_mtime == 0 )); then
