@@ -1249,7 +1249,10 @@ describe("executableHookRenderer (claude-code)", () => {
     ).toBe(0);
     const handoffDir = path.join(projectRoot, ".anamnesis/handoff");
     fs.mkdirSync(handoffDir, { recursive: true });
-    fs.writeFileSync(path.join(handoffDir, "new.md"), "new\n", "utf8");
+    const handoff = path.join(handoffDir, "new.md");
+    fs.writeFileSync(handoff, "new\n", "utf8");
+    const handoffTime = new Date("2026-06-01T00:00:00Z");
+    fs.utimesSync(handoff, handoffTime, handoffTime);
     const oldTime = new Date("2026-01-01T00:00:00Z");
     for (const name of ["-n", "b.txt", "real.txt"]) {
       const file = path.join(projectRoot, name);
