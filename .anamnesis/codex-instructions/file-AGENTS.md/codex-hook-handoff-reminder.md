@@ -98,17 +98,17 @@ read_state() {
 # files, so the reminder must not read file contents.
 stat_paths() {
   if stat -f '%z' . >/dev/null 2>&1; then
-    xargs -0 stat -f '%z %m %N' 2>/dev/null || true # BSD stat (macOS)
+    xargs -0 stat -f '%z %m %N' -- 2>/dev/null || true # BSD stat (macOS)
   else
-    xargs -0 stat -c '%s %Y %n' 2>/dev/null || true # GNU stat (Linux)
+    xargs -0 stat -c '%s %Y %n' -- 2>/dev/null || true # GNU stat (Linux)
   fi
 }
 
 stat_mtimes() {
   if stat -f '%m' . >/dev/null 2>&1; then
-    xargs -0 stat -f '%m' 2>/dev/null || true # BSD stat (macOS)
+    xargs -0 stat -f '%m' -- 2>/dev/null || true # BSD stat (macOS)
   else
-    xargs -0 stat -c '%Y' 2>/dev/null || true # GNU stat (Linux)
+    xargs -0 stat -c '%Y' -- 2>/dev/null || true # GNU stat (Linux)
   fi
 }
 

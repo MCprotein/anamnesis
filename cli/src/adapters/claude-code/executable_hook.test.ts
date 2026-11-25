@@ -1240,6 +1240,37 @@ describe("executableHookRenderer (claude-code)", () => {
     );
   });
 
+  it("reads untracked file names that start with a dash as paths", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    expect(
+      spawnSync("git", ["init"], { cwd: projectRoot, encoding: "utf8" }).status,
+    ).toBe(0);
+    const handoffDir = path.join(projectRoot, ".anamnesis/handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    const handoff = path.join(handoffDir, "old.md");
+    fs.writeFileSync(handoff, "old\n", "utf8");
+    const oldTime = new Date("2026-01-01T00:00:00Z");
+    fs.utimesSync(handoff, oldTime, oldTime);
+    for (const name of ["-n", "b.txt", "real.txt"]) {
+      fs.writeFileSync(path.join(projectRoot, name), "dirty\n", "utf8");
+    }
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/handoff-reminder.sh",
+    );
+    const result = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout).systemMessage).toContain(
+      "4 uncommitted change(s) are newer than the latest handoff",
+    );
+  });
+
   it("keeps plain stderr reminders for the Codex bridges", () => {
     if (process.platform === "win32") return;
 
