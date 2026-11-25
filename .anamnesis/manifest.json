@@ -202,9 +202,9 @@
     {
       "path": ".claude/hooks/handoff-reminder.sh",
       "fragment_id": "base",
-      "fragment_version": 31,
-      "last_applied_hash": "sha256:e8427d9ec2abc6494a7e9bb78198bf335cd93c6a110db86c103987ec2cd6f3e5",
-      "current_user_hash": "sha256:e8427d9ec2abc6494a7e9bb78198bf335cd93c6a110db86c103987ec2cd6f3e5"
+      "fragment_version": 32,
+      "last_applied_hash": "sha256:0b6b7281598a4cc933547238f445ec677a885aaa2937287ad09298be540ad3f0",
+      "current_user_hash": "sha256:0b6b7281598a4cc933547238f445ec677a885aaa2937287ad09298be540ad3f0"
     },
     {
       "path": ".cursor/rules/load-context-cmd.mdc",
@@ -265,9 +265,9 @@
     {
       "path": ".anamnesis/codex-hooks/base-Stop-handoff-reminder.sh",
       "fragment_id": "base",
-      "fragment_version": 31,
-      "last_applied_hash": "sha256:e8427d9ec2abc6494a7e9bb78198bf335cd93c6a110db86c103987ec2cd6f3e5",
-      "current_user_hash": "sha256:e8427d9ec2abc6494a7e9bb78198bf335cd93c6a110db86c103987ec2cd6f3e5"
+      "fragment_version": 32,
+      "last_applied_hash": "sha256:0b6b7281598a4cc933547238f445ec677a885aaa2937287ad09298be540ad3f0",
+      "current_user_hash": "sha256:0b6b7281598a4cc933547238f445ec677a885aaa2937287ad09298be540ad3f0"
     },
     {
       "path": ".anamnesis/codex-native-hooks/base-Stop-handoff-reminder.mjs",
@@ -391,9 +391,9 @@
     {
       "path": ".anamnesis/codex-instructions/file-AGENTS.md/codex-hook-handoff-reminder.md",
       "fragment_id": "base",
-      "fragment_version": 31,
-      "last_applied_hash": "sha256:91ff1abe1c238f36c52b5adad3980361f2ca0054e05ecc3a845cd48ef3f0bb58",
-      "current_user_hash": "sha256:91ff1abe1c238f36c52b5adad3980361f2ca0054e05ecc3a845cd48ef3f0bb58"
+      "fragment_version": 32,
+      "last_applied_hash": "sha256:17a1edd73cfa166e073381b0a52ea353e62de39d67a267ba7b1e7467eebf6399",
+      "current_user_hash": "sha256:17a1edd73cfa166e073381b0a52ea353e62de39d67a267ba7b1e7467eebf6399"
     },
     {
       "path": ".anamnesis/codex-instructions/file-AGENTS.md/codex-hook-work-briefing.md",

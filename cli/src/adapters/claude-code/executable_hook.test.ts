@@ -1218,6 +1218,58 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(JSON.parse(third.stdout).systemMessage).toContain(
       "2 uncommitted change(s) are newer than the latest handoff",
     );
+
+    // Untracked files are fingerprinted by size and mtime, not by content.
+    expect(runHook().stdout).toBe("");
+    const secondPath = path.join(projectRoot, "second.txt");
+    const secondStat = fs.statSync(secondPath);
+    fs.writeFileSync(secondPath, "new DIRTY\n", "utf8");
+    fs.utimesSync(secondPath, secondStat.atime, secondStat.mtime);
+    const sameSizeAndMtime = runHook();
+    expect(sameSizeAndMtime.status).toBe(0);
+    expect(sameSizeAndMtime.stdout).toBe("");
+    fs.writeFileSync(
+      path.join(projectRoot, "second.txt"),
+      "longer dirty content\n",
+      "utf8",
+    );
+    const fourth = runHook();
+    expect(fourth.status).toBe(0);
+    expect(JSON.parse(fourth.stdout).systemMessage).toContain(
+      "2 uncommitted change(s) are newer than the latest handoff",
+    );
+  });
+
+  it("reads untracked file names that start with a dash as paths", () => {
+    if (process.platform === "win32") return;
+
+    const projectRoot = tmpDir();
+    expect(
+      spawnSync("git", ["init"], { cwd: projectRoot, encoding: "utf8" }).status,
+    ).toBe(0);
+    const handoffDir = path.join(projectRoot, ".anamnesis/handoff");
+    fs.mkdirSync(handoffDir, { recursive: true });
+    const handoff = path.join(handoffDir, "new.md");
+    fs.writeFileSync(handoff, "new\n", "utf8");
+    const handoffTime = new Date("2026-06-01T00:00:00Z");
+    fs.utimesSync(handoff, handoffTime, handoffTime);
+    const oldTime = new Date("2026-01-01T00:00:00Z");
+    for (const name of ["-n", "b.txt", "real.txt"]) {
+      const file = path.join(projectRoot, name);
+      fs.writeFileSync(file, "dirty\n", "utf8");
+      fs.utimesSync(file, oldTime, oldTime);
+    }
+    const hook = path.resolve(
+      "base/adapters/claude-code/hooks/handoff-reminder.sh",
+    );
+    const result = spawnSync("bash", [hook], {
+      cwd: projectRoot,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
   });
 
   it("keeps plain stderr reminders for the Codex bridges", () => {
