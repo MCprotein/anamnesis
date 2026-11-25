@@ -82,32 +82,15 @@ read_state() {
   cat "$STATE_FILE" 2>/dev/null || true
 }
 
-file_mtime() {
-  local file="$1"
-  if mtime=$(stat -f '%m' "$file" 2>/dev/null); then
-    printf '%s\n' "$mtime"
-  elif mtime=$(stat -c '%Y' "$file" 2>/dev/null); then
-    printf '%s\n' "$mtime"
-  fi
-}
-
-file_fingerprint() {
-  local file="$1"
-  local size=""
-  local mtime=""
-  local hash=""
-
-  if size=$(stat -f '%z' "$file" 2>/dev/null); then
-    : # BSD stat (macOS)
-  elif size=$(stat -c '%s' "$file" 2>/dev/null); then
-    : # GNU stat (Linux)
+# Print "size mtime path" for each NUL-separated path on stdin, using one stat
+# process instead of one per file. Untracked trees can hold thousands of large
+# files, so the reminder must not read file contents.
+stat_paths() {
+  if stat -f '%z' . >/dev/null 2>&1; then
+    xargs -0 stat -f '%z %m %N' 2>/dev/null || true # BSD stat (macOS)
   else
-    size="unknown"
+    xargs -0 stat -c '%s %Y %n' 2>/dev/null || true # GNU stat (Linux)
   fi
-
-  mtime=$(file_mtime "$file" || true)
-  hash=$(git hash-object -- "$file" 2>/dev/null || true)
-  printf '%s:%s:%s\n' "${size:-unknown}" "${mtime:-unknown}" "${hash:-unknown}"
 }
 
 dirty_status=$(git status --porcelain=v1 --untracked-files=all 2>/dev/null || true)
@@ -137,21 +120,12 @@ if [[ -d "$HANDOFF_DIR" ]]; then
   done
 fi
 
-latest_dirty_mtime=0
-while IFS= read -r file; do
-  [[ -n "$file" ]] || continue
-  [[ -e "$file" ]] || continue
-  mtime=$(file_mtime "$file" || true)
-  [[ -n "$mtime" ]] || continue
-  if (( mtime > latest_dirty_mtime )); then
-    latest_dirty_mtime=$mtime
-  fi
-done < <(
+latest_dirty_mtime=$(
   {
-    git diff --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
-    git diff --cached --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
-    git ls-files --others --exclude-standard 2>/dev/null || true
-  } | sort -u
+    git diff --name-only -z --diff-filter=ACMRTUXB 2>/dev/null || true
+    git diff --cached --name-only -z --diff-filter=ACMRTUXB 2>/dev/null || true
+    git ls-files --others --exclude-standard -z 2>/dev/null || true
+  } | sort -zu | stat_paths | awk '$2 > max { max = $2 } END { print max + 0 }'
 )
 
 if (( latest_dirty_mtime == 0 )); then
@@ -171,10 +145,7 @@ dirty_fingerprint=$(
     printf 'cached-diff:\n'
     git diff --cached --binary --no-ext-diff 2>/dev/null || true
     printf 'untracked:\n'
-    while IFS= read -r file; do
-      [[ -f "$file" ]] || continue
-      printf '%s:%s\n' "$file" "$(file_fingerprint "$file")"
-    done < <(git ls-files --others --exclude-standard 2>/dev/null || true)
+    git ls-files --others --exclude-standard -z 2>/dev/null | stat_paths
   } | git hash-object --stdin 2>/dev/null || true
 )
 

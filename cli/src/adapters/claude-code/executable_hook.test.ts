@@ -1218,6 +1218,18 @@ describe("executableHookRenderer (claude-code)", () => {
     expect(JSON.parse(third.stdout).systemMessage).toContain(
       "2 uncommitted change(s) are newer than the latest handoff",
     );
+
+    // Untracked files are fingerprinted by size and mtime, not by content.
+    expect(runHook().stdout).toBe("");
+    fs.writeFileSync(
+      path.join(projectRoot, "second.txt"),
+      "longer dirty content\n",
+      "utf8",
+    );
+    const fourth = runHook();
+    expect(JSON.parse(fourth.stdout).systemMessage).toContain(
+      "2 uncommitted change(s) are newer than the latest handoff",
+    );
   });
 
   it("keeps plain stderr reminders for the Codex bridges", () => {
