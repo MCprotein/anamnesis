@@ -125,8 +125,8 @@ latest_dirty_mtime=$(
     git diff --name-only -z --diff-filter=ACMRTUXB 2>/dev/null || true
     git diff --cached --name-only -z --diff-filter=ACMRTUXB 2>/dev/null || true
     git ls-files --others --exclude-standard -z 2>/dev/null || true
-  } | sort -zu | stat_paths | awk '$2 > max { max = $2 } END { print max + 0 }'
-)
+  } | sort -zu | stat_paths | awk '$2 ~ /^[0-9]+$/ && $2 + 0 > max + 0 { max = $2 } END { print max + 0 }'
+) || true
 
 if (( latest_dirty_mtime == 0 )); then
   latest_dirty_mtime=$(date +%s)

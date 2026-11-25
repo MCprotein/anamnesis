@@ -1221,12 +1221,20 @@ describe("executableHookRenderer (claude-code)", () => {
 
     // Untracked files are fingerprinted by size and mtime, not by content.
     expect(runHook().stdout).toBe("");
+    const secondPath = path.join(projectRoot, "second.txt");
+    const secondStat = fs.statSync(secondPath);
+    fs.writeFileSync(secondPath, "new DIRTY\n", "utf8");
+    fs.utimesSync(secondPath, secondStat.atime, secondStat.mtime);
+    const sameSizeAndMtime = runHook();
+    expect(sameSizeAndMtime.status).toBe(0);
+    expect(sameSizeAndMtime.stdout).toBe("");
     fs.writeFileSync(
       path.join(projectRoot, "second.txt"),
       "longer dirty content\n",
       "utf8",
     );
     const fourth = runHook();
+    expect(fourth.status).toBe(0);
     expect(JSON.parse(fourth.stdout).systemMessage).toContain(
       "2 uncommitted change(s) are newer than the latest handoff",
     );
