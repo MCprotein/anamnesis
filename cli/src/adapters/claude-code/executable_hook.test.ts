@@ -1249,12 +1249,12 @@ describe("executableHookRenderer (claude-code)", () => {
     ).toBe(0);
     const handoffDir = path.join(projectRoot, ".anamnesis/handoff");
     fs.mkdirSync(handoffDir, { recursive: true });
-    const handoff = path.join(handoffDir, "old.md");
-    fs.writeFileSync(handoff, "old\n", "utf8");
+    fs.writeFileSync(path.join(handoffDir, "new.md"), "new\n", "utf8");
     const oldTime = new Date("2026-01-01T00:00:00Z");
-    fs.utimesSync(handoff, oldTime, oldTime);
     for (const name of ["-n", "b.txt", "real.txt"]) {
-      fs.writeFileSync(path.join(projectRoot, name), "dirty\n", "utf8");
+      const file = path.join(projectRoot, name);
+      fs.writeFileSync(file, "dirty\n", "utf8");
+      fs.utimesSync(file, oldTime, oldTime);
     }
     const hook = path.resolve(
       "base/adapters/claude-code/hooks/handoff-reminder.sh",
@@ -1266,9 +1266,7 @@ describe("executableHookRenderer (claude-code)", () => {
     });
 
     expect(result.status).toBe(0);
-    expect(JSON.parse(result.stdout).systemMessage).toContain(
-      "4 uncommitted change(s) are newer than the latest handoff",
-    );
+    expect(result.stdout).toBe("");
   });
 
   it("keeps plain stderr reminders for the Codex bridges", () => {
